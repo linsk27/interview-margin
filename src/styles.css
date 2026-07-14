@@ -1411,9 +1411,24 @@ dialog[open] {
 
 .dashboard-dialog {
   width: min(calc(100% - 2 * var(--space-md)), 58rem);
+  background: var(--color-raised);
 }
 
-.dashboard-dialog__body,
+.dashboard-dialog .dialog-header {
+  min-height: 5rem;
+  padding-block-end: var(--space-sm);
+  border-bottom: 0;
+}
+
+.dashboard-dialog__body {
+  display: grid;
+  max-height: calc(100dvh - 6rem);
+  gap: var(--space-lg);
+  overflow-x: clip;
+  overflow-y: auto;
+  padding: var(--space-xs) var(--space-lg) var(--space-lg);
+}
+
 .settings-dialog__body {
   max-height: calc(100dvh - 6rem);
   overflow-y: auto;
@@ -1423,26 +1438,30 @@ dialog[open] {
 .dashboard-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-block: var(--rule-thin) solid var(--color-rule-strong);
+  gap: 0;
+  padding: var(--space-xs);
+  border-radius: var(--radius-md);
+  background: var(--color-paper-2);
 }
 
 .dashboard-stats > div {
   display: grid;
   min-width: 0;
   grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
   gap: var(--space-2xs) var(--space-sm);
   padding: var(--space-md);
-  border-bottom: var(--rule-thin) solid var(--color-rule);
-}
-
-.dashboard-stats > div:nth-child(odd) {
-  border-inline-end: var(--rule-thin) solid var(--color-rule);
+  background: transparent;
 }
 
 .dashboard-stats svg {
-  width: 1rem;
-  height: 1rem;
-  margin-block-start: var(--space-2xs);
+  box-sizing: content-box;
+  width: 0.95rem;
+  height: 0.95rem;
+  grid-row: 1 / 3;
+  padding: var(--space-xs);
+  border-radius: 50%;
+  background: var(--color-accent-soft);
   color: var(--color-accent);
 }
 
@@ -1450,8 +1469,9 @@ dialog[open] {
   min-width: 0;
   color: var(--color-ink);
   font-family: var(--font-display);
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
   overflow-wrap: anywhere;
 }
 
@@ -1465,8 +1485,13 @@ dialog[open] {
 .section-progress,
 .review-queue,
 .data-backup {
-  padding-block: var(--space-lg);
-  border-bottom: var(--rule-thin) solid var(--color-rule);
+  border: 0;
+}
+
+.activity-ledger {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-paper-2);
 }
 
 .dashboard-section-title,
@@ -1500,43 +1525,45 @@ dialog[open] {
 
 .activity-strip {
   display: grid;
+  height: 3.25rem;
   grid-template-columns: repeat(14, minmax(0, 1fr));
   gap: var(--space-2xs);
+  align-items: end;
 }
 
 .activity-strip > span {
-  display: grid;
-  aspect-ratio: 1;
-  place-items: center;
-  border: var(--rule-thin) solid var(--color-rule);
-  border-radius: var(--radius-xs);
-  background: var(--color-paper-2);
+  display: flex;
+  height: 100%;
+  align-items: flex-end;
+  padding-inline: var(--space-3xs);
 }
 
 .activity-strip i {
   display: block;
-  width: 48%;
-  height: 48%;
-  border-radius: var(--radius-xs);
+  width: 100%;
+  min-height: var(--space-2xs);
+  border-radius: var(--radius-sm) var(--radius-sm) var(--radius-xs) var(--radius-xs);
   background: var(--color-rule);
+  transition: height var(--dur-long) var(--ease-out), background-color var(--dur-short) var(--ease-out);
 }
 
-.activity-strip .level-1 i { background: var(--color-accent-soft); }
-.activity-strip .level-2 i { background: var(--color-rule-strong); }
-.activity-strip .level-3 i { background: var(--color-accent); }
-.activity-strip .level-4 i { background: var(--color-warm); }
+.activity-strip .level-0 i { height: 12%; }
+.activity-strip .level-1 i { height: 34%; background: var(--color-accent-soft); }
+.activity-strip .level-2 i { height: 56%; background: var(--color-rule-strong); }
+.activity-strip .level-3 i { height: 78%; background: var(--color-accent); }
+.activity-strip .level-4 i { height: 100%; background: var(--color-warm); }
 
 .dashboard-columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-lg);
 }
 
 .dashboard-columns--review-empty .review-queue {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  padding-block: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .dashboard-columns--review-empty .review-queue .dashboard-section-title,
@@ -1544,8 +1571,21 @@ dialog[open] {
   margin: 0;
 }
 
-.section-progress__row + .section-progress__row {
-  margin-block-start: var(--space-md);
+.section-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-sm);
+}
+
+.section-progress > .dashboard-section-title {
+  margin-block-end: var(--space-2xs);
+}
+
+.section-progress__row {
+  min-width: 0;
+  padding: var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper-2);
 }
 
 .section-progress__row > div {
@@ -1573,19 +1613,26 @@ dialog[open] {
 
 .progress-line {
   display: block;
-  height: var(--rule-heavy);
+  height: 0.35rem;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
   background: var(--color-rule);
 }
 
 .progress-line > span {
   display: block;
   height: 100%;
+  border-radius: inherit;
   background: var(--color-accent);
 }
 
 .review-queue {
   display: grid;
   align-content: start;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-paper-2);
 }
 
 .review-queue > button {
@@ -1595,8 +1642,9 @@ dialog[open] {
   align-items: center;
   gap: var(--space-sm);
   padding-inline: var(--space-sm);
-  border-top: var(--rule-thin) solid var(--color-rule);
-  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
   color: var(--color-neutral);
   cursor: pointer;
   text-align: start;
@@ -1620,6 +1668,7 @@ dialog[open] {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
+  margin: 0;
   color: var(--color-muted);
   font-size: var(--text-sm);
 }
@@ -1641,7 +1690,9 @@ dialog[open] {
   flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--space-md);
-  border-bottom: 0;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-paper-2);
 }
 
 .data-backup > div {
@@ -1670,13 +1721,16 @@ dialog[open] {
 }
 
 .data-backup__actions {
+  width: 100%;
   gap: var(--space-xs);
 }
 
 .data-backup__actions button {
   display: inline-flex;
   min-height: 2.75rem;
+  flex: 1 1 0;
   align-items: center;
+  justify-content: center;
   gap: var(--space-xs);
   padding-inline: var(--space-sm);
   border: var(--rule-thin) solid var(--color-rule-strong);
@@ -1686,6 +1740,12 @@ dialog[open] {
   cursor: pointer;
   font-size: var(--text-xs);
   white-space: nowrap;
+}
+
+.data-backup__actions button:first-child {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
 }
 
 .data-backup__actions svg {
@@ -2038,12 +2098,12 @@ dialog[open] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .dashboard-stats > div:nth-child(odd) {
-    border-inline-end: 0;
+  .section-progress {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dashboard-stats > div + div {
-    border-inline-start: var(--rule-thin) solid var(--color-rule);
+  .section-progress > .dashboard-section-title {
+    grid-column: 1 / -1;
   }
 
   .dashboard-columns {
@@ -2056,8 +2116,24 @@ dialog[open] {
     column-gap: 0;
   }
 
+  .dashboard-columns--review-empty .review-queue {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .dashboard-columns--review-empty .review-queue__empty {
+    justify-self: end;
+  }
+
   .data-backup {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .data-backup__actions {
+    width: auto;
+  }
+
+  .data-backup__actions button {
+    flex: 0 0 auto;
   }
 
   .settings-dialog__body > section {
@@ -2354,6 +2430,10 @@ dialog[open] {
     color: var(--color-accent);
   }
 
+  .data-backup__actions button:first-child:hover {
+    color: var(--color-accent-ink);
+  }
+
   .markdown-body a:hover {
     text-decoration-color: currentColor;
   }
@@ -2365,6 +2445,31 @@ dialog[open] {
 }
 
 @media (max-width: 23.4375rem) {
+  .dashboard-dialog .dialog-header {
+    padding-inline: var(--space-sm);
+  }
+
+  .dashboard-dialog__body {
+    padding-inline: var(--space-sm);
+  }
+
+  .dashboard-stats {
+    padding: var(--space-2xs);
+  }
+
+  .dashboard-stats > div {
+    gap: var(--space-3xs) var(--space-2xs);
+    padding: var(--space-xs);
+  }
+
+  .dashboard-stats svg {
+    padding: var(--space-2xs);
+  }
+
+  .dashboard-stats strong {
+    font-size: var(--text-md);
+  }
+
   .topbar {
     padding-inline: var(--space-2xs);
   }
