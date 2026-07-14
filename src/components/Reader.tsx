@@ -33,7 +33,8 @@ type TurnDirection = 'previous' | 'next'
 
 const PAGE_TURN_MS = 760
 const PAGE_TURN_COMMIT_MS = PAGE_TURN_MS / 2
-const PAGE_TURN_LOCK_MS = PAGE_TURN_MS + 60
+const PAGE_TURN_START_GRACE_MS = 240
+const PAGE_TURN_FALLBACK_MS = PAGE_TURN_MS * 2
 const DEFAULT_GEOMETRY: SpreadGeometry = {
   pageWidth: 1,
   pageCount: 2,
@@ -126,6 +127,7 @@ export function Reader({
   const turnCommitTimer = useRef<number | undefined>(undefined)
   const turnEndTimer = useRef<number | undefined>(undefined)
   const turnLocked = useRef(false)
+  const pendingSpreadIndexRef = useRef<number | undefined>(undefined)
   const spreadIndexRef = useRef(initialSpreadIndex)
   const onSpreadChangeRef = useRef(onSpreadChange)
   const onSpreadAvailabilityChangeRef = useRef(onSpreadAvailabilityChange)
@@ -162,6 +164,7 @@ export function Reader({
     window.clearTimeout(turnCommitTimer.current)
     window.clearTimeout(turnEndTimer.current)
     turnLocked.current = false
+    pendingSpreadIndexRef.current = undefined
     setTurnDirection(undefined)
     clearSpreadSnapshot(snapshotLayerRef.current)
     spreadIndexRef.current = initialSpreadIndex
@@ -173,6 +176,7 @@ export function Reader({
     window.clearTimeout(turnCommitTimer.current)
     window.clearTimeout(turnEndTimer.current)
     turnLocked.current = false
+    pendingSpreadIndexRef.current = undefined
     setTurnDirection(undefined)
     clearSpreadSnapshot(snapshotLayerRef.current)
   }, [spreadMode])
@@ -292,6 +296,33 @@ export function Reader({
     onSpreadChangeRef.current(nextIndex)
   }
 
+  const commitPendingSpread = () => {
+    const target = pendingSpreadIndexRef.current
+    if (target === undefined || spreadIndexRef.current === target) return
+    applySpread(target)
+  }
+
+  const finishSpreadTurn = () => {
+    window.clearTimeout(turnCommitTimer.current)
+    window.clearTimeout(turnEndTimer.current)
+    commitPendingSpread()
+    pendingSpreadIndexRef.current = undefined
+    turnLocked.current = false
+    setTurnDirection(undefined)
+    clearSpreadSnapshot(snapshotLayerRef.current)
+  }
+
+  const handleFlowAnimationStart = (event: React.AnimationEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.animationName !== 'reader-flow-reveal') return
+    window.clearTimeout(turnCommitTimer.current)
+    turnCommitTimer.current = window.setTimeout(commitPendingSpread, PAGE_TURN_COMMIT_MS)
+  }
+
+  const handleFlowAnimationEnd = (event: React.AnimationEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.animationName !== 'reader-flow-reveal') return
+    finishSpreadTurn()
+  }
+
   const turnSpread = (direction: TurnDirection) => {
     if (!spreadMode || turnLocked.current) return
     const target = spreadIndex + (direction === 'next' ? 1 : -1)
@@ -310,13 +341,12 @@ export function Reader({
     }
 
     captureSpreadSnapshot(snapshotLayerRef.current, flowRef.current)
+    pendingSpreadIndexRef.current = nextIndex
     setTurnDirection(direction)
-    turnCommitTimer.current = window.setTimeout(() => applySpread(nextIndex), PAGE_TURN_COMMIT_MS)
-    turnEndTimer.current = window.setTimeout(() => {
-      turnLocked.current = false
-      setTurnDirection(undefined)
-      clearSpreadSnapshot(snapshotLayerRef.current)
-    }, PAGE_TURN_LOCK_MS)
+    // The animation can start a few frames after the click under production
+    // load. animationstart resynchronizes this fallback with the real timeline.
+    turnCommitTimer.current = window.setTimeout(commitPendingSpread, PAGE_TURN_COMMIT_MS + PAGE_TURN_START_GRACE_MS)
+    turnEndTimer.current = window.setTimeout(finishSpreadTurn, PAGE_TURN_FALLBACK_MS)
   }
 
   const handleSpreadWheel = (event: React.WheelEvent<HTMLDivElement>) => {
@@ -347,7 +377,12 @@ export function Reader({
           aria-busy={Boolean(turnDirection)}
           data-spread-index={spreadMode ? spreadIndex : undefined}
         >
-          <div className={`reader__flow${turnDirection ? ' is-turning' : ''}`} ref={flowRef}>
+          <div
+            className={`reader__flow${turnDirection ? ' is-turning' : ''}`}
+            ref={flowRef}
+            onAnimationStart={handleFlowAnimationStart}
+            onAnimationEnd={handleFlowAnimationEnd}
+          >
             <header className="reader__header">
               <div className="reader__index">Q{question.number.padStart(2, '0')}</div>
               <div className="reader__heading">
