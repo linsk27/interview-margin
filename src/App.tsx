@@ -12,6 +12,13 @@ import { StatusDock } from './components/StatusDock'
 import { Topbar } from './components/Topbar'
 import { UndoToast } from './components/UndoToast'
 import { dateAfterDays } from './lib/format'
+import {
+  isFocusMode,
+  setFocusMode,
+  toggleFocusMode as transitionFocusMode,
+  toggleLibrary as transitionLibrary,
+  type DrawerState,
+} from './lib/drawerState'
 import { flattenQuestions, parseInterviewMarkdown, questionFromHash } from './lib/markdown'
 import {
   exportStudyState,
@@ -68,10 +75,14 @@ export default function App() {
   const [loadError, setLoadError] = useState('')
   const [activeId, setActiveId] = useState('')
   const [state, setState] = useState<StudyState>(() => loadStudyState())
+  const [drawerState, setDrawerState] = useState<DrawerState>(() => (
+    state.settings.focusMode
+      ? setFocusMode(true)
+      : { libraryOpen: true, notesOpen: state.settings.notesOpen }
+  ))
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<LibraryFilter>('all')
-  const [libraryOpen, setLibraryOpen] = useState(false)
-  const [libraryCollapsed, setLibraryCollapsed] = useState(false)
+  const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false)
   const [mobileNotesOpen, setMobileNotesOpen] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
@@ -109,18 +120,34 @@ export default function App() {
     const progress = progressFor(state, question.id)
     return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
   }).length
-  const libraryExpanded = !state.settings.focusMode
-    && (desktopLibraryLayout ? !libraryCollapsed : libraryOpen)
-  const notesVisible = state.settings.notesOpen && !state.settings.focusMode
+  const focusMode = isFocusMode(drawerState)
+  const libraryExpanded = desktopLibraryLayout ? drawerState.libraryOpen : mobileLibraryOpen
+  const notesVisible = drawerState.notesOpen
   const notesExpanded = notesVisible && (wideNotesLayout || mobileNotesOpen)
 
   useEffect(() => {
-    if (desktopLibraryLayout) setLibraryOpen(false)
+    if (desktopLibraryLayout) setMobileLibraryOpen(false)
   }, [desktopLibraryLayout])
 
   useEffect(() => {
     if (wideNotesLayout) setMobileNotesOpen(false)
   }, [wideNotesLayout])
+
+  useEffect(() => {
+    setState((current) => {
+      if (current.settings.focusMode === focusMode && current.settings.notesOpen === drawerState.notesOpen) {
+        return current
+      }
+      return {
+        ...current,
+        settings: {
+          ...current.settings,
+          focusMode,
+          notesOpen: drawerState.notesOpen,
+        },
+      }
+    })
+  }, [drawerState.notesOpen, focusMode])
 
   useEffect(() => {
     fetch('/interview.md')
@@ -207,7 +234,7 @@ export default function App() {
       window.history.pushState(null, '', `#${question.id}`)
       setActiveId(question.id)
     }
-    setLibraryOpen(false)
+    setMobileLibraryOpen(false)
   }
 
   const updateProgress = (patch: Partial<QuestionProgress>, recordActivity = false) => {
@@ -276,16 +303,13 @@ export default function App() {
   }
 
   const openNotes = () => {
-    setState((current) => ({
-      ...current,
-      settings: { ...current.settings, notesOpen: true, focusMode: false },
-    }))
-    setLibraryOpen(false)
+    setDrawerState((current) => ({ ...current, notesOpen: true }))
+    setMobileLibraryOpen(false)
     setMobileNotesOpen(!wideNotesLayout)
   }
 
   const closeNotes = () => {
-    setState((current) => ({ ...current, settings: { ...current.settings, notesOpen: false } }))
+    setDrawerState((current) => ({ ...current, notesOpen: false }))
     setMobileNotesOpen(false)
     setComposer(undefined)
   }
@@ -297,34 +321,26 @@ export default function App() {
 
   const toggleMobileLibrary = () => {
     const nextOpen = !libraryExpanded
-    setLibraryOpen(nextOpen)
+    setMobileLibraryOpen(nextOpen)
+    setDrawerState((current) => ({ ...current, libraryOpen: nextOpen }))
     if (nextOpen) {
       setMobileNotesOpen(false)
-      setState((current) => ({
-        ...current,
-        settings: { ...current.settings, focusMode: false },
-      }))
     }
   }
 
   const toggleDesktopLibrary = () => {
-    const nextOpen = !libraryExpanded
-    setLibraryCollapsed(!nextOpen)
-    if (nextOpen && state.settings.focusMode) {
-      setState((current) => ({
-        ...current,
-        settings: { ...current.settings, focusMode: false },
-      }))
-    }
+    setDrawerState(transitionLibrary)
+  }
+
+  const toggleFocus = () => {
+    setDrawerState(transitionFocusMode)
+    setMobileLibraryOpen(false)
+    setMobileNotesOpen(false)
   }
 
   const openReviewLibrary = () => {
     setFilter('review')
-    setLibraryCollapsed(false)
-    setState((current) => ({
-      ...current,
-      settings: { ...current.settings, focusMode: false },
-    }))
+    setDrawerState((current) => ({ ...current, libraryOpen: true }))
   }
 
   const navigateRelative = (offset: number) => {
@@ -356,6 +372,11 @@ export default function App() {
   const importProgress = async (file: File) => {
     try {
       const imported = parseStudyState(await file.text())
+      setDrawerState(imported.settings.focusMode
+        ? setFocusMode(true)
+        : { libraryOpen: true, notesOpen: imported.settings.notesOpen })
+      setMobileLibraryOpen(false)
+      setMobileNotesOpen(false)
       setState(imported)
     } catch (error) {
       const message = error instanceof Error ? error.message : '导入文件无法识别。'
@@ -364,11 +385,23 @@ export default function App() {
   }
 
   const changeSettings = (settings: ReaderSettings) => {
-    if (settings.focusMode) {
-      setLibraryOpen(false)
+    const nextDrawerState = settings.focusMode === focusMode
+      ? drawerState
+      : setFocusMode(settings.focusMode)
+
+    if (nextDrawerState !== drawerState) {
+      setDrawerState(nextDrawerState)
+      setMobileLibraryOpen(false)
       setMobileNotesOpen(false)
     }
-    setState((current) => ({ ...current, settings }))
+    setState((current) => ({
+      ...current,
+      settings: {
+        ...settings,
+        focusMode: isFocusMode(nextDrawerState),
+        notesOpen: nextDrawerState.notesOpen,
+      },
+    }))
   }
 
   if (loadError) {
@@ -394,17 +427,17 @@ export default function App() {
   }
 
   return (
-    <div className={`app-shell${state.settings.focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${libraryCollapsed ? ' is-library-closed' : ''}`}>
+    <div className={`app-shell${focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${drawerState.libraryOpen ? '' : ' is-library-closed'}`}>
       <Rail
         mastered={masteredCount}
         total={questions.length}
         reviewCount={reviewCount}
-        focusMode={state.settings.focusMode}
+        focusMode={focusMode}
         libraryOpen={libraryExpanded}
         onToggleLibrary={toggleDesktopLibrary}
         onOpenDashboard={() => setDashboardOpen(true)}
         onOpenReview={openReviewLibrary}
-        onToggleFocus={() => changeSettings({ ...state.settings, focusMode: !state.settings.focusMode })}
+        onToggleFocus={toggleFocus}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
@@ -415,13 +448,13 @@ export default function App() {
         state={state}
         query={query}
         filter={filter}
-        mobileOpen={libraryOpen}
+        mobileOpen={mobileLibraryOpen}
         onQueryChange={setQuery}
         onFilterChange={setFilter}
         onSelect={openQuestion}
-        onOpenDashboard={() => { setLibraryOpen(false); setDashboardOpen(true) }}
-        onOpenSettings={() => { setLibraryOpen(false); setSettingsOpen(true) }}
-        onClose={() => setLibraryOpen(false)}
+        onOpenDashboard={() => { setMobileLibraryOpen(false); setDashboardOpen(true) }}
+        onOpenSettings={() => { setMobileLibraryOpen(false); setSettingsOpen(true) }}
+        onClose={() => setMobileLibraryOpen(false)}
       />
 
       <section className="reading-desk">
@@ -492,10 +525,15 @@ export default function App() {
         onExport={() => exportStudyState(state)}
         onImport={importProgress}
       />
-      <SettingsDialog open={settingsOpen} settings={state.settings} onClose={() => setSettingsOpen(false)} onChange={changeSettings} />
+      <SettingsDialog
+        open={settingsOpen}
+        settings={{ ...state.settings, focusMode, notesOpen: drawerState.notesOpen }}
+        onClose={() => setSettingsOpen(false)}
+        onChange={changeSettings}
+      />
 
       {undo && <UndoToast message="批注已删除" onUndo={restoreAnnotation} onDismiss={() => setUndo(undefined)} />}
-      {(libraryOpen || mobileNotesOpen) && <button className="mobile-scrim" type="button" onClick={() => { setLibraryOpen(false); setMobileNotesOpen(false) }} aria-label="关闭侧栏" />}
+      {(mobileLibraryOpen || mobileNotesOpen) && <button className="mobile-scrim" type="button" onClick={() => { setMobileLibraryOpen(false); setMobileNotesOpen(false) }} aria-label="关闭侧栏" />}
       <div className="sr-only" aria-live="polite">当前题目：{activeQuestion.title}</div>
       <footer className="app-colophon"><MessageSquareText aria-hidden="true" />记录仅保存在当前浏览器 · Q{activeQuestion.number} · {state.annotations.length} 条批注</footer>
     </div>
