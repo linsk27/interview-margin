@@ -11,7 +11,7 @@ import {
   clampSpreadIndex,
   shouldUseSpread,
   spreadLabel,
-  spreadOffset,
+  spreadTranslation,
   type SpreadGeometry,
 } from '../lib/spreadPagination'
 
@@ -39,6 +39,10 @@ const DEFAULT_GEOMETRY: SpreadGeometry = {
   pageCount: 2,
   spreadCount: 1,
   spreadStep: 1,
+}
+
+function positionSpreadFlow(flow: HTMLDivElement, index: number, geometry: SpreadGeometry) {
+  flow.style.transform = `translate3d(${spreadTranslation(index, geometry)}px, 0, 0)`
 }
 
 function textFromNode(node: React.ReactNode): string {
@@ -157,6 +161,7 @@ export function Reader({
 
     if (!spreadMode) {
       flow.style.removeProperty('column-width')
+      flow.style.removeProperty('transform')
       viewport.scrollLeft = 0
       setGeometry(DEFAULT_GEOMETRY)
       return
@@ -185,7 +190,10 @@ export function Reader({
         ))
 
         const nextIndex = clampSpreadIndex(spreadIndexRef.current, nextGeometry.spreadCount)
-        viewport.scrollLeft = spreadOffset(nextIndex, nextGeometry)
+        // Native scrollLeft clamps before padded or odd final pages. Move the
+        // column flow directly so each spread always starts on an exact page.
+        viewport.scrollLeft = 0
+        positionSpreadFlow(flow, nextIndex, nextGeometry)
         if (nextIndex !== spreadIndexRef.current) {
           spreadIndexRef.current = nextIndex
           setSpreadIndex(nextIndex)
@@ -247,7 +255,8 @@ export function Reader({
 
   const applySpread = (target: number) => {
     const nextIndex = clampSpreadIndex(target, geometry.spreadCount)
-    viewportRef.current?.scrollTo({ left: spreadOffset(nextIndex, geometry), behavior: 'instant' })
+    if (viewportRef.current) viewportRef.current.scrollLeft = 0
+    if (flowRef.current) positionSpreadFlow(flowRef.current, nextIndex, geometry)
     spreadIndexRef.current = nextIndex
     setSpreadIndex(nextIndex)
     onSpreadChangeRef.current(nextIndex)

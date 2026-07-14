@@ -6,6 +6,7 @@ import {
   shouldUseSpread,
   spreadLabel,
   spreadOffset,
+  spreadTranslation,
 } from './spreadPagination'
 
 describe('spread pagination', () => {
@@ -29,6 +30,15 @@ describe('spread pagination', () => {
     expect(geometry.spreadCount).toBe(2)
     expect(geometry.spreadStep).toBe(1152)
     expect(spreadOffset(1, geometry)).toBe(1152)
+    expect(spreadTranslation(1, geometry)).toBe(-1152)
+  })
+
+  it('positions a final odd page at the left side of its own spread', () => {
+    const geometry = calculateSpreadGeometry(1350, 2057, 64)
+
+    expect(geometry.pageCount).toBe(3)
+    expect(geometry.spreadCount).toBe(2)
+    expect(spreadTranslation(1, geometry)).toBe(-1414)
   })
 
   it('clamps navigation and formats complete or final single-page spreads', () => {

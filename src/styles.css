@@ -339,7 +339,7 @@ kbd {
   position: relative;
   min-height: 0;
   padding: var(--reader-page-block) var(--reader-page-inline);
-  overflow: hidden;
+  overflow: clip;
   border: var(--rule-thin) solid var(--color-rule);
   border-radius: var(--radius-xs);
   background: var(--color-raised);
@@ -388,6 +388,7 @@ kbd {
   column-fill: auto;
   column-gap: var(--reader-page-gap);
   orphans: 3;
+  transform-origin: left top;
   widows: 3;
 }
 

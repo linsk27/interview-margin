@@ -41,6 +41,10 @@ export function spreadOffset(index: number, geometry: SpreadGeometry): number {
   return clampSpreadIndex(index, geometry.spreadCount) * geometry.spreadStep
 }
 
+export function spreadTranslation(index: number, geometry: SpreadGeometry): number {
+  return -spreadOffset(index, geometry)
+}
+
 export function spreadLabel(index: number, pageCount: number): string {
   const firstPage = Math.min(index * 2 + 1, pageCount)
   const lastPage = Math.min(firstPage + 1, pageCount)
