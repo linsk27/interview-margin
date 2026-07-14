@@ -344,6 +344,7 @@ kbd {
   border-radius: var(--radius-xs);
   background: var(--color-raised);
   box-shadow: 0 var(--space-xs) var(--space-xl) var(--color-shadow);
+  isolation: isolate;
   outline: none;
   perspective: 120rem;
   perspective-origin: center center;
@@ -387,9 +388,34 @@ kbd {
   height: 100%;
   column-fill: auto;
   column-gap: var(--reader-page-gap);
+  backface-visibility: hidden;
   orphans: 3;
   transform-origin: left top;
   widows: 3;
+}
+
+.reader--spread .reader__flow.is-turning {
+  animation: reader-flow-reveal var(--dur-page-turn) var(--ease-in-out) both;
+  will-change: transform, opacity;
+}
+
+.reader__snapshot-layer {
+  position: absolute;
+  z-index: calc(var(--z-base) + 3);
+  display: none;
+  overflow: clip;
+  pointer-events: none;
+}
+
+.reader__snapshot-layer.is-active {
+  display: block;
+}
+
+.reader__flow--snapshot {
+  width: 100%;
+  height: 100%;
+  animation: reader-flow-snapshot var(--dur-page-turn) var(--ease-in-out) both;
+  will-change: opacity;
 }
 
 .reader--spread .reader__header {
@@ -519,6 +545,16 @@ kbd {
 @keyframes reader-page-shadow-previous {
   0%, 100% { opacity: 0; transform: scaleX(0.08); }
   46% { opacity: 0.9; transform: scaleX(1); }
+}
+
+@keyframes reader-flow-reveal {
+  0%, 44% { opacity: 0; }
+  68%, 100% { opacity: 1; }
+}
+
+@keyframes reader-flow-snapshot {
+  0%, 44% { opacity: 1; }
+  68%, 100% { opacity: 0; }
 }
 
 .reader__pagination {

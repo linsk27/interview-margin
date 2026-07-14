@@ -32,8 +32,8 @@ interface ReaderProps {
 type TurnDirection = 'previous' | 'next'
 
 const PAGE_TURN_MS = 760
-const PAGE_TURN_COMMIT_MS = 360
-const PAGE_TURN_LOCK_MS = PAGE_TURN_MS + 100
+const PAGE_TURN_COMMIT_MS = PAGE_TURN_MS / 2
+const PAGE_TURN_LOCK_MS = PAGE_TURN_MS + 60
 const DEFAULT_GEOMETRY: SpreadGeometry = {
   pageWidth: 1,
   pageCount: 2,
@@ -43,6 +43,32 @@ const DEFAULT_GEOMETRY: SpreadGeometry = {
 
 function positionSpreadFlow(flow: HTMLDivElement, index: number, geometry: SpreadGeometry) {
   flow.style.transform = `translate3d(${spreadTranslation(index, geometry)}px, 0, 0)`
+}
+
+function clearSpreadSnapshot(layer: HTMLDivElement | null) {
+  if (!layer) return
+  layer.replaceChildren()
+  layer.classList.remove('is-active')
+  layer.removeAttribute('style')
+}
+
+function captureSpreadSnapshot(layer: HTMLDivElement | null, flow: HTMLDivElement | null) {
+  if (!layer || !flow) return
+
+  const clone = flow.cloneNode(true) as HTMLDivElement
+  clone.classList.remove('is-turning')
+  clone.classList.add('reader__flow--snapshot')
+  clone.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'))
+  clone.querySelectorAll<HTMLElement>('a, button, input, textarea, select, [tabindex]').forEach((element) => {
+    element.tabIndex = -1
+  })
+
+  layer.style.left = `${flow.offsetLeft}px`
+  layer.style.top = `${flow.offsetTop}px`
+  layer.style.width = `${flow.offsetWidth}px`
+  layer.style.height = `${flow.offsetHeight}px`
+  layer.replaceChildren(clone)
+  layer.classList.add('is-active')
 }
 
 function textFromNode(node: React.ReactNode): string {
@@ -94,6 +120,7 @@ export function Reader({
   const scrollRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const flowRef = useRef<HTMLDivElement>(null)
+  const snapshotLayerRef = useRef<HTMLDivElement>(null)
   const articleRef = useRef<HTMLElement>(null)
   const scrollTimer = useRef<number | undefined>(undefined)
   const turnCommitTimer = useRef<number | undefined>(undefined)
@@ -136,6 +163,7 @@ export function Reader({
     window.clearTimeout(turnEndTimer.current)
     turnLocked.current = false
     setTurnDirection(undefined)
+    clearSpreadSnapshot(snapshotLayerRef.current)
     spreadIndexRef.current = initialSpreadIndex
     setSpreadIndex(initialSpreadIndex)
   }, [question.id])
@@ -146,6 +174,7 @@ export function Reader({
     window.clearTimeout(turnEndTimer.current)
     turnLocked.current = false
     setTurnDirection(undefined)
+    clearSpreadSnapshot(snapshotLayerRef.current)
   }, [spreadMode])
 
   useEffect(() => {
@@ -217,6 +246,7 @@ export function Reader({
     window.clearTimeout(scrollTimer.current)
     window.clearTimeout(turnCommitTimer.current)
     window.clearTimeout(turnEndTimer.current)
+    clearSpreadSnapshot(snapshotLayerRef.current)
   }, [])
 
   const captureSelection = () => {
@@ -279,11 +309,13 @@ export function Reader({
       return
     }
 
+    captureSpreadSnapshot(snapshotLayerRef.current, flowRef.current)
     setTurnDirection(direction)
     turnCommitTimer.current = window.setTimeout(() => applySpread(nextIndex), PAGE_TURN_COMMIT_MS)
     turnEndTimer.current = window.setTimeout(() => {
       turnLocked.current = false
       setTurnDirection(undefined)
+      clearSpreadSnapshot(snapshotLayerRef.current)
     }, PAGE_TURN_LOCK_MS)
   }
 
@@ -315,7 +347,7 @@ export function Reader({
           aria-busy={Boolean(turnDirection)}
           data-spread-index={spreadMode ? spreadIndex : undefined}
         >
-          <div className="reader__flow" ref={flowRef}>
+          <div className={`reader__flow${turnDirection ? ' is-turning' : ''}`} ref={flowRef}>
             <header className="reader__header">
               <div className="reader__index">Q{question.number.padStart(2, '0')}</div>
               <div className="reader__heading">
@@ -360,6 +392,8 @@ export function Reader({
               </ReactMarkdown>
             </article>
           </div>
+
+          <div className="reader__snapshot-layer" ref={snapshotLayerRef} aria-hidden="true" />
 
           {turnDirection && (
             <>
