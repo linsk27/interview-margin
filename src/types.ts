@@ -32,6 +32,7 @@ export interface QuestionProgress {
   lastOpenedAt?: string
   dueAt?: string
   scrollTop?: number
+  spreadIndex?: number
 }
 
 export interface Annotation {
@@ -81,4 +82,5 @@ export const EMPTY_PROGRESS: QuestionProgress = {
   readCount: 0,
   seconds: 0,
   scrollTop: 0,
+  spreadIndex: 0,
 }

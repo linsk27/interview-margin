@@ -444,9 +444,11 @@ export default function App() {
           annotations={activeAnnotations}
           readingSize={state.settings.readingSize}
           initialScrollTop={activeProgress.scrollTop ?? 0}
+          initialSpreadIndex={activeProgress.spreadIndex ?? 0}
           onSelection={setSelection}
           onAnnotationClick={() => openNotes()}
           onScrollPosition={(scrollTop) => updateProgress({ scrollTop })}
+          onSpreadChange={(spreadIndex) => updateProgress({ spreadIndex })}
         />
         <StatusDock value={activeProgress.status} onChange={setStatus} />
       </section>
