@@ -34,6 +34,7 @@ import type {
   HighlightColor,
   InterviewQuestion,
   InterviewSection,
+  PageLayout,
   QuestionProgress,
   ReaderSettings,
   SelectionDraft,
@@ -87,6 +88,7 @@ export default function App() {
   const [commandOpen, setCommandOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [spreadAvailable, setSpreadAvailable] = useState(false)
   const [selection, setSelection] = useState<SelectionDraft>()
   const [composer, setComposer] = useState<ComposerDraft>()
   const [undo, setUndo] = useState<UndoState>()
@@ -404,6 +406,13 @@ export default function App() {
     }))
   }
 
+  const changePageLayout = (pageLayout: PageLayout) => {
+    setState((current) => ({
+      ...current,
+      settings: { ...current.settings, pageLayout },
+    }))
+  }
+
   if (loadError) {
     return (
       <main className="load-state load-state--error">
@@ -463,12 +472,15 @@ export default function App() {
           progress={activeProgress}
           libraryOpen={libraryExpanded}
           notesOpen={notesExpanded}
+          pageLayout={state.settings.pageLayout}
+          spreadAvailable={spreadAvailable}
           hasPrevious={activeIndex > 0}
           hasNext={activeIndex < questions.length - 1}
           onPrevious={() => navigateRelative(-1)}
           onNext={() => navigateRelative(1)}
           onToggleLibrary={toggleMobileLibrary}
           onToggleNotes={toggleNotes}
+          onPageLayoutChange={changePageLayout}
           onOpenSearch={() => setCommandOpen(true)}
           onToggleFavorite={() => updateProgress({ favorite: !activeProgress.favorite }, true)}
         />
@@ -476,12 +488,14 @@ export default function App() {
           question={activeQuestion}
           annotations={activeAnnotations}
           readingSize={state.settings.readingSize}
+          pageLayout={state.settings.pageLayout}
           initialScrollTop={activeProgress.scrollTop ?? 0}
           initialSpreadIndex={activeProgress.spreadIndex ?? 0}
           onSelection={setSelection}
           onAnnotationClick={() => openNotes()}
           onScrollPosition={(scrollTop) => updateProgress({ scrollTop })}
           onSpreadChange={(spreadIndex) => updateProgress({ spreadIndex })}
+          onSpreadAvailabilityChange={setSpreadAvailable}
         />
         <StatusDock value={activeProgress.status} onChange={setStatus} />
       </section>
@@ -528,6 +542,7 @@ export default function App() {
       <SettingsDialog
         open={settingsOpen}
         settings={{ ...state.settings, focusMode, notesOpen: drawerState.notesOpen }}
+        spreadAvailable={spreadAvailable}
         onClose={() => setSettingsOpen(false)}
         onChange={changeSettings}
       />

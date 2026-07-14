@@ -2,6 +2,7 @@ export type StudyStatus = 'unread' | 'learning' | 'review' | 'mastered'
 export type HighlightColor = 'yellow' | 'blue' | 'green' | 'rose'
 export type ThemeMode = 'light' | 'dark'
 export type ReadingSize = 'compact' | 'comfortable' | 'large'
+export type PageLayout = 'single' | 'spread'
 
 export interface InterviewQuestion {
   id: string
@@ -48,6 +49,7 @@ export interface Annotation {
 export interface ReaderSettings {
   theme: ThemeMode
   readingSize: ReadingSize
+  pageLayout: PageLayout
   focusMode: boolean
   notesOpen: boolean
 }

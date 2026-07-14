@@ -3,6 +3,7 @@ import {
   calculateSpreadGeometry,
   canUseSpread,
   clampSpreadIndex,
+  shouldUseSpread,
   spreadLabel,
   spreadOffset,
 } from './spreadPagination'
@@ -12,6 +13,12 @@ describe('spread pagination', () => {
     expect(canUseSpread(1088, 544)).toBe(true)
     expect(canUseSpread(1087, 700)).toBe(false)
     expect(canUseSpread(1200, 543)).toBe(false)
+  })
+
+  it('keeps the manual single-page preference even on a wide screen', () => {
+    expect(shouldUseSpread('single', 1600, 900)).toBe(false)
+    expect(shouldUseSpread('spread', 1600, 900)).toBe(true)
+    expect(shouldUseSpread('spread', 900, 900)).toBe(false)
   })
 
   it('derives page and spread counts from the column overflow width', () => {

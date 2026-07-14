@@ -1,10 +1,11 @@
-import { Focus, Keyboard, Moon, MonitorSmartphone, Sun, X } from 'lucide-react'
+import { BookOpen, FileText, Focus, Keyboard, Moon, MonitorSmartphone, Sun, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { ReaderSettings, ReadingSize, ThemeMode } from '../types'
 
-export function SettingsDialog({ open, settings, onClose, onChange }: {
+export function SettingsDialog({ open, settings, spreadAvailable, onClose, onChange }: {
   open: boolean
   settings: ReaderSettings
+  spreadAvailable: boolean
   onClose: () => void
   onChange: (settings: ReaderSettings) => void
 }) {
@@ -19,6 +20,7 @@ export function SettingsDialog({ open, settings, onClose, onChange }: {
 
   const setTheme = (theme: ThemeMode) => onChange({ ...settings, theme })
   const setSize = (readingSize: ReadingSize) => onChange({ ...settings, readingSize })
+  const setPageLayout = (pageLayout: ReaderSettings['pageLayout']) => onChange({ ...settings, pageLayout })
 
   return (
     <dialog className="settings-dialog" ref={dialogRef} onClose={onClose} onCancel={onClose} aria-labelledby="settings-title">
@@ -40,6 +42,23 @@ export function SettingsDialog({ open, settings, onClose, onChange }: {
             {(['compact', 'comfortable', 'large'] as ReadingSize[]).map((size, index) => (
               <button key={size} type="button" role="radio" aria-checked={settings.readingSize === size} className={settings.readingSize === size ? 'is-active' : ''} onClick={() => setSize(size)}>{['紧凑', '舒适', '大字'][index]}</button>
             ))}
+          </div>
+        </section>
+        <section className="settings-panel">
+          <div className="settings-row__label">
+            <BookOpen aria-hidden="true" />
+            <div>
+              <strong>阅读版式</strong>
+              <span>{spreadAvailable ? '单页连续滚动，双页按书页翻阅。' : '当前空间不足，双页会在宽屏时启用。'}</span>
+            </div>
+          </div>
+          <div className="settings-segment settings-segment--two" role="radiogroup" aria-label="阅读版式">
+            <button type="button" role="radio" aria-checked={settings.pageLayout === 'single'} className={settings.pageLayout === 'single' ? 'is-active' : ''} onClick={() => setPageLayout('single')}>
+              <FileText aria-hidden="true" />单页
+            </button>
+            <button type="button" role="radio" aria-checked={settings.pageLayout === 'spread'} className={settings.pageLayout === 'spread' ? 'is-active' : ''} onClick={() => setPageLayout('spread')} disabled={!spreadAvailable} title={spreadAvailable ? '双页阅读' : '当前阅读区域宽度不足'}>
+              <BookOpen aria-hidden="true" />双页
+            </button>
           </div>
         </section>
         <section className="settings-panel">

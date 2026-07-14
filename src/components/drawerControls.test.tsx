@@ -43,12 +43,15 @@ function DrawerControlHarness() {
         progress={progress}
         libraryOpen={drawers.libraryOpen}
         notesOpen={drawers.notesOpen}
+        pageLayout="spread"
+        spreadAvailable
         hasPrevious
         hasNext
         onPrevious={noop}
         onNext={noop}
         onToggleLibrary={() => setDrawers(toggleLibrary)}
         onToggleNotes={() => setDrawers(toggleNotes)}
+        onPageLayoutChange={noop}
         onOpenSearch={noop}
         onToggleFavorite={noop}
       />
@@ -88,12 +91,15 @@ describe('drawer controls', () => {
         progress={progress}
         libraryOpen
         notesOpen={false}
+        pageLayout="spread"
+        spreadAvailable
         hasPrevious
         hasNext
         onPrevious={noop}
         onNext={noop}
         onToggleLibrary={noop}
         onToggleNotes={noop}
+        onPageLayoutChange={noop}
         onOpenSearch={noop}
         onToggleFavorite={noop}
       />,
@@ -109,12 +115,15 @@ describe('drawer controls', () => {
         progress={progress}
         libraryOpen={false}
         notesOpen
+        pageLayout="spread"
+        spreadAvailable
         hasPrevious
         hasNext
         onPrevious={noop}
         onNext={noop}
         onToggleLibrary={noop}
         onToggleNotes={noop}
+        onPageLayoutChange={noop}
         onOpenSearch={noop}
         onToggleFavorite={noop}
       />,
@@ -150,5 +159,57 @@ describe('drawer controls', () => {
     expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
     expect(rail.getByRole('button', { name: '展开题库侧栏' }).getAttribute('aria-expanded')).toBe('false')
     expect(topbar.getByRole('button', { name: '收起批注' }).getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('reports and changes the selected page layout only when spread mode is available', () => {
+    const onPageLayoutChange = vi.fn()
+    const { container, rerender } = render(
+      <Topbar
+        question={question}
+        progress={progress}
+        libraryOpen
+        notesOpen
+        pageLayout="single"
+        spreadAvailable
+        hasPrevious
+        hasNext
+        onPrevious={noop}
+        onNext={noop}
+        onToggleLibrary={noop}
+        onToggleNotes={noop}
+        onPageLayoutChange={onPageLayoutChange}
+        onOpenSearch={noop}
+        onToggleFavorite={noop}
+      />,
+    )
+    const topbar = within(container.querySelector('.topbar') as HTMLElement)
+
+    expect(topbar.getByRole('radio', { name: '单页阅读' }).getAttribute('aria-checked')).toBe('true')
+    expect(topbar.getByRole('radio', { name: '双页阅读' }).getAttribute('aria-checked')).toBe('false')
+    fireEvent.click(topbar.getByRole('radio', { name: '双页阅读' }))
+    expect(onPageLayoutChange).toHaveBeenCalledWith('spread')
+
+    rerender(
+      <Topbar
+        question={question}
+        progress={progress}
+        libraryOpen
+        notesOpen
+        pageLayout="spread"
+        spreadAvailable={false}
+        hasPrevious
+        hasNext
+        onPrevious={noop}
+        onNext={noop}
+        onToggleLibrary={noop}
+        onToggleNotes={noop}
+        onPageLayoutChange={onPageLayoutChange}
+        onOpenSearch={noop}
+        onToggleFavorite={noop}
+      />,
+    )
+
+    expect(topbar.getByRole('radio', { name: '双页阅读' }).getAttribute('aria-checked')).toBe('true')
+    expect(topbar.getByRole('radio', { name: '双页阅读' }).hasAttribute('disabled')).toBe(true)
   })
 })

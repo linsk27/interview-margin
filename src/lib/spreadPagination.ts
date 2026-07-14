@@ -1,3 +1,5 @@
+import type { PageLayout } from '../types'
+
 export const MIN_SPREAD_WIDTH = 1088
 export const MIN_SPREAD_HEIGHT = 544
 
@@ -10,6 +12,10 @@ export interface SpreadGeometry {
 
 export function canUseSpread(width: number, height: number): boolean {
   return width >= MIN_SPREAD_WIDTH && height >= MIN_SPREAD_HEIGHT
+}
+
+export function shouldUseSpread(layout: PageLayout, width: number, height: number): boolean {
+  return layout === 'spread' && canUseSpread(width, height)
 }
 
 export function calculateSpreadGeometry(contentWidth: number, scrollWidth: number, gap: number): SpreadGeometry {

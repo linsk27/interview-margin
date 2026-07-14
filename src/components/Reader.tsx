@@ -3,12 +3,13 @@ import { BookOpen, Check, ChevronLeft, ChevronRight, Copy, Highlighter, Link as 
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
-import type { Annotation, InterviewQuestion, ReadingSize, SelectionDraft } from '../types'
+import type { Annotation, InterviewQuestion, PageLayout, ReadingSize, SelectionDraft } from '../types'
 import { rehypeAnnotationMarks } from '../lib/annotationPlugin'
 import {
   calculateSpreadGeometry,
   canUseSpread,
   clampSpreadIndex,
+  shouldUseSpread,
   spreadLabel,
   spreadOffset,
   type SpreadGeometry,
@@ -18,19 +19,21 @@ interface ReaderProps {
   question: InterviewQuestion
   annotations: Annotation[]
   readingSize: ReadingSize
+  pageLayout: PageLayout
   initialScrollTop: number
   initialSpreadIndex: number
   onSelection: (selection?: SelectionDraft) => void
   onAnnotationClick: (annotationId: string) => void
   onScrollPosition: (scrollTop: number) => void
   onSpreadChange: (spreadIndex: number) => void
+  onSpreadAvailabilityChange: (available: boolean) => void
 }
 
 type TurnDirection = 'previous' | 'next'
 
-const PAGE_TURN_MS = 420
-const PAGE_TURN_COMMIT_MS = 190
-const PAGE_TURN_LOCK_MS = PAGE_TURN_MS + 140
+const PAGE_TURN_MS = 760
+const PAGE_TURN_COMMIT_MS = 360
+const PAGE_TURN_LOCK_MS = PAGE_TURN_MS + 100
 const DEFAULT_GEOMETRY: SpreadGeometry = {
   pageWidth: 1,
   pageCount: 2,
@@ -75,12 +78,14 @@ export function Reader({
   question,
   annotations,
   readingSize,
+  pageLayout,
   initialScrollTop,
   initialSpreadIndex,
   onSelection,
   onAnnotationClick,
   onScrollPosition,
   onSpreadChange,
+  onSpreadAvailabilityChange,
 }: ReaderProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -92,6 +97,7 @@ export function Reader({
   const turnLocked = useRef(false)
   const spreadIndexRef = useRef(initialSpreadIndex)
   const onSpreadChangeRef = useRef(onSpreadChange)
+  const onSpreadAvailabilityChangeRef = useRef(onSpreadAvailabilityChange)
   const [spreadMode, setSpreadMode] = useState(false)
   const [spreadIndex, setSpreadIndex] = useState(initialSpreadIndex)
   const [geometry, setGeometry] = useState<SpreadGeometry>(DEFAULT_GEOMETRY)
@@ -101,19 +107,25 @@ export function Reader({
     onSpreadChangeRef.current = onSpreadChange
   }, [onSpreadChange])
 
+  useEffect(() => {
+    onSpreadAvailabilityChangeRef.current = onSpreadAvailabilityChange
+  }, [onSpreadAvailabilityChange])
+
   useLayoutEffect(() => {
     const container = scrollRef.current
     if (!container) return
 
     const updateMode = () => {
-      setSpreadMode(canUseSpread(container.clientWidth, container.clientHeight))
+      const available = canUseSpread(container.clientWidth, container.clientHeight)
+      onSpreadAvailabilityChangeRef.current(available)
+      setSpreadMode(shouldUseSpread(pageLayout, container.clientWidth, container.clientHeight))
     }
 
     updateMode()
     const observer = new ResizeObserver(updateMode)
     observer.observe(container)
     return () => observer.disconnect()
-  }, [])
+  }, [pageLayout])
 
   useEffect(() => {
     window.clearTimeout(turnCommitTimer.current)
@@ -123,6 +135,14 @@ export function Reader({
     spreadIndexRef.current = initialSpreadIndex
     setSpreadIndex(initialSpreadIndex)
   }, [question.id])
+
+  useEffect(() => {
+    if (spreadMode) return
+    window.clearTimeout(turnCommitTimer.current)
+    window.clearTimeout(turnEndTimer.current)
+    turnLocked.current = false
+    setTurnDirection(undefined)
+  }, [spreadMode])
 
   useEffect(() => {
     const container = scrollRef.current
@@ -283,6 +303,7 @@ export function Reader({
           onKeyDown={handleSpreadKeyDown}
           tabIndex={spreadMode ? 0 : undefined}
           aria-label={spreadMode ? '双页阅读区，可使用 Page Up 和 Page Down 翻页' : undefined}
+          aria-busy={Boolean(turnDirection)}
           data-spread-index={spreadMode ? spreadIndex : undefined}
         >
           <div className="reader__flow" ref={flowRef}>
@@ -331,7 +352,12 @@ export function Reader({
             </article>
           </div>
 
-          {turnDirection && <span className={`reader__turn-sheet reader__turn-sheet--${turnDirection}`} aria-hidden="true" />}
+          {turnDirection && (
+            <>
+              <span className={`reader__turn-shadow reader__turn-shadow--${turnDirection}`} aria-hidden="true" />
+              <span className={`reader__turn-sheet reader__turn-sheet--${turnDirection}`} aria-hidden="true" />
+            </>
+          )}
         </div>
 
         {spreadMode && (

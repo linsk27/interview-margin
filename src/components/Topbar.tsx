@@ -1,17 +1,20 @@
-import { ArrowLeft, ArrowRight, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Star } from 'lucide-react'
-import type { InterviewQuestion, QuestionProgress } from '../types'
+import { ArrowLeft, ArrowRight, BookOpen, FileText, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Star } from 'lucide-react'
+import type { InterviewQuestion, PageLayout, QuestionProgress } from '../types'
 
 interface TopbarProps {
   question: InterviewQuestion
   progress: QuestionProgress
   libraryOpen: boolean
   notesOpen: boolean
+  pageLayout: PageLayout
+  spreadAvailable: boolean
   hasPrevious: boolean
   hasNext: boolean
   onPrevious: () => void
   onNext: () => void
   onToggleLibrary: () => void
   onToggleNotes: () => void
+  onPageLayoutChange: (layout: PageLayout) => void
   onOpenSearch: () => void
   onToggleFavorite: () => void
 }
@@ -21,12 +24,15 @@ export function Topbar({
   progress,
   libraryOpen,
   notesOpen,
+  pageLayout,
+  spreadAvailable,
   hasPrevious,
   hasNext,
   onPrevious,
   onNext,
   onToggleLibrary,
   onToggleNotes,
+  onPageLayoutChange,
   onOpenSearch,
   onToggleFavorite,
 }: TopbarProps) {
@@ -50,6 +56,33 @@ export function Topbar({
         <strong>Q{question.number}</strong>
       </div>
       <div className="topbar__actions">
+        <div className="topbar__layout-switch" role="radiogroup" aria-label="阅读版式">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={pageLayout === 'single'}
+            className={pageLayout === 'single' ? 'is-active' : ''}
+            onClick={() => onPageLayoutChange('single')}
+            aria-label="单页阅读"
+            title="单页阅读"
+          >
+            <FileText aria-hidden="true" />
+            <span>单页</span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={pageLayout === 'spread'}
+            className={pageLayout === 'spread' ? 'is-active' : ''}
+            onClick={() => onPageLayoutChange('spread')}
+            disabled={!spreadAvailable}
+            aria-label="双页阅读"
+            title={spreadAvailable ? '双页阅读' : '当前阅读区域宽度不足'}
+          >
+            <BookOpen aria-hidden="true" />
+            <span>双页</span>
+          </button>
+        </div>
         <button className="icon-button topbar__search" type="button" onClick={onOpenSearch} aria-label="搜索题库" title="搜索题库（/）">
           <Search aria-hidden="true" /><kbd>/</kbd>
         </button>

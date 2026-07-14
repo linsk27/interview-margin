@@ -236,6 +236,57 @@ kbd {
   gap: var(--space-2xs);
 }
 
+.topbar__layout-switch {
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: var(--space-3xs);
+  padding: var(--space-3xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper-2);
+}
+
+.topbar__layout-switch button {
+  display: inline-grid;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  grid-auto-flow: column;
+  place-items: center;
+  gap: var(--space-2xs);
+  padding-inline: var(--space-xs);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.topbar__layout-switch button.is-active {
+  background: var(--color-raised);
+  color: var(--color-accent);
+  box-shadow: 0 var(--space-3xs) var(--space-xs) var(--color-shadow);
+}
+
+.topbar__layout-switch button:active:not(:disabled) {
+  background: var(--color-rule);
+}
+
+.topbar__layout-switch button:disabled {
+  color: var(--color-rule-strong);
+}
+
+.topbar__layout-switch svg {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 1.7;
+}
+
+.topbar__layout-switch span {
+  display: none;
+}
+
 .topbar__search,
 .topbar__divider {
   display: none;
@@ -270,7 +321,7 @@ kbd {
   overflow: hidden;
 }
 
-.reader--spread {
+.reader.reader--spread {
   --reader-page-gap: var(--space-2xl);
   --reader-page-inline: var(--space-xl);
   --reader-page-block: var(--space-lg);
@@ -278,10 +329,10 @@ kbd {
   display: grid;
   width: 100%;
   height: 100%;
-  grid-template-rows: minmax(0, 1fr) 2.75rem;
-  gap: var(--space-sm);
+  grid-template-rows: minmax(0, 1fr) 2.25rem;
+  gap: var(--space-2xs);
   margin: 0;
-  padding: var(--space-md) var(--space-xl) var(--space-sm);
+  padding: var(--space-2xs) var(--space-lg);
 }
 
 .reader--spread .reader__viewport {
@@ -289,12 +340,27 @@ kbd {
   min-height: 0;
   padding: var(--reader-page-block) var(--reader-page-inline);
   overflow: hidden;
-  border-block: var(--rule-thin) solid var(--color-rule);
+  border: var(--rule-thin) solid var(--color-rule);
+  border-radius: var(--radius-xs);
   background: var(--color-raised);
-  box-shadow: 0 var(--space-sm) var(--space-xl) var(--color-shadow);
+  box-shadow: 0 var(--space-xs) var(--space-xl) var(--color-shadow);
   outline: none;
-  perspective: 100rem;
+  perspective: 120rem;
+  perspective-origin: center center;
   scroll-behavior: auto;
+}
+
+.reader--spread .reader__viewport::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  z-index: var(--z-base);
+  width: var(--space-lg);
+  background: linear-gradient(90deg, transparent, var(--color-shadow), transparent);
+  opacity: 0.72;
+  pointer-events: none;
+  transform: translateX(-50%);
 }
 
 .reader--spread .reader__viewport::after {
@@ -302,7 +368,7 @@ kbd {
   position: absolute;
   inset-block: 0;
   inset-inline-start: 50%;
-  z-index: var(--z-base);
+  z-index: calc(var(--z-base) + 1);
   width: var(--rule-thin);
   background: var(--color-rule);
   box-shadow: 0 0 var(--space-sm) var(--color-shadow);
@@ -316,7 +382,7 @@ kbd {
 
 .reader--spread .reader__flow {
   position: relative;
-  z-index: calc(var(--z-base) + 1);
+  z-index: calc(var(--z-base) + 2);
   width: 100%;
   height: 100%;
   column-fill: auto;
@@ -364,41 +430,94 @@ kbd {
 
 .reader__turn-sheet {
   position: absolute;
-  inset-block: var(--reader-page-block);
-  z-index: calc(var(--z-sticky) - 1);
-  width: calc((100% - 2 * var(--reader-page-inline) - var(--reader-page-gap)) / 2);
-  background: linear-gradient(90deg, var(--color-raised), var(--color-paper-2));
-  backface-visibility: hidden;
-  box-shadow: 0 0 var(--space-lg) var(--color-shadow);
+  inset-block: 0;
+  z-index: calc(var(--z-raised) + 2);
+  width: 50%;
   opacity: 0;
   pointer-events: none;
   transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.reader__turn-sheet::before,
+.reader__turn-sheet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: var(--rule-thin) solid var(--color-rule);
+  backface-visibility: hidden;
+}
+
+.reader__turn-sheet::before {
+  background: linear-gradient(90deg, var(--color-raised), var(--color-paper-2));
+  box-shadow: 0 0 var(--space-xl) var(--color-shadow);
+}
+
+.reader__turn-sheet::after {
+  background: linear-gradient(270deg, var(--color-raised), var(--color-paper-2));
+  transform: rotateY(180deg);
 }
 
 .reader__turn-sheet--next {
-  inset-inline-end: var(--reader-page-inline);
-  animation: reader-page-turn-next var(--dur-long) var(--ease-in-out) both;
+  inset-inline-end: 0;
+  animation: reader-page-turn-next var(--dur-page-turn) var(--ease-in-out) both;
   transform-origin: left center;
 }
 
 .reader__turn-sheet--previous {
-  inset-inline-start: var(--reader-page-inline);
-  animation: reader-page-turn-previous var(--dur-long) var(--ease-in-out) both;
+  inset-inline-start: 0;
+  animation: reader-page-turn-previous var(--dur-page-turn) var(--ease-in-out) both;
   transform-origin: right center;
 }
 
+.reader__turn-shadow {
+  position: absolute;
+  inset-block: 0;
+  z-index: calc(var(--z-raised) + 1);
+  width: 28%;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.reader__turn-shadow--next {
+  inset-inline-start: 50%;
+  background: linear-gradient(90deg, var(--color-shadow), transparent);
+  transform-origin: left center;
+  animation: reader-page-shadow-next var(--dur-page-turn) var(--ease-in-out) both;
+}
+
+.reader__turn-shadow--previous {
+  inset-inline-end: 50%;
+  background: linear-gradient(270deg, var(--color-shadow), transparent);
+  transform-origin: right center;
+  animation: reader-page-shadow-previous var(--dur-page-turn) var(--ease-in-out) both;
+}
+
 @keyframes reader-page-turn-next {
-  0% { opacity: 0; transform: rotateY(0deg); }
-  12% { opacity: 0.96; }
-  50% { opacity: 0.92; transform: rotateY(-92deg); }
-  100% { opacity: 0; transform: rotateY(-180deg); }
+  0% { opacity: 0.08; transform: rotateY(0deg) translateZ(0); }
+  8% { opacity: 0.98; }
+  48% { opacity: 1; transform: rotateY(-88deg) translateZ(var(--space-2xs)); }
+  52% { opacity: 1; transform: rotateY(-96deg) translateZ(var(--space-2xs)); }
+  100% { opacity: 0; transform: rotateY(-180deg) translateZ(0); }
 }
 
 @keyframes reader-page-turn-previous {
-  0% { opacity: 0; transform: rotateY(0deg); }
-  12% { opacity: 0.96; }
-  50% { opacity: 0.92; transform: rotateY(92deg); }
-  100% { opacity: 0; transform: rotateY(180deg); }
+  0% { opacity: 0.08; transform: rotateY(0deg) translateZ(0); }
+  8% { opacity: 0.98; }
+  48% { opacity: 1; transform: rotateY(88deg) translateZ(var(--space-2xs)); }
+  52% { opacity: 1; transform: rotateY(96deg) translateZ(var(--space-2xs)); }
+  100% { opacity: 0; transform: rotateY(180deg) translateZ(0); }
+}
+
+@keyframes reader-page-shadow-next {
+  0%, 100% { opacity: 0; transform: scaleX(0.08); }
+  46% { opacity: 0.9; transform: scaleX(1); }
+}
+
+@keyframes reader-page-shadow-previous {
+  0%, 100% { opacity: 0; transform: scaleX(0.08); }
+  46% { opacity: 0.9; transform: scaleX(1); }
 }
 
 .reader__pagination {
@@ -411,6 +530,7 @@ kbd {
   color: var(--color-muted);
   font-family: var(--font-body);
   font-size: var(--text-xs);
+  line-height: 1;
 }
 
 .reader__pagination-mode {
@@ -435,7 +555,7 @@ kbd {
   height: 2.25rem;
   place-items: center;
   border-radius: var(--radius-sm);
-  background: var(--color-paper-2);
+  background: transparent;
   color: var(--color-ink);
   cursor: pointer;
 }
@@ -2051,6 +2171,10 @@ dialog[open] {
   background: var(--color-paper-2);
 }
 
+.settings-segment--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .settings-segment button {
   display: inline-flex;
   min-height: 2.75rem;
@@ -2069,6 +2193,14 @@ dialog[open] {
   background: var(--color-paper);
   color: var(--color-ink);
   box-shadow: 0 var(--space-3xs) var(--space-xs) var(--color-shadow);
+}
+
+.settings-segment button:active:not(:disabled) {
+  background: var(--color-rule);
+}
+
+.settings-segment button:disabled {
+  color: var(--color-rule-strong);
 }
 
 .settings-segment svg {
@@ -2608,6 +2740,10 @@ dialog[open] {
 }
 
 @media (min-width: 76rem) {
+  .topbar__layout-switch {
+    display: grid;
+  }
+
   .app-shell:not(.is-notes-closed):not(.is-focus-mode) {
     grid-template-columns: var(--rail-width) var(--sidebar-width) minmax(0, 1fr) var(--notes-width);
   }
@@ -2650,6 +2786,10 @@ dialog[open] {
   .reader {
     padding-inline: var(--space-2xl);
   }
+
+  .topbar__layout-switch span {
+    display: inline;
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -2689,6 +2829,12 @@ dialog[open] {
   .reader__pagination button:not(:disabled):hover {
     background: var(--color-accent-soft);
     color: var(--color-accent);
+  }
+
+  .topbar__layout-switch button:not(:disabled):hover,
+  .settings-segment button:not(:disabled):hover {
+    background: var(--color-paper-3);
+    color: var(--color-ink);
   }
 
   .annotation-mark:hover {
