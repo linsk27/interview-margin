@@ -76,7 +76,7 @@ export function Sidebar({
   const hasSearch = query.trim().length > 0
 
   return (
-    <aside className={`library${mobileOpen ? ' is-mobile-open' : ''}`} aria-label="面试题库">
+    <aside id="question-library" className={`library${mobileOpen ? ' is-mobile-open' : ''}`} aria-label="面试题库">
       <header className="library__header">
         <div>
           <p className="library__kicker">INTERVIEW MARGIN</p>
@@ -89,7 +89,15 @@ export function Sidebar({
           <button className="icon-button library__mobile-tool" type="button" onClick={onOpenSettings} aria-label="打开阅读设置" title="阅读设置">
             <Settings2 aria-hidden="true" />
           </button>
-          <button className="icon-button library__close" type="button" onClick={onClose} aria-label="关闭题库" title="关闭题库">
+          <button
+            className="icon-button library__close"
+            type="button"
+            onClick={onClose}
+            aria-label="收起题库"
+            aria-controls="question-library"
+            aria-expanded={mobileOpen}
+            title="收起题库"
+          >
             <X aria-hidden="true" />
           </button>
         </div>

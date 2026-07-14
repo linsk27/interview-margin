@@ -49,6 +49,20 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return Boolean(element?.closest('input, textarea, select, [contenteditable="true"]'))
 }
 
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
+
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    const update = () => setMatches(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [query])
+
+  return matches
+}
+
 export default function App() {
   const [sections, setSections] = useState<InterviewSection[]>([])
   const [loadError, setLoadError] = useState('')
@@ -66,6 +80,8 @@ export default function App() {
   const [composer, setComposer] = useState<ComposerDraft>()
   const [undo, setUndo] = useState<UndoState>()
   const undoTimer = useRef<number | undefined>(undefined)
+  const desktopLibraryLayout = useMediaQuery('(min-width: 60rem)')
+  const wideNotesLayout = useMediaQuery('(min-width: 76rem)')
 
   const questions = useMemo(() => flattenQuestions(sections), [sections])
   const activeIndex = questions.findIndex((question) => question.id === activeId)
@@ -93,6 +109,18 @@ export default function App() {
     const progress = progressFor(state, question.id)
     return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
   }).length
+  const libraryExpanded = !state.settings.focusMode
+    && (desktopLibraryLayout ? !libraryCollapsed : libraryOpen)
+  const notesVisible = state.settings.notesOpen && !state.settings.focusMode
+  const notesExpanded = notesVisible && (wideNotesLayout || mobileNotesOpen)
+
+  useEffect(() => {
+    if (desktopLibraryLayout) setLibraryOpen(false)
+  }, [desktopLibraryLayout])
+
+  useEffect(() => {
+    if (wideNotesLayout) setMobileNotesOpen(false)
+  }, [wideNotesLayout])
 
   useEffect(() => {
     fetch('/interview.md')
@@ -252,7 +280,8 @@ export default function App() {
       ...current,
       settings: { ...current.settings, notesOpen: true, focusMode: false },
     }))
-    setMobileNotesOpen(true)
+    setLibraryOpen(false)
+    setMobileNotesOpen(!wideNotesLayout)
   }
 
   const closeNotes = () => {
@@ -262,9 +291,40 @@ export default function App() {
   }
 
   const toggleNotes = () => {
-    const notesAreVisible = state.settings.notesOpen && !state.settings.focusMode
-    if (notesAreVisible) closeNotes()
+    if (notesExpanded) closeNotes()
     else openNotes()
+  }
+
+  const toggleMobileLibrary = () => {
+    const nextOpen = !libraryExpanded
+    setLibraryOpen(nextOpen)
+    if (nextOpen) {
+      setMobileNotesOpen(false)
+      setState((current) => ({
+        ...current,
+        settings: { ...current.settings, focusMode: false },
+      }))
+    }
+  }
+
+  const toggleDesktopLibrary = () => {
+    const nextOpen = !libraryExpanded
+    setLibraryCollapsed(!nextOpen)
+    if (nextOpen && state.settings.focusMode) {
+      setState((current) => ({
+        ...current,
+        settings: { ...current.settings, focusMode: false },
+      }))
+    }
+  }
+
+  const openReviewLibrary = () => {
+    setFilter('review')
+    setLibraryCollapsed(false)
+    setState((current) => ({
+      ...current,
+      settings: { ...current.settings, focusMode: false },
+    }))
   }
 
   const navigateRelative = (offset: number) => {
@@ -303,7 +363,13 @@ export default function App() {
     }
   }
 
-  const changeSettings = (settings: ReaderSettings) => setState((current) => ({ ...current, settings }))
+  const changeSettings = (settings: ReaderSettings) => {
+    if (settings.focusMode) {
+      setLibraryOpen(false)
+      setMobileNotesOpen(false)
+    }
+    setState((current) => ({ ...current, settings }))
+  }
 
   if (loadError) {
     return (
@@ -327,8 +393,6 @@ export default function App() {
     )
   }
 
-  const notesVisible = state.settings.notesOpen && !state.settings.focusMode
-
   return (
     <div className={`app-shell${state.settings.focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${libraryCollapsed ? ' is-library-closed' : ''}`}>
       <Rail
@@ -336,11 +400,10 @@ export default function App() {
         total={questions.length}
         reviewCount={reviewCount}
         focusMode={state.settings.focusMode}
-        libraryCollapsed={libraryCollapsed}
-        onOpenLibrary={() => { setLibraryCollapsed(false); setLibraryOpen(true) }}
-        onToggleLibrary={() => setLibraryCollapsed((value) => !value)}
+        libraryOpen={libraryExpanded}
+        onToggleLibrary={toggleDesktopLibrary}
         onOpenDashboard={() => setDashboardOpen(true)}
-        onOpenReview={() => { setFilter('review'); setLibraryCollapsed(false); setLibraryOpen(true) }}
+        onOpenReview={openReviewLibrary}
         onToggleFocus={() => changeSettings({ ...state.settings, focusMode: !state.settings.focusMode })}
         onOpenSettings={() => setSettingsOpen(true)}
       />
@@ -365,12 +428,13 @@ export default function App() {
         <Topbar
           question={activeQuestion}
           progress={activeProgress}
-          notesOpen={notesVisible}
+          libraryOpen={libraryExpanded}
+          notesOpen={notesExpanded}
           hasPrevious={activeIndex > 0}
           hasNext={activeIndex < questions.length - 1}
           onPrevious={() => navigateRelative(-1)}
           onNext={() => navigateRelative(1)}
-          onOpenLibrary={() => setLibraryOpen(true)}
+          onToggleLibrary={toggleMobileLibrary}
           onToggleNotes={toggleNotes}
           onOpenSearch={() => setCommandOpen(true)}
           onToggleFavorite={() => updateProgress({ favorite: !activeProgress.favorite }, true)}

@@ -1,15 +1,16 @@
-import { ArrowLeft, ArrowRight, Menu, PanelRightClose, PanelRightOpen, Search, Star } from 'lucide-react'
+import { ArrowLeft, ArrowRight, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Star } from 'lucide-react'
 import type { InterviewQuestion, QuestionProgress } from '../types'
 
 interface TopbarProps {
   question: InterviewQuestion
   progress: QuestionProgress
+  libraryOpen: boolean
   notesOpen: boolean
   hasPrevious: boolean
   hasNext: boolean
   onPrevious: () => void
   onNext: () => void
-  onOpenLibrary: () => void
+  onToggleLibrary: () => void
   onToggleNotes: () => void
   onOpenSearch: () => void
   onToggleFavorite: () => void
@@ -18,12 +19,13 @@ interface TopbarProps {
 export function Topbar({
   question,
   progress,
+  libraryOpen,
   notesOpen,
   hasPrevious,
   hasNext,
   onPrevious,
   onNext,
-  onOpenLibrary,
+  onToggleLibrary,
   onToggleNotes,
   onOpenSearch,
   onToggleFavorite,
@@ -31,8 +33,16 @@ export function Topbar({
   return (
     <header className="topbar">
       <div className="topbar__mobile">
-        <button className="icon-button" type="button" onClick={onOpenLibrary} aria-label="打开题库" title="打开题库">
-          <Menu aria-hidden="true" />
+        <button
+          className={`icon-button${libraryOpen ? ' is-active' : ''}`}
+          type="button"
+          onClick={onToggleLibrary}
+          aria-label={libraryOpen ? '收起题库' : '展开题库'}
+          aria-controls="question-library"
+          aria-expanded={libraryOpen}
+          title={libraryOpen ? '收起题库' : '展开题库'}
+        >
+          {libraryOpen ? <PanelLeftClose aria-hidden="true" /> : <PanelLeftOpen aria-hidden="true" />}
         </button>
       </div>
       <div className="topbar__crumb">
@@ -58,7 +68,8 @@ export function Topbar({
           type="button"
           onClick={onToggleNotes}
           aria-label={notesOpen ? '收起批注' : '展开批注'}
-          aria-pressed={notesOpen}
+          aria-controls="notes-panel"
+          aria-expanded={notesOpen}
           title={`${notesOpen ? '收起' : '展开'}批注（N）`}
         >
           {notesOpen ? <PanelRightClose aria-hidden="true" /> : <PanelRightOpen aria-hidden="true" />}

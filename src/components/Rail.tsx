@@ -13,8 +13,7 @@ interface RailProps {
   total: number
   reviewCount: number
   focusMode: boolean
-  libraryCollapsed: boolean
-  onOpenLibrary: () => void
+  libraryOpen: boolean
   onToggleLibrary: () => void
   onOpenDashboard: () => void
   onOpenReview: () => void
@@ -22,10 +21,13 @@ interface RailProps {
   onOpenSettings: () => void
 }
 
-function RailButton({ label, onClick, active, children }: {
+function RailButton({ label, onClick, active, expanded, controls, pressed, children }: {
   label: string
   onClick: () => void
   active?: boolean
+  expanded?: boolean
+  controls?: string
+  pressed?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -33,6 +35,9 @@ function RailButton({ label, onClick, active, children }: {
       className={`rail__button${active ? ' is-active' : ''}`}
       type="button"
       aria-label={label}
+      aria-controls={controls}
+      aria-expanded={expanded}
+      aria-pressed={pressed}
       title={label}
       data-tooltip={label}
       onClick={onClick}
@@ -47,8 +52,7 @@ export function Rail({
   total,
   reviewCount,
   focusMode,
-  libraryCollapsed,
-  onOpenLibrary,
+  libraryOpen,
   onToggleLibrary,
   onOpenDashboard,
   onOpenReview,
@@ -59,20 +63,26 @@ export function Rail({
 
   return (
     <nav className="rail" aria-label="主工具栏">
-      <button className="rail__brand" type="button" onClick={onOpenLibrary} aria-label="打开题库" title="打开题库" data-tooltip="打开题库">
+      <span className="rail__brand" role="img" aria-label="面试边注" title="面试边注" data-tooltip="面试边注">
         <BookOpenCheck aria-hidden="true" />
-      </button>
+      </span>
 
       <div className="rail__tools">
-        <RailButton label={libraryCollapsed ? '展开题库侧栏' : '收起题库侧栏'} onClick={onToggleLibrary} active={!libraryCollapsed}>
-          {libraryCollapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+        <RailButton
+          label={libraryOpen ? '收起题库侧栏' : '展开题库侧栏'}
+          onClick={onToggleLibrary}
+          active={libraryOpen}
+          expanded={libraryOpen}
+          controls="question-library"
+        >
+          {libraryOpen ? <PanelLeftClose aria-hidden="true" /> : <PanelLeftOpen aria-hidden="true" />}
         </RailButton>
         <RailButton label="学习概览" onClick={onOpenDashboard}><ChartNoAxesCombined aria-hidden="true" /></RailButton>
         <RailButton label={reviewCount ? `查看复习队列，共 ${reviewCount} 题` : '复习队列，当前为空'} onClick={onOpenReview}>
           <ListRestart aria-hidden="true" />
           {reviewCount > 0 && <span className="rail__badge">{reviewCount}</span>}
         </RailButton>
-        <RailButton label="专注阅读" onClick={onToggleFocus} active={focusMode}><Focus aria-hidden="true" /></RailButton>
+        <RailButton label="专注阅读" onClick={onToggleFocus} active={focusMode} pressed={focusMode}><Focus aria-hidden="true" /></RailButton>
       </div>
 
       <div className="rail__progress" title={`已掌握 ${mastered}/${total}`} aria-label={`已掌握 ${progress}%`}>

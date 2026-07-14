@@ -1,4 +1,4 @@
-import { CalendarClock, Check, Edit3, Highlighter, MessageSquareText, Save, Trash2, X } from 'lucide-react'
+import { CalendarClock, Check, Edit3, Highlighter, MessageSquareText, PanelRightClose, Save, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { formatRelativeDate } from '../lib/format'
 import type { Annotation, HighlightColor, InterviewQuestion, QuestionProgress } from '../types'
@@ -95,14 +95,14 @@ export function NotesPanel({
   }
 
   return (
-    <aside className={`notes-panel${mobileOpen ? ' is-mobile-open' : ''}`} aria-label="批注与复习记录">
+    <aside id="notes-panel" className={`notes-panel${mobileOpen ? ' is-mobile-open' : ''}`} aria-label="批注与复习记录">
       <header className="notes-panel__header">
         <div>
           <span>Q{question.number}</span>
           <h2>边注</h2>
         </div>
-        <button className="icon-button notes-panel__close" type="button" onClick={onClose} aria-label="关闭批注" title="关闭批注">
-          <X aria-hidden="true" />
+        <button className="icon-button notes-panel__close" type="button" onClick={onClose} aria-label="收起边注" title="收起边注">
+          <PanelRightClose aria-hidden="true" />
         </button>
       </header>
 

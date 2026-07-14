@@ -21,20 +21,20 @@ export function SettingsDialog({ open, settings, onClose, onChange }: {
   const setSize = (readingSize: ReadingSize) => onChange({ ...settings, readingSize })
 
   return (
-    <dialog className="settings-dialog" ref={dialogRef} onClose={onClose} onCancel={onClose}>
+    <dialog className="settings-dialog" ref={dialogRef} onClose={onClose} onCancel={onClose} aria-labelledby="settings-title">
       <header className="dialog-header">
-        <div><p>READING DESK</p><h2>阅读设置</h2></div>
+        <div><p>READING DESK</p><h2 id="settings-title">阅读设置</h2></div>
         <button className="icon-button" type="button" onClick={onClose} aria-label="关闭设置" title="关闭设置"><X aria-hidden="true" /></button>
       </header>
       <div className="settings-dialog__body">
-        <section>
+        <section className="settings-panel">
           <div className="settings-row__label"><MonitorSmartphone aria-hidden="true" /><div><strong>页面外观</strong><span>选择适合当前环境的纸面亮度。</span></div></div>
           <div className="settings-segment" role="radiogroup" aria-label="页面主题">
             <button type="button" role="radio" aria-checked={settings.theme === 'light'} className={settings.theme === 'light' ? 'is-active' : ''} onClick={() => setTheme('light')}><Sun aria-hidden="true" />浅色</button>
             <button type="button" role="radio" aria-checked={settings.theme === 'dark'} className={settings.theme === 'dark' ? 'is-active' : ''} onClick={() => setTheme('dark')}><Moon aria-hidden="true" />深色</button>
           </div>
         </section>
-        <section>
+        <section className="settings-panel">
           <div className="settings-row__label"><span className="settings-aa">Aa</span><div><strong>正文字号</strong><span>只调整阅读区，工具栏保持稳定。</span></div></div>
           <div className="settings-segment" role="radiogroup" aria-label="正文字号">
             {(['compact', 'comfortable', 'large'] as ReadingSize[]).map((size, index) => (
@@ -42,7 +42,7 @@ export function SettingsDialog({ open, settings, onClose, onChange }: {
             ))}
           </div>
         </section>
-        <section>
+        <section className="settings-panel">
           <div className="settings-row__label"><Focus aria-hidden="true" /><div><strong>专注阅读</strong><span>隐藏题库与边注，只保留正文。</span></div></div>
           <label className="switch">
             <input type="checkbox" checked={settings.focusMode} onChange={(event) => onChange({ ...settings, focusMode: event.target.checked })} />
@@ -55,7 +55,7 @@ export function SettingsDialog({ open, settings, onClose, onChange }: {
             <div><dt><kbd>J</kbd> / <kbd>K</kbd></dt><dd>下一题 / 上一题</dd></div>
             <div><dt><kbd>/</kbd> 或 <kbd>Ctrl K</kbd></dt><dd>搜索题库</dd></div>
             <div><dt><kbd>M</kbd> / <kbd>R</kbd></dt><dd>标记掌握 / 复习</dd></div>
-            <div><dt><kbd>F</kbd> / <kbd>N</kbd></dt><dd>收藏 / 打开边注</dd></div>
+            <div><dt><kbd>F</kbd> / <kbd>N</kbd></dt><dd>收藏 / 展开或收起边注</dd></div>
           </dl>
         </section>
       </div>
