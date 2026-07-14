@@ -1,0 +1,40 @@
+{
+  "name": "interview-margin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource-variable/noto-sans-sc": "latest",
+    "@fontsource-variable/noto-serif-sc": "latest",
+    "@fontsource/ibm-plex-mono": "latest",
+    "lucide-react": "latest",
+    "mdast-util-to-string": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-markdown": "latest",
+    "rehype-highlight": "latest",
+    "remark-gfm": "latest",
+    "remark-parse": "latest",
+    "unified": "latest"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "latest",
+    "@testing-library/react": "latest",
+    "@types/hast": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "jsdom": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vitest": "latest"
+  }
+}

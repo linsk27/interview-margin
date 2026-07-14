@@ -1,0 +1,119 @@
+/* Hallmark · genre: editorial · macrostructure: Workbench · theme: Almanac · enrichment: none · nav: N3 · footer: Ft4
+ * audience: 个人备战前端与 AI 应用面试 · use: 阅读/批注/复习 · tone: 高级、优雅、技术编辑部
+ * pre-emit critique: P5 H5 E4 S5 R5 V4
+ */
+:root {
+  color-scheme: light;
+
+  --color-paper: oklch(97% 0.007 245);
+  --color-paper-2: oklch(94% 0.01 245);
+  --color-paper-3: oklch(90% 0.014 242);
+  --color-raised: oklch(98.5% 0.006 245);
+  --color-rule: oklch(82% 0.014 242);
+  --color-rule-strong: oklch(66% 0.02 242);
+  --color-muted: oklch(45% 0.018 245);
+  --color-neutral: oklch(30% 0.018 245);
+  --color-ink-2: oklch(22% 0.022 245);
+  --color-ink: oklch(16% 0.024 245);
+  --color-accent: oklch(43% 0.135 252);
+  --color-accent-soft: oklch(91% 0.035 252);
+  --color-accent-ink: oklch(98% 0.006 245);
+  --color-focus: oklch(50% 0.17 252);
+  --color-warm: oklch(64% 0.125 72);
+  --color-warm-soft: oklch(92% 0.045 78);
+  --color-danger: oklch(51% 0.18 25);
+  --color-success: oklch(45% 0.11 155);
+  --color-code-keyword: oklch(48% 0.16 275);
+  --color-code-string: oklch(45% 0.12 155);
+  --color-code-number: oklch(50% 0.14 55);
+  --color-highlight-yellow: oklch(88% 0.12 94);
+  --color-highlight-blue: oklch(88% 0.07 245);
+  --color-highlight-green: oklch(88% 0.08 150);
+  --color-highlight-rose: oklch(88% 0.08 20);
+  --color-overlay: oklch(16% 0.024 245 / 0.45);
+  --color-shadow: oklch(18% 0.02 245 / 0.08);
+
+  --font-display: "Noto Serif SC Variable", ui-serif, serif;
+  --font-reading: "Noto Serif SC Variable", ui-serif, serif;
+  --font-body: "Noto Sans SC Variable", ui-sans-serif, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.875rem;
+  --text-3xl: 2.35rem;
+  --text-display: clamp(2rem, 3vw + 1rem, 3.4rem);
+
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+
+  --radius-xs: 0.1875rem;
+  --radius-sm: 0.3125rem;
+  --radius-md: 0.5rem;
+  --rule-thin: 1px;
+  --rule-heavy: 2px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sticky-nav: 210;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
+  --rail-width: 3.5rem;
+  --sidebar-width: 20rem;
+  --notes-width: 21rem;
+  --reader-measure: 48rem;
+  --banner-height: 4rem;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-paper: oklch(17% 0.012 248);
+  --color-paper-2: oklch(20% 0.014 248);
+  --color-paper-3: oklch(25% 0.016 248);
+  --color-raised: oklch(22% 0.016 248);
+  --color-rule: oklch(33% 0.018 248);
+  --color-rule-strong: oklch(48% 0.022 248);
+  --color-muted: oklch(70% 0.014 245);
+  --color-neutral: oklch(84% 0.01 245);
+  --color-ink-2: oklch(89% 0.008 245);
+  --color-ink: oklch(95% 0.006 245);
+  --color-accent: oklch(73% 0.13 247);
+  --color-accent-soft: oklch(29% 0.055 248);
+  --color-accent-ink: oklch(16% 0.02 248);
+  --color-focus: oklch(75% 0.15 247);
+  --color-warm: oklch(76% 0.12 78);
+  --color-warm-soft: oklch(29% 0.05 72);
+  --color-danger: oklch(70% 0.15 25);
+  --color-success: oklch(70% 0.12 155);
+  --color-code-keyword: oklch(76% 0.12 285);
+  --color-code-string: oklch(74% 0.11 155);
+  --color-code-number: oklch(76% 0.12 65);
+  --color-highlight-yellow: oklch(42% 0.09 90);
+  --color-highlight-blue: oklch(38% 0.08 245);
+  --color-highlight-green: oklch(38% 0.07 150);
+  --color-highlight-rose: oklch(38% 0.08 20);
+  --color-overlay: oklch(8% 0.012 248 / 0.66);
+  --color-shadow: oklch(8% 0.012 248 / 0.24);
+}

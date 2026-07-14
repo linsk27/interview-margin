@@ -1,0 +1,8 @@
+{
+  "date": "2026-07-14",
+  "framework": "React + Vite + TypeScript",
+  "fontStack": "new project",
+  "palette": "new project",
+  "motion": "motion-cut, CSS state transitions only",
+  "spacing": "4pt token scale"
+}
