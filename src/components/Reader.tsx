@@ -1,5 +1,6 @@
 import { Children, isValidElement, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { BookOpen, Check, ChevronLeft, ChevronRight, Copy, Highlighter, Link as LinkIcon } from 'lucide-react'
+import { domToCanvas } from 'modern-screenshot'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
@@ -32,9 +33,33 @@ interface ReaderProps {
 type TurnDirection = 'previous' | 'next'
 
 const PAGE_TURN_MS = 760
-const PAGE_TURN_COMMIT_MS = PAGE_TURN_MS / 2
-const PAGE_TURN_START_GRACE_MS = 240
-const PAGE_TURN_FALLBACK_MS = PAGE_TURN_MS * 2
+const PAGE_TURN_FALLBACK_MS = PAGE_TURN_MS + 600
+const SNAPSHOT_STYLE_PROPERTIES = [
+  'display', 'position', 'top', 'right', 'bottom', 'left', 'z-index',
+  'box-sizing', 'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
+  'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+  'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+  'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
+  'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
+  'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
+  'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius',
+  'background-color', 'background-image', 'background-position', 'background-size', 'background-repeat',
+  'box-shadow', 'opacity', 'visibility', 'overflow', 'overflow-x', 'overflow-y',
+  'color', '-webkit-text-fill-color', 'font-family', 'font-size', 'font-style', 'font-weight',
+  'font-variant-numeric', 'font-feature-settings', 'line-height', 'letter-spacing',
+  'text-align', 'text-decoration-color', 'text-decoration-line', 'text-decoration-style',
+  'text-indent', 'text-overflow', 'text-shadow', 'text-transform',
+  'white-space', 'word-break', 'overflow-wrap', 'tab-size', 'vertical-align',
+  'list-style-image', 'list-style-position', 'list-style-type',
+  'grid-template-columns', 'grid-template-rows', 'grid-auto-flow', 'grid-column', 'grid-row',
+  'align-items', 'align-content', 'align-self', 'justify-content', 'justify-items', 'justify-self',
+  'flex', 'flex-basis', 'flex-direction', 'flex-grow', 'flex-shrink', 'flex-wrap',
+  'gap', 'row-gap', 'column-gap',
+  'column-count', 'column-fill', 'column-rule', 'column-width',
+  'break-before', 'break-after', 'break-inside', 'orphans', 'widows',
+  'transform', 'transform-origin', 'clip-path', 'object-fit', 'object-position',
+  'fill', 'stroke', 'stroke-width',
+]
 const DEFAULT_GEOMETRY: SpreadGeometry = {
   pageWidth: 1,
   pageCount: 2,
@@ -49,27 +74,98 @@ function positionSpreadFlow(flow: HTMLDivElement, index: number, geometry: Sprea
 function clearSpreadSnapshot(layer: HTMLDivElement | null) {
   if (!layer) return
   layer.replaceChildren()
-  layer.classList.remove('is-active')
-  layer.removeAttribute('style')
+  layer.className = 'reader__snapshot-layer'
 }
 
-function captureSpreadSnapshot(layer: HTMLDivElement | null, flow: HTMLDivElement | null) {
-  if (!layer || !flow) return
+function isSnapshotLayer(node: Node) {
+  return node.nodeType === Node.ELEMENT_NODE
+    && (node as Element).classList.contains('reader__snapshot-layer')
+}
 
-  const clone = flow.cloneNode(true) as HTMLDivElement
-  clone.classList.remove('is-turning')
-  clone.classList.add('reader__flow--snapshot')
-  clone.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'))
-  clone.querySelectorAll<HTMLElement>('a, button, input, textarea, select, [tabindex]').forEach((element) => {
-    element.tabIndex = -1
+async function captureViewport(viewport: HTMLDivElement) {
+  return domToCanvas(viewport, {
+    scale: 1,
+    backgroundColor: window.getComputedStyle(viewport).backgroundColor,
+    filter: (node) => !isSnapshotLayer(node),
+    // The reader already has its fonts loaded. Re-embedding every segmented
+    // CJK font file makes a transient page-turn snapshot unnecessarily slow.
+    font: false,
+    includeStyleProperties: SNAPSHOT_STYLE_PROPERTIES,
+    features: {
+      copyScrollbar: false,
+      removeAbnormalAttributes: true,
+      removeControlCharacter: true,
+      fixSvgXmlDecode: true,
+      restoreScrollPosition: true,
+    },
+    timeout: 8000,
   })
+}
 
-  layer.style.left = `${flow.offsetLeft}px`
-  layer.style.top = `${flow.offsetTop}px`
-  layer.style.width = `${flow.offsetWidth}px`
-  layer.style.height = `${flow.offsetHeight}px`
-  layer.replaceChildren(clone)
-  layer.classList.add('is-active')
+function createCanvasSlice(source: HTMLCanvasElement, side: 'left' | 'right') {
+  const split = Math.floor(source.width / 2)
+  const sourceX = side === 'left' ? 0 : split
+  const sourceWidth = side === 'left' ? split : source.width - split
+  const canvas = document.createElement('canvas')
+  canvas.width = sourceWidth
+  canvas.height = source.height
+  canvas.className = 'reader__snapshot-canvas'
+  canvas.getContext('2d')?.drawImage(
+    source,
+    sourceX,
+    0,
+    sourceWidth,
+    source.height,
+    0,
+    0,
+    sourceWidth,
+    source.height,
+  )
+  return canvas
+}
+
+function showSnapshotCover(layer: HTMLDivElement, snapshot: HTMLCanvasElement) {
+  snapshot.className = 'reader__snapshot-cover'
+  layer.className = 'reader__snapshot-layer is-active is-capturing'
+  layer.replaceChildren(snapshot)
+}
+
+function createSpreadFlip(
+  layer: HTMLDivElement,
+  previousSnapshot: HTMLCanvasElement,
+  nextSnapshot: HTMLCanvasElement,
+  direction: TurnDirection,
+) {
+  const staticSide = direction === 'next' ? 'left' : 'right'
+  const movingOldSide = direction === 'next' ? 'right' : 'left'
+  const movingNewSide = direction === 'next' ? 'left' : 'right'
+
+  const staticHalf = document.createElement('div')
+  staticHalf.className = 'reader__flip-static'
+  staticHalf.append(createCanvasSlice(previousSnapshot, staticSide))
+
+  const sheet = document.createElement('div')
+  sheet.className = 'reader__flip-sheet'
+
+  const front = document.createElement('div')
+  front.className = 'reader__flip-face reader__flip-face--front'
+  front.append(createCanvasSlice(previousSnapshot, movingOldSide))
+
+  const back = document.createElement('div')
+  back.className = 'reader__flip-face reader__flip-face--back'
+  back.append(createCanvasSlice(nextSnapshot, movingNewSide))
+
+  sheet.append(front, back)
+
+  layer.className = `reader__snapshot-layer reader__snapshot-layer--${direction} is-active`
+  layer.replaceChildren(staticHalf, sheet)
+  return sheet
+}
+
+function waitForPaint() {
+  return new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()))
+  })
 }
 
 function textFromNode(node: React.ReactNode): string {
@@ -124,10 +220,10 @@ export function Reader({
   const snapshotLayerRef = useRef<HTMLDivElement>(null)
   const articleRef = useRef<HTMLElement>(null)
   const scrollTimer = useRef<number | undefined>(undefined)
-  const turnCommitTimer = useRef<number | undefined>(undefined)
+  const turnStartFrame = useRef<number | undefined>(undefined)
   const turnEndTimer = useRef<number | undefined>(undefined)
+  const turnSequence = useRef(0)
   const turnLocked = useRef(false)
-  const pendingSpreadIndexRef = useRef<number | undefined>(undefined)
   const spreadIndexRef = useRef(initialSpreadIndex)
   const onSpreadChangeRef = useRef(onSpreadChange)
   const onSpreadAvailabilityChangeRef = useRef(onSpreadAvailabilityChange)
@@ -161,10 +257,10 @@ export function Reader({
   }, [pageLayout])
 
   useEffect(() => {
-    window.clearTimeout(turnCommitTimer.current)
+    turnSequence.current += 1
+    window.cancelAnimationFrame(turnStartFrame.current ?? 0)
     window.clearTimeout(turnEndTimer.current)
     turnLocked.current = false
-    pendingSpreadIndexRef.current = undefined
     setTurnDirection(undefined)
     clearSpreadSnapshot(snapshotLayerRef.current)
     spreadIndexRef.current = initialSpreadIndex
@@ -173,10 +269,10 @@ export function Reader({
 
   useEffect(() => {
     if (spreadMode) return
-    window.clearTimeout(turnCommitTimer.current)
+    turnSequence.current += 1
+    window.cancelAnimationFrame(turnStartFrame.current ?? 0)
     window.clearTimeout(turnEndTimer.current)
     turnLocked.current = false
-    pendingSpreadIndexRef.current = undefined
     setTurnDirection(undefined)
     clearSpreadSnapshot(snapshotLayerRef.current)
   }, [spreadMode])
@@ -247,8 +343,9 @@ export function Reader({
   }, [annotations.length, question.id, readingSize, spreadMode])
 
   useEffect(() => () => {
+    turnSequence.current += 1
     window.clearTimeout(scrollTimer.current)
-    window.clearTimeout(turnCommitTimer.current)
+    window.cancelAnimationFrame(turnStartFrame.current ?? 0)
     window.clearTimeout(turnEndTimer.current)
     clearSpreadSnapshot(snapshotLayerRef.current)
   }, [])
@@ -296,42 +393,26 @@ export function Reader({
     onSpreadChangeRef.current(nextIndex)
   }
 
-  const commitPendingSpread = () => {
-    const target = pendingSpreadIndexRef.current
-    if (target === undefined || spreadIndexRef.current === target) return
-    applySpread(target)
-  }
-
-  const finishSpreadTurn = () => {
-    window.clearTimeout(turnCommitTimer.current)
+  const finishSpreadTurn = (sequence?: number) => {
+    if (sequence !== undefined && sequence !== turnSequence.current) return
+    window.cancelAnimationFrame(turnStartFrame.current ?? 0)
     window.clearTimeout(turnEndTimer.current)
-    commitPendingSpread()
-    pendingSpreadIndexRef.current = undefined
     turnLocked.current = false
     setTurnDirection(undefined)
     clearSpreadSnapshot(snapshotLayerRef.current)
   }
 
-  const handleFlowAnimationStart = (event: React.AnimationEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget || event.animationName !== 'reader-flow-reveal') return
-    window.clearTimeout(turnCommitTimer.current)
-    turnCommitTimer.current = window.setTimeout(commitPendingSpread, PAGE_TURN_COMMIT_MS)
-  }
-
-  const handleFlowAnimationEnd = (event: React.AnimationEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget || event.animationName !== 'reader-flow-reveal') return
-    finishSpreadTurn()
-  }
-
-  const turnSpread = (direction: TurnDirection) => {
+  const turnSpread = async (direction: TurnDirection) => {
     if (!spreadMode || turnLocked.current) return
-    const target = spreadIndex + (direction === 'next' ? 1 : -1)
+    const currentIndex = spreadIndexRef.current
+    const target = currentIndex + (direction === 'next' ? 1 : -1)
     const nextIndex = clampSpreadIndex(target, geometry.spreadCount)
-    if (nextIndex === spreadIndex) return
+    if (nextIndex === currentIndex) return
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const sequence = ++turnSequence.current
     turnLocked.current = true
-    window.clearTimeout(turnCommitTimer.current)
+    window.cancelAnimationFrame(turnStartFrame.current ?? 0)
     window.clearTimeout(turnEndTimer.current)
 
     if (reduceMotion) {
@@ -340,13 +421,53 @@ export function Reader({
       return
     }
 
-    captureSpreadSnapshot(snapshotLayerRef.current, flowRef.current)
-    pendingSpreadIndexRef.current = nextIndex
     setTurnDirection(direction)
-    // The animation can start a few frames after the click under production
-    // load. animationstart resynchronizes this fallback with the real timeline.
-    turnCommitTimer.current = window.setTimeout(commitPendingSpread, PAGE_TURN_COMMIT_MS + PAGE_TURN_START_GRACE_MS)
-    turnEndTimer.current = window.setTimeout(finishSpreadTurn, PAGE_TURN_FALLBACK_MS)
+    let spreadApplied = false
+
+    try {
+      const viewport = viewportRef.current
+      const layer = snapshotLayerRef.current
+      if (!viewport || !layer) throw new Error('Reader spread is not mounted')
+
+      const viewportWidth = viewport.clientWidth
+      const viewportHeight = viewport.clientHeight
+      const previousSnapshot = await captureViewport(viewport)
+      if (sequence !== turnSequence.current) return
+
+      showSnapshotCover(layer, previousSnapshot)
+      applySpread(nextIndex)
+      spreadApplied = true
+      await waitForPaint()
+      if (sequence !== turnSequence.current) return
+      if (viewport.clientWidth !== viewportWidth || viewport.clientHeight !== viewportHeight) {
+        throw new Error('Reader resized during page capture')
+      }
+
+      const nextSnapshot = await captureViewport(viewport)
+      if (sequence !== turnSequence.current) return
+      if (viewport.clientWidth !== viewportWidth || viewport.clientHeight !== viewportHeight) {
+        throw new Error('Reader resized during page capture')
+      }
+      const animationTarget = createSpreadFlip(layer, previousSnapshot, nextSnapshot, direction)
+
+      const handleAnimationEnd = (event: AnimationEvent) => {
+        if (event.target !== animationTarget || !event.animationName.startsWith('reader-page-turn-raster-')) return
+        animationTarget.removeEventListener('animationend', handleAnimationEnd)
+        finishSpreadTurn(sequence)
+      }
+      animationTarget.addEventListener('animationend', handleAnimationEnd)
+
+      void animationTarget.offsetWidth
+      turnStartFrame.current = window.requestAnimationFrame(() => {
+        if (sequence === turnSequence.current) layer.classList.add('is-animating')
+      })
+      turnEndTimer.current = window.setTimeout(() => finishSpreadTurn(sequence), PAGE_TURN_FALLBACK_MS)
+    } catch (error) {
+      if (sequence !== turnSequence.current) return
+      if (!spreadApplied) applySpread(nextIndex)
+      console.warn('Page-turn snapshot failed; using an immediate page change.', error)
+      finishSpreadTurn(sequence)
+    }
   }
 
   const handleSpreadWheel = (event: React.WheelEvent<HTMLDivElement>) => {
@@ -354,14 +475,14 @@ export function Reader({
     const intent = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX
     if (Math.abs(intent) < 24) return
     event.preventDefault()
-    turnSpread(intent > 0 ? 'next' : 'previous')
+    void turnSpread(intent > 0 ? 'next' : 'previous')
   }
 
   const handleSpreadKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (!spreadMode || (event.target as HTMLElement).closest('button, a, input, textarea')) return
     if (event.key !== 'PageDown' && event.key !== 'PageUp') return
     event.preventDefault()
-    turnSpread(event.key === 'PageDown' ? 'next' : 'previous')
+    void turnSpread(event.key === 'PageDown' ? 'next' : 'previous')
   }
 
   return (
@@ -377,12 +498,7 @@ export function Reader({
           aria-busy={Boolean(turnDirection)}
           data-spread-index={spreadMode ? spreadIndex : undefined}
         >
-          <div
-            className={`reader__flow${turnDirection ? ' is-turning' : ''}`}
-            ref={flowRef}
-            onAnimationStart={handleFlowAnimationStart}
-            onAnimationEnd={handleFlowAnimationEnd}
-          >
+          <div className="reader__flow" ref={flowRef}>
             <header className="reader__header">
               <div className="reader__index">Q{question.number.padStart(2, '0')}</div>
               <div className="reader__heading">
@@ -429,13 +545,6 @@ export function Reader({
           </div>
 
           <div className="reader__snapshot-layer" ref={snapshotLayerRef} aria-hidden="true" />
-
-          {turnDirection && (
-            <>
-              <span className={`reader__turn-shadow reader__turn-shadow--${turnDirection}`} aria-hidden="true" />
-              <span className={`reader__turn-sheet reader__turn-sheet--${turnDirection}`} aria-hidden="true" />
-            </>
-          )}
         </div>
 
         {spreadMode && (
@@ -443,7 +552,7 @@ export function Reader({
             <span className="reader__pagination-mode"><BookOpen aria-hidden="true" />双页</span>
             <button
               type="button"
-              onClick={() => turnSpread('previous')}
+              onClick={() => void turnSpread('previous')}
               disabled={spreadIndex === 0 || Boolean(turnDirection)}
               aria-label="上一组页面"
               title="上一组页面（Page Up）"
@@ -453,7 +562,7 @@ export function Reader({
             <span className="reader__pagination-count" aria-live="polite">{spreadLabel(spreadIndex, geometry.pageCount)}</span>
             <button
               type="button"
-              onClick={() => turnSpread('next')}
+              onClick={() => void turnSpread('next')}
               disabled={spreadIndex >= geometry.spreadCount - 1 || Boolean(turnDirection)}
               aria-label="下一组页面"
               title="下一组页面（Page Down）"

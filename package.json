@@ -16,6 +16,7 @@
     "@fontsource/ibm-plex-mono": "latest",
     "lucide-react": "latest",
     "mdast-util-to-string": "latest",
+    "modern-screenshot": "^4.7.0",
     "react": "latest",
     "react-dom": "latest",
     "react-markdown": "latest",
