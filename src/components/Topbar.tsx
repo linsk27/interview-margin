@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, BookOpen, FileText, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Star } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Bot, FileText, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Star } from 'lucide-react'
 import type { InterviewQuestion, PageLayout, QuestionProgress } from '../types'
 
 interface TopbarProps {
@@ -16,6 +16,7 @@ interface TopbarProps {
   onToggleNotes: () => void
   onPageLayoutChange: (layout: PageLayout) => void
   onOpenSearch: () => void
+  onOpenAssistant?: () => void
   onToggleFavorite: () => void
 }
 
@@ -34,6 +35,7 @@ export function Topbar({
   onToggleNotes,
   onPageLayoutChange,
   onOpenSearch,
+  onOpenAssistant = () => undefined,
   onToggleFavorite,
 }: TopbarProps) {
   return (
@@ -88,6 +90,9 @@ export function Topbar({
         </button>
         <button className={`icon-button${progress.favorite ? ' is-active' : ''}`} type="button" onClick={onToggleFavorite} aria-label={progress.favorite ? '取消收藏' : '收藏题目'} title={progress.favorite ? '取消收藏' : '收藏题目（F）'}>
           <Star aria-hidden="true" />
+        </button>
+        <button className="icon-button topbar__assistant" type="button" onClick={onOpenAssistant} aria-label="询问 AI" aria-controls="notes-panel" title="询问 AI">
+          <Bot aria-hidden="true" />
         </button>
         <span className="topbar__divider" />
         <button className="icon-button" type="button" onClick={onPrevious} disabled={!hasPrevious} aria-label="上一题" title="上一题（K）">

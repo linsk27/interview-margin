@@ -38,3 +38,17 @@ npm run build
 | `?` | 阅读设置 |
 
 部署时只需将 `npm run build` 生成的 `dist` 目录发布到任意静态托管平台。
+
+## AI 学习助手
+
+右侧边注顶部和阅读器工具栏都可打开 AI 学习助手。它会自动携带当前题目的题干、正文及本题对话，适合追问“为什么”“用项目怎么讲”“继续追问什么”。
+
+为防止 API Key 出现在浏览器端，AI 请求会通过 Vercel 的 `api/ai-chat.js` 转发。部署到 Vercel 后，在 Project Settings → Environment Variables 设置：
+
+```bash
+OPENAI_API_KEY=你的密钥
+OPENAI_BASE_URL=https://code.rayinai.com/v1
+OPENAI_MODEL=gpt-5.6-terra
+```
+
+以上为 RayinAI 中转配置。`OPENAI_BASE_URL` 也可以改为其他支持 Chat Completions 的兼容服务地址。变量配置后重新部署；本地仅运行 Vite 时 `/api/ai-chat` 不会存在，因此会提示服务未连接。

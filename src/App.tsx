@@ -88,6 +88,7 @@ export default function App() {
   const [commandOpen, setCommandOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [assistantFocusToken, setAssistantFocusToken] = useState(0)
   const [spreadAvailable, setSpreadAvailable] = useState(false)
   const [selection, setSelection] = useState<SelectionDraft>()
   const [composer, setComposer] = useState<ComposerDraft>()
@@ -310,6 +311,11 @@ export default function App() {
     setMobileNotesOpen(!wideNotesLayout)
   }
 
+  const openAssistant = () => {
+    openNotes()
+    setAssistantFocusToken((current) => current + 1)
+  }
+
   const closeNotes = () => {
     setDrawerState((current) => ({ ...current, notesOpen: false }))
     setMobileNotesOpen(false)
@@ -482,6 +488,7 @@ export default function App() {
           onToggleNotes={toggleNotes}
           onPageLayoutChange={changePageLayout}
           onOpenSearch={() => setCommandOpen(true)}
+          onOpenAssistant={openAssistant}
           onToggleFavorite={() => updateProgress({ favorite: !activeProgress.favorite }, true)}
         />
         <Reader
@@ -505,6 +512,7 @@ export default function App() {
           question={activeQuestion}
           progress={activeProgress}
           annotations={activeAnnotations}
+          assistantFocusToken={assistantFocusToken}
           composer={composer}
           mobileOpen={mobileNotesOpen}
           onClose={closeNotes}
