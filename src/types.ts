@@ -3,9 +3,11 @@ export type HighlightColor = 'yellow' | 'blue' | 'green' | 'rose'
 export type ThemeMode = 'light' | 'dark'
 export type ReadingSize = 'compact' | 'comfortable' | 'large'
 export type PageLayout = 'single' | 'spread'
+export type QuestionLibrary = 'interview' | 'javascript'
 
 export interface InterviewQuestion {
   id: string
+  library: QuestionLibrary
   number: string
   title: string
   body: string

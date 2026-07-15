@@ -5,6 +5,7 @@ import type { InterviewQuestion } from '../types'
 
 const question = {
   id: 'q-1',
+  library: 'interview',
   number: '1',
   title: '为什么 Vue3 使用 Proxy？',
   body: '## 先背答案\nVue3 使用 Proxy 拦截对象访问。',

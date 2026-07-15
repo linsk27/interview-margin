@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { flattenQuestions, parseInterviewMarkdown } from './markdown'
 
 const source = readFileSync(resolve(process.cwd(), 'public/interview.md'), 'utf8')
+const javascriptSource = readFileSync(resolve(process.cwd(), 'public/javascript-100.md'), 'utf8')
 
 describe('interview markdown parser', () => {
   it('keeps every question from the source document', () => {
@@ -33,5 +34,13 @@ describe('interview markdown parser', () => {
     expect(first.body).toContain('Object.defineProperty')
     expect(first.body).not.toContain('Q2：')
     expect(first.plainText.length).toBeGreaterThan(100)
+  })
+
+  it('loads 100 JavaScript questions with isolated IDs', () => {
+    const questions = flattenQuestions(parseInterviewMarkdown(javascriptSource, { library: 'javascript', idPrefix: 'js' }))
+
+    expect(questions).toHaveLength(100)
+    expect(questions[0]).toMatchObject({ id: 'js-q-1', library: 'javascript', number: '1' })
+    expect(questions.at(-1)).toMatchObject({ id: 'js-q-100', library: 'javascript', number: '100' })
   })
 })

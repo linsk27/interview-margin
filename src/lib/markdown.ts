@@ -2,7 +2,12 @@ import type { Root } from 'mdast'
 import { toString } from 'mdast-util-to-string'
 import remarkParse from 'remark-parse'
 import { unified } from 'unified'
-import type { InterviewQuestion, InterviewSection } from '../types'
+import type { InterviewQuestion, InterviewSection, QuestionLibrary } from '../types'
+
+interface ParseOptions {
+  library?: QuestionLibrary
+  idPrefix?: string
+}
 
 const TAG_RULES: Array<[string, string[]]> = [
   ['Vue', ['vue', '响应式', 'computed', 'watch', 'pinia', 'vuex', 'nexttick']],
@@ -40,18 +45,23 @@ function inferTags(title: string, plainText: string): string[] {
   return tags.slice(0, 4)
 }
 
-export function parseInterviewMarkdown(source: string): InterviewSection[] {
+export function parseInterviewMarkdown(source: string, options: ParseOptions = {}): InterviewSection[] {
+  const library = options.library ?? 'interview'
+  const idPrefix = options.idPrefix ? `${options.idPrefix}-` : ''
   const tree = unified().use(remarkParse).parse(source) as Root
   const children = tree.children
   const sections: InterviewSection[] = []
   let currentSection: InterviewSection | undefined
+  let currentLibrary = library
   let questionOrder = 0
 
   children.forEach((node, index) => {
     if (node.type === 'heading' && node.depth === 1) {
       const title = toString(node).trim()
+      currentLibrary = title.toLowerCase().startsWith('javascript') ? 'javascript' : library
+      const sectionPrefix = currentLibrary === 'javascript' ? 'js-' : idPrefix
       currentSection = {
-        id: slugify(title) || `section-${sections.length + 1}`,
+        id: `${sectionPrefix}${slugify(title) || `section-${sections.length + 1}`}`,
         title,
         questions: [],
         order: sections.length,
@@ -83,18 +93,22 @@ export function parseInterviewMarkdown(source: string): InterviewSection[] {
     const body = source.slice(start, end).trim()
     const plainText = plainTextFromMarkdown(body)
     const number = numberMatch[1]
-    const id = `q-${number.replace(/\./g, '-')}`
+    const questionPrefix = currentLibrary === 'javascript' ? 'js-' : idPrefix
+    const id = `${questionPrefix}q-${number.replace(/\./g, '-')}`
     const codeLines = (body.match(/^```/gm)?.length ?? 0) * 8
     const readMinutes = Math.max(1, Math.ceil((plainText.length + codeLines * 20) / 520))
     const question: InterviewQuestion = {
       id,
+      library: currentLibrary,
       number,
       title,
       body,
       plainText,
       sectionId: currentSection.id,
       sectionTitle: currentSection.title,
-      tags: inferTags(title, plainText),
+      tags: currentLibrary === 'javascript'
+        ? ['JavaScript', ...inferTags(title, plainText)].slice(0, 4)
+        : inferTags(title, plainText),
       readMinutes,
       order: questionOrder,
     }

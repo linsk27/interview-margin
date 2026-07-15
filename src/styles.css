@@ -1201,6 +1201,36 @@ textarea::placeholder {
   border-bottom: var(--rule-thin) solid var(--color-rule);
 }
 
+.library-modules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2xs);
+  margin: var(--space-sm) var(--space-md) 0;
+  padding: var(--space-3xs);
+  border: var(--rule-thin) solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper-2);
+}
+
+.library-modules button {
+  min-height: 2.1rem;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+}
+
+.library-modules button.is-active {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 0 1px 3px color-mix(in oklch, var(--color-ink) 13%, transparent);
+}
+
 .filter-strip button {
   position: relative;
   min-height: 2.5rem;
@@ -3259,6 +3289,7 @@ dialog[open] {
   }
 
   .filter-strip button:hover,
+  .library-modules button:hover,
   .status-segment button:hover,
   .review-schedule__buttons button:hover,
   .data-backup__actions button:hover {

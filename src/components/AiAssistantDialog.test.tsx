@@ -5,6 +5,7 @@ import type { InterviewQuestion } from '../types'
 
 const question = {
   id: 'q-1',
+  library: 'interview',
   number: '1',
   title: '为什么 Vue3 使用 Proxy？',
   body: 'Vue3 使用 Proxy 实现响应式。',

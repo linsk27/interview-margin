@@ -38,6 +38,7 @@ import type {
   InterviewSection,
   PageLayout,
   QuestionProgress,
+  QuestionLibrary,
   ReaderSettings,
   SelectionDraft,
   StudyState,
@@ -92,6 +93,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [assistantFocusToken, setAssistantFocusToken] = useState(0)
+  const [library, setLibrary] = useState<QuestionLibrary>('interview')
   const [spreadAvailable, setSpreadAvailable] = useState(false)
   const [selection, setSelection] = useState<SelectionDraft>()
   const [composer, setComposer] = useState<ComposerDraft>()
@@ -103,6 +105,10 @@ export default function App() {
   const questions = useMemo(() => flattenQuestions(sections), [sections])
   const activeIndex = questions.findIndex((question) => question.id === activeId)
   const activeQuestion = questions[activeIndex]
+  const activeLibraryQuestions = activeQuestion
+    ? questions.filter((question) => question.library === activeQuestion.library)
+    : []
+  const activeLibraryIndex = activeLibraryQuestions.findIndex((question) => question.id === activeId)
   const activeProgress = activeQuestion ? progressFor(state, activeQuestion.id) : undefined
   const activeAnnotations = activeQuestion
     ? state.annotations.filter((annotation) => annotation.questionId === activeQuestion.id)
@@ -111,6 +117,7 @@ export default function App() {
   const visibleQuestions = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return questions.filter((question) => {
+      if (question.library !== library) return false
       const progress = progressFor(state, question.id)
       const matchesQuery = !needle || `${question.title} ${question.plainText} ${question.tags.join(' ')}`.toLowerCase().includes(needle)
       const matchesFilter = filter === 'all'
@@ -119,7 +126,7 @@ export default function App() {
         || (filter === 'mastered' && progress.status === 'mastered')
       return matchesQuery && matchesFilter
     })
-  }, [filter, query, questions, state])
+  }, [filter, library, query, questions, state])
 
   const masteredCount = questions.filter((question) => progressFor(state, question.id).status === 'mastered').length
   const reviewCount = questions.filter((question) => {
@@ -164,9 +171,33 @@ export default function App() {
       .then((markdown) => {
         const parsed = parseInterviewMarkdown(markdown)
         if (!parsed.length) throw new Error('题库中没有识别到 Q 开头的二级标题。')
-        setSections(parsed)
+        setSections((current) => [
+          ...parsed,
+          ...current.filter((section) => section.questions[0]?.library === 'javascript'),
+        ])
         const flat = flattenQuestions(parsed)
         setActiveId(questionFromHash(flat)?.id ?? flat[0].id)
+      })
+      .catch((error: Error) => setLoadError(error.message))
+  }, [])
+
+  useEffect(() => {
+    fetch('/javascript-100.md')
+      .then((response) => {
+        if (!response.ok) throw new Error(`JavaScript question bank load failed: HTTP ${response.status}`)
+        return response.text()
+      })
+      .then((markdown) => {
+        const parsed = parseInterviewMarkdown(markdown, { library: 'javascript', idPrefix: 'js' })
+        setSections((current) => [
+          ...current.filter((section) => section.questions[0]?.library !== 'javascript'),
+          ...parsed,
+        ])
+        const hashQuestion = questionFromHash(flattenQuestions(parsed))
+        if (hashQuestion) {
+          setActiveId(hashQuestion.id)
+          setLibrary('javascript')
+        }
       })
       .catch((error: Error) => setLoadError(error.message))
   }, [])
@@ -181,7 +212,10 @@ export default function App() {
   useEffect(() => {
     const handleHistory = () => {
       const match = questionFromHash(questions)
-      if (match) setActiveId(match.id)
+      if (match) {
+        setActiveId(match.id)
+        setLibrary(match.library)
+      }
     }
     window.addEventListener('popstate', handleHistory)
     return () => window.removeEventListener('popstate', handleHistory)
@@ -236,11 +270,21 @@ export default function App() {
   }, [activeQuestion?.id])
 
   const openQuestion = (question: InterviewQuestion) => {
+    setLibrary(question.library)
     if (question.id !== activeId) {
       window.history.pushState(null, '', `#${question.id}`)
       setActiveId(question.id)
     }
     setMobileLibraryOpen(false)
+  }
+
+  const changeLibrary = (nextLibrary: QuestionLibrary) => {
+    setLibrary(nextLibrary)
+    setQuery('')
+    setFilter('all')
+    if (activeQuestion?.library === nextLibrary) return
+    const firstQuestion = questions.find((question) => question.library === nextLibrary)
+    if (firstQuestion) openQuestion(firstQuestion)
   }
 
   const updateProgress = (patch: Partial<QuestionProgress>, recordActivity = false) => {
@@ -355,7 +399,7 @@ export default function App() {
   }
 
   const navigateRelative = (offset: number) => {
-    const question = questions[activeIndex + offset]
+    const question = activeLibraryQuestions[activeLibraryIndex + offset]
     if (question) openQuestion(question)
   }
 
@@ -466,9 +510,11 @@ export default function App() {
         state={state}
         query={query}
         filter={filter}
+        library={library}
         mobileOpen={mobileLibraryOpen}
         onQueryChange={setQuery}
         onFilterChange={setFilter}
+        onLibraryChange={changeLibrary}
         onSelect={openQuestion}
         onOpenDashboard={() => { setMobileLibraryOpen(false); setDashboardOpen(true) }}
         onOpenSettings={() => { setMobileLibraryOpen(false); setSettingsOpen(true) }}
@@ -483,8 +529,8 @@ export default function App() {
           notesOpen={notesExpanded}
           pageLayout={state.settings.pageLayout}
           spreadAvailable={spreadAvailable}
-          hasPrevious={activeIndex > 0}
-          hasNext={activeIndex < questions.length - 1}
+          hasPrevious={activeLibraryIndex > 0}
+          hasNext={activeLibraryIndex < activeLibraryQuestions.length - 1}
           onPrevious={() => navigateRelative(-1)}
           onNext={() => navigateRelative(1)}
           onToggleLibrary={toggleMobileLibrary}

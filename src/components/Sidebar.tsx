@@ -1,5 +1,5 @@
 import { BarChart3, BookMarked, Check, ChevronDown, Circle, Clock3, Search, Settings2, Star, X } from 'lucide-react'
-import type { InterviewQuestion, InterviewSection, StudyState, StudyStatus } from '../types'
+import type { InterviewQuestion, InterviewSection, QuestionLibrary, StudyState, StudyStatus } from '../types'
 import { progressFor } from '../lib/storage'
 
 export type LibraryFilter = 'all' | 'favorite' | 'review' | 'mastered'
@@ -11,9 +11,11 @@ interface SidebarProps {
   state: StudyState
   query: string
   filter: LibraryFilter
+  library: QuestionLibrary
   mobileOpen: boolean
   onQueryChange: (value: string) => void
   onFilterChange: (value: LibraryFilter) => void
+  onLibraryChange: (value: QuestionLibrary) => void
   onSelect: (question: InterviewQuestion) => void
   onOpenDashboard: () => void
   onOpenSettings: () => void
@@ -64,9 +66,11 @@ export function Sidebar({
   state,
   query,
   filter,
+  library,
   mobileOpen,
   onQueryChange,
   onFilterChange,
+  onLibraryChange,
   onSelect,
   onOpenDashboard,
   onOpenSettings,
@@ -102,6 +106,27 @@ export function Sidebar({
           </button>
         </div>
       </header>
+
+      <div className="library-modules" role="tablist" aria-label="题库模块">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={library === 'interview'}
+          className={library === 'interview' ? 'is-active' : ''}
+          onClick={() => onLibraryChange('interview')}
+        >
+          面试问答
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={library === 'javascript'}
+          className={library === 'javascript' ? 'is-active' : ''}
+          onClick={() => onLibraryChange('javascript')}
+        >
+          JS 100
+        </button>
+      </div>
 
       <label className="search-field">
         <Search aria-hidden="true" />
