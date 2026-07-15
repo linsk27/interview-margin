@@ -1,5 +1,7 @@
 import {
+  BookOpenText,
   BookOpenCheck,
+  Braces,
   ChartNoAxesCombined,
   Focus,
   ListRestart,
@@ -7,6 +9,7 @@ import {
   PanelLeftOpen,
   Settings2,
 } from 'lucide-react'
+import type { QuestionLibrary } from '../types'
 
 interface RailProps {
   mastered: number
@@ -14,30 +17,33 @@ interface RailProps {
   reviewCount: number
   focusMode: boolean
   libraryOpen: boolean
+  library: QuestionLibrary
   onToggleLibrary: () => void
+  onOpenLibrary: (library: QuestionLibrary) => void
   onOpenDashboard: () => void
   onOpenReview: () => void
   onToggleFocus: () => void
   onOpenSettings: () => void
 }
 
-function RailButton({ label, onClick, active, expanded, controls, pressed, children }: {
+function RailButton({ label, onClick, active, expanded, controls, pressed, module, children }: {
   label: string
   onClick: () => void
   active?: boolean
   expanded?: boolean
   controls?: string
   pressed?: boolean
+  module?: boolean
   children: React.ReactNode
 }) {
   return (
     <button
-      className={`rail__button${active ? ' is-active' : ''}`}
+      className={`rail__button${active ? ' is-active' : ''}${module ? ' is-module' : ''}`}
       type="button"
       aria-label={label}
       aria-controls={controls}
       aria-expanded={expanded}
-      aria-pressed={pressed}
+      aria-pressed={module ? active : pressed}
       title={label}
       data-tooltip={label}
       onClick={onClick}
@@ -53,7 +59,9 @@ export function Rail({
   reviewCount,
   focusMode,
   libraryOpen,
+  library,
   onToggleLibrary,
+  onOpenLibrary,
   onOpenDashboard,
   onOpenReview,
   onToggleFocus,
@@ -66,6 +74,15 @@ export function Rail({
       <span className="rail__brand" role="img" aria-label="面试边注" title="面试边注" data-tooltip="面试边注">
         <BookOpenCheck aria-hidden="true" />
       </span>
+
+      <div className="rail__modules" aria-label="题库模块">
+        <RailButton label="面试问答题库" onClick={() => onOpenLibrary('interview')} active={library === 'interview'} module>
+          <BookOpenText aria-hidden="true" />
+        </RailButton>
+        <RailButton label="JavaScript 100 题" onClick={() => onOpenLibrary('javascript')} active={library === 'javascript'} module>
+          <Braces aria-hidden="true" />
+        </RailButton>
+      </div>
 
       <div className="rail__tools">
         <RailButton

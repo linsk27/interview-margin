@@ -128,8 +128,9 @@ export default function App() {
     })
   }, [filter, library, query, questions, state])
 
-  const masteredCount = questions.filter((question) => progressFor(state, question.id).status === 'mastered').length
-  const reviewCount = questions.filter((question) => {
+  const currentLibraryQuestions = questions.filter((question) => question.library === library)
+  const masteredCount = currentLibraryQuestions.filter((question) => progressFor(state, question.id).status === 'mastered').length
+  const reviewCount = currentLibraryQuestions.filter((question) => {
     const progress = progressFor(state, question.id)
     return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
   }).length
@@ -285,6 +286,11 @@ export default function App() {
     if (activeQuestion?.library === nextLibrary) return
     const firstQuestion = questions.find((question) => question.library === nextLibrary)
     if (firstQuestion) openQuestion(firstQuestion)
+  }
+
+  const openLibraryModule = (nextLibrary: QuestionLibrary) => {
+    changeLibrary(nextLibrary)
+    setDrawerState((current) => ({ ...current, libraryOpen: true }))
   }
 
   const updateProgress = (patch: Partial<QuestionProgress>, recordActivity = false) => {
@@ -492,11 +498,13 @@ export default function App() {
     <div className={`app-shell${focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${drawerState.libraryOpen ? '' : ' is-library-closed'}`}>
       <Rail
         mastered={masteredCount}
-        total={questions.length}
+        total={currentLibraryQuestions.length}
         reviewCount={reviewCount}
         focusMode={focusMode}
         libraryOpen={libraryExpanded}
+        library={library}
         onToggleLibrary={toggleDesktopLibrary}
+        onOpenLibrary={openLibraryModule}
         onOpenDashboard={() => setDashboardOpen(true)}
         onOpenReview={openReviewLibrary}
         onToggleFocus={toggleFocus}

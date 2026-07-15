@@ -32,7 +32,9 @@ function DrawerControlHarness() {
         reviewCount={0}
         focusMode={isFocusMode(drawers)}
         libraryOpen={drawers.libraryOpen}
+        library="interview"
         onToggleLibrary={() => setDrawers(toggleLibrary)}
+        onOpenLibrary={noop}
         onOpenDashboard={noop}
         onOpenReview={noop}
         onToggleFocus={() => setDrawers(toggleFocusMode)}
@@ -60,6 +62,32 @@ function DrawerControlHarness() {
 }
 
 describe('drawer controls', () => {
+  it('exposes JavaScript as an independent rail module', () => {
+    const onOpenLibrary = vi.fn()
+
+    const { unmount } = render(
+      <Rail
+        mastered={0}
+        total={100}
+        reviewCount={0}
+        focusMode={false}
+        libraryOpen
+        library="javascript"
+        onToggleLibrary={noop}
+        onOpenLibrary={onOpenLibrary}
+        onOpenDashboard={noop}
+        onOpenReview={noop}
+        onToggleFocus={noop}
+        onOpenSettings={noop}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'JavaScript 100 题' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: '面试问答题库' }))
+    expect(onOpenLibrary).toHaveBeenCalledWith('interview')
+    unmount()
+  })
+
   it('keeps the rail brand non-interactive and exposes the desktop library state', () => {
     const onToggleLibrary = vi.fn()
 
@@ -70,7 +98,9 @@ describe('drawer controls', () => {
         reviewCount={0}
         focusMode={false}
         libraryOpen
+        library="interview"
         onToggleLibrary={onToggleLibrary}
+        onOpenLibrary={noop}
         onOpenDashboard={noop}
         onOpenReview={noop}
         onToggleFocus={noop}

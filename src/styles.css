@@ -3053,9 +3053,27 @@ dialog[open] {
     gap: var(--space-2xs);
   }
 
+  .rail__modules {
+    display: grid;
+    gap: var(--space-2xs);
+    margin-block-end: var(--space-sm);
+    padding-block-end: var(--space-sm);
+    border-bottom: var(--rule-thin) solid color-mix(in oklch, var(--color-paper) 20%, transparent);
+  }
+
   .rail__button.is-active {
     background: color-mix(in oklch, var(--color-paper) 12%, transparent);
     color: white;
+  }
+
+  .rail__button.is-module.is-active {
+    background: var(--color-accent);
+    color: white;
+    box-shadow: 0 0 0 var(--rule-thin) color-mix(in oklch, white 20%, transparent) inset;
+  }
+
+  .library-modules {
+    display: none;
   }
 
   .rail__brand::after,

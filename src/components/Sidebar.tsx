@@ -83,8 +83,8 @@ export function Sidebar({
     <aside id="question-library" className={`library${mobileOpen ? ' is-mobile-open' : ''}`} aria-label="面试题库">
       <header className="library__header">
         <div>
-          <p className="library__kicker">INTERVIEW MARGIN</p>
-          <h1>面试边注</h1>
+          <p className="library__kicker">{library === 'javascript' ? 'JAVASCRIPT PRACTICE' : 'INTERVIEW MARGIN'}</p>
+          <h1>{library === 'javascript' ? 'JS 100 题' : '面试边注'}</h1>
         </div>
         <div className="library__header-actions">
           <button className="icon-button library__mobile-tool" type="button" onClick={onOpenDashboard} aria-label="打开学习概览" title="学习概览">
