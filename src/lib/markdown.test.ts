@@ -37,10 +37,15 @@ describe('interview markdown parser', () => {
   })
 
   it('loads 100 JavaScript questions with isolated IDs', () => {
-    const questions = flattenQuestions(parseInterviewMarkdown(javascriptSource, { library: 'javascript', idPrefix: 'js' }))
+    const questions = flattenQuestions(parseInterviewMarkdown(javascriptSource, {
+      library: 'javascript',
+      idPrefix: 'js',
+      baseTags: ['JavaScript'],
+    }))
 
     expect(questions).toHaveLength(100)
     expect(questions[0]).toMatchObject({ id: 'js-q-1', library: 'javascript', number: '1' })
     expect(questions.at(-1)).toMatchObject({ id: 'js-q-100', library: 'javascript', number: '100' })
+    expect(questions[0].tags).toContain('JavaScript')
   })
 })

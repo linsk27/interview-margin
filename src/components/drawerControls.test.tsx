@@ -32,9 +32,10 @@ function DrawerControlHarness() {
         reviewCount={0}
         focusMode={isFocusMode(drawers)}
         libraryOpen={drawers.libraryOpen}
-        library="interview"
+        readerMode
+        bankHubActive={false}
         onToggleLibrary={() => setDrawers(toggleLibrary)}
-        onOpenLibrary={noop}
+        onOpenQuestionBanks={noop}
         onOpenDashboard={noop}
         onOpenReview={noop}
         onToggleFocus={() => setDrawers(toggleFocusMode)}
@@ -62,8 +63,8 @@ function DrawerControlHarness() {
 }
 
 describe('drawer controls', () => {
-  it('exposes JavaScript as an independent rail module', () => {
-    const onOpenLibrary = vi.fn()
+  it('exposes one scalable question bank hub in the rail', () => {
+    const onOpenQuestionBanks = vi.fn()
 
     const { unmount } = render(
       <Rail
@@ -72,9 +73,10 @@ describe('drawer controls', () => {
         reviewCount={0}
         focusMode={false}
         libraryOpen
-        library="javascript"
+        readerMode={false}
+        bankHubActive
         onToggleLibrary={noop}
-        onOpenLibrary={onOpenLibrary}
+        onOpenQuestionBanks={onOpenQuestionBanks}
         onOpenDashboard={noop}
         onOpenReview={noop}
         onToggleFocus={noop}
@@ -82,9 +84,11 @@ describe('drawer controls', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'JavaScript 100 题' }).getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(screen.getByRole('button', { name: '面试问答题库' }))
-    expect(onOpenLibrary).toHaveBeenCalledWith('interview')
+    const hubButton = screen.getByRole('button', { name: '题库中心' })
+    expect(hubButton.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByRole('button', { name: 'JavaScript 100 题' })).toBeNull()
+    fireEvent.click(hubButton)
+    expect(onOpenQuestionBanks).toHaveBeenCalledOnce()
     unmount()
   })
 
@@ -98,9 +102,10 @@ describe('drawer controls', () => {
         reviewCount={0}
         focusMode={false}
         libraryOpen
-        library="interview"
+        readerMode
+        bankHubActive={false}
         onToggleLibrary={onToggleLibrary}
-        onOpenLibrary={noop}
+        onOpenQuestionBanks={noop}
         onOpenDashboard={noop}
         onOpenReview={noop}
         onToggleFocus={noop}

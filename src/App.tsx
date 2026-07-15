@@ -5,6 +5,7 @@ import { DashboardDialog } from './components/DashboardDialog'
 import { AiAssistantDialog } from './components/AiAssistantDialog'
 import { FloatingAiButton } from './components/FloatingAiButton'
 import { NotesPanel } from './components/NotesPanel'
+import { QuestionBankHub } from './components/QuestionBankHub'
 import { Rail } from './components/Rail'
 import { Reader } from './components/Reader'
 import { SelectionMenu } from './components/SelectionMenu'
@@ -13,6 +14,7 @@ import { Sidebar, type LibraryFilter } from './components/Sidebar'
 import { StatusDock } from './components/StatusDock'
 import { Topbar } from './components/Topbar'
 import { UndoToast } from './components/UndoToast'
+import { QUESTION_BANKS, questionBankFor } from './data/questionBanks'
 import { dateAfterDays } from './lib/format'
 import {
   isFocusMode,
@@ -37,6 +39,7 @@ import type {
   InterviewQuestion,
   InterviewSection,
   PageLayout,
+  QuestionBankDefinition,
   QuestionProgress,
   QuestionLibrary,
   ReaderSettings,
@@ -54,6 +57,8 @@ interface UndoState {
   annotation: Annotation
   index: number
 }
+
+type WorkspaceView = 'reader' | 'banks'
 
 function isTypingTarget(target: EventTarget | null): boolean {
   const element = target as HTMLElement | null
@@ -93,7 +98,10 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [assistantFocusToken, setAssistantFocusToken] = useState(0)
-  const [library, setLibrary] = useState<QuestionLibrary>('interview')
+  const [library, setLibrary] = useState<QuestionLibrary>(QUESTION_BANKS[0].id)
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() => (
+    window.location.hash === '#question-banks' ? 'banks' : 'reader'
+  ))
   const [spreadAvailable, setSpreadAvailable] = useState(false)
   const [selection, setSelection] = useState<SelectionDraft>()
   const [composer, setComposer] = useState<ComposerDraft>()
@@ -129,8 +137,11 @@ export default function App() {
   }, [filter, library, query, questions, state])
 
   const currentLibraryQuestions = questions.filter((question) => question.library === library)
-  const masteredCount = currentLibraryQuestions.filter((question) => progressFor(state, question.id).status === 'mastered').length
-  const reviewCount = currentLibraryQuestions.filter((question) => {
+  const currentBank = questionBankFor(library) ?? QUESTION_BANKS[0]
+  const readerMode = workspaceView === 'reader'
+  const railQuestions = readerMode ? currentLibraryQuestions : questions
+  const railMasteredCount = railQuestions.filter((question) => progressFor(state, question.id).status === 'mastered').length
+  const railReviewCount = railQuestions.filter((question) => {
     const progress = progressFor(state, question.id)
     return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
   }).length
@@ -164,43 +175,34 @@ export default function App() {
   }, [drawerState.notesOpen, focusMode])
 
   useEffect(() => {
-    fetch('/interview.md')
-      .then((response) => {
-        if (!response.ok) throw new Error(`题库读取失败：HTTP ${response.status}`)
-        return response.text()
-      })
-      .then((markdown) => {
-        const parsed = parseInterviewMarkdown(markdown)
-        if (!parsed.length) throw new Error('题库中没有识别到 Q 开头的二级标题。')
-        setSections((current) => [
-          ...parsed,
-          ...current.filter((section) => section.questions[0]?.library === 'javascript'),
-        ])
-        const flat = flattenQuestions(parsed)
-        setActiveId(questionFromHash(flat)?.id ?? flat[0].id)
-      })
-      .catch((error: Error) => setLoadError(error.message))
-  }, [])
+    let cancelled = false
 
-  useEffect(() => {
-    fetch('/javascript-100.md')
-      .then((response) => {
-        if (!response.ok) throw new Error(`JavaScript question bank load failed: HTTP ${response.status}`)
-        return response.text()
+    Promise.all(QUESTION_BANKS.map(async (bank) => {
+      const response = await fetch(bank.source)
+      if (!response.ok) throw new Error(`${bank.title}读取失败：HTTP ${response.status}`)
+      const markdown = await response.text()
+      const parsed = parseInterviewMarkdown(markdown, {
+        library: bank.id,
+        idPrefix: bank.idPrefix,
+        baseTags: bank.baseTags,
       })
-      .then((markdown) => {
-        const parsed = parseInterviewMarkdown(markdown, { library: 'javascript', idPrefix: 'js' })
-        setSections((current) => [
-          ...current.filter((section) => section.questions[0]?.library !== 'javascript'),
-          ...parsed,
-        ])
-        const hashQuestion = questionFromHash(flattenQuestions(parsed))
-        if (hashQuestion) {
-          setActiveId(hashQuestion.id)
-          setLibrary('javascript')
-        }
+      if (!parsed.length) throw new Error(`${bank.title}中没有识别到 Q 开头的二级标题。`)
+      return parsed
+    }))
+      .then((loadedBanks) => {
+        if (cancelled) return
+        const loadedSections = loadedBanks.flat()
+        const loadedQuestions = flattenQuestions(loadedSections)
+        const hashQuestion = questionFromHash(loadedQuestions)
+        setSections(loadedSections)
+        setActiveId(hashQuestion?.id ?? loadedQuestions[0].id)
+        if (hashQuestion) setLibrary(hashQuestion.library)
       })
-      .catch((error: Error) => setLoadError(error.message))
+      .catch((error: Error) => {
+        if (!cancelled) setLoadError(error.message)
+      })
+
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => saveStudyState(state), [state])
@@ -212,10 +214,15 @@ export default function App() {
 
   useEffect(() => {
     const handleHistory = () => {
+      if (window.location.hash === '#question-banks') {
+        setWorkspaceView('banks')
+        return
+      }
       const match = questionFromHash(questions)
       if (match) {
         setActiveId(match.id)
         setLibrary(match.library)
+        setWorkspaceView('reader')
       }
     }
     window.addEventListener('popstate', handleHistory)
@@ -223,7 +230,7 @@ export default function App() {
   }, [questions])
 
   useEffect(() => {
-    if (!activeQuestion) return
+    if (!activeQuestion || workspaceView !== 'reader') return
     setSelection(undefined)
     setComposer(undefined)
     setState((current) => {
@@ -241,10 +248,10 @@ export default function App() {
         },
       })
     })
-  }, [activeQuestion?.id])
+  }, [activeQuestion?.id, workspaceView])
 
   useEffect(() => {
-    if (!activeQuestion) return
+    if (!activeQuestion || workspaceView !== 'reader') return
     let lastCommitted = Date.now()
     const commit = () => {
       if (document.visibilityState === 'hidden') return
@@ -268,29 +275,36 @@ export default function App() {
       window.clearInterval(interval)
       commit()
     }
-  }, [activeQuestion?.id])
+  }, [activeQuestion?.id, workspaceView])
 
   const openQuestion = (question: InterviewQuestion) => {
     setLibrary(question.library)
-    if (question.id !== activeId) {
+    setWorkspaceView('reader')
+    if (question.id !== activeId || window.location.hash !== `#${question.id}`) {
       window.history.pushState(null, '', `#${question.id}`)
       setActiveId(question.id)
     }
     setMobileLibraryOpen(false)
   }
 
-  const changeLibrary = (nextLibrary: QuestionLibrary) => {
-    setLibrary(nextLibrary)
+  const openQuestionBank = (bank: QuestionBankDefinition) => {
+    setLibrary(bank.id)
+    setWorkspaceView('reader')
     setQuery('')
     setFilter('all')
-    if (activeQuestion?.library === nextLibrary) return
-    const firstQuestion = questions.find((question) => question.library === nextLibrary)
+    setDrawerState((current) => ({ ...current, libraryOpen: true }))
+    const firstQuestion = questions.find((question) => question.library === bank.id)
     if (firstQuestion) openQuestion(firstQuestion)
   }
 
-  const openLibraryModule = (nextLibrary: QuestionLibrary) => {
-    changeLibrary(nextLibrary)
-    setDrawerState((current) => ({ ...current, libraryOpen: true }))
+  const openQuestionBanks = () => {
+    if (window.location.hash !== '#question-banks') {
+      window.history.pushState(null, '', '#question-banks')
+    }
+    setWorkspaceView('banks')
+    setMobileLibraryOpen(false)
+    setMobileNotesOpen(false)
+    setAssistantOpen(false)
   }
 
   const updateProgress = (patch: Partial<QuestionProgress>, recordActivity = false) => {
@@ -400,6 +414,12 @@ export default function App() {
   }
 
   const openReviewLibrary = () => {
+    const reviewQuestion = currentLibraryQuestions.find((question) => {
+      const progress = progressFor(state, question.id)
+      return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
+    })
+    if (reviewQuestion) openQuestion(reviewQuestion)
+    else if (activeQuestion) openQuestion(activeQuestion)
     setFilter('review')
     setDrawerState((current) => ({ ...current, libraryOpen: true }))
   }
@@ -418,6 +438,7 @@ export default function App() {
         setCommandOpen(true)
         return
       }
+      if (workspaceView !== 'reader') return
       if (event.key.toLowerCase() === 'j') navigateRelative(1)
       if (event.key.toLowerCase() === 'k') navigateRelative(-1)
       if (event.key.toLowerCase() === 'm') setStatus('mastered')
@@ -495,41 +516,56 @@ export default function App() {
   }
 
   return (
-    <div className={`app-shell${focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${drawerState.libraryOpen ? '' : ' is-library-closed'}`}>
+    <div className={`app-shell${workspaceView === 'banks'
+      ? ' is-bank-hub is-notes-closed is-library-closed'
+      : `${focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${drawerState.libraryOpen ? '' : ' is-library-closed'}`}`}>
       <Rail
-        mastered={masteredCount}
-        total={currentLibraryQuestions.length}
-        reviewCount={reviewCount}
+        mastered={railMasteredCount}
+        total={railQuestions.length}
+        reviewCount={railReviewCount}
         focusMode={focusMode}
         libraryOpen={libraryExpanded}
-        library={library}
+        readerMode={readerMode}
+        bankHubActive={workspaceView === 'banks'}
         onToggleLibrary={toggleDesktopLibrary}
-        onOpenLibrary={openLibraryModule}
+        onOpenQuestionBanks={openQuestionBanks}
         onOpenDashboard={() => setDashboardOpen(true)}
         onOpenReview={openReviewLibrary}
         onToggleFocus={toggleFocus}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
-      <Sidebar
+      {workspaceView === 'banks' ? (
+        <QuestionBankHub
+          banks={QUESTION_BANKS}
+          questions={questions}
+          state={state}
+          currentBankId={library}
+          onOpenBank={openQuestionBank}
+          onOpenDashboard={() => setDashboardOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
+        />
+      ) : (
+        <>
+          <Sidebar
         sections={sections}
         questions={visibleQuestions}
         activeId={activeId}
         state={state}
         query={query}
         filter={filter}
-        library={library}
+        bank={currentBank}
         mobileOpen={mobileLibraryOpen}
         onQueryChange={setQuery}
         onFilterChange={setFilter}
-        onLibraryChange={changeLibrary}
         onSelect={openQuestion}
+        onOpenQuestionBanks={openQuestionBanks}
         onOpenDashboard={() => { setMobileLibraryOpen(false); setDashboardOpen(true) }}
         onOpenSettings={() => { setMobileLibraryOpen(false); setSettingsOpen(true) }}
         onClose={() => setMobileLibraryOpen(false)}
-      />
+          />
 
-      <section className="reading-desk">
+          <section className="reading-desk">
         <Topbar
           question={activeQuestion}
           progress={activeProgress}
@@ -561,10 +597,10 @@ export default function App() {
           onSpreadAvailabilityChange={setSpreadAvailable}
         />
         <StatusDock value={activeProgress.status} onChange={setStatus} />
-      </section>
+          </section>
 
-      {notesVisible && (
-        <NotesPanel
+          {notesVisible && (
+            <NotesPanel
           question={activeQuestion}
           progress={activeProgress}
           annotations={activeAnnotations}
@@ -577,10 +613,10 @@ export default function App() {
           onDeleteAnnotation={deleteAnnotation}
           onComposerClose={() => setComposer(undefined)}
           onScheduleReview={(days) => updateProgress({ status: 'review', dueAt: dateAfterDays(days) }, true)}
-        />
-      )}
+            />
+          )}
 
-      <SelectionMenu
+          <SelectionMenu
         selection={selection}
         onHighlight={(color) => selection && addAnnotation(selection.quote, '', color)}
         onAnnotate={() => {
@@ -589,15 +625,17 @@ export default function App() {
           openNotes()
           setSelection(undefined)
         }}
-      />
+          />
 
-      <FloatingAiButton open={assistantOpen} onOpen={openAssistant} />
-      <AiAssistantDialog
-        open={assistantOpen}
-        question={activeQuestion}
-        focusToken={assistantFocusToken}
-        onClose={() => setAssistantOpen(false)}
-      />
+          <FloatingAiButton open={assistantOpen} onOpen={openAssistant} />
+          <AiAssistantDialog
+            open={assistantOpen}
+            question={activeQuestion}
+            focusToken={assistantFocusToken}
+            onClose={() => setAssistantOpen(false)}
+          />
+        </>
+      )}
 
       <CommandPalette open={commandOpen} questions={questions} state={state} onClose={() => setCommandOpen(false)} onSelect={openQuestion} />
       <DashboardDialog
@@ -619,9 +657,11 @@ export default function App() {
       />
 
       {undo && <UndoToast message="批注已删除" onUndo={restoreAnnotation} onDismiss={() => setUndo(undefined)} />}
-      {(mobileLibraryOpen || mobileNotesOpen) && <button className="mobile-scrim" type="button" onClick={() => { setMobileLibraryOpen(false); setMobileNotesOpen(false) }} aria-label="关闭侧栏" />}
-      <div className="sr-only" aria-live="polite">当前题目：{activeQuestion.title}</div>
-      <footer className="app-colophon"><MessageSquareText aria-hidden="true" />记录仅保存在当前浏览器 · Q{activeQuestion.number} · {state.annotations.length} 条批注</footer>
+      {workspaceView === 'reader' && (mobileLibraryOpen || mobileNotesOpen) && <button className="mobile-scrim" type="button" onClick={() => { setMobileLibraryOpen(false); setMobileNotesOpen(false) }} aria-label="关闭侧栏" />}
+      <div className="sr-only" aria-live="polite">
+        {workspaceView === 'reader' ? `当前题目：${activeQuestion.title}` : '当前页面：题库中心'}
+      </div>
+      {workspaceView === 'reader' && <footer className="app-colophon"><MessageSquareText aria-hidden="true" />记录仅保存在当前浏览器 · Q{activeQuestion.number} · {state.annotations.length} 条批注</footer>}
     </div>
   )
 }

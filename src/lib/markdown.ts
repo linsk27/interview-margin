@@ -7,6 +7,7 @@ import type { InterviewQuestion, InterviewSection, QuestionLibrary } from '../ty
 interface ParseOptions {
   library?: QuestionLibrary
   idPrefix?: string
+  baseTags?: string[]
 }
 
 const TAG_RULES: Array<[string, string[]]> = [
@@ -52,16 +53,13 @@ export function parseInterviewMarkdown(source: string, options: ParseOptions = {
   const children = tree.children
   const sections: InterviewSection[] = []
   let currentSection: InterviewSection | undefined
-  let currentLibrary = library
   let questionOrder = 0
 
   children.forEach((node, index) => {
     if (node.type === 'heading' && node.depth === 1) {
       const title = toString(node).trim()
-      currentLibrary = title.toLowerCase().startsWith('javascript') ? 'javascript' : library
-      const sectionPrefix = currentLibrary === 'javascript' ? 'js-' : idPrefix
       currentSection = {
-        id: `${sectionPrefix}${slugify(title) || `section-${sections.length + 1}`}`,
+        id: `${idPrefix}${slugify(title) || `section-${sections.length + 1}`}`,
         title,
         questions: [],
         order: sections.length,
@@ -76,7 +74,7 @@ export function parseInterviewMarkdown(source: string, options: ParseOptions = {
     if (!numberMatch) return
 
     if (!currentSection) {
-      currentSection = { id: 'questions', title: '面试题', questions: [], order: 0 }
+      currentSection = { id: `${idPrefix}questions`, title: '题目', questions: [], order: 0 }
       sections.push(currentSection)
     }
 
@@ -93,22 +91,21 @@ export function parseInterviewMarkdown(source: string, options: ParseOptions = {
     const body = source.slice(start, end).trim()
     const plainText = plainTextFromMarkdown(body)
     const number = numberMatch[1]
-    const questionPrefix = currentLibrary === 'javascript' ? 'js-' : idPrefix
-    const id = `${questionPrefix}q-${number.replace(/\./g, '-')}`
+    const id = `${idPrefix}q-${number.replace(/\./g, '-')}`
     const codeLines = (body.match(/^```/gm)?.length ?? 0) * 8
     const readMinutes = Math.max(1, Math.ceil((plainText.length + codeLines * 20) / 520))
     const question: InterviewQuestion = {
       id,
-      library: currentLibrary,
+      library,
       number,
       title,
       body,
       plainText,
       sectionId: currentSection.id,
       sectionTitle: currentSection.title,
-      tags: currentLibrary === 'javascript'
-        ? ['JavaScript', ...inferTags(title, plainText)].slice(0, 4)
-        : inferTags(title, plainText),
+      tags: [...(options.baseTags ?? []), ...inferTags(title, plainText)]
+        .filter((tag, index, tags) => tags.indexOf(tag) === index)
+        .slice(0, 4),
       readMinutes,
       order: questionOrder,
     }

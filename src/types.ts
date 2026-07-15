@@ -3,7 +3,21 @@ export type HighlightColor = 'yellow' | 'blue' | 'green' | 'rose'
 export type ThemeMode = 'light' | 'dark'
 export type ReadingSize = 'compact' | 'comfortable' | 'large'
 export type PageLayout = 'single' | 'spread'
-export type QuestionLibrary = 'interview' | 'javascript'
+// Question banks are registered at runtime, so new packs do not require widening a union type.
+export type QuestionLibrary = string
+
+export interface QuestionBankDefinition {
+  id: QuestionLibrary
+  title: string
+  shortTitle: string
+  kicker: string
+  category: string
+  description: string
+  source: string
+  idPrefix?: string
+  baseTags: string[]
+  tone: 'blue' | 'amber' | 'green' | 'rose'
+}
 
 export interface InterviewQuestion {
   id: string
