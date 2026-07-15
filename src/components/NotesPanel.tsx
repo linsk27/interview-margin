@@ -1,6 +1,5 @@
 import { CalendarClock, Check, Edit3, Highlighter, MessageSquareText, PanelRightClose, Save, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { AiAssistant } from './AiAssistant'
 import { formatRelativeDate } from '../lib/format'
 import type { Annotation, HighlightColor, InterviewQuestion, QuestionProgress } from '../types'
 
@@ -13,7 +12,6 @@ interface NotesPanelProps {
   question: InterviewQuestion
   progress: QuestionProgress
   annotations: Annotation[]
-  assistantFocusToken: number
   composer?: ComposerDraft
   mobileOpen: boolean
   onClose: () => void
@@ -71,7 +69,6 @@ export function NotesPanel({
   question,
   progress,
   annotations,
-  assistantFocusToken,
   composer,
   mobileOpen,
   onClose,
@@ -110,8 +107,6 @@ export function NotesPanel({
       </header>
 
       <div className="notes-panel__scroll">
-        <AiAssistant question={question} focusToken={assistantFocusToken} />
-
         {composer && (
           <section className="annotation-composer">
             <div className="annotation-composer__title">

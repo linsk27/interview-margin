@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Highlighter, MessageSquareText } from 'lucide-react'
 import { CommandPalette } from './components/CommandPalette'
 import { DashboardDialog } from './components/DashboardDialog'
+import { AiAssistantDialog } from './components/AiAssistantDialog'
+import { FloatingAiButton } from './components/FloatingAiButton'
 import { NotesPanel } from './components/NotesPanel'
 import { Rail } from './components/Rail'
 import { Reader } from './components/Reader'
@@ -88,6 +90,7 @@ export default function App() {
   const [commandOpen, setCommandOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(false)
   const [assistantFocusToken, setAssistantFocusToken] = useState(0)
   const [spreadAvailable, setSpreadAvailable] = useState(false)
   const [selection, setSelection] = useState<SelectionDraft>()
@@ -312,7 +315,7 @@ export default function App() {
   }
 
   const openAssistant = () => {
-    openNotes()
+    setAssistantOpen(true)
     setAssistantFocusToken((current) => current + 1)
   }
 
@@ -358,6 +361,7 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
+      if (assistantOpen) return
       if (isTypingTarget(event.target)) return
       const commandKey = event.ctrlKey || event.metaKey
       if ((commandKey && event.key.toLowerCase() === 'k') || event.key === '/') {
@@ -488,7 +492,6 @@ export default function App() {
           onToggleNotes={toggleNotes}
           onPageLayoutChange={changePageLayout}
           onOpenSearch={() => setCommandOpen(true)}
-          onOpenAssistant={openAssistant}
           onToggleFavorite={() => updateProgress({ favorite: !activeProgress.favorite }, true)}
         />
         <Reader
@@ -512,7 +515,6 @@ export default function App() {
           question={activeQuestion}
           progress={activeProgress}
           annotations={activeAnnotations}
-          assistantFocusToken={assistantFocusToken}
           composer={composer}
           mobileOpen={mobileNotesOpen}
           onClose={closeNotes}
@@ -534,6 +536,14 @@ export default function App() {
           openNotes()
           setSelection(undefined)
         }}
+      />
+
+      <FloatingAiButton open={assistantOpen} onOpen={openAssistant} />
+      <AiAssistantDialog
+        open={assistantOpen}
+        question={activeQuestion}
+        focusToken={assistantFocusToken}
+        onClose={() => setAssistantOpen(false)}
       />
 
       <CommandPalette open={commandOpen} questions={questions} state={state} onClose={() => setCommandOpen(false)} onSelect={openQuestion} />

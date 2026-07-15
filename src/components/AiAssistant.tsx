@@ -114,7 +114,7 @@ export function AiAssistant({ question, focusToken }: AiAssistantProps) {
 
   return (
     <section className="ai-assistant" aria-labelledby="ai-assistant-title">
-      <div className="notes-panel__section-title ai-assistant__heading">
+      <div className="ai-assistant__heading">
         <span className="ai-assistant__mark"><Bot aria-hidden="true" /></span>
         <div>
           <h3 id="ai-assistant-title">AI 学习助手</h3>

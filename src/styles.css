@@ -1421,15 +1421,124 @@ textarea::placeholder {
   border: 0;
 }
 
+.ai-fab {
+  position: fixed;
+  inset-inline-end: var(--space-lg);
+  inset-block-end: calc(4.5rem + env(safe-area-inset-bottom));
+  z-index: var(--z-sticky);
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  place-items: center;
+  border: var(--rule-thin) solid color-mix(in oklch, var(--color-paper) 35%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  box-shadow: 0 var(--space-sm) var(--space-lg) color-mix(in oklch, var(--color-ink) 24%, transparent);
+  cursor: pointer;
+  transition: transform var(--dur-short) var(--ease-out), opacity var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+  animation: ai-fab-enter var(--dur-long) var(--ease-out) both;
+}
+
+.ai-fab > svg:first-child {
+  width: 1.2rem;
+  height: 1.2rem;
+  stroke-width: 1.8;
+}
+
+.ai-fab__sparkle {
+  position: absolute;
+  inset-inline-end: var(--space-2xs);
+  inset-block-start: var(--space-2xs);
+  width: 0.7rem;
+  height: 0.7rem;
+  color: var(--color-warm);
+  fill: var(--color-warm);
+}
+
+.ai-fab.is-open {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(var(--space-sm)) scale(0.9);
+}
+
+.ai-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-tooltip) + 1);
+  display: grid;
+  place-items: center;
+  padding: var(--space-lg);
+  background: color-mix(in oklch, var(--color-overlay) 82%, transparent);
+  backdrop-filter: blur(5px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-short) var(--ease-out), visibility var(--dur-short) var(--ease-out);
+  visibility: hidden;
+}
+
+.ai-dialog.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.ai-dialog__surface {
+  position: relative;
+  display: grid;
+  width: min(43rem, 100%);
+  max-height: min(47rem, calc(100dvh - 2 * var(--space-lg)));
+  min-height: min(30rem, calc(100dvh - 2 * var(--space-lg)));
+  overflow: hidden;
+  padding: clamp(var(--space-lg), 3vw, var(--space-xl));
+  border: var(--rule-thin) solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  box-shadow: 0 var(--space-xl) var(--space-3xl) color-mix(in oklch, var(--color-ink) 22%, transparent);
+  opacity: 0;
+  transform: translateY(var(--space-lg)) scale(0.975);
+  transition: opacity var(--dur-short) var(--ease-out), transform var(--dur-long) var(--ease-out);
+}
+
+.ai-dialog.is-open .ai-dialog__surface {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: ai-dialog-in var(--dur-long) var(--ease-out) both;
+}
+
+.ai-dialog__close {
+  position: absolute;
+  inset-inline-end: var(--space-md);
+  inset-block-start: var(--space-md);
+  z-index: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-basis: 2.25rem;
+  background: var(--color-paper-2);
+}
+
+@keyframes ai-fab-enter {
+  from { opacity: 0; transform: translateY(var(--space-md)) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes ai-dialog-in {
+  from { opacity: 0; transform: translateY(var(--space-lg)) scale(0.975); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .ai-assistant {
   display: grid;
   gap: var(--space-sm);
-  padding-block: var(--space-md);
-  border-block-end: var(--rule-thin) solid var(--color-rule);
+  min-height: 0;
 }
 
 .ai-assistant__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
   margin-block-end: 0;
+  padding-inline-end: var(--space-2xl);
 }
 
 .ai-assistant__heading > div {
@@ -1511,7 +1620,7 @@ textarea::placeholder {
 .ai-assistant__messages {
   display: grid;
   gap: var(--space-sm);
-  max-height: 26rem;
+  max-height: min(25rem, 35dvh);
   overflow-y: auto;
   padding-inline-end: var(--space-3xs);
   scrollbar-color: var(--color-rule-strong) transparent;
@@ -1652,6 +1761,36 @@ textarea::placeholder {
   color: var(--color-muted);
   font-size: 0.68rem;
   line-height: 1.55;
+}
+
+@media (max-width: 39.9375rem) {
+  .ai-fab {
+    inset-inline-end: var(--space-md);
+    inset-block-end: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  .ai-dialog {
+    align-items: end;
+    padding: 0;
+  }
+
+  .ai-dialog__surface {
+    width: 100%;
+    min-height: min(35rem, 82dvh);
+    max-height: 82dvh;
+    padding: var(--space-lg) var(--space-md) max(var(--space-md), env(safe-area-inset-bottom));
+    border-inline: 0;
+    border-block-end: 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+
+  .ai-assistant__heading {
+    padding-inline-end: var(--space-xl);
+  }
+
+  .ai-assistant__messages {
+    max-height: min(19rem, 32dvh);
+  }
 }
 
 .notes-panel__section-title,
@@ -3089,6 +3228,10 @@ dialog[open] {
   .app-shell.is-focus-mode .notes-panel {
     display: none;
   }
+
+  .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-fab {
+    inset-inline-end: calc(var(--notes-width) + var(--space-lg));
+  }
 }
 
 @media (min-width: 90rem) {
@@ -3154,6 +3297,27 @@ dialog[open] {
   .annotation-mark:hover {
     outline: var(--rule-thin) solid var(--color-rule-strong);
     outline-offset: var(--space-3xs);
+  }
+
+  .ai-fab:hover {
+    box-shadow: 0 var(--space-md) var(--space-xl) color-mix(in oklch, var(--color-ink) 30%, transparent);
+    transform: translateY(calc(-1 * var(--space-2xs)));
+  }
+
+  .ai-assistant__quick-actions button:hover {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-fab,
+  .ai-dialog__surface,
+  .ai-assistant__loading svg,
+  .ai-assistant__form button:disabled svg {
+    animation: none;
+    transition-duration: 0ms;
   }
 }
 
