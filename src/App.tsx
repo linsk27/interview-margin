@@ -361,7 +361,6 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
-      if (assistantOpen) return
       if (isTypingTarget(event.target)) return
       const commandKey = event.ctrlKey || event.metaKey
       if ((commandKey && event.key.toLowerCase() === 'k') || event.key === '/') {

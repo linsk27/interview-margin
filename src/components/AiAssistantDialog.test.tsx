@@ -16,12 +16,12 @@ const question = {
   order: 1,
 } satisfies InterviewQuestion
 
-describe('AI assistant dialog', () => {
-  it('closes on Escape or the close button while preserving a dialog contract', () => {
+describe('AI assistant floating panel', () => {
+  it('closes on Escape or the close button without becoming a modal', () => {
     const onClose = vi.fn()
     render(<AiAssistantDialog open question={question} focusToken={0} onClose={onClose} />)
 
-    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(screen.getByRole('dialog').getAttribute('aria-modal')).toBe('false')
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
 

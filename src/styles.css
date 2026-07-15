@@ -1464,46 +1464,37 @@ textarea::placeholder {
 
 .ai-dialog {
   position: fixed;
-  inset: 0;
+  inset-inline-end: var(--space-lg);
+  inset-block-end: calc(8.75rem + env(safe-area-inset-bottom));
   z-index: calc(var(--z-tooltip) + 1);
-  display: grid;
-  place-items: center;
-  padding: var(--space-lg);
-  background: color-mix(in oklch, var(--color-overlay) 82%, transparent);
-  backdrop-filter: blur(5px);
+  width: min(25rem, calc(100vw - 2 * var(--space-lg)));
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--dur-short) var(--ease-out), visibility var(--dur-short) var(--ease-out);
+  transform: translateY(var(--space-sm)) scale(0.97);
+  transform-origin: right bottom;
+  transition: opacity var(--dur-short) var(--ease-out), transform var(--dur-long) var(--ease-out), visibility var(--dur-short) var(--ease-out);
   visibility: hidden;
 }
 
 .ai-dialog.is-open {
   opacity: 1;
   pointer-events: auto;
+  transform: translateY(0) scale(1);
   visibility: visible;
 }
 
 .ai-dialog__surface {
   position: relative;
   display: grid;
-  width: min(43rem, 100%);
-  max-height: min(47rem, calc(100dvh - 2 * var(--space-lg)));
-  min-height: min(30rem, calc(100dvh - 2 * var(--space-lg)));
+  width: 100%;
+  max-height: min(39rem, calc(100dvh - 10rem));
+  min-height: min(28rem, calc(100dvh - 10rem));
   overflow: hidden;
-  padding: clamp(var(--space-lg), 3vw, var(--space-xl));
+  padding: var(--space-lg);
   border: var(--rule-thin) solid var(--color-rule-strong);
   border-radius: var(--radius-md);
-  background: var(--color-paper);
-  box-shadow: 0 var(--space-xl) var(--space-3xl) color-mix(in oklch, var(--color-ink) 22%, transparent);
-  opacity: 0;
-  transform: translateY(var(--space-lg)) scale(0.975);
-  transition: opacity var(--dur-short) var(--ease-out), transform var(--dur-long) var(--ease-out);
-}
-
-.ai-dialog.is-open .ai-dialog__surface {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  animation: ai-dialog-in var(--dur-long) var(--ease-out) both;
+  background: color-mix(in oklch, var(--color-paper) 96%, var(--color-accent-soft));
+  box-shadow: 0 var(--space-md) var(--space-2xl) color-mix(in oklch, var(--color-ink) 22%, transparent), 0 0 0 1px color-mix(in oklch, var(--color-paper) 40%, transparent) inset;
 }
 
 .ai-dialog__close {
@@ -1519,11 +1510,6 @@ textarea::placeholder {
 
 @keyframes ai-fab-enter {
   from { opacity: 0; transform: translateY(var(--space-md)) scale(0.9); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes ai-dialog-in {
-  from { opacity: 0; transform: translateY(var(--space-lg)) scale(0.975); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -1770,18 +1756,18 @@ textarea::placeholder {
   }
 
   .ai-dialog {
-    align-items: end;
-    padding: 0;
+    inset-inline-end: var(--space-md);
+    inset-block-end: calc(7.75rem + env(safe-area-inset-bottom));
+    width: calc(100vw - 2 * var(--space-md));
   }
 
   .ai-dialog__surface {
     width: 100%;
-    min-height: min(35rem, 82dvh);
-    max-height: 82dvh;
-    padding: var(--space-lg) var(--space-md) max(var(--space-md), env(safe-area-inset-bottom));
-    border-inline: 0;
-    border-block-end: 0;
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    min-height: min(28rem, calc(100dvh - 9rem));
+    max-height: calc(100dvh - 9rem);
+    padding: var(--space-md);
+    border: var(--rule-thin) solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
   }
 
   .ai-assistant__heading {
@@ -3230,6 +3216,10 @@ dialog[open] {
   }
 
   .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-fab {
+    inset-inline-end: calc(var(--notes-width) + var(--space-lg));
+  }
+
+  .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-dialog {
     inset-inline-end: calc(var(--notes-width) + var(--space-lg));
   }
 }
