@@ -38,9 +38,20 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
         </section>
         <section className="settings-panel">
           <div className="settings-row__label"><span className="settings-aa">Aa</span><div><strong>正文字号</strong><span>只调整阅读区，工具栏保持稳定。</span></div></div>
-          <div className="settings-segment" role="radiogroup" aria-label="正文字号">
+          <div className="settings-segment settings-size-segment" role="radiogroup" aria-label="正文字号">
             {(['compact', 'comfortable', 'large'] as ReadingSize[]).map((size, index) => (
-              <button key={size} type="button" role="radio" aria-checked={settings.readingSize === size} className={settings.readingSize === size ? 'is-active' : ''} onClick={() => setSize(size)}>{['紧凑', '舒适', '大字'][index]}</button>
+              <button
+                key={size}
+                type="button"
+                role="radio"
+                aria-label={['紧凑字号', '舒适字号', '大字号'][index]}
+                aria-checked={settings.readingSize === size}
+                className={`settings-size-option settings-size-option--${size}${settings.readingSize === size ? ' is-active' : ''}`}
+                onClick={() => setSize(size)}
+              >
+                <span className="settings-size-option__sample" aria-hidden="true">Aa</span>
+                <span className="settings-size-option__label">{['紧凑', '舒适', '大字'][index]}</span>
+              </button>
             ))}
           </div>
         </section>

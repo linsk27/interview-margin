@@ -2479,6 +2479,7 @@ dialog {
   background: var(--color-paper);
   color: var(--color-ink);
   box-shadow: 0 var(--space-lg) var(--space-3xl) var(--color-shadow);
+  overflow: hidden;
 }
 
 dialog::backdrop {
@@ -2487,6 +2488,15 @@ dialog::backdrop {
 
 dialog[open] {
   animation: dialog-in var(--dur-long) var(--ease-out);
+}
+
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+body:has(dialog[open]) .question-bank-hub,
+body:has(dialog[open]) .reader {
+  overflow: hidden;
 }
 
 @keyframes dialog-in {
@@ -2648,6 +2658,12 @@ dialog[open] {
   background: var(--color-raised);
 }
 
+.dashboard-dialog[open],
+.settings-dialog[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
 .dashboard-dialog .dialog-header {
   min-height: 5rem;
   padding-block-end: var(--space-sm);
@@ -2656,17 +2672,41 @@ dialog[open] {
 
 .dashboard-dialog__body {
   display: grid;
-  max-height: calc(100dvh - 6rem);
+  min-height: 0;
+  max-height: none;
   gap: var(--space-lg);
   overflow-x: clip;
   overflow-y: auto;
   padding: var(--space-xs) var(--space-lg) var(--space-lg);
+  scrollbar-color: var(--color-rule-strong) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
 }
 
 .settings-dialog__body {
-  max-height: calc(100dvh - 6rem);
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   padding: var(--space-lg);
+  scrollbar-color: var(--color-rule-strong) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.dashboard-dialog__body::-webkit-scrollbar,
+.settings-dialog__body::-webkit-scrollbar {
+  width: var(--space-xs);
+}
+
+.dashboard-dialog__body::-webkit-scrollbar-track,
+.settings-dialog__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dashboard-dialog__body::-webkit-scrollbar-thumb,
+.settings-dialog__body::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-sm);
+  background: var(--color-rule-strong);
 }
 
 .dashboard-stats {
@@ -3076,6 +3116,49 @@ dialog[open] {
   cursor: pointer;
   font-size: var(--text-xs);
   white-space: nowrap;
+}
+
+.settings-size-segment {
+  align-items: stretch;
+}
+
+.settings-segment button.settings-size-option {
+  min-height: 3.75rem;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  padding: var(--space-xs) var(--space-2xs);
+}
+
+.settings-size-option__sample {
+  color: var(--color-ink);
+  font-family: var(--font-reading);
+  font-weight: 650;
+  line-height: 1;
+}
+
+.settings-size-option--compact .settings-size-option__sample {
+  font-size: var(--text-sm);
+}
+
+.settings-size-option--comfortable .settings-size-option__sample {
+  font-size: var(--text-md);
+}
+
+.settings-size-option--large .settings-size-option__sample {
+  font-size: var(--text-xl);
+}
+
+.settings-size-option__label {
+  color: var(--color-muted);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.settings-size-option.is-active .settings-size-option__label {
+  color: var(--color-ink);
+  font-weight: 700;
 }
 
 .settings-segment button.is-active {
