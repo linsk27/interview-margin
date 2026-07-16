@@ -1,5 +1,14 @@
 [
   {
+    "date": "2026-07-16",
+    "macrostructure": "Study catalogue",
+    "theme": "Almanac",
+    "enrichment": "none",
+    "nav": "N3 Side-rail",
+    "footer": "none",
+    "brief": "题库中心目录、筛选与学习进度工作台"
+  },
+  {
     "date": "2026-07-14",
     "macrostructure": "Workbench",
     "theme": "Almanac",

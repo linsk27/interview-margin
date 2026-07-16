@@ -3,11 +3,10 @@ import {
   ArrowRight,
   BarChart3,
   BookOpenText,
-  CheckCircle2,
-  Clock3,
   Layers3,
   Search,
   Settings2,
+  X,
 } from 'lucide-react'
 import { progressFor } from '../lib/storage'
 import type {
@@ -57,11 +56,11 @@ export function QuestionBankHub({
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('全部')
   const categories = useMemo(() => ['全部', ...new Set(banks.map((bank) => bank.category))], [banks])
-  const totalMastered = questions.filter((question) => progressFor(state, question.id).status === 'mastered').length
   const totalReview = questions.filter((question) => {
     const progress = progressFor(state, question.id)
     return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
   }).length
+  const totalStarted = questions.filter((question) => progressFor(state, question.id).status !== 'unread').length
   const needle = query.trim().toLowerCase()
   const visibleBanks = banks.filter((bank) => {
     const matchesCategory = category === '全部' || bank.category === category
@@ -91,48 +90,64 @@ export function QuestionBankHub({
 
       <div className="bank-hub__body">
         <section className="bank-hub__intro" aria-labelledby="bank-hub-title">
-          <div>
-            <p className="bank-hub__eyebrow">QUESTION BANKS</p>
+          <div className="bank-hub__intro-copy">
             <h1 id="bank-hub-title">选择一个题库包</h1>
             <p>按知识方向独立维护题目、进度、复习计划与批注。</p>
           </div>
           <dl className="bank-hub__metrics" aria-label="题库总览">
             <div><dt>题库包</dt><dd>{banks.length}</dd></div>
-            <div><dt>全部题目</dt><dd>{questions.length}</dd></div>
-            <div><dt>已掌握</dt><dd>{totalMastered}</dd></div>
-            <div><dt>待复习</dt><dd>{totalReview}</dd></div>
+            <div><dt>收录题目</dt><dd>{questions.length}</dd></div>
+            <div><dt>已学习</dt><dd>{totalStarted}</dd></div>
+            <div className={totalReview > 0 ? 'has-review' : undefined}><dt>待复习</dt><dd>{totalReview}</dd></div>
           </dl>
         </section>
 
         <section className="bank-hub__controls" aria-label="筛选题库包">
-          <label className="bank-hub__search">
-            <Search aria-hidden="true" />
-            <span className="sr-only">搜索题库包</span>
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索题库名称或知识方向" />
-          </label>
-          <div className="bank-hub__categories" role="tablist" aria-label="题库分类">
-            {categories.map((item) => (
-              <button
-                key={item}
-                type="button"
-                role="tab"
-                aria-selected={category === item}
-                className={category === item ? 'is-active' : ''}
-                onClick={() => setCategory(item)}
-              >
-                {item}
-              </button>
-            ))}
+          <div className="bank-hub__control-group">
+            <label htmlFor="bank-search">搜索题库</label>
+            <div className="bank-hub__search">
+              <Search aria-hidden="true" />
+              <input id="bank-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="名称、方向或技术关键词" />
+              {query && (
+                <button type="button" onClick={() => setQuery('')} aria-label="清除搜索" title="清除搜索">
+                  <X aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="bank-hub__control-group bank-hub__filter-group">
+            <div className="bank-hub__control-label">
+              <span>知识方向</span>
+              <span>{visibleBanks.length} / {banks.length}</span>
+            </div>
+            <div className="bank-hub__categories" role="tablist" aria-label="题库分类">
+              {categories.map((item) => {
+                const count = item === '全部' ? banks.length : banks.filter((bank) => bank.category === item).length
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    role="tab"
+                    aria-selected={category === item}
+                    className={category === item ? 'is-active' : ''}
+                    onClick={() => setCategory(item)}
+                  >
+                    <span>{item}</span>
+                    <strong aria-hidden="true">{count}</strong>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </section>
 
         {visibleBanks.length ? (
-          <section className="bank-package-grid" aria-label="题库包列表">
+          <section className="bank-package-grid" aria-label="题库包列表" aria-live="polite">
             {visibleBanks.map((bank, index) => {
               const stats = statsForBank(bank, questions, state)
               const isCurrent = bank.id === currentBankId
               return (
-                <article className="bank-package" data-tone={bank.tone} key={bank.id}>
+                <article className="bank-package" data-tone={bank.tone} data-current={isCurrent || undefined} key={bank.id}>
                   <div className="bank-package__accent" aria-hidden="true" />
                   <div className="bank-package__head">
                     <span className="bank-package__index">{String(index + 1).padStart(2, '0')}</span>
@@ -147,21 +162,22 @@ export function QuestionBankHub({
                   <div className="bank-package__tags" aria-label="知识标签">
                     {bank.baseTags.map((tag) => <span key={tag}>{tag}</span>)}
                   </div>
+                  <dl className="bank-package__stats" aria-label={`${bank.title}学习数据`}>
+                    <div><dt>已学习</dt><dd>{stats.started}</dd></div>
+                    <div><dt>已掌握</dt><dd>{stats.mastered}</dd></div>
+                    <div className={stats.review > 0 ? 'has-review' : undefined}><dt>待复习</dt><dd>{stats.review}</dd></div>
+                  </dl>
                   <div className="bank-package__progress">
                     <div>
                       <span>掌握进度</span>
-                      <strong>{stats.mastered}/{stats.total}</strong>
+                      <strong>{stats.percent}%</strong>
                     </div>
                     <span className="bank-package__track" aria-label={`已掌握 ${stats.percent}%`}>
                       <span style={{ width: `${stats.percent}%` }} />
                     </span>
                   </div>
                   <footer className="bank-package__footer">
-                    <div className="bank-package__status">
-                      <span><BookOpenText aria-hidden="true" />已学习 {stats.started}</span>
-                      <span><CheckCircle2 aria-hidden="true" />已掌握 {stats.mastered}</span>
-                      {stats.review > 0 && <span><Clock3 aria-hidden="true" />待复习 {stats.review}</span>}
-                    </div>
+                    <span className="bank-package__total"><BookOpenText aria-hidden="true" />共 {stats.total} 题</span>
                     <button type="button" onClick={() => onOpenBank(bank)}>
                       {stats.started ? '继续学习' : '开始学习'}
                       <ArrowRight aria-hidden="true" />
