@@ -71,7 +71,7 @@ export function Rail({
 
   return (
     <nav className="rail" aria-label="主工具栏">
-      <span className="rail__brand" role="img" aria-label="面试边注" title="面试边注" data-tooltip="面试边注">
+      <span className="rail__brand" role="img" aria-label="面试边注">
         <BookOpenCheck aria-hidden="true" />
       </span>
 

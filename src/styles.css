@@ -3573,8 +3573,9 @@ body:has(dialog[open]) .reader {
 
   .rail__brand {
     margin-block-end: var(--space-sm);
-    background: var(--color-accent);
-    color: white;
+    border: var(--rule-thin) solid color-mix(in oklch, var(--color-paper) 18%, transparent);
+    background: color-mix(in oklch, var(--color-paper) 6%, transparent);
+    color: color-mix(in oklch, var(--color-paper) 84%, transparent);
     cursor: default;
   }
 
@@ -3609,7 +3610,6 @@ body:has(dialog[open]) .reader {
     box-shadow: 0 0 0 var(--rule-thin) color-mix(in oklch, white 20%, transparent) inset;
   }
 
-  .rail__brand::after,
   .rail__button::after {
     content: attr(data-tooltip);
     position: absolute;
@@ -3632,8 +3632,6 @@ body:has(dialog[open]) .reader {
     white-space: nowrap;
   }
 
-  .rail__brand:hover::after,
-  .rail__brand:focus-visible::after,
   .rail__button:hover::after,
   .rail__button:focus-visible::after {
     opacity: 1;
@@ -3834,10 +3832,6 @@ body:has(dialog[open]) .reader {
   .rail__button:hover {
     background: color-mix(in oklch, var(--color-paper) 12%, transparent);
     color: white;
-  }
-
-  .rail__brand:hover {
-    background: color-mix(in oklch, var(--color-accent) 82%, white);
   }
 
   .filter-strip button:hover,
