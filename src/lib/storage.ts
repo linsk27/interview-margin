@@ -1,7 +1,9 @@
 import type { QuestionProgress, StudyState } from '../types'
 import { EMPTY_PROGRESS } from '../types'
 
-const STORAGE_KEY = 'interview-margin:study-state:v1'
+export const STORAGE_KEY = 'interview-margin:study-state:v1'
+export const MIGRATED_STORAGE_KEY = 'interview-margin:legacy-migrated:v1'
+export const LEGACY_BACKUP_KEY = 'interview-margin:legacy-backup:v1'
 
 function preferredTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light'
@@ -37,6 +39,21 @@ export function loadStudyState(): StudyState {
 
 export function saveStudyState(state: StudyState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+}
+
+export function legacyStudyState(): StudyState | undefined {
+  try {
+    if (localStorage.getItem(MIGRATED_STORAGE_KEY)) return undefined
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? parseStudyState(raw) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function markLegacyMigrated(state: StudyState): void {
+  localStorage.setItem(LEGACY_BACKUP_KEY, JSON.stringify(state))
+  localStorage.setItem(MIGRATED_STORAGE_KEY, new Date().toISOString())
 }
 
 export function parseStudyState(raw: string, fallback = createDefaultState()): StudyState {

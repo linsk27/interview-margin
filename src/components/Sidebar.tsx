@@ -1,4 +1,4 @@
-import { BarChart3, BookMarked, Check, ChevronDown, Circle, Clock3, LibraryBig, Search, Settings2, Star, X } from 'lucide-react'
+import { BarChart3, BookMarked, Check, ChevronDown, Circle, CircleUserRound, Clock3, LibraryBig, LogIn, Search, Settings2, Star, X } from 'lucide-react'
 import type { InterviewQuestion, InterviewSection, QuestionBankDefinition, StudyState, StudyStatus } from '../types'
 import { progressFor } from '../lib/storage'
 
@@ -13,12 +13,14 @@ interface SidebarProps {
   filter: LibraryFilter
   bank: QuestionBankDefinition
   mobileOpen: boolean
+  authenticated: boolean
   onQueryChange: (value: string) => void
   onFilterChange: (value: LibraryFilter) => void
   onSelect: (question: InterviewQuestion) => void
   onOpenQuestionBanks: () => void
   onOpenDashboard: () => void
   onOpenSettings: () => void
+  onOpenAccount: () => void
   onClose: () => void
 }
 
@@ -68,12 +70,14 @@ export function Sidebar({
   filter,
   bank,
   mobileOpen,
+  authenticated,
   onQueryChange,
   onFilterChange,
   onSelect,
   onOpenQuestionBanks,
   onOpenDashboard,
   onOpenSettings,
+  onOpenAccount,
   onClose,
 }: SidebarProps) {
   const filteredIds = new Set(questions.map((question) => question.id))
@@ -95,6 +99,9 @@ export function Sidebar({
           </button>
           <button className="icon-button library__mobile-tool" type="button" onClick={onOpenSettings} aria-label="打开阅读设置" title="阅读设置">
             <Settings2 aria-hidden="true" />
+          </button>
+          <button className="icon-button library__mobile-tool" type="button" onClick={onOpenAccount} aria-label={authenticated ? '打开学习账号' : '登录学习账号'} title={authenticated ? '学习账号' : '登录'}>
+            {authenticated ? <CircleUserRound aria-hidden="true" /> : <LogIn aria-hidden="true" />}
           </button>
           <button
             className="icon-button library__close"

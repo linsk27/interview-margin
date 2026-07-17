@@ -14,6 +14,7 @@ interface NotesPanelProps {
   annotations: Annotation[]
   composer?: ComposerDraft
   mobileOpen: boolean
+  synced: boolean
   onClose: () => void
   onNoteChange: (note: string) => void
   onAddAnnotation: (quote: string, note: string, color: HighlightColor) => void
@@ -71,6 +72,7 @@ export function NotesPanel({
   annotations,
   composer,
   mobileOpen,
+  synced,
   onClose,
   onNoteChange,
   onAddAnnotation,
@@ -156,7 +158,7 @@ export function NotesPanel({
               placeholder="用自己的话写下答题框架、薄弱点或要回看的代码。"
             />
           </label>
-          <small>自动保存在当前浏览器</small>
+          <small>{synced ? '自动同步到你的学习账号' : '访客只读，登录后可保存与跨设备同步'}</small>
         </section>
 
         <section className="review-schedule">

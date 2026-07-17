@@ -7,7 +7,11 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings2,
+  LogIn,
+  ShieldCheck,
+  UserRound,
 } from 'lucide-react'
+import type { SessionUser } from '../types'
 
 interface RailProps {
   mastered: number
@@ -17,12 +21,16 @@ interface RailProps {
   libraryOpen: boolean
   readerMode: boolean
   bankHubActive: boolean
+  adminActive?: boolean
+  user?: SessionUser | null
   onToggleLibrary: () => void
   onOpenQuestionBanks: () => void
   onOpenDashboard: () => void
   onOpenReview: () => void
   onToggleFocus: () => void
   onOpenSettings: () => void
+  onOpenAdmin?: () => void
+  onOpenAccount?: () => void
 }
 
 function RailButton({ label, onClick, active, expanded, controls, pressed, module, children }: {
@@ -60,12 +68,16 @@ export function Rail({
   libraryOpen,
   readerMode,
   bankHubActive,
+  adminActive = false,
+  user = null,
   onToggleLibrary,
   onOpenQuestionBanks,
   onOpenDashboard,
   onOpenReview,
   onToggleFocus,
   onOpenSettings,
+  onOpenAdmin = () => undefined,
+  onOpenAccount = () => undefined,
 }: RailProps) {
   const progress = total ? Math.round((mastered / total) * 100) : 0
 
@@ -79,6 +91,11 @@ export function Rail({
         <RailButton label="题库中心" onClick={onOpenQuestionBanks} active={bankHubActive} module>
           <BookOpenText aria-hidden="true" />
         </RailButton>
+        {user?.permissions.includes('banks.write') && (
+          <RailButton label="内容管理" onClick={onOpenAdmin} active={adminActive} module>
+            <ShieldCheck aria-hidden="true" />
+          </RailButton>
+        )}
       </div>
 
       <div className="rail__tools">
@@ -107,6 +124,9 @@ export function Rail({
       </div>
 
       <RailButton label="阅读设置" onClick={onOpenSettings}><Settings2 aria-hidden="true" /></RailButton>
+      <RailButton label={user ? `${user.displayName}：账号与同步` : '登录学习账号'} onClick={onOpenAccount} active={Boolean(user)}>
+        {user ? <UserRound aria-hidden="true" /> : <LogIn aria-hidden="true" />}
+      </RailButton>
     </nav>
   )
 }

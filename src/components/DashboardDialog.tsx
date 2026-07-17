@@ -31,6 +31,7 @@ export function DashboardDialog({
   onSelect,
   onExport,
   onImport,
+  synced,
 }: {
   open: boolean
   sections: InterviewSection[]
@@ -40,6 +41,7 @@ export function DashboardDialog({
   onSelect: (question: InterviewQuestion) => void
   onExport: () => void
   onImport: (file: File) => void
+  synced?: boolean
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -122,7 +124,7 @@ export function DashboardDialog({
         <section className="data-backup">
           <div>
             <Highlighter aria-hidden="true" />
-            <p><strong>{state.annotations.length} 条批注</strong><span>数据保存在当前浏览器，建议定期导出备份。</span></p>
+            <p><strong>{state.annotations.length} 条批注</strong><span>{synced ? '账号数据已保存到本机 SQLite，可跨设备恢复。' : '访客为只读模式，登录后可同步学习记录。'}</span></p>
           </div>
           <div className="data-backup__actions">
             <button type="button" onClick={onExport}><Download aria-hidden="true" />导出记录</button>

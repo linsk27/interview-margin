@@ -6,4 +6,10 @@ dist
 !.env.example
 .DS_Store
 coverage
+logs/
 .vercel
+data/
+backups/
+*.db
+*.db-shm
+*.db-wal

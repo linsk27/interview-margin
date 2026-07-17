@@ -3,7 +3,10 @@ import { AlertCircle, Highlighter, MessageSquareText } from 'lucide-react'
 import { CommandPalette } from './components/CommandPalette'
 import { DashboardDialog } from './components/DashboardDialog'
 import { AiAssistantDialog } from './components/AiAssistantDialog'
+import { AdminPanel } from './components/AdminPanel'
+import { AuthDialog } from './components/AuthDialog'
 import { FloatingAiButton } from './components/FloatingAiButton'
+import { LegacyMigrationDialog } from './components/LegacyMigrationDialog'
 import { NotesPanel } from './components/NotesPanel'
 import { QuestionBankHub } from './components/QuestionBankHub'
 import { Rail } from './components/Rail'
@@ -14,8 +17,8 @@ import { Sidebar, type LibraryFilter } from './components/Sidebar'
 import { StatusDock } from './components/StatusDock'
 import { Topbar } from './components/Topbar'
 import { UndoToast } from './components/UndoToast'
-import { QUESTION_BANKS, questionBankFor } from './data/questionBanks'
 import { dateAfterDays } from './lib/format'
+import { getCatalog, getMyState, getSession, saveMyState } from './lib/api'
 import {
   isFocusMode,
   setFocusMode,
@@ -23,13 +26,14 @@ import {
   toggleLibrary as transitionLibrary,
   type DrawerState,
 } from './lib/drawerState'
-import { flattenQuestions, parseInterviewMarkdown, questionFromHash } from './lib/markdown'
+import { flattenQuestions, questionFromHash } from './lib/markdown'
+import { clearQueuedState, flushQueuedState, queueStudyState } from './lib/outbox'
 import {
+  createDefaultState,
   exportStudyState,
-  loadStudyState,
+  legacyStudyState,
   parseStudyState,
   progressFor,
-  saveStudyState,
   uid,
   withActivity,
 } from './lib/storage'
@@ -43,6 +47,7 @@ import type {
   QuestionProgress,
   QuestionLibrary,
   ReaderSettings,
+  SessionUser,
   SelectionDraft,
   StudyState,
   StudyStatus,
@@ -58,7 +63,7 @@ interface UndoState {
   index: number
 }
 
-type WorkspaceView = 'reader' | 'banks'
+type WorkspaceView = 'reader' | 'banks' | 'admin'
 
 function isTypingTarget(target: EventTarget | null): boolean {
   const element = target as HTMLElement | null
@@ -80,10 +85,17 @@ function useMediaQuery(query: string): boolean {
 }
 
 export default function App() {
+  const [banks, setBanks] = useState<QuestionBankDefinition[]>([])
   const [sections, setSections] = useState<InterviewSection[]>([])
   const [loadError, setLoadError] = useState('')
   const [activeId, setActiveId] = useState('')
-  const [state, setState] = useState<StudyState>(() => loadStudyState())
+  const [state, setState] = useState<StudyState>(() => createDefaultState())
+  const [user, setUser] = useState<SessionUser | null>(null)
+  const [authOpen, setAuthOpen] = useState(false)
+  const [migrationOpen, setMigrationOpen] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
+  const [syncReady, setSyncReady] = useState(false)
+  const lastServerState = useRef('')
   const [drawerState, setDrawerState] = useState<DrawerState>(() => (
     state.settings.focusMode
       ? setFocusMode(true)
@@ -98,9 +110,9 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [assistantFocusToken, setAssistantFocusToken] = useState(0)
-  const [library, setLibrary] = useState<QuestionLibrary>(QUESTION_BANKS[0].id)
+  const [library, setLibrary] = useState<QuestionLibrary>('')
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() => (
-    window.location.hash === '#question-banks' ? 'banks' : 'reader'
+    window.location.hash === '#question-banks' ? 'banks' : window.location.hash === '#admin' ? 'admin' : 'reader'
   ))
   const [spreadAvailable, setSpreadAvailable] = useState(false)
   const [selection, setSelection] = useState<SelectionDraft>()
@@ -137,7 +149,7 @@ export default function App() {
   }, [filter, library, query, questions, state])
 
   const currentLibraryQuestions = questions.filter((question) => question.library === library)
-  const currentBank = questionBankFor(library) ?? QUESTION_BANKS[0]
+  const currentBank = banks.find((bank) => bank.id === library) ?? banks[0]
   const readerMode = workspaceView === 'reader'
   const railQuestions = readerMode ? currentLibraryQuestions : questions
   const railMasteredCount = railQuestions.filter((question) => progressFor(state, question.id).status === 'mastered').length
@@ -174,38 +186,85 @@ export default function App() {
     })
   }, [drawerState.notesOpen, focusMode])
 
+  const reloadCatalog = async () => {
+    const catalog = await getCatalog()
+    setBanks(catalog.banks)
+    setSections(catalog.sections)
+    return catalog
+  }
+
+  const refreshSession = async () => {
+    setSyncReady(false)
+    const session = await getSession()
+    setUser(session.user)
+    if (session.user && !session.user.mustChangePassword) {
+      const queued = await flushQueuedState().catch(() => undefined)
+      const serverState = queued ?? await getMyState()
+      lastServerState.current = JSON.stringify(serverState)
+      setState(serverState)
+      setMigrationOpen(Boolean(legacyStudyState()) && !session.user.mustChangePassword)
+      setSyncReady(true)
+    } else {
+      lastServerState.current = ''
+      setState(createDefaultState())
+      setMigrationOpen(false)
+    }
+    return session.user
+  }
+
   useEffect(() => {
     let cancelled = false
-
-    Promise.all(QUESTION_BANKS.map(async (bank) => {
-      const response = await fetch(bank.source)
-      if (!response.ok) throw new Error(`${bank.title}读取失败：HTTP ${response.status}`)
-      const markdown = await response.text()
-      const parsed = parseInterviewMarkdown(markdown, {
-        library: bank.id,
-        idPrefix: bank.idPrefix,
-        baseTags: bank.baseTags,
-      })
-      if (!parsed.length) throw new Error(`${bank.title}中没有识别到 Q 开头的二级标题。`)
-      return parsed
-    }))
-      .then((loadedBanks) => {
+    Promise.all([reloadCatalog(), getSession()])
+      .then(async ([catalog, session]) => {
         if (cancelled) return
-        const loadedSections = loadedBanks.flat()
-        const loadedQuestions = flattenQuestions(loadedSections)
+        setUser(session.user)
+        if (session.user && !session.user.mustChangePassword) {
+          const queued = await flushQueuedState().catch(() => undefined)
+          const serverState = queued ?? await getMyState()
+          if (cancelled) return
+          lastServerState.current = JSON.stringify(serverState)
+          setState(serverState)
+          setMigrationOpen(Boolean(legacyStudyState()) && !session.user.mustChangePassword)
+          setSyncReady(true)
+        }
+        const loadedQuestions = flattenQuestions(catalog.sections)
         const hashQuestion = questionFromHash(loadedQuestions)
-        setSections(loadedSections)
-        setActiveId(hashQuestion?.id ?? loadedQuestions[0].id)
-        if (hashQuestion) setLibrary(hashQuestion.library)
+        setActiveId(hashQuestion?.id ?? loadedQuestions[0]?.id ?? '')
+        setLibrary(hashQuestion?.library ?? catalog.banks[0]?.id ?? '')
+        setHydrated(true)
       })
-      .catch((error: Error) => {
-        if (!cancelled) setLoadError(error.message)
-      })
-
+      .catch((error: Error) => { if (!cancelled) setLoadError(error.message) })
     return () => { cancelled = true }
   }, [])
 
-  useEffect(() => saveStudyState(state), [state])
+  useEffect(() => {
+    if (!hydrated || !syncReady || !user || user.mustChangePassword) return
+    const serialized = JSON.stringify(state)
+    if (serialized === lastServerState.current) return
+    const queued = queueStudyState(state).catch(() => '')
+    const timer = window.setTimeout(async () => {
+      try {
+        const revision = await queued
+        const saved = await saveMyState(state)
+        lastServerState.current = JSON.stringify(saved)
+        if (revision) await clearQueuedState(revision)
+      } catch {
+        // The latest full state remains in IndexedDB and is retried when connectivity returns.
+      }
+    }, 700)
+    return () => window.clearTimeout(timer)
+  }, [hydrated, state, syncReady, user])
+
+  useEffect(() => {
+    const flush = () => {
+      if (!user) return
+      flushQueuedState().then((saved) => {
+        if (saved) lastServerState.current = JSON.stringify(saved)
+      }).catch(() => undefined)
+    }
+    window.addEventListener('online', flush)
+    return () => window.removeEventListener('online', flush)
+  }, [user])
 
   useEffect(() => {
     document.documentElement.dataset.theme = state.settings.theme
@@ -218,6 +277,10 @@ export default function App() {
         setWorkspaceView('banks')
         return
       }
+      if (window.location.hash === '#admin' && user?.permissions.includes('banks.write')) {
+        setWorkspaceView('admin')
+        return
+      }
       const match = questionFromHash(questions)
       if (match) {
         setActiveId(match.id)
@@ -227,10 +290,10 @@ export default function App() {
     }
     window.addEventListener('popstate', handleHistory)
     return () => window.removeEventListener('popstate', handleHistory)
-  }, [questions])
+  }, [questions, user])
 
   useEffect(() => {
-    if (!activeQuestion || workspaceView !== 'reader') return
+    if (!activeQuestion || workspaceView !== 'reader' || !user) return
     setSelection(undefined)
     setComposer(undefined)
     setState((current) => {
@@ -248,10 +311,10 @@ export default function App() {
         },
       })
     })
-  }, [activeQuestion?.id, workspaceView])
+  }, [activeQuestion?.id, user?.id, workspaceView])
 
   useEffect(() => {
-    if (!activeQuestion || workspaceView !== 'reader') return
+    if (!activeQuestion || workspaceView !== 'reader' || !user) return
     let lastCommitted = Date.now()
     const commit = () => {
       if (document.visibilityState === 'hidden') return
@@ -275,7 +338,7 @@ export default function App() {
       window.clearInterval(interval)
       commit()
     }
-  }, [activeQuestion?.id, workspaceView])
+  }, [activeQuestion?.id, user?.id, workspaceView])
 
   const openQuestion = (question: InterviewQuestion) => {
     setLibrary(question.library)
@@ -307,8 +370,21 @@ export default function App() {
     setAssistantOpen(false)
   }
 
+  const openAdmin = () => {
+    if (!user?.permissions.includes('banks.write')) return
+    window.history.pushState(null, '', '#admin')
+    setWorkspaceView('admin')
+    setMobileLibraryOpen(false)
+    setMobileNotesOpen(false)
+    setAssistantOpen(false)
+  }
+
   const updateProgress = (patch: Partial<QuestionProgress>, recordActivity = false) => {
     if (!activeQuestion) return
+    if (!user) {
+      setAuthOpen(true)
+      return
+    }
     setState((current) => {
       const next = {
         ...current,
@@ -327,6 +403,10 @@ export default function App() {
 
   const addAnnotation = (quote: string, note: string, color: HighlightColor) => {
     if (!activeQuestion) return
+    if (!user) {
+      setAuthOpen(true)
+      return
+    }
     const now = new Date().toISOString()
     const annotation: Annotation = {
       id: uid('annotation'),
@@ -343,6 +423,7 @@ export default function App() {
   }
 
   const updateAnnotation = (id: string, note: string, color: HighlightColor) => {
+    if (!user) { setAuthOpen(true); return }
     setState((current) => ({
       ...current,
       annotations: current.annotations.map((annotation) => annotation.id === id
@@ -352,6 +433,7 @@ export default function App() {
   }
 
   const deleteAnnotation = (id: string) => {
+    if (!user) { setAuthOpen(true); return }
     setState((current) => {
       const index = current.annotations.findIndex((annotation) => annotation.id === id)
       if (index < 0) return current
@@ -364,6 +446,7 @@ export default function App() {
 
   const restoreAnnotation = () => {
     if (!undo) return
+    if (!user) { setAuthOpen(true); return }
     setState((current) => {
       const annotations = [...current.annotations]
       annotations.splice(Math.min(undo.index, annotations.length), 0, undo.annotation)
@@ -452,6 +535,7 @@ export default function App() {
   })
 
   const importProgress = async (file: File) => {
+    if (!user) { setAuthOpen(true); return }
     try {
       const imported = parseStudyState(await file.text())
       setDrawerState(imported.settings.focusMode
@@ -516,7 +600,7 @@ export default function App() {
   }
 
   return (
-    <div className={`app-shell${workspaceView === 'banks'
+    <div className={`app-shell${workspaceView === 'banks' || workspaceView === 'admin'
       ? ' is-bank-hub is-notes-closed is-library-closed'
       : `${focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${drawerState.libraryOpen ? '' : ' is-library-closed'}`}`}>
       <Rail
@@ -527,17 +611,21 @@ export default function App() {
         libraryOpen={libraryExpanded}
         readerMode={readerMode}
         bankHubActive={workspaceView === 'banks'}
+        adminActive={workspaceView === 'admin'}
+        user={user}
         onToggleLibrary={toggleDesktopLibrary}
         onOpenQuestionBanks={openQuestionBanks}
         onOpenDashboard={() => setDashboardOpen(true)}
         onOpenReview={openReviewLibrary}
         onToggleFocus={toggleFocus}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenAdmin={openAdmin}
+        onOpenAccount={() => setAuthOpen(true)}
       />
 
       {workspaceView === 'banks' ? (
         <QuestionBankHub
-          banks={QUESTION_BANKS}
+          banks={banks}
           questions={questions}
           state={state}
           currentBankId={library}
@@ -545,6 +633,8 @@ export default function App() {
           onOpenDashboard={() => setDashboardOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
         />
+      ) : workspaceView === 'admin' && user?.permissions.includes('banks.write') ? (
+        <AdminPanel user={user} onExit={openQuestionBanks} onCatalogChanged={async () => { await reloadCatalog() }} />
       ) : (
         <>
           <Sidebar
@@ -556,12 +646,14 @@ export default function App() {
         filter={filter}
         bank={currentBank}
         mobileOpen={mobileLibraryOpen}
+        authenticated={Boolean(user)}
         onQueryChange={setQuery}
         onFilterChange={setFilter}
         onSelect={openQuestion}
         onOpenQuestionBanks={openQuestionBanks}
         onOpenDashboard={() => { setMobileLibraryOpen(false); setDashboardOpen(true) }}
         onOpenSettings={() => { setMobileLibraryOpen(false); setSettingsOpen(true) }}
+        onOpenAccount={() => { setMobileLibraryOpen(false); setAuthOpen(true) }}
         onClose={() => setMobileLibraryOpen(false)}
           />
 
@@ -606,6 +698,7 @@ export default function App() {
           annotations={activeAnnotations}
           composer={composer}
           mobileOpen={mobileNotesOpen}
+          synced={Boolean(user)}
           onClose={closeNotes}
           onNoteChange={(note) => updateProgress({ note })}
           onAddAnnotation={addAnnotation}
@@ -647,6 +740,7 @@ export default function App() {
         onSelect={openQuestion}
         onExport={() => exportStudyState(state)}
         onImport={importProgress}
+        synced={Boolean(user)}
       />
       <SettingsDialog
         open={settingsOpen}
@@ -655,13 +749,32 @@ export default function App() {
         onClose={() => setSettingsOpen(false)}
         onChange={changeSettings}
       />
+      <AuthDialog
+        open={authOpen}
+        user={user}
+        onClose={() => setAuthOpen(false)}
+        onSessionChanged={async () => {
+          const nextUser = await refreshSession()
+          await reloadCatalog()
+          if (!nextUser && workspaceView === 'admin') openQuestionBanks()
+        }}
+      />
+      <LegacyMigrationDialog
+        legacy={legacyStudyState()}
+        open={migrationOpen}
+        onClose={() => setMigrationOpen(false)}
+        onImported={(nextState) => {
+          lastServerState.current = JSON.stringify(nextState)
+          setState(nextState)
+        }}
+      />
 
       {undo && <UndoToast message="批注已删除" onUndo={restoreAnnotation} onDismiss={() => setUndo(undefined)} />}
       {workspaceView === 'reader' && (mobileLibraryOpen || mobileNotesOpen) && <button className="mobile-scrim" type="button" onClick={() => { setMobileLibraryOpen(false); setMobileNotesOpen(false) }} aria-label="关闭侧栏" />}
       <div className="sr-only" aria-live="polite">
-        {workspaceView === 'reader' ? `当前题目：${activeQuestion.title}` : '当前页面：题库中心'}
+        {workspaceView === 'reader' ? `当前题目：${activeQuestion.title}` : workspaceView === 'admin' ? '当前页面：内容管理' : '当前页面：题库中心'}
       </div>
-      {workspaceView === 'reader' && <footer className="app-colophon"><MessageSquareText aria-hidden="true" />记录仅保存在当前浏览器 · Q{activeQuestion.number} · {state.annotations.length} 条批注</footer>}
+      {workspaceView === 'reader' && <footer className="app-colophon"><MessageSquareText aria-hidden="true" />{user ? '已同步到本机 SQLite' : '访客只读模式'} · Q{activeQuestion.number} · {state.annotations.length} 条批注</footer>}
     </div>
   )
 }

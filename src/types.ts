@@ -13,10 +13,21 @@ export interface QuestionBankDefinition {
   kicker: string
   category: string
   description: string
-  source: string
+  source?: string
   idPrefix?: string
   baseTags: string[]
   tone: 'blue' | 'amber' | 'green' | 'rose'
+  visibility?: 'public' | 'private'
+  version?: number
+  archivedAt?: string
+}
+
+export interface QuestionSource {
+  id?: string
+  title: string
+  url: string
+  kind?: string
+  verifiedAt?: string
 }
 
 export interface InterviewQuestion {
@@ -31,6 +42,21 @@ export interface InterviewQuestion {
   tags: string[]
   readMinutes: number
   order: number
+  difficulty?: 'basic' | 'intermediate' | 'advanced'
+  version?: number
+  provenance?: string
+  verifiedAt?: string
+  archivedAt?: string
+  sources?: QuestionSource[]
+}
+
+export interface SessionUser {
+  id: string
+  username: string
+  displayName: string
+  mustChangePassword: boolean
+  roles: Array<'admin' | 'editor' | 'learner'>
+  permissions: string[]
 }
 
 export interface InterviewSection {
