@@ -342,6 +342,9 @@ npm run build
 
 ## 9. Windows 与 Cloudflare 部署
 
+个人电脑正式接管、同一 Tunnel 的防分叉切换、未备案华南 ECS 的使用边界和完整回滚步骤，以
+[`PERSONAL_PC_CLOUDFLARE_DEPLOYMENT.md`](PERSONAL_PC_CLOUDFLARE_DEPLOYMENT.md) 为准。
+
 ### 9.1 当前结构
 
 - Express 监听 `127.0.0.1:4173`。
@@ -456,7 +459,7 @@ npm run build
 %USERPROFILE%\.cloudflared\<tunnel-id>.json
 ```
 
-这些文件是私密凭据，不进入 Git。个人电脑连接成功并通过公网健康检查后，再停止公司电脑上的旧 connector，避免迁移过程中直接中断服务。
+这些文件是私密凭据，不进入 Git。由于两台电脑使用相互独立的 SQLite，正式切换时必须先停止公司电脑上的旧 Connector，再在个人电脑启动新 Connector；不能用双 Connector 换取所谓零停机，否则会造成账号、进度和批注数据分叉。详细顺序见专门部署文档。
 
 #### 第六步：安装计划任务并验收
 
