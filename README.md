@@ -4,6 +4,9 @@
 
 当前包含 9 个题库、501 道题：原有简历题 81 道、JavaScript 100 道，以及 Git、Vue、React、前端工程、后端、数据库缓存和网络部署共 320 道新增题。
 
+完整的架构、数据模型、API、部署方式、当前进度和跨电脑迁移步骤见
+[`docs/PROJECT_ARCHITECTURE_AND_HANDOFF.md`](docs/PROJECT_ARCHITECTURE_AND_HANDOFF.md)。
+
 ## 本地运行
 
 ```bash
