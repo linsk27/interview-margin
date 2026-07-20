@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AiAssistant } from './AiAssistant'
 import type { InterviewQuestion } from '../types'
@@ -17,7 +17,10 @@ const question = {
   order: 1,
 } satisfies InterviewQuestion
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('AI learning assistant', () => {
   it('sends the active question with the user prompt to the server proxy', async () => {
@@ -39,5 +42,19 @@ describe('AI learning assistant', () => {
     expect(payload.question.title).toBe(question.title)
     expect(payload.question.body).toBe(question.body)
     expect(payload.messages).toEqual([{ role: 'user', content: '请用通俗的话解释' }])
+  })
+
+  it('does not load images proposed by an AI response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: '解释如下：\n\n![远程跟踪图](https://images.example/tracker.svg)' }),
+    }))
+
+    render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '请画图' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+
+    await waitFor(() => expect(screen.getByText('解释如下：')).toBeTruthy())
+    expect(screen.queryByRole('img')).toBeNull()
   })
 })

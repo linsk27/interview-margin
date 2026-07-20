@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Node.js 事件循环阶段</title>
+  <desc id="desc">展示 timers、pending callbacks、poll、check、close callbacks 等 libuv 阶段，以及 nextTick 和 Promise 微任务的执行位置。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#ecfdf5"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#475569"/></marker>
+    <marker id="green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#059669"/></marker>
+  </defs>
+  <rect width="1200" height="720" rx="28" fill="url(#bg)"/>
+  <text x="64" y="62" font-family="Inter, Noto Sans SC, sans-serif" font-size="34" font-weight="700" fill="#0f172a">Node.js 事件循环：libuv 阶段与微任务检查点</text>
+  <text x="64" y="94" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#64748b">阶段顺序帮助推理执行时机；具体先后仍要结合 Node 版本、I/O 上下文和队列状态</text>
+
+  <path d="M600 190C830 190 1004 327 1004 447C1004 567 830 626 600 626C370 626 196 567 196 447C196 327 370 190 600 190Z" fill="none" stroke="#94a3b8" stroke-width="3" stroke-dasharray="10 8"/>
+
+  <rect x="80" y="154" width="280" height="102" rx="18" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="220" y="194" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="22" font-weight="600" fill="#1e40af">timers</text>
+  <text x="220" y="229" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#475569">执行已到阈值的 setTimeout / setInterval</text>
+
+  <rect x="460" y="138" width="280" height="102" rx="18" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="600" y="178" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="21" font-weight="600" fill="#5b21b6">pending callbacks</text>
+  <text x="600" y="213" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#475569">延后到下一轮的系统级 I/O 回调</text>
+
+  <rect x="840" y="154" width="280" height="102" rx="18" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+  <text x="980" y="194" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="20" font-weight="600" fill="#334155">idle / prepare</text>
+  <text x="980" y="229" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#475569">libuv 内部维护阶段</text>
+
+  <rect x="840" y="342" width="280" height="126" rx="18" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <text x="980" y="382" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="23" font-weight="600" fill="#047857">poll</text>
+  <text x="980" y="417" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#065f46">取 I/O 回调；必要时阻塞等待事件</text>
+  <text x="980" y="445" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#047857">队列/定时器决定何时离开</text>
+
+  <rect x="460" y="500" width="280" height="102" rx="18" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="600" y="540" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="23" font-weight="600" fill="#9a3412">check</text>
+  <text x="600" y="575" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#7c2d12">执行 setImmediate 回调</text>
+
+  <rect x="80" y="482" width="280" height="120" rx="18" fill="#fef2f2" stroke="#f87171" stroke-width="2"/>
+  <text x="220" y="522" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="21" font-weight="600" fill="#b91c1c">close callbacks</text>
+  <text x="220" y="557" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#991b1b">socket.on('close', ...)</text>
+  <text x="220" y="583" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#b91c1c">资源关闭通知</text>
+
+  <path d="M360 193H448" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M740 193H828" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M980 256V330" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M840 425C792 492 770 536 752 544" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M460 551H372" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M196 482C144 405 144 303 210 268" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="398" y="292" width="404" height="146" rx="22" fill="#0f172a"/>
+  <text x="600" y="332" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#fff">每次 JavaScript 回调结束后</text>
+  <text x="600" y="372" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" fill="#fbbf24">process.nextTick queue</text>
+  <text x="600" y="404" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" fill="#93c5fd">Promise microtask queue</text>
+  <path d="M802 365H828" stroke="#059669" stroke-width="3" marker-end="url(#green)"/>
+
+  <text x="64" y="674" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#64748b">递归 nextTick 会抢在 I/O 前持续执行并造成饥饿；CPU 密集任务应分片、移到 worker_threads 或独立服务。</text>
+</svg>

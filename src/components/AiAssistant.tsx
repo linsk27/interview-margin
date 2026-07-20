@@ -150,7 +150,7 @@ export function AiAssistant({ question, focusToken }: AiAssistantProps) {
               <span>{message.role === 'assistant' ? 'AI' : '你'}</span>
               <div className="ai-assistant__message-body">
                 {message.role === 'assistant'
-                  ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                  ? <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={['img']}>{message.content}</ReactMarkdown>
                   : <p>{message.content}</p>}
               </div>
             </article>

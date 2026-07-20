@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Cloudflare Tunnel 请求链路</title>
+  <desc id="desc">展示访客请求经 DNS 到 Cloudflare 边缘，再通过 cloudflared 主动建立的多条出站连接转发到本机 Web 服务，无需开放家庭网络入站端口。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#fff7ed"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#475569"/></marker>
+    <marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#ea580c"/></marker>
+  </defs>
+  <rect width="1200" height="720" rx="28" fill="url(#bg)"/>
+  <text x="64" y="62" font-family="Inter, Noto Sans SC, sans-serif" font-size="34" font-weight="700" fill="#0f172a">Cloudflare Tunnel：由内向外建立连接，不暴露入站端口</text>
+  <text x="64" y="94" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#64748b">公网主机名映射到 Tunnel UUID；cloudflared 维持连接并把边缘请求送到本地 origin</text>
+
+  <rect x="64" y="166" width="238" height="210" rx="22" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <circle cx="183" cy="222" r="30" fill="#2563eb"/>
+  <path d="M151 298C151 273 215 273 215 298V316H151Z" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
+  <text x="183" y="352" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="22" font-weight="700" fill="#1e40af">访客 Browser</text>
+  <text x="183" y="404" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="15" fill="#475569">interview.example.org</text>
+
+  <rect x="394" y="142" width="350" height="294" rx="24" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <path d="M484 247C484 208 520 176 564 176C598 176 627 194 638 221C681 216 714 245 714 280C714 318 679 346 632 346H506C460 346 428 321 428 286C428 263 450 243 484 247Z" fill="#fed7aa" stroke="#ea580c" stroke-width="3"/>
+  <text x="571" y="269" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="24" font-weight="700" fill="#9a3412">Cloudflare Edge</text>
+  <text x="571" y="302" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#9a3412">DNS / TLS / WAF / Tunnel routing</text>
+  <text x="569" y="390" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="16" fill="#7c2d12">hostname → tunnel UUID</text>
+
+  <rect x="836" y="142" width="300" height="294" rx="24" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <text x="986" y="188" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="23" font-weight="600" fill="#047857">cloudflared</text>
+  <text x="986" y="221" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#065f46">运行在个人电脑 / 内网服务器</text>
+  <rect x="874" y="250" width="224" height="38" rx="9" fill="#d1fae5"/><text x="986" y="275" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="15" fill="#065f46">connection 1　HTTP/2</text>
+  <rect x="874" y="296" width="224" height="38" rx="9" fill="#d1fae5"/><text x="986" y="321" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="15" fill="#065f46">connection 2　HTTP/2</text>
+  <rect x="874" y="342" width="224" height="38" rx="9" fill="#d1fae5"/><text x="986" y="367" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="15" fill="#065f46">connection 3–4　redundancy</text>
+  <text x="986" y="410" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#047857">仅主动出站；路由器无需端口转发</text>
+
+  <path d="M302 270H382" stroke="#2563eb" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="342" y="251" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#1e40af">HTTPS 请求</text>
+  <path d="M744 270H824" stroke="#ea580c" stroke-width="4" marker-end="url(#orange)"/>
+  <path d="M824 326H744" stroke="#ea580c" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+  <text x="784" y="251" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#9a3412">已建立隧道</text>
+
+  <rect x="836" y="510" width="300" height="116" rx="20" fill="#0f172a"/>
+  <text x="986" y="548" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#fff">本地 Origin</text>
+  <text x="986" y="586" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" fill="#93c5fd">http://127.0.0.1:4173</text>
+  <path d="M986 436V498" stroke="#059669" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="64" y="504" width="680" height="126" rx="20" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="94" y="544" font-family="Inter, Noto Sans SC, sans-serif" font-size="20" font-weight="700" fill="#0f172a">分层判断故障</text>
+  <text x="94" y="579" font-family="IBM Plex Mono, monospace" font-size="17" fill="#b91c1c">Error 1033　→ Cloudflare 找不到可用 Tunnel connector</text>
+  <text x="94" y="608" font-family="IBM Plex Mono, monospace" font-size="17" fill="#b45309">Error 502　 → connector 在线，但本地 origin 不可达或响应失败</text>
+  <text x="64" y="680" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#64748b">Tunnel 隐藏入站网络位置，但不会替代应用鉴权、数据备份、主机补丁、进程自愈和本地防火墙。</text>
+</svg>

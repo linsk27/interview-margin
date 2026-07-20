@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">浏览器关键渲染流水线</title>
+  <desc id="desc">展示 HTML 与 CSS 解析、样式计算、布局、绘制、分层和合成，以及不同属性变化触发的最小更新范围。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#eff6ff"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1200" height="720" rx="28" fill="url(#bg)"/>
+  <text x="64" y="62" font-family="Inter, Noto Sans SC, sans-serif" font-size="34" font-weight="700" fill="#0f172a">浏览器渲染：从文档字节到屏幕像素</text>
+  <text x="64" y="94" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#64748b">性能优化先判断变化从哪一阶段重新开始，而不是笼统地说“减少重绘”</text>
+
+  <rect x="64" y="142" width="220" height="104" rx="18" fill="#fff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="174" y="181" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="20" font-weight="600" fill="#1e40af">HTML → DOM</text>
+  <text x="174" y="216" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#475569">增量解析、构建节点树</text>
+  <rect x="64" y="276" width="220" height="104" rx="18" fill="#fff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="174" y="315" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="20" font-weight="600" fill="#5b21b6">CSS → CSSOM</text>
+  <text x="174" y="350" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#475569">级联、继承与选择器规则</text>
+
+  <rect x="354" y="184" width="220" height="154" rx="20" fill="#eef2ff" stroke="#818cf8" stroke-width="2"/>
+  <circle cx="390" cy="220" r="17" fill="#6366f1"/><text x="390" y="227" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#fff">1</text>
+  <text x="420" y="228" font-family="Inter, Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#3730a3">Style</text>
+  <text x="384" y="271" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#4338ca">为可见元素计算最终样式</text>
+  <text x="384" y="304" font-family="IBM Plex Mono, monospace" font-size="15" fill="#4f46e5">selector match + cascade</text>
+  <path d="M284 194H342" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M284 328H318V278H342" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="632" y="184" width="220" height="154" rx="20" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <circle cx="668" cy="220" r="17" fill="#ea580c"/><text x="668" y="227" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#fff">2</text>
+  <text x="698" y="228" font-family="Inter, Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#9a3412">Layout</text>
+  <text x="662" y="271" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#9a3412">计算盒子尺寸与几何位置</text>
+  <text x="662" y="304" font-family="IBM Plex Mono, monospace" font-size="15" fill="#c2410c">width / flow / geometry</text>
+  <path d="M574 261H620" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="910" y="184" width="226" height="154" rx="20" fill="#fefce8" stroke="#eab308" stroke-width="2"/>
+  <circle cx="946" cy="220" r="17" fill="#ca8a04"/><text x="946" y="227" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#fff">3</text>
+  <text x="976" y="228" font-family="Inter, Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#854d0e">Paint</text>
+  <text x="940" y="271" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#854d0e">生成背景、文字、边框绘制指令</text>
+  <text x="940" y="304" font-family="IBM Plex Mono, monospace" font-size="15" fill="#a16207">display list → raster</text>
+  <path d="M852 261H898" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="354" y="416" width="782" height="124" rx="20" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <circle cx="390" cy="452" r="17" fill="#059669"/><text x="390" y="459" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#fff">4</text>
+  <text x="420" y="460" font-family="Inter, Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#047857">Composite：把栅格化图层按变换、透明度和层级组合成最终帧</text>
+  <text x="384" y="505" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#065f46">transform / opacity 常可只走合成，但图层过多会增加显存、上传和管理成本</text>
+  <path d="M1023 338V404" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="64" y="590" width="1072" height="80" rx="18" fill="#0f172a"/>
+  <text x="94" y="622" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#93c5fd">改 width/top：通常 Style → Layout → Paint → Composite</text>
+  <text x="630" y="622" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#fde68a">改 color/background：通常 Style → Paint → Composite</text>
+  <text x="94" y="652" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#86efac">改 transform/opacity：满足分层条件时可只 Composite；用 DevTools Performance / Layers 验证。</text>
+</svg>

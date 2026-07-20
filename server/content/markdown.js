@@ -95,7 +95,7 @@ export function parseQuestionMarkdown(source, options) {
     const id = options.preserveIds === false
       ? stableUuid(`${options.idPrefix || 'question'}:${number.replace(/\./g, '-')}`)
       : `${prefix}q-${number.replace(/\./g, '-')}`
-    const codeLines = (body.match(/^```/gm)?.length ?? 0) * 8
+    const codeLines = (body.match(/^(?:```|~~~)/gm)?.length ?? 0) * 8
     currentSection.questions.push({
       id,
       number,

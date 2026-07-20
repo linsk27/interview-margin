@@ -3,9 +3,10 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import { changePassword, login, logout } from '../lib/api'
 import type { SessionUser } from '../types'
 
-export function AuthDialog({ open, user, onClose, onSessionChanged }: {
+export function AuthDialog({ open, user, reason = '', onClose, onSessionChanged }: {
   open: boolean
   user: SessionUser | null
+  reason?: string
   onClose: () => void
   onSessionChanged: () => Promise<void>
 }) {
@@ -48,8 +49,8 @@ export function AuthDialog({ open, user, onClose, onSessionChanged }: {
       await login(username, password)
       setPassword('')
       await onSessionChanged()
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '登录失败。')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '登录失败。')
     } finally {
       setBusy(false)
     }
@@ -71,8 +72,8 @@ export function AuthDialog({ open, user, onClose, onSessionChanged }: {
       setChanging(false)
       await onSessionChanged()
       onClose()
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '密码修改失败。')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '密码修改失败。')
     } finally {
       setBusy(false)
     }
@@ -101,7 +102,13 @@ export function AuthDialog({ open, user, onClose, onSessionChanged }: {
 
       {!user ? (
         <form className="auth-dialog__body" onSubmit={submitLogin}>
-          <div className="auth-dialog__intro"><LogIn aria-hidden="true" /><p><strong>跨设备保存学习记录</strong><span>账号由管理员创建，不开放公共注册。</span></p></div>
+          <div className="auth-dialog__intro">
+            <LogIn aria-hidden="true" />
+            <p>
+              <strong>{reason || '登录后保存个人学习记录'}</strong>
+              <span>公开题库无需登录即可浏览；批注、收藏、进度和复习计划需要学习账号。账号由管理员创建或通过邀请开通。</span>
+            </p>
+          </div>
           <label>用户名<input autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required /></label>
           <label>密码<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
           {error && <p className="form-error" role="alert">{error}</p>}

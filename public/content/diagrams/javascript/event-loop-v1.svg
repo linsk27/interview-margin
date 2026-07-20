@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">浏览器 JavaScript 事件循环</title>
+  <desc id="desc">展示调用栈、Web API、任务队列、微任务队列、渲染机会与下一轮任务之间的顺序。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#ecfeff"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1200" height="720" rx="28" fill="url(#bg)"/>
+  <text x="64" y="62" font-family="Inter, Noto Sans SC, sans-serif" font-size="34" font-weight="700" fill="#0f172a">浏览器事件循环：一轮 task 内发生什么</text>
+  <text x="64" y="94" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#64748b">JavaScript 执行栈清空后，必须先排空微任务，浏览器才可能渲染</text>
+
+  <rect x="64" y="132" width="238" height="376" rx="22" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="183" y="172" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#0f172a">调用栈 Call Stack</text>
+  <rect x="92" y="412" width="182" height="62" rx="12" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="183" y="450" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" fill="#1e3a8a">main()</text>
+  <rect x="92" y="338" width="182" height="62" rx="12" fill="#bfdbfe" stroke="#60a5fa"/>
+  <text x="183" y="376" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" fill="#1e3a8a">handler()</text>
+  <rect x="92" y="264" width="182" height="62" rx="12" fill="#93c5fd" stroke="#3b82f6"/>
+  <text x="183" y="302" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" fill="#172554">console.log()</text>
+  <text x="183" y="217" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#64748b">后进先出；一次只执行一帧</text>
+
+  <rect x="374" y="132" width="330" height="152" rx="22" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="539" y="172" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#9a3412">浏览器宿主能力 Web APIs</text>
+  <text x="406" y="213" font-family="IBM Plex Mono, monospace" font-size="18" fill="#7c2d12">setTimeout　fetch　DOM events</text>
+  <text x="406" y="248" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#9a3412">计时/网络完成后，只把回调送入对应队列</text>
+  <path d="M302 214H362" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="374" y="330" width="330" height="178" rx="22" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="539" y="370" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#5b21b6">微任务队列 Microtasks</text>
+  <rect x="404" y="397" width="270" height="40" rx="10" fill="#ddd6fe"/>
+  <text x="539" y="423" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="17" fill="#4c1d95">Promise.then / queueMicrotask</text>
+  <text x="404" y="471" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#6d28d9">检查点会持续排空：新产生的微任务也要执行</text>
+
+  <rect x="776" y="132" width="360" height="152" rx="22" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="956" y="172" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#1e40af">任务队列 Tasks</text>
+  <rect x="806" y="199" width="300" height="44" rx="10" fill="#dbeafe"/>
+  <text x="956" y="227" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="17" fill="#1e3a8a">timer callback　click　message</text>
+  <path d="M704 208H764" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="776" y="330" width="360" height="178" rx="22" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <text x="956" y="370" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#047857">渲染机会 Rendering</text>
+  <text x="806" y="413" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#065f46">style → layout → paint → composite</text>
+  <text x="806" y="449" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#047857">不是每轮都渲染；由刷新节奏和页面状态决定</text>
+  <path d="M704 419H764" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <path d="M956 284V318" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M776 463C735 544 326 548 183 520" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M776 208C736 306 735 419 716 419" fill="none" stroke="#7c3aed" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+
+  <rect x="64" y="560" width="1072" height="104" rx="18" fill="#0f172a"/>
+  <text x="94" y="600" font-family="Inter, Noto Sans SC, sans-serif" font-size="20" font-weight="700" fill="#fff">顺序口诀：取一个 task → 执行到栈空 → 排空全部 microtasks → 可能渲染 → 再取下一个 task</text>
+  <text x="94" y="636" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#fbbf24">风险：递归创建微任务会“饿死”渲染和后续任务；长任务超过约 50 ms 会直接拖慢交互响应。</text>
+</svg>

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { inspectMarkdownDiagrams } from './content/diagram-policy.js'
+
 export const roleSchema = z.enum(['admin', 'editor', 'learner'])
 export const settingsSchema = z.object({
   theme: z.enum(['light', 'dark']),
@@ -41,11 +43,13 @@ export const studyStateSchema = z.object({
 
 export const loginSchema = z.object({
   username: z.string().trim().min(2).max(64),
-  password: z.string().min(8).max(256),
+  // Login validates an existing credential; password strength belongs to
+  // creation/change flows so legacy or locally reset credentials still work.
+  password: z.string().min(1).max(256),
 })
 
 export const passwordSchema = z.object({
-  currentPassword: z.string().min(8).max(256),
+  currentPassword: z.string().min(1).max(256),
   newPassword: z.string().min(12).max(256),
 })
 
@@ -61,6 +65,23 @@ export const userPatchSchema = z.object({
   role: roleSchema.optional(),
   status: z.enum(['active', 'disabled']).optional(),
 }).refine((value) => Object.keys(value).length > 0)
+
+const invitationTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/)
+
+export const invitationCreateSchema = z.object({
+  expiresInHours: z.number().int().min(1).max(168).default(72),
+}).strict()
+
+export const invitationInspectSchema = z.object({
+  token: invitationTokenSchema,
+}).strict()
+
+export const invitationAcceptSchema = z.object({
+  token: invitationTokenSchema,
+  username: z.string().trim().regex(/^[a-zA-Z0-9._-]{2,64}$/),
+  displayName: z.string().trim().min(1).max(80),
+  password: z.string().min(12).max(256),
+}).strict()
 
 export const bankCreateSchema = z.object({
   id: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,63}$/),
@@ -78,10 +99,16 @@ export const bankPatchSchema = bankCreateSchema.omit({ id: true }).partial().ext
   version: z.number().int().positive(),
 })
 
+const questionBodySchema = z.string().min(1).max(200_000).superRefine((body, context) => {
+  for (const message of inspectMarkdownDiagrams(body).errors) {
+    context.addIssue({ code: 'custom', message })
+  }
+})
+
 export const questionCreateSchema = z.object({
   sectionTitle: z.string().trim().min(1).max(120),
   title: z.string().trim().min(1).max(300),
-  body: z.string().min(1).max(200_000),
+  body: questionBodySchema,
   tags: z.array(z.string().trim().min(1).max(40)).max(16).default([]),
   difficulty: z.enum(['basic', 'intermediate', 'advanced']).default('intermediate'),
   sources: z.array(z.object({

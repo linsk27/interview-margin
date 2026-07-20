@@ -1,11 +1,8 @@
-import { Children, isValidElement, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { BookOpen, Check, ChevronLeft, ChevronRight, Copy, Highlighter, Link as LinkIcon } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { BookOpen, ChevronLeft, ChevronRight } from 'lucide-react'
 import { domToCanvas } from 'modern-screenshot'
-import ReactMarkdown from 'react-markdown'
-import rehypeHighlight from 'rehype-highlight'
-import remarkGfm from 'remark-gfm'
 import type { Annotation, InterviewQuestion, PageLayout, ReadingSize, SelectionDraft } from '../types'
-import { rehypeAnnotationMarks } from '../lib/annotationPlugin'
+import { QuestionMarkdown } from './QuestionMarkdown'
 import {
   calculateSpreadGeometry,
   canUseSpread,
@@ -168,39 +165,6 @@ function waitForPaint() {
   })
 }
 
-function textFromNode(node: React.ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') return String(node)
-  if (Array.isArray(node)) return node.map(textFromNode).join('')
-  if (isValidElement<{ children?: React.ReactNode }>(node)) return textFromNode(node.props.children)
-  return ''
-}
-
-function CodeBlock({ children }: { children: React.ReactNode }) {
-  const [copied, setCopied] = useState(false)
-  const code = textFromNode(children).replace(/\n$/, '')
-  const languageElement = Children.toArray(children).find(isValidElement) as React.ReactElement<{ className?: string }> | undefined
-  const language = languageElement?.props.className?.replace(/^language-/, '') || 'code'
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(code)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 2200)
-  }
-
-  return (
-    <figure className="code-block">
-      <figcaption>
-        <span>{language}</span>
-        <button type="button" onClick={copy} aria-label="复制代码" title="复制代码">
-          {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-          <span>{copied ? '已复制' : '复制'}</span>
-        </button>
-      </figcaption>
-      <pre>{children}</pre>
-    </figure>
-  )
-}
-
 export function Reader({
   question,
   annotations,
@@ -231,6 +195,11 @@ export function Reader({
   const [spreadIndex, setSpreadIndex] = useState(initialSpreadIndex)
   const [geometry, setGeometry] = useState<SpreadGeometry>(DEFAULT_GEOMETRY)
   const [turnDirection, setTurnDirection] = useState<TurnDirection>()
+  const [contentRevision, setContentRevision] = useState(0)
+
+  const handleDiagramSettled = useCallback(() => {
+    setContentRevision((current) => current + 1)
+  }, [])
 
   useEffect(() => {
     onSpreadChangeRef.current = onSpreadChange
@@ -334,13 +303,14 @@ export function Reader({
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(viewport)
+    observer.observe(flow)
     void document.fonts?.ready.then(measure)
 
     return () => {
       window.cancelAnimationFrame(frame)
       observer.disconnect()
     }
-  }, [annotations.length, question.id, readingSize, spreadMode])
+  }, [annotations.length, contentRevision, question.id, readingSize, spreadMode])
 
   useEffect(() => () => {
     turnSequence.current += 1
@@ -518,29 +488,13 @@ export function Reader({
               onTouchEnd={captureSelection}
               onClick={handleArticleClick}
             >
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[
-                  rehypeHighlight,
-                  [rehypeAnnotationMarks, { annotations }],
-                ]}
-                components={{
-                  pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
-                  table: ({ children }) => <div className="table-wrap"><table>{children}</table></div>,
-                  a: ({ href, children }) => (
-                    <a href={href} target="_blank" rel="noreferrer">
-                      {children}<LinkIcon aria-hidden="true" />
-                    </a>
-                  ),
-                  blockquote: ({ children }) => <blockquote><Highlighter aria-hidden="true" />{children}</blockquote>,
-                  code: ({ className, children, ...props }) => (
-                    <code className={className} {...props}>{children}</code>
-                  ),
-                  mark: ({ children, ...props }) => <mark {...props}>{children}</mark>,
-                }}
+              <QuestionMarkdown
+                annotations={annotations}
+                imageLoading={spreadMode ? 'eager' : 'lazy'}
+                onDiagramSettled={handleDiagramSettled}
               >
                 {question.body}
-              </ReactMarkdown>
+              </QuestionMarkdown>
             </article>
           </div>
 

@@ -4,8 +4,9 @@ import { hashState, importLegacyState } from '../lib/api'
 import { markLegacyMigrated } from '../lib/storage'
 import type { StudyState } from '../types'
 
-export function LegacyMigrationDialog({ legacy, open, onClose, onImported }: {
+export function LegacyMigrationDialog({ legacy, userId, open, onClose, onImported }: {
   legacy?: StudyState
+  userId: string
   open: boolean
   onClose: () => void
   onImported: (state: StudyState) => void
@@ -17,7 +18,7 @@ export function LegacyMigrationDialog({ legacy, open, onClose, onImported }: {
     if (open && legacy && !ref.current?.open) ref.current?.showModal()
     if ((!open || !legacy) && ref.current?.open) ref.current.close()
   }, [legacy, open])
-  if (!legacy) return null
+  if (!legacy || !userId) return null
   const counts = {
     progress: Object.keys(legacy.progress).length,
     annotations: legacy.annotations.length,
@@ -27,7 +28,7 @@ export function LegacyMigrationDialog({ legacy, open, onClose, onImported }: {
     setBusy(true)
     setError('')
     try {
-      const result = await importLegacyState(legacy, await hashState(legacy))
+      const result = await importLegacyState(userId, legacy, await hashState(legacy))
       markLegacyMigrated(legacy)
       onImported(result.state)
       onClose()

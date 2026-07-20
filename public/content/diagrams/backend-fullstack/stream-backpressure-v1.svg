@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Node.js Stream 背压控制</title>
+  <desc id="desc">展示快速 Readable 经过缓冲区向较慢 Writable 写入时，write 返回 false 后暂停，等待 drain 再恢复的闭环。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#ecfeff"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#475569"/></marker>
+    <marker id="red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#dc2626"/></marker>
+    <marker id="green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#059669"/></marker>
+  </defs>
+  <rect width="1200" height="720" rx="28" fill="url(#bg)"/>
+  <text x="64" y="62" font-family="Inter, Noto Sans SC, sans-serif" font-size="34" font-weight="700" fill="#0f172a">Stream 背压：让生产速率服从消费能力</text>
+  <text x="64" y="94" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#64748b">没有背压时，慢消费者前的内存缓冲会持续膨胀，最终触发高 GC 或 OOM</text>
+
+  <rect x="64" y="170" width="260" height="220" rx="22" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="194" y="216" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="24" font-weight="700" fill="#1e40af">Readable 生产者</text>
+  <text x="194" y="259" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" fill="#172554">file / socket / generator</text>
+  <rect x="94" y="292" width="200" height="56" rx="12" fill="#dbeafe"/>
+  <text x="194" y="327" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#1e3a8a">更快：80 MB/s</text>
+
+  <rect x="438" y="146" width="324" height="268" rx="22" fill="#fff" stroke="#f59e0b" stroke-width="2"/>
+  <text x="600" y="192" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="24" font-weight="700" fill="#92400e">Writable 内部缓冲区</text>
+  <text x="600" y="226" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="17" fill="#78350f">highWaterMark = 64 KiB</text>
+  <rect x="478" y="258" width="244" height="86" rx="13" fill="#fef3c7"/>
+  <rect x="490" y="271" width="52" height="60" rx="7" fill="#fbbf24"/>
+  <rect x="550" y="271" width="52" height="60" rx="7" fill="#f59e0b"/>
+  <rect x="610" y="271" width="52" height="60" rx="7" fill="#fb923c"/>
+  <rect x="670" y="271" width="40" height="60" rx="7" fill="#ef4444"/>
+  <text x="600" y="378" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="17" font-weight="600" fill="#b45309">write(chunk) → false</text>
+
+  <rect x="876" y="170" width="260" height="220" rx="22" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <text x="1006" y="216" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="24" font-weight="700" fill="#047857">Writable 消费者</text>
+  <text x="1006" y="259" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" fill="#064e3b">disk / network / parser</text>
+  <rect x="906" y="292" width="200" height="56" rx="12" fill="#d1fae5"/>
+  <text x="1006" y="327" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#065f46">较慢：12 MB/s</text>
+
+  <path d="M324 254H426" stroke="#475569" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="375" y="235" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="17" fill="#334155">chunk</text>
+  <path d="M762 254H864" stroke="#475569" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <path d="M600 414V478C600 510 348 510 194 402" fill="none" stroke="#dc2626" stroke-width="3.5" marker-end="url(#red)"/>
+  <text x="432" y="493" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" font-weight="700" fill="#b91c1c">① false → pause() / 停止继续读取</text>
+  <path d="M1006 390V526C1006 568 410 568 244 402" fill="none" stroke="#059669" stroke-width="3.5" stroke-dasharray="9 7" marker-end="url(#green)"/>
+  <text x="739" y="558" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" font-weight="700" fill="#047857">② 缓冲降到阈值以下，drain → resume()</text>
+
+  <rect x="64" y="606" width="1072" height="70" rx="18" fill="#0f172a"/>
+  <text x="94" y="634" font-family="IBM Plex Mono, monospace" font-size="18" fill="#93c5fd">await pipeline(readable, transform, writable)</text>
+  <text x="500" y="634" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#cbd5e1">自动传递背压、错误与关闭信号；不要无视 write() 返回值手写无限循环。</text>
+  <text x="94" y="662" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#fbbf24">highWaterMark 是开始施加背压的阈值，不是严格内存上限；对象模式下单位是对象个数而非字节。</text>
+</svg>

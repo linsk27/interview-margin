@@ -1,5 +1,7 @@
 // @vitest-environment node
 
+import crypto from 'node:crypto'
+
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createDatabase } from './database.js'
 
@@ -13,6 +15,9 @@ describe('question catalog seed quality', () => {
     expect(db.prepare('SELECT COUNT(*) count FROM questions').get().count).toBe(501)
     expect(db.prepare('SELECT COUNT(DISTINCT id) count FROM questions').get().count).toBe(501)
     expect(db.prepare("SELECT COUNT(*) count FROM questions WHERE id IN ('q-1','js-q-100')").get().count).toBe(2)
+    const ids = db.prepare('SELECT id FROM questions ORDER BY id').all().map((row) => row.id).join(' ')
+    expect(crypto.createHash('sha256').update(ids).digest('hex'))
+      .toBe('81bed0445173dc0dee494fa98eb6b43fd7d564bc8c8450018b2616f43047be5d')
   })
 
   it('gives every added question complete interview sections and official sources', () => {

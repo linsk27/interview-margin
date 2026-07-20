@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Vue 3 依赖追踪与触发更新</title>
+  <desc id="desc">展示 reactive Proxy 在 get 时 track、在 set 时 trigger，经依赖桶找到 effect 并交给调度器执行。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#ecfdf5"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#475569"/></marker>
+    <marker id="green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#059669"/></marker>
+  </defs>
+  <rect width="1200" height="720" rx="28" fill="url(#bg)"/>
+  <text x="64" y="62" font-family="Inter, Noto Sans SC, sans-serif" font-size="34" font-weight="700" fill="#0f172a">Vue 依赖系统：读取建边，写入沿边通知</text>
+  <text x="64" y="94" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#64748b">核心数据结构：WeakMap&lt;target, Map&lt;key, Set&lt;ReactiveEffect&gt;&gt;&gt;</text>
+
+  <rect x="64" y="142" width="280" height="162" rx="22" fill="#fff" stroke="#34d399" stroke-width="2"/>
+  <text x="204" y="183" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#047857">响应式代理 Proxy</text>
+  <rect x="94" y="210" width="220" height="58" rx="12" fill="#d1fae5"/>
+  <text x="204" y="246" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="20" fill="#064e3b">state.count</text>
+
+  <rect x="460" y="142" width="280" height="162" rx="22" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="600" y="183" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#1e40af">当前活跃 effect</text>
+  <rect x="490" y="210" width="220" height="58" rx="12" fill="#dbeafe"/>
+  <text x="600" y="246" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" fill="#172554">componentUpdateFn</text>
+
+  <rect x="856" y="142" width="280" height="162" rx="22" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="996" y="183" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#5b21b6">依赖桶 targetMap</text>
+  <text x="886" y="225" font-family="IBM Plex Mono, monospace" font-size="17" fill="#4c1d95">target → depsMap</text>
+  <text x="886" y="257" font-family="IBM Plex Mono, monospace" font-size="17" fill="#4c1d95">'count' → Set(effect)</text>
+
+  <path d="M460 223H356" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="408" y="205" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#1d4ed8">① effect 执行并读取</text>
+  <path d="M344 256C520 350 746 350 856 256" fill="none" stroke="#059669" stroke-width="3" marker-end="url(#green)"/>
+  <text x="600" y="337" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="18" font-weight="600" fill="#047857">② get → track(target, 'count')</text>
+
+  <rect x="64" y="390" width="280" height="162" rx="22" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="204" y="431" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#9a3412">业务写入</text>
+  <rect x="94" y="458" width="220" height="58" rx="12" fill="#ffedd5"/>
+  <text x="204" y="494" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="20" fill="#7c2d12">state.count++</text>
+
+  <rect x="460" y="390" width="280" height="162" rx="22" fill="#fff" stroke="#f59e0b" stroke-width="2"/>
+  <text x="600" y="431" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#92400e">trigger 查依赖</text>
+  <text x="490" y="474" font-family="IBM Plex Mono, monospace" font-size="17" fill="#78350f">depsMap.get('count')</text>
+  <text x="490" y="508" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#92400e">复制 Set，避免执行中增删导致死循环</text>
+
+  <rect x="856" y="390" width="280" height="162" rx="22" fill="#ecfeff" stroke="#22d3ee" stroke-width="2"/>
+  <text x="996" y="431" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#0e7490">调度器 Scheduler</text>
+  <text x="886" y="474" font-family="IBM Plex Mono, monospace" font-size="17" fill="#155e75">queueJob(effect)</text>
+  <text x="886" y="508" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#0e7490">微任务批处理、去重，再触发组件更新</text>
+
+  <path d="M344 471H448" stroke="#d97706" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="396" y="451" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="16" fill="#9a3412">③ set → trigger</text>
+  <path d="M740 471H844" stroke="#d97706" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="792" y="451" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#92400e">④ scheduler(effect)</text>
+  <path d="M996 390C996 348 996 336 996 316" fill="none" stroke="#7c3aed" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+
+  <rect x="64" y="600" width="1072" height="70" rx="18" fill="#0f172a"/>
+  <text x="94" y="643" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#cbd5e1">分支切换前先 cleanup 旧依赖；computed 用 dirty 标记延迟求值；同一个 effect 既不能同步递归触发自己，也要在队列中去重。</text>
+</svg>

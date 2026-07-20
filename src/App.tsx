@@ -7,6 +7,7 @@ import { AdminPanel } from './components/AdminPanel'
 import { AuthDialog } from './components/AuthDialog'
 import { FloatingAiButton } from './components/FloatingAiButton'
 import { LegacyMigrationDialog } from './components/LegacyMigrationDialog'
+import { InviteRegistrationDialog } from './components/InviteRegistrationDialog'
 import { NotesPanel } from './components/NotesPanel'
 import { QuestionBankHub } from './components/QuestionBankHub'
 import { Rail } from './components/Rail'
@@ -18,6 +19,7 @@ import { StatusDock } from './components/StatusDock'
 import { Topbar } from './components/Topbar'
 import { UndoToast } from './components/UndoToast'
 import { dateAfterDays } from './lib/format'
+import { consumeInvitationToken } from './lib/invitations'
 import { getCatalog, getMyState, getSession, saveMyState } from './lib/api'
 import {
   isFocusMode,
@@ -63,7 +65,26 @@ interface UndoState {
   index: number
 }
 
+interface ProgressUpdateOptions {
+  recordActivity?: boolean
+  guestBehavior?: 'prompt' | 'ignore'
+  reason?: string
+}
+
 type WorkspaceView = 'reader' | 'banks' | 'admin'
+
+const LOGIN_REASONS = {
+  progress: '登录后可保存收藏、掌握状态和阅读进度。',
+  notes: '登录后可高亮正文、添加批注和本题总结。',
+  review: '登录后可建立复习队列并查看个人学习概览。',
+  transfer: '登录后可导入或导出个人学习记录。',
+} as const
+
+function drawerStateForStudyState(studyState: StudyState): DrawerState {
+  return studyState.settings.focusMode
+    ? setFocusMode(true)
+    : { libraryOpen: true, notesOpen: studyState.settings.notesOpen }
+}
 
 function isTypingTarget(target: EventTarget | null): boolean {
   const element = target as HTMLElement | null
@@ -91,16 +112,17 @@ export default function App() {
   const [activeId, setActiveId] = useState('')
   const [state, setState] = useState<StudyState>(() => createDefaultState())
   const [user, setUser] = useState<SessionUser | null>(null)
+  const [accountServiceAvailable, setAccountServiceAvailable] = useState(true)
+  const [inviteToken, setInviteToken] = useState<string | null>(() => consumeInvitationToken())
+  const [inviteAccepted, setInviteAccepted] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
+  const [authReason, setAuthReason] = useState('')
   const [migrationOpen, setMigrationOpen] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const [syncReady, setSyncReady] = useState(false)
   const lastServerState = useRef('')
-  const [drawerState, setDrawerState] = useState<DrawerState>(() => (
-    state.settings.focusMode
-      ? setFocusMode(true)
-      : { libraryOpen: true, notesOpen: state.settings.notesOpen }
-  ))
+  const sessionGeneration = useRef(0)
+  const [drawerState, setDrawerState] = useState<DrawerState>({ libraryOpen: true, notesOpen: false })
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<LibraryFilter>('all')
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false)
@@ -162,6 +184,19 @@ export default function App() {
   const notesVisible = drawerState.notesOpen
   const notesExpanded = notesVisible && (wideNotesLayout || mobileNotesOpen)
 
+  const openAuth = (reason = '') => {
+    setAuthReason(accountServiceAvailable
+      ? reason
+      : `账户服务暂时不可用，仍可继续游客阅读。${reason ? ` ${reason}` : ''}`)
+    setAuthOpen(true)
+  }
+
+  const requireUser = (reason: string) => {
+    if (user && !user.mustChangePassword) return true
+    openAuth(reason)
+    return false
+  }
+
   useEffect(() => {
     if (desktopLibraryLayout) setMobileLibraryOpen(false)
   }, [desktopLibraryLayout])
@@ -169,6 +204,21 @@ export default function App() {
   useEffect(() => {
     if (wideNotesLayout) setMobileNotesOpen(false)
   }, [wideNotesLayout])
+
+  useEffect(() => {
+    const consumeHash = () => {
+      if (!window.location.hash.startsWith('#invite/')) return
+      const token = consumeInvitationToken()
+      setInviteAccepted(false)
+      setInviteToken(token)
+    }
+    window.addEventListener('hashchange', consumeHash)
+    window.addEventListener('popstate', consumeHash)
+    return () => {
+      window.removeEventListener('hashchange', consumeHash)
+      window.removeEventListener('popstate', consumeHash)
+    }
+  }, [])
 
   useEffect(() => {
     setState((current) => {
@@ -193,20 +243,41 @@ export default function App() {
     return catalog
   }
 
-  const refreshSession = async () => {
+  const refreshSession = async (offerMigration = true) => {
+    const generation = ++sessionGeneration.current
     setSyncReady(false)
-    const session = await getSession()
+    lastServerState.current = ''
+    window.clearTimeout(undoTimer.current)
+    setState(createDefaultState())
+    setDrawerState({ libraryOpen: true, notesOpen: false })
+    setMobileNotesOpen(false)
+    setSelection(undefined)
+    setComposer(undefined)
+    setUndo(undefined)
+    setMigrationOpen(false)
+    let session
+    try {
+      session = await getSession()
+      setAccountServiceAvailable(true)
+    } catch (error) {
+      if (generation === sessionGeneration.current) {
+        setUser(null)
+        setAccountServiceAvailable(false)
+      }
+      throw error
+    }
+    if (generation !== sessionGeneration.current) return null
     setUser(session.user)
     if (session.user && !session.user.mustChangePassword) {
-      const queued = await flushQueuedState().catch(() => undefined)
-      const serverState = queued ?? await getMyState()
+      const queued = await flushQueuedState(session.user.id).catch(() => undefined)
+      const serverState = queued ?? await getMyState(session.user.id)
+      if (generation !== sessionGeneration.current) return null
       lastServerState.current = JSON.stringify(serverState)
       setState(serverState)
-      setMigrationOpen(Boolean(legacyStudyState()) && !session.user.mustChangePassword)
+      setDrawerState(drawerStateForStudyState(serverState))
+      setMigrationOpen(offerMigration && Boolean(legacyStudyState()) && !session.user.mustChangePassword)
       setSyncReady(true)
     } else {
-      lastServerState.current = ''
-      setState(createDefaultState())
       setMigrationOpen(false)
     }
     return session.user
@@ -214,19 +285,38 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([reloadCatalog(), getSession()])
-      .then(async ([catalog, session]) => {
+    const generation = ++sessionGeneration.current
+    const sessionRequest = getSession()
+      .then((session) => ({ session, available: true }))
+      .catch(() => ({ session: { user: null }, available: false }))
+    Promise.all([reloadCatalog(), sessionRequest])
+      .then(async ([catalog, sessionResult]) => {
         if (cancelled) return
-        setUser(session.user)
-        if (session.user && !session.user.mustChangePassword) {
-          const queued = await flushQueuedState().catch(() => undefined)
-          const serverState = queued ?? await getMyState()
-          if (cancelled) return
-          lastServerState.current = JSON.stringify(serverState)
-          setState(serverState)
-          setMigrationOpen(Boolean(legacyStudyState()) && !session.user.mustChangePassword)
-          setSyncReady(true)
+        const { session, available } = sessionResult
+        setAccountServiceAvailable(available)
+        if (generation === sessionGeneration.current) {
+          setUser(session.user)
+          if (session.user && !session.user.mustChangePassword) {
+            try {
+              const queued = await flushQueuedState(session.user.id).catch(() => undefined)
+              const serverState = queued ?? await getMyState(session.user.id)
+              if (!cancelled && generation === sessionGeneration.current) {
+                lastServerState.current = JSON.stringify(serverState)
+                setState(serverState)
+                setDrawerState(drawerStateForStudyState(serverState))
+                setMigrationOpen(Boolean(legacyStudyState()))
+                setSyncReady(true)
+              }
+            } catch {
+              if (!cancelled && generation === sessionGeneration.current) {
+                setUser(null)
+                setSyncReady(false)
+                setAccountServiceAvailable(false)
+              }
+            }
+          }
         }
+        if (cancelled) return
         const loadedQuestions = flattenQuestions(catalog.sections)
         const hashQuestion = questionFromHash(loadedQuestions)
         setActiveId(hashQuestion?.id ?? loadedQuestions[0]?.id ?? '')
@@ -239,31 +329,34 @@ export default function App() {
 
   useEffect(() => {
     if (!hydrated || !syncReady || !user || user.mustChangePassword) return
+    const userId = user.id
+    let active = true
     const serialized = JSON.stringify(state)
     if (serialized === lastServerState.current) return
-    const queued = queueStudyState(state).catch(() => '')
+    const queued = queueStudyState(user.id, state).catch(() => '')
     const timer = window.setTimeout(async () => {
       try {
         const revision = await queued
-        const saved = await saveMyState(state)
-        lastServerState.current = JSON.stringify(saved)
-        if (revision) await clearQueuedState(revision)
+        const saved = await saveMyState(userId, state)
+        if (active) lastServerState.current = JSON.stringify(saved)
+        if (revision) await clearQueuedState(userId, revision)
       } catch {
         // The latest full state remains in IndexedDB and is retried when connectivity returns.
       }
     }, 700)
-    return () => window.clearTimeout(timer)
+    return () => { active = false; window.clearTimeout(timer) }
   }, [hydrated, state, syncReady, user])
 
   useEffect(() => {
+    let active = true
     const flush = () => {
       if (!user) return
-      flushQueuedState().then((saved) => {
-        if (saved) lastServerState.current = JSON.stringify(saved)
+      flushQueuedState(user.id).then((saved) => {
+        if (active && saved) lastServerState.current = JSON.stringify(saved)
       }).catch(() => undefined)
     }
     window.addEventListener('online', flush)
-    return () => window.removeEventListener('online', flush)
+    return () => { active = false; window.removeEventListener('online', flush) }
   }, [user])
 
   useEffect(() => {
@@ -379,10 +472,10 @@ export default function App() {
     setAssistantOpen(false)
   }
 
-  const updateProgress = (patch: Partial<QuestionProgress>, recordActivity = false) => {
+  const updateProgress = (patch: Partial<QuestionProgress>, options: ProgressUpdateOptions = {}) => {
     if (!activeQuestion) return
-    if (!user) {
-      setAuthOpen(true)
+    if (!user || user.mustChangePassword) {
+      if (options.guestBehavior !== 'ignore') openAuth(options.reason ?? LOGIN_REASONS.progress)
       return
     }
     setState((current) => {
@@ -393,20 +486,20 @@ export default function App() {
           [activeQuestion.id]: { ...progressFor(current, activeQuestion.id), ...patch },
         },
       }
-      return recordActivity ? withActivity(next) : next
+      return options.recordActivity ? withActivity(next) : next
     })
   }
 
   const setStatus = (status: StudyStatus) => {
-    updateProgress({ status, dueAt: status === 'review' ? dateAfterDays(1) : undefined }, true)
+    updateProgress(
+      { status, dueAt: status === 'review' ? dateAfterDays(1) : undefined },
+      { recordActivity: true, reason: LOGIN_REASONS.progress },
+    )
   }
 
   const addAnnotation = (quote: string, note: string, color: HighlightColor) => {
     if (!activeQuestion) return
-    if (!user) {
-      setAuthOpen(true)
-      return
-    }
+    if (!requireUser(LOGIN_REASONS.notes)) return
     const now = new Date().toISOString()
     const annotation: Annotation = {
       id: uid('annotation'),
@@ -423,7 +516,7 @@ export default function App() {
   }
 
   const updateAnnotation = (id: string, note: string, color: HighlightColor) => {
-    if (!user) { setAuthOpen(true); return }
+    if (!requireUser(LOGIN_REASONS.notes)) return
     setState((current) => ({
       ...current,
       annotations: current.annotations.map((annotation) => annotation.id === id
@@ -433,7 +526,7 @@ export default function App() {
   }
 
   const deleteAnnotation = (id: string) => {
-    if (!user) { setAuthOpen(true); return }
+    if (!requireUser(LOGIN_REASONS.notes)) return
     setState((current) => {
       const index = current.annotations.findIndex((annotation) => annotation.id === id)
       if (index < 0) return current
@@ -446,7 +539,7 @@ export default function App() {
 
   const restoreAnnotation = () => {
     if (!undo) return
-    if (!user) { setAuthOpen(true); return }
+    if (!requireUser(LOGIN_REASONS.notes)) return
     setState((current) => {
       const annotations = [...current.annotations]
       annotations.splice(Math.min(undo.index, annotations.length), 0, undo.annotation)
@@ -456,9 +549,11 @@ export default function App() {
   }
 
   const openNotes = () => {
+    if (!requireUser(LOGIN_REASONS.notes)) return false
     setDrawerState((current) => ({ ...current, notesOpen: true }))
     setMobileLibraryOpen(false)
     setMobileNotesOpen(!wideNotesLayout)
+    return true
   }
 
   const openAssistant = () => {
@@ -474,7 +569,7 @@ export default function App() {
 
   const toggleNotes = () => {
     if (notesExpanded) closeNotes()
-    else openNotes()
+    else void openNotes()
   }
 
   const toggleMobileLibrary = () => {
@@ -497,6 +592,7 @@ export default function App() {
   }
 
   const openReviewLibrary = () => {
+    if (!requireUser(LOGIN_REASONS.review)) return
     const reviewQuestion = currentLibraryQuestions.find((question) => {
       const progress = progressFor(state, question.id)
       return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
@@ -505,6 +601,16 @@ export default function App() {
     else if (activeQuestion) openQuestion(activeQuestion)
     setFilter('review')
     setDrawerState((current) => ({ ...current, libraryOpen: true }))
+  }
+
+  const openDashboard = () => {
+    if (!requireUser(LOGIN_REASONS.review)) return
+    setDashboardOpen(true)
+  }
+
+  const changeLibraryFilter = (nextFilter: LibraryFilter) => {
+    if (nextFilter !== 'all' && !requireUser(LOGIN_REASONS.review)) return
+    setFilter(nextFilter)
   }
 
   const navigateRelative = (offset: number) => {
@@ -526,7 +632,12 @@ export default function App() {
       if (event.key.toLowerCase() === 'k') navigateRelative(-1)
       if (event.key.toLowerCase() === 'm') setStatus('mastered')
       if (event.key.toLowerCase() === 'r') setStatus('review')
-      if (event.key.toLowerCase() === 'f' && activeProgress) updateProgress({ favorite: !activeProgress.favorite }, true)
+      if (event.key.toLowerCase() === 'f' && activeProgress) {
+        updateProgress(
+          { favorite: !activeProgress.favorite },
+          { recordActivity: true, reason: LOGIN_REASONS.progress },
+        )
+      }
       if (event.key.toLowerCase() === 'n') toggleNotes()
       if (event.key === '?') setSettingsOpen(true)
     }
@@ -535,7 +646,7 @@ export default function App() {
   })
 
   const importProgress = async (file: File) => {
-    if (!user) { setAuthOpen(true); return }
+    if (!requireUser(LOGIN_REASONS.transfer)) return
     try {
       const imported = parseStudyState(await file.text())
       setDrawerState(imported.settings.focusMode
@@ -615,12 +726,12 @@ export default function App() {
         user={user}
         onToggleLibrary={toggleDesktopLibrary}
         onOpenQuestionBanks={openQuestionBanks}
-        onOpenDashboard={() => setDashboardOpen(true)}
+        onOpenDashboard={openDashboard}
         onOpenReview={openReviewLibrary}
         onToggleFocus={toggleFocus}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenAdmin={openAdmin}
-        onOpenAccount={() => setAuthOpen(true)}
+        onOpenAccount={() => openAuth()}
       />
 
       {workspaceView === 'banks' ? (
@@ -630,11 +741,16 @@ export default function App() {
           state={state}
           currentBankId={library}
           onOpenBank={openQuestionBank}
-          onOpenDashboard={() => setDashboardOpen(true)}
+          onOpenDashboard={openDashboard}
           onOpenSettings={() => setSettingsOpen(true)}
         />
       ) : workspaceView === 'admin' && user?.permissions.includes('banks.write') ? (
-        <AdminPanel user={user} onExit={openQuestionBanks} onCatalogChanged={async () => { await reloadCatalog() }} />
+        <AdminPanel
+          user={user}
+          initialCatalog={{ banks, sections }}
+          onExit={openQuestionBanks}
+          onCatalogChanged={async () => { await reloadCatalog() }}
+        />
       ) : (
         <>
           <Sidebar
@@ -648,12 +764,12 @@ export default function App() {
         mobileOpen={mobileLibraryOpen}
         authenticated={Boolean(user)}
         onQueryChange={setQuery}
-        onFilterChange={setFilter}
+        onFilterChange={changeLibraryFilter}
         onSelect={openQuestion}
         onOpenQuestionBanks={openQuestionBanks}
-        onOpenDashboard={() => { setMobileLibraryOpen(false); setDashboardOpen(true) }}
+        onOpenDashboard={() => { setMobileLibraryOpen(false); openDashboard() }}
         onOpenSettings={() => { setMobileLibraryOpen(false); setSettingsOpen(true) }}
-        onOpenAccount={() => { setMobileLibraryOpen(false); setAuthOpen(true) }}
+        onOpenAccount={() => { setMobileLibraryOpen(false); openAuth() }}
         onClose={() => setMobileLibraryOpen(false)}
           />
 
@@ -673,7 +789,10 @@ export default function App() {
           onToggleNotes={toggleNotes}
           onPageLayoutChange={changePageLayout}
           onOpenSearch={() => setCommandOpen(true)}
-          onToggleFavorite={() => updateProgress({ favorite: !activeProgress.favorite }, true)}
+          onToggleFavorite={() => updateProgress(
+            { favorite: !activeProgress.favorite },
+            { recordActivity: true, reason: LOGIN_REASONS.progress },
+          )}
         />
         <Reader
           question={activeQuestion}
@@ -684,8 +803,8 @@ export default function App() {
           initialSpreadIndex={activeProgress.spreadIndex ?? 0}
           onSelection={setSelection}
           onAnnotationClick={() => openNotes()}
-          onScrollPosition={(scrollTop) => updateProgress({ scrollTop })}
-          onSpreadChange={(spreadIndex) => updateProgress({ spreadIndex })}
+          onScrollPosition={(scrollTop) => updateProgress({ scrollTop }, { guestBehavior: 'ignore' })}
+          onSpreadChange={(spreadIndex) => updateProgress({ spreadIndex }, { guestBehavior: 'ignore' })}
           onSpreadAvailabilityChange={setSpreadAvailable}
         />
         <StatusDock value={activeProgress.status} onChange={setStatus} />
@@ -700,12 +819,15 @@ export default function App() {
           mobileOpen={mobileNotesOpen}
           synced={Boolean(user)}
           onClose={closeNotes}
-          onNoteChange={(note) => updateProgress({ note })}
+          onNoteChange={(note) => updateProgress({ note }, { reason: LOGIN_REASONS.notes })}
           onAddAnnotation={addAnnotation}
           onUpdateAnnotation={updateAnnotation}
           onDeleteAnnotation={deleteAnnotation}
           onComposerClose={() => setComposer(undefined)}
-          onScheduleReview={(days) => updateProgress({ status: 'review', dueAt: dateAfterDays(days) }, true)}
+          onScheduleReview={(days) => updateProgress(
+            { status: 'review', dueAt: dateAfterDays(days) },
+            { recordActivity: true, reason: LOGIN_REASONS.review },
+          )}
             />
           )}
 
@@ -714,8 +836,12 @@ export default function App() {
         onHighlight={(color) => selection && addAnnotation(selection.quote, '', color)}
         onAnnotate={() => {
           if (!selection) return
+          if (!requireUser(LOGIN_REASONS.notes)) {
+            setSelection(undefined)
+            return
+          }
           setComposer({ quote: selection.quote, color: 'yellow' })
-          openNotes()
+          void openNotes()
           setSelection(undefined)
         }}
           />
@@ -738,7 +864,9 @@ export default function App() {
         state={state}
         onClose={() => setDashboardOpen(false)}
         onSelect={openQuestion}
-        onExport={() => exportStudyState(state)}
+        onExport={() => {
+          if (requireUser(LOGIN_REASONS.transfer)) exportStudyState(state)
+        }}
         onImport={importProgress}
         synced={Boolean(user)}
       />
@@ -752,15 +880,36 @@ export default function App() {
       <AuthDialog
         open={authOpen}
         user={user}
-        onClose={() => setAuthOpen(false)}
+        reason={authReason}
+        onClose={() => { setAuthOpen(false); setAuthReason('') }}
         onSessionChanged={async () => {
           const nextUser = await refreshSession()
           await reloadCatalog()
           if (!nextUser && workspaceView === 'admin') openQuestionBanks()
         }}
       />
+      {inviteToken && (
+        <InviteRegistrationDialog
+          key={inviteToken}
+          token={inviteToken}
+          user={user}
+          onDismiss={() => {
+            setInviteToken(null)
+            if (inviteAccepted) {
+              setInviteAccepted(false)
+              setMigrationOpen(Boolean(user && !user.mustChangePassword && legacyStudyState()))
+            }
+          }}
+          onAccepted={async () => {
+            const acceptedUser = await refreshSession(false)
+            await reloadCatalog()
+            if (acceptedUser) setInviteAccepted(true)
+          }}
+        />
+      )}
       <LegacyMigrationDialog
         legacy={legacyStudyState()}
+        userId={user?.id ?? ''}
         open={migrationOpen}
         onClose={() => setMigrationOpen(false)}
         onImported={(nextState) => {
@@ -774,7 +923,11 @@ export default function App() {
       <div className="sr-only" aria-live="polite">
         {workspaceView === 'reader' ? `当前题目：${activeQuestion.title}` : workspaceView === 'admin' ? '当前页面：内容管理' : '当前页面：题库中心'}
       </div>
-      {workspaceView === 'reader' && <footer className="app-colophon"><MessageSquareText aria-hidden="true" />{user ? '已同步到本机 SQLite' : '访客只读模式'} · Q{activeQuestion.number} · {state.annotations.length} 条批注</footer>}
+      {workspaceView === 'reader' && <footer className="app-colophon"><MessageSquareText aria-hidden="true" />{user
+        ? '已同步到本机 SQLite'
+        : accountServiceAvailable
+          ? '游客浏览模式 · 登录后可保存批注与进度'
+          : '云端游客模式 · 本机账户服务暂不可用'} · Q{activeQuestion.number} · {state.annotations.length} 条批注</footer>}
     </div>
   )
 }

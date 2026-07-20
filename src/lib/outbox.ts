@@ -7,6 +7,7 @@ const STATE_KEY = 'study-state'
 
 interface QueuedState {
   key: string
+  userId: string
   revision: string
   state: StudyState
   queuedAt: string
@@ -14,9 +15,10 @@ interface QueuedState {
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1)
+    const request = indexedDB.open(DB_NAME, 2)
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(STORE_NAME)) request.result.createObjectStore(STORE_NAME, { keyPath: 'key' })
+      else request.transaction?.objectStore(STORE_NAME).delete(STATE_KEY)
     }
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
@@ -35,32 +37,36 @@ async function transaction<T>(mode: IDBTransactionMode, operation: (store: IDBOb
   })
 }
 
-export async function queueStudyState(state: StudyState): Promise<string> {
+function stateKey(userId: string): string {
+  return `${STATE_KEY}:${userId}`
+}
+
+export async function queueStudyState(userId: string, state: StudyState): Promise<string> {
   const revision = crypto.randomUUID()
   await transaction<void>('readwrite', (store, finish) => {
-    store.put({ key: STATE_KEY, revision, state, queuedAt: new Date().toISOString() } satisfies QueuedState)
+    store.put({ key: stateKey(userId), userId, revision, state, queuedAt: new Date().toISOString() } satisfies QueuedState)
     finish(undefined)
   })
   return revision
 }
 
-export async function queuedStudyState(): Promise<QueuedState | undefined> {
+export async function queuedStudyState(userId: string): Promise<QueuedState | undefined> {
   return transaction<QueuedState | undefined>('readonly', (store, finish) => {
-    const request = store.get(STATE_KEY)
+    const request = store.get(stateKey(userId))
     request.onsuccess = () => finish(request.result as QueuedState | undefined)
   })
 }
 
-export async function clearQueuedState(revision: string): Promise<void> {
-  const queued = await queuedStudyState()
+export async function clearQueuedState(userId: string, revision: string): Promise<void> {
+  const queued = await queuedStudyState(userId)
   if (!queued || queued.revision !== revision) return
-  await transaction<void>('readwrite', (store, finish) => { store.delete(STATE_KEY); finish(undefined) })
+  await transaction<void>('readwrite', (store, finish) => { store.delete(stateKey(userId)); finish(undefined) })
 }
 
-export async function flushQueuedState(): Promise<StudyState | undefined> {
-  const queued = await queuedStudyState()
+export async function flushQueuedState(userId: string): Promise<StudyState | undefined> {
+  const queued = await queuedStudyState(userId)
   if (!queued) return undefined
-  const saved = await saveMyState(queued.state)
-  await clearQueuedState(queued.revision)
+  const saved = await saveMyState(userId, queued.state)
+  await clearQueuedState(userId, queued.revision)
   return saved
 }

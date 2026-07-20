@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">React Render 与 Commit 两阶段</title>
+  <desc id="desc">展示状态更新进入调度，render 阶段构建 Fiber 与副作用标记，commit 阶段同步修改 DOM，之后浏览器绘制并执行 effect。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#eff6ff"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1200" height="720" rx="28" fill="url(#bg)"/>
+  <text x="64" y="62" font-family="Inter, Noto Sans SC, sans-serif" font-size="34" font-weight="700" fill="#0f172a">React 更新流水线：Render 可暂停，Commit 必须连续</text>
+  <text x="64" y="94" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#64748b">render 只计算“应该是什么”；commit 才把变化写入真实宿主环境</text>
+
+  <rect x="64" y="142" width="214" height="130" rx="20" fill="#fff" stroke="#60a5fa" stroke-width="2"/>
+  <circle cx="102" cy="180" r="18" fill="#2563eb"/><text x="102" y="187" text-anchor="middle" font-family="Inter, sans-serif" font-size="17" font-weight="700" fill="#fff">1</text>
+  <text x="132" y="188" font-family="Inter, Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#1e40af">触发更新</text>
+  <text x="94" y="228" font-family="IBM Plex Mono, monospace" font-size="17" fill="#172554">setState / dispatch</text>
+
+  <rect x="342" y="142" width="214" height="130" rx="20" fill="#fff" stroke="#a78bfa" stroke-width="2"/>
+  <circle cx="380" cy="180" r="18" fill="#7c3aed"/><text x="380" y="187" text-anchor="middle" font-family="Inter, sans-serif" font-size="17" font-weight="700" fill="#fff">2</text>
+  <text x="410" y="188" font-family="Inter, Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#5b21b6">调度优先级</text>
+  <text x="372" y="228" font-family="IBM Plex Mono, monospace" font-size="17" fill="#4c1d95">lane + event priority</text>
+
+  <rect x="620" y="142" width="516" height="238" rx="22" fill="#eef2ff" stroke="#818cf8" stroke-width="2"/>
+  <text x="650" y="187" font-family="Inter, Noto Sans SC, sans-serif" font-size="25" font-weight="700" fill="#3730a3">3　Render phase（纯计算）</text>
+  <rect x="650" y="214" width="210" height="66" rx="12" fill="#fff"/>
+  <text x="755" y="243" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="17" fill="#312e81">beginWork</text>
+  <text x="755" y="267" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#6366f1">调用组件 / 向下协调</text>
+  <rect x="896" y="214" width="210" height="66" rx="12" fill="#fff"/>
+  <text x="1001" y="243" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="17" fill="#312e81">completeWork</text>
+  <text x="1001" y="267" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#6366f1">向上汇总 flags</text>
+  <text x="650" y="322" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#4338ca">✓ 可被更高优先级打断、重做或放弃</text>
+  <text x="650" y="352" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#4338ca">✕ 不能在这里发请求或修改 DOM 等外部状态</text>
+
+  <path d="M278 207H330" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M556 207H608" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="64" y="432" width="492" height="200" rx="22" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="94" y="477" font-family="Inter, Noto Sans SC, sans-serif" font-size="25" font-weight="700" fill="#9a3412">4　Commit phase（同步写入）</text>
+  <text x="94" y="518" font-family="IBM Plex Mono, monospace" font-size="17" fill="#7c2d12">before mutation → mutation → layout</text>
+  <text x="94" y="556" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#9a3412">更新 DOM / ref；useLayoutEffect 在绘制前执行</text>
+  <text x="94" y="590" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#9a3412">不可暂停，否则用户会看到半棵新树与半棵旧树</text>
+
+  <rect x="620" y="432" width="238" height="200" rx="22" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <text x="739" y="477" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#047857">5　浏览器绘制</text>
+  <text x="650" y="523" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#065f46">style / layout / paint</text>
+  <text x="650" y="561" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#047857">用户看到一致的新界面</text>
+
+  <rect x="922" y="432" width="214" height="200" rx="22" fill="#ecfeff" stroke="#22d3ee" stroke-width="2"/>
+  <text x="1029" y="477" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#0e7490">6　Passive effects</text>
+  <text x="952" y="523" font-family="IBM Plex Mono, monospace" font-size="17" fill="#155e75">useEffect</text>
+  <text x="952" y="557" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#0e7490">通常在绘制后异步执行</text>
+  <text x="952" y="590" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#0e7490">先 cleanup 旧副作用</text>
+
+  <path d="M878 380C878 407 310 398 310 420" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M556 532H608" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M858 532H910" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="64" y="679" font-family="Inter, Noto Sans SC, sans-serif" font-size="16" fill="#64748b">StrictMode 开发环境可能重复调用 render/effect 以暴露不纯逻辑；这不是生产环境“渲染两次”的性能结论。</text>
+</svg>

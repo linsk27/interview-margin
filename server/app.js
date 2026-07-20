@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import express from 'express'
 import helmet from 'helmet'
@@ -14,15 +15,23 @@ import {
 } from './auth.js'
 import { backupDatabase, listBackups, resolveBackup } from './backup-service.js'
 import { parseQuestionMarkdown, renderBankMarkdown } from './content/markdown.js'
+import { inspectMarkdownDiagrams } from './content/diagram-policy.js'
 import { createDatabase, passwordHash, randomPassword } from './database.js'
+import {
+  acceptInvitation, createInvitation, inspectInvitation, listInvitations, revokeInvitation,
+} from './invitations.js'
 import {
   audit, createQuestion, getStudyState, listCatalog, mergeStudyState,
   saveStudyState, updateQuestion,
 } from './repository.js'
 import {
   bankCreateSchema, bankPatchSchema, loginSchema, parseBody, passwordSchema,
+  invitationAcceptSchema, invitationCreateSchema, invitationInspectSchema,
   questionCreateSchema, questionPatchSchema, studyStateSchema, userCreateSchema, userPatchSchema,
 } from './validation.js'
+
+// A missing username must still pay the same Argon2 verification cost as an existing account.
+const DUMMY_LOGIN_HASH = passwordHash(crypto.randomBytes(32).toString('base64url'))
 
 function publicUser(user) {
   if (!user) return null
@@ -45,6 +54,22 @@ function originGuard(allowedOrigins) {
     if (origin === ownOrigin || allowedOrigins.has(origin)) return next()
     return res.status(403).json({ error: '请求来源未被允许。' })
   }
+}
+
+function noStore(_req, res, next) {
+  res.setHeader('Cache-Control', 'no-store')
+  return next()
+}
+
+function requireExpectedUser(req, res, next) {
+  const expectedUserId = req.get('x-expected-user-id')
+  if (!expectedUserId || expectedUserId !== req.user?.id) {
+    return res.status(409).json({
+      error: '当前登录账号已发生变化，请刷新后重试。',
+      code: 'USER_SESSION_CHANGED',
+    })
+  }
+  return next()
 }
 
 function createLoginGuard() {
@@ -107,6 +132,20 @@ export function createApp(options = {}) {
   const { db } = database
   const app = express()
   const loginGuard = createLoginGuard()
+  const invitationInspectLimit = rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 20,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { error: '邀请检查请求过于频繁，请稍后再试。' },
+  })
+  const invitationAcceptLimit = rateLimit({
+    windowMs: 60 * 60_000,
+    limit: 5,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { error: '邀请注册尝试过于频繁，请稍后再试。' },
+  })
   const allowedOrigins = new Set((process.env.APP_ORIGINS ?? 'https://interview.linsk27.dpdns.org,http://127.0.0.1:4173,http://localhost:5173')
     .split(',').map((item) => item.trim()).filter(Boolean))
 
@@ -115,6 +154,8 @@ export function createApp(options = {}) {
   app.set('trust proxy', 1)
   app.disable('x-powered-by')
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }))
+  app.use(compression())
+  app.use((req, res, next) => req.path.startsWith('/api/') ? noStore(req, res, next) : next())
   app.use(express.json({ limit: '2mb' }))
   app.use(express.text({ type: ['text/markdown'], limit: '4mb' }))
   app.use(cookieParser())
@@ -123,7 +164,10 @@ export function createApp(options = {}) {
   app.use((req, res, next) => {
     if (!req.path.startsWith('/api/')) return next()
     if (!req.user?.mustChangePassword) return next()
-    const allowed = new Set(['/api/auth/session', '/api/auth/change-password', '/api/auth/logout', '/api/health', '/api/catalog'])
+    const allowed = new Set([
+      '/api/auth/session', '/api/auth/change-password', '/api/auth/logout', '/api/health', '/api/catalog',
+      '/api/invitations/inspect', '/api/invitations/accept',
+    ])
     if (allowed.has(req.path)) return next()
     return res.status(428).json({ error: '首次登录必须先修改一次性密码。', code: 'PASSWORD_CHANGE_REQUIRED' })
   })
@@ -140,10 +184,27 @@ export function createApp(options = {}) {
     res.json(listCatalog(db, { includeArchived: false, includePrivate: canEdit }))
   })
 
+  app.post('/api/invitations/inspect', invitationInspectLimit, parseBody(invitationInspectSchema), (req, res) => {
+    const invitation = inspectInvitation(db, req.validatedBody.token)
+    if (!invitation) return res.status(410).json({ error: '邀请无效或已失效。' })
+    return res.json(invitation)
+  })
+  app.post('/api/invitations/accept', invitationAcceptLimit, (req, res, next) => {
+    if (req.user) return res.status(409).json({ error: '请先退出当前账号，再接受邀请。' })
+    return next()
+  }, parseBody(invitationAcceptSchema), (req, res) => {
+    const result = acceptInvitation(db, req.validatedBody, req)
+    if (result.status === 'unavailable') return res.status(410).json({ error: '邀请无效或已失效。' })
+    if (result.status === 'username-conflict') return res.status(409).json({ error: '用户名已存在。' })
+    setSessionCookie(res, result.session.token, result.session.expiresAt, options.secureCookies ?? req.secure)
+    return res.status(201).json({ ok: true, user: publicUser(result.user) })
+  })
+
   app.get('/api/auth/session', (req, res) => res.json({ user: publicUser(req.user) }))
   app.post('/api/auth/login', parseBody(loginSchema), loginGuard.check, (req, res) => {
     const row = db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE').get(req.validatedBody.username)
-    if (!row || row.status !== 'active' || !verifyPassword(row.password_hash, req.validatedBody.password)) {
+    const passwordMatches = verifyPassword(row?.password_hash ?? DUMMY_LOGIN_HASH, req.validatedBody.password)
+    if (!row || row.status !== 'active' || !passwordMatches) {
       loginGuard.fail(req)
       return res.status(401).json({ error: '用户名或密码不正确。' })
     }
@@ -174,11 +235,11 @@ export function createApp(options = {}) {
     return res.json({ ok: true })
   })
 
-  app.get('/api/me/state', requireUser, (req, res) => res.json(getStudyState(db, req.user.id)))
-  app.put('/api/me/state', requirePermission('study.write'), parseBody(studyStateSchema), (req, res) => {
+  app.get('/api/me/state', requireUser, requireExpectedUser, (req, res) => res.json(getStudyState(db, req.user.id)))
+  app.put('/api/me/state', requirePermission('study.write'), requireExpectedUser, parseBody(studyStateSchema), (req, res) => {
     res.json(saveStudyState(db, req.user.id, req.validatedBody))
   })
-  app.post('/api/me/import-local', requirePermission('study.write'), (req, res) => {
+  app.post('/api/me/import-local', requirePermission('study.write'), requireExpectedUser, (req, res) => {
     const parsed = studyStateSchema.safeParse(req.body?.state)
     const contentHash = req.body?.contentHash
     if (!parsed.success || !/^[a-f0-9]{64}$/.test(contentHash ?? '')) {
@@ -254,6 +315,27 @@ export function createApp(options = {}) {
     revokeUserSessions(db, target.id)
     audit(db, req, 'user.reset-password', 'user', target.id)
     return res.json({ temporaryPassword: password })
+  })
+
+  app.get('/api/admin/invitations', requirePermission('users.manage'), (_req, res) => {
+    return res.json({ invitations: listInvitations(db) })
+  })
+  app.post('/api/admin/invitations', requirePermission('users.manage'), parseBody(invitationCreateSchema), (req, res) => {
+    let created
+    db.transaction(() => {
+      created = createInvitation(db, req.user.id, req.validatedBody.expiresInHours)
+      audit(db, req, 'invitation.create', 'invitation', created.invitation.id, {
+        expiresAt: created.invitation.expiresAt,
+      })
+    })()
+    return res.status(201).json(created)
+  })
+  app.post('/api/admin/invitations/:id/revoke', requirePermission('users.manage'), (req, res) => {
+    const result = revokeInvitation(db, req.params.id, req)
+    if (result.status === 'missing') return res.status(404).json({ error: '邀请不存在。' })
+    if (result.status === 'used') return res.status(409).json({ error: '已使用的邀请不能撤销。' })
+    if (result.status === 'unavailable') return res.status(409).json({ error: '邀请状态已经改变，请刷新后重试。' })
+    return res.json({ ok: true })
   })
 
   app.get('/api/admin/catalog', requirePermission('banks.write'), (_req, res) => {
@@ -344,11 +426,19 @@ export function createApp(options = {}) {
 
   app.post('/api/import/markdown/preview', requirePermission('banks.write'), (req, res) => {
     const source = typeof req.body?.markdown === 'string' ? req.body.markdown : ''
+    const diagramInspection = inspectMarkdownDiagrams(source)
+    if (diagramInspection.errors.length) {
+      return res.status(400).json({ error: 'Markdown 图解不符合安全要求。', issues: diagramInspection.errors })
+    }
     const parsed = parseQuestionMarkdown(source, { preserveIds: false, baseTags: [] })
     return res.json({ sections: parsed.length, questions: parsed.reduce((sum, section) => sum + section.questions.length, 0), sample: parsed.slice(0, 2) })
   })
   app.post('/api/banks/:bankId/import-markdown', requirePermission('banks.write'), (req, res) => {
     const source = typeof req.body?.markdown === 'string' ? req.body.markdown : ''
+    const diagramInspection = inspectMarkdownDiagrams(source)
+    if (diagramInspection.errors.length) {
+      return res.status(400).json({ error: 'Markdown 图解不符合安全要求。', issues: diagramInspection.errors })
+    }
     const parsed = parseQuestionMarkdown(source, { preserveIds: false, baseTags: [] })
     if (!parsed.length) return res.status(400).json({ error: '没有识别到以 Q 开头的二级标题。' })
     let count = 0

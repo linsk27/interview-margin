@@ -35,9 +35,19 @@ try {
     (trim(title)='' OR trim(body_md)='' OR trim(plain_text)='' OR read_minutes < 1)`).all()
   const missingSections = db.prepare(`SELECT b.id FROM question_banks b LEFT JOIN sections s ON s.bank_id=b.id
     GROUP BY b.id HAVING COUNT(s.id)=0`).all()
-  const missingMarkers = db.prepare(`SELECT id, title FROM questions WHERE bank_id NOT IN ('interview','javascript') AND
+  const missingMarkers = db.prepare(`SELECT id, title FROM questions WHERE bank_id <> 'interview' AND
     (body_md NOT LIKE '%**短回答：**%' OR body_md NOT LIKE '%**原理：**%' OR
      body_md NOT LIKE '%**代码 / 场景：**%' OR body_md NOT LIKE '%**递进追问：**%' OR body_md NOT LIKE '%**易错点：**%')`).all()
+  const thinEnrichedQuestions = db.prepare(`SELECT q.id, q.title, length(q.body_md) AS body_length,
+    (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) AS source_count
+    FROM questions q WHERE q.bank_id <> 'interview' AND
+    (length(q.body_md) < 900 OR q.read_minutes < 2 OR
+      (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) < 2)`).all()
+  const genericTemplateCount = db.prepare(`SELECT COUNT(*) AS count FROM questions WHERE
+    body_md LIKE '%这道题的关键是把%放回系统边界中%' OR
+    body_md LIKE '%先记录可复现输入和关键指标，再做最小实验验证%' OR
+    body_md LIKE '%不要只背术语，也不要把局部优化包装成通用架构%'`).get().count
+  const diagramQuestionCount = db.prepare("SELECT COUNT(*) AS count FROM questions WHERE body_md LIKE '%/content/diagrams/%'").get().count
 
   const titles = db.prepare('SELECT id, bank_id, title FROM questions ORDER BY bank_id, sort_order').all()
   const exact = new Map()
@@ -66,12 +76,16 @@ try {
     incomplete,
     missingSections,
     missingRequiredMarkers: missingMarkers,
+    thinEnrichedQuestions,
+    genericTemplateCount,
+    diagramQuestionCount,
     exactDuplicateTitles: exactDuplicates,
     similarTitleReport: similar.slice(0, 30),
   }
   console.log(JSON.stringify(report, null, 2))
   if (bankCount !== 9 || questionCount !== 501 || uniqueCount !== 501 || newQuestionCount !== 320
-    || sourcedCount !== 320 || incomplete.length || missingSections.length || missingMarkers.length) {
+    || sourcedCount !== 320 || incomplete.length || missingSections.length || missingMarkers.length
+    || thinEnrichedQuestions.length || genericTemplateCount || diagramQuestionCount !== 12) {
     process.exitCode = 1
   }
 } finally {

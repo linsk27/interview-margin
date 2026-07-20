@@ -41,6 +41,10 @@ export function randomPassword() {
   return `${crypto.randomBytes(9).toString('base64url')}!aA7`
 }
 
+function nonBlank(value) {
+  return typeof value === 'string' && value.trim() ? value : undefined
+}
+
 function migrate(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -203,6 +207,27 @@ function migrate(db) {
     db.exec('ALTER TABLE question_banks ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0')
   }
   db.prepare('INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES(?, ?)').run(2, now)
+
+  const invitationMigration = db.prepare('SELECT 1 FROM schema_migrations WHERE version = 3').get()
+  if (!invitationMigration) {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE invitations (
+          id TEXT PRIMARY KEY,
+          token_hash TEXT NOT NULL UNIQUE,
+          created_by_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+          expires_at TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          used_at TEXT,
+          used_by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+          revoked_at TEXT
+        );
+        CREATE INDEX idx_invitations_created_at ON invitations(created_at DESC);
+        CREATE INDEX idx_invitations_expires_at ON invitations(expires_at);
+      `)
+      db.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES(?, ?)').run(3, now)
+    })()
+  }
 }
 
 function seedRoles(db) {
@@ -293,8 +318,8 @@ function seedBuiltins(db, rootDir) {
 function bootstrapAdmin(db, dataDir, config = {}) {
   if (db.prepare('SELECT COUNT(*) AS count FROM users').get().count > 0) return undefined
   const now = new Date().toISOString()
-  const username = config.username ?? process.env.BOOTSTRAP_ADMIN_USERNAME ?? 'admin'
-  const password = config.password ?? process.env.BOOTSTRAP_ADMIN_PASSWORD ?? randomPassword()
+  const username = nonBlank(config.username) ?? nonBlank(process.env.BOOTSTRAP_ADMIN_USERNAME) ?? 'admin'
+  const password = nonBlank(config.password) ?? nonBlank(process.env.BOOTSTRAP_ADMIN_PASSWORD) ?? randomPassword()
   const userId = crypto.randomUUID()
   db.transaction(() => {
     db.prepare(`
