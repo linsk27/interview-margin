@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, ChevronLeft, ChevronRight } from 'lucide-react'
 import { domToCanvas } from 'modern-screenshot'
 import type { Annotation, InterviewQuestion, PageLayout, ReadingSize, SelectionDraft } from '../types'
+import { getLearningOutline, type LearningSectionKind } from '../lib/learningSections'
 import { QuestionMarkdown } from './QuestionMarkdown'
 import {
   calculateSpreadGeometry,
@@ -31,6 +32,15 @@ type TurnDirection = 'previous' | 'next'
 
 const PAGE_TURN_MS = 760
 const PAGE_TURN_FALLBACK_MS = PAGE_TURN_MS + 600
+const LEARNING_NAV_LABELS: Record<LearningSectionKind, string> = {
+  answer: '速答',
+  glossary: '术语',
+  mechanism: '原理',
+  practice: '实战',
+  followups: '追问',
+  pitfalls: '避坑',
+  sources: '来源',
+}
 const SNAPSHOT_STYLE_PROPERTIES = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'z-index',
   'box-sizing', 'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
@@ -62,6 +72,17 @@ const DEFAULT_GEOMETRY: SpreadGeometry = {
   pageCount: 2,
   spreadCount: 1,
   spreadStep: 1,
+}
+
+function questionTitleId(questionId: string) {
+  return `reader-title-${encodeURIComponent(questionId)}`
+}
+
+function scrollReadingProgress(container: HTMLDivElement) {
+  if (container.clientHeight <= 0 || container.scrollHeight <= 0) return 0
+  const scrollable = Math.max(0, container.scrollHeight - container.clientHeight)
+  if (scrollable <= 1) return 100
+  return Math.round(Math.min(1, Math.max(0, container.scrollTop / scrollable)) * 100)
 }
 
 function positionSpreadFlow(flow: HTMLDivElement, index: number, geometry: SpreadGeometry) {
@@ -183,6 +204,8 @@ export function Reader({
   const flowRef = useRef<HTMLDivElement>(null)
   const snapshotLayerRef = useRef<HTMLDivElement>(null)
   const articleRef = useRef<HTMLElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const previousQuestionIdRef = useRef(question.id)
   const scrollTimer = useRef<number | undefined>(undefined)
   const turnStartFrame = useRef<number | undefined>(undefined)
   const turnEndTimer = useRef<number | undefined>(undefined)
@@ -196,10 +219,22 @@ export function Reader({
   const [geometry, setGeometry] = useState<SpreadGeometry>(DEFAULT_GEOMETRY)
   const [turnDirection, setTurnDirection] = useState<TurnDirection>()
   const [contentRevision, setContentRevision] = useState(0)
+  const [readingProgress, setReadingProgress] = useState(0)
+  const titleId = questionTitleId(question.id)
+  const learningGuideId = `${titleId}-learning-guide`
+  const learningOutline = useMemo(() => getLearningOutline(question.body), [question.body])
+
+  const updateReadingProgress = useCallback(() => {
+    const container = scrollRef.current
+    if (!container) return
+    const nextProgress = scrollReadingProgress(container)
+    setReadingProgress((current) => current === nextProgress ? current : nextProgress)
+  }, [])
 
   const handleDiagramSettled = useCallback(() => {
     setContentRevision((current) => current + 1)
-  }, [])
+    window.requestAnimationFrame(updateReadingProgress)
+  }, [updateReadingProgress])
 
   useEffect(() => {
     onSpreadChangeRef.current = onSpreadChange
@@ -217,13 +252,20 @@ export function Reader({
       const available = canUseSpread(container.clientWidth, container.clientHeight)
       onSpreadAvailabilityChangeRef.current(available)
       setSpreadMode(shouldUseSpread(pageLayout, container.clientWidth, container.clientHeight))
+      updateReadingProgress()
     }
 
     updateMode()
     const observer = new ResizeObserver(updateMode)
     observer.observe(container)
     return () => observer.disconnect()
-  }, [pageLayout])
+  }, [pageLayout, updateReadingProgress])
+
+  useLayoutEffect(() => {
+    if (previousQuestionIdRef.current === question.id) return
+    previousQuestionIdRef.current = question.id
+    titleRef.current?.focus({ preventScroll: true })
+  }, [question.id])
 
   useEffect(() => {
     turnSequence.current += 1
@@ -234,6 +276,7 @@ export function Reader({
     clearSpreadSnapshot(snapshotLayerRef.current)
     spreadIndexRef.current = initialSpreadIndex
     setSpreadIndex(initialSpreadIndex)
+    setReadingProgress(0)
   }, [question.id])
 
   useEffect(() => {
@@ -250,7 +293,21 @@ export function Reader({
     const container = scrollRef.current
     if (!container) return
     container.scrollTop = spreadMode ? 0 : initialScrollTop
-  }, [question.id, initialScrollTop, spreadMode])
+    const frame = window.requestAnimationFrame(updateReadingProgress)
+    return () => window.cancelAnimationFrame(frame)
+  }, [question.id, initialScrollTop, spreadMode, updateReadingProgress])
+
+  useLayoutEffect(() => {
+    const container = scrollRef.current
+    const article = articleRef.current
+    if (!container || !article) return
+
+    updateReadingProgress()
+    const observer = new ResizeObserver(updateReadingProgress)
+    observer.observe(container)
+    observer.observe(article)
+    return () => observer.disconnect()
+  }, [annotations.length, contentRevision, question.id, readingSize, updateReadingProgress])
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current
@@ -341,6 +398,7 @@ export function Reader({
 
   const handleScroll = () => {
     if (spreadMode) return
+    updateReadingProgress()
     window.clearTimeout(scrollTimer.current)
     scrollTimer.current = window.setTimeout(() => {
       onScrollPosition(scrollRef.current?.scrollTop ?? 0)
@@ -361,6 +419,28 @@ export function Reader({
     spreadIndexRef.current = nextIndex
     setSpreadIndex(nextIndex)
     onSpreadChangeRef.current(nextIndex)
+  }
+
+  const openLearningSection = (sectionId: string) => {
+    const article = articleRef.current
+    const target = document.getElementById(sectionId)
+    if (!article || !(target instanceof HTMLElement) || !article.contains(target)) return
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (spreadMode && flowRef.current) {
+      const flowRect = flowRef.current.getBoundingClientRect()
+      const targetRect = target.getBoundingClientRect()
+      const logicalLeft = Math.max(0, targetRect.left - flowRect.left)
+      const targetSpread = Math.floor(logicalLeft / Math.max(1, geometry.spreadStep))
+      applySpread(targetSpread)
+    } else {
+      target.scrollIntoView({
+        behavior: reduceMotion ? 'auto' : 'smooth',
+        block: 'start',
+      })
+    }
+
+    window.requestAnimationFrame(() => target.focus({ preventScroll: true }))
   }
 
   const finishSpreadTurn = (sequence?: number) => {
@@ -455,6 +535,11 @@ export function Reader({
     void turnSpread(event.key === 'PageDown' ? 'next' : 'previous')
   }
 
+  const displayedReadingProgress = spreadMode
+    ? Math.round(((spreadIndex + 1) / Math.max(1, geometry.spreadCount)) * 100)
+    : readingProgress
+  const mobileOverflowTagCount = Math.max(0, question.tags.length - 2)
+
   return (
     <div className={`reader-scroll${spreadMode ? ' is-spread-mode' : ''}`} ref={scrollRef} onScroll={handleScroll}>
       <main className={`reader reader--${readingSize}${spreadMode ? ' reader--spread' : ''}`}>
@@ -469,14 +554,68 @@ export function Reader({
           data-spread-index={spreadMode ? spreadIndex : undefined}
         >
           <div className="reader__flow" ref={flowRef}>
+            <section className="reader__study-guide" aria-labelledby={learningGuideId}>
+              <header className="reader__study-guide-header">
+                <div className="reader__study-guide-title">
+                  <p className="reader__study-guide-kicker">LEARNING ROUTE</p>
+                  <h3 id={learningGuideId}>学习导览</h3>
+                </div>
+                <div className="reader__reading-progress">
+                  <span>阅读进度</span>
+                  <progress
+                    aria-label={`本题阅读进度 ${displayedReadingProgress}%`}
+                    max={100}
+                    value={displayedReadingProgress}
+                  />
+                  <output>{displayedReadingProgress}%</output>
+                </div>
+              </header>
+
+              {learningOutline.length > 0 && (
+                <nav className="reader__learning-outline" aria-label="跳转到本题学习段落">
+                  {learningOutline.map((item, index) => (
+                    <button
+                      className="reader__learning-link"
+                      type="button"
+                      key={item.id}
+                      data-learning-kind={item.kind}
+                      aria-controls={item.id}
+                      onClick={() => openLearningSection(item.id)}
+                    >
+                      <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                      <strong>{LEARNING_NAV_LABELS[item.kind]}</strong>
+                    </button>
+                  ))}
+                </nav>
+              )}
+            </section>
+
             <header className="reader__header">
               <div className="reader__index">Q{question.number.padStart(2, '0')}</div>
               <div className="reader__heading">
                 <p className="reader__section">{question.sectionTitle}</p>
-                <h2>{question.title.replace(/^Q[\d.]+[：:]?\s*/, '')}</h2>
+                <h2 id={titleId} ref={titleRef} tabIndex={-1}>
+                  {question.title.replace(/^Q[\d.]+[：:]?\s*/, '')}
+                </h2>
                 <div className="reader__meta">
-                  <span>{question.readMinutes} 分钟阅读</span>
-                  {question.tags.map((tag) => <span key={tag}>{tag}</span>)}
+                  <span className="reader__meta-reading-time">{question.readMinutes} 分钟阅读</span>
+                  {question.tags.map((tag, index) => (
+                    <span
+                      className={`reader__meta-tag${index >= 2 ? ' reader__meta-tag--mobile-overflow' : ''}`}
+                      key={tag}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  {mobileOverflowTagCount > 0 && (
+                    <span
+                      className="reader__meta-more"
+                      aria-hidden="true"
+                      title={`另有 ${mobileOverflowTagCount} 个标签`}
+                    >
+                      +{mobileOverflowTagCount}
+                    </span>
+                  )}
                 </div>
               </div>
             </header>
@@ -484,6 +623,7 @@ export function Reader({
             <article
               ref={articleRef}
               className="markdown-body"
+              aria-labelledby={titleId}
               onMouseUp={captureSelection}
               onTouchEnd={captureSelection}
               onClick={handleArticleClick}

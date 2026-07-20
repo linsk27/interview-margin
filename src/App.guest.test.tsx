@@ -252,7 +252,8 @@ describe('App guest mode', () => {
 
   it('gates filters derived from a personal study state', async () => {
     await renderGuest()
-    fireEvent.click(screen.getByRole('tab', { name: '收藏' }))
+    fireEvent.click(screen.getByRole('button', { name: '展开题库' }))
+    fireEvent.click(await screen.findByRole('tab', { name: '收藏' }))
     await expectContextualLogin(/收藏|个人|学习记录/)
   })
 })

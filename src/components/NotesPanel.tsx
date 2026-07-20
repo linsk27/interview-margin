@@ -14,6 +14,7 @@ interface NotesPanelProps {
   annotations: Annotation[]
   composer?: ComposerDraft
   mobileOpen: boolean
+  expanded: boolean
   synced: boolean
   onClose: () => void
   onNoteChange: (note: string) => void
@@ -72,6 +73,7 @@ export function NotesPanel({
   annotations,
   composer,
   mobileOpen,
+  expanded,
   synced,
   onClose,
   onNoteChange,
@@ -97,7 +99,13 @@ export function NotesPanel({
   }
 
   return (
-    <aside id="notes-panel" className={`notes-panel${mobileOpen ? ' is-mobile-open' : ''}`} aria-label="批注与复习记录">
+    <aside
+      id="notes-panel"
+      className={`notes-panel${mobileOpen ? ' is-mobile-open' : ''}${expanded ? ' is-open' : ''}`}
+      aria-label="批注与复习记录"
+      aria-hidden={!expanded}
+      inert={!expanded}
+    >
       <header className="notes-panel__header">
         <div>
           <span>Q{question.number}</span>

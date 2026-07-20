@@ -4,6 +4,98 @@ import { isSafeDiagramSource, QuestionMarkdown } from './QuestionMarkdown'
 
 afterEach(cleanup)
 
+describe('QuestionMarkdown learning sections', () => {
+  it('renders recognized labels as semantic sections with real headings', () => {
+    const { container } = render(
+      <QuestionMarkdown>{[
+        '**先背答案：** Vue3 使用 Proxy 代理对象。',
+        '',
+        '**关键词翻译：**',
+        '',
+        '- **Proxy**：对象操作的代理层。',
+        '',
+        '**原理 / 流程：** 读取时收集依赖，写入时触发更新。',
+        '',
+        '**代码 / 场景：**',
+        '',
+        '```js',
+        'state.name = "Lin"',
+        '```',
+        '',
+        '**易错点：**',
+        '',
+        '- Proxy 不代表一定更快。',
+      ].join('\n')}</QuestionMarkdown>,
+    )
+
+    const answer = container.querySelector('#learning-section-answer')
+    expect(answer).toHaveClass('learning-section', 'learning-section--answer')
+    expect(answer).toHaveAttribute('data-learning-kind', 'answer')
+    expect(answer).toHaveAttribute('tabindex', '-1')
+    expect(screen.getByRole('heading', { level: 3, name: '先背答案' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 3, name: '关键词翻译' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 3, name: '原理 / 流程' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 3, name: '代码 / 场景' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 3, name: '易错点' })).toBeTruthy()
+    expect(screen.getByText('Vue3 使用 Proxy 代理对象。')).toBeTruthy()
+  })
+
+  it('progressively discloses follow-ups and sources with closed details', () => {
+    const { container } = render(
+      <QuestionMarkdown>{[
+        '**递进追问：**',
+        '',
+        '1. **为什么需要清理旧依赖？**',
+        '',
+        '   避免无效更新。',
+        '',
+        '**参考来源：**',
+        '',
+        '- [官方文档](https://example.com)',
+      ].join('\n')}</QuestionMarkdown>,
+    )
+
+    const followups = container.querySelector('#learning-section-followups details')
+    const sources = container.querySelector('#learning-section-sources details')
+    expect(followups).not.toHaveAttribute('open')
+    expect(sources).not.toHaveAttribute('open')
+    expect(followups?.querySelector('summary')).toHaveTextContent('展开追问与回答')
+    expect(sources?.querySelector('summary')).toHaveTextContent('展开参考来源')
+    expect(screen.getByRole('heading', { level: 3, name: '递进追问' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 3, name: '参考来源' })).toBeTruthy()
+    expect(screen.getByText('避免无效更新。')).toBeTruthy()
+  })
+
+  it('keeps unknown bold-label formats unchanged', () => {
+    const { container } = render(
+      <QuestionMarkdown>{'**当前项目事实：** 仍按普通 Markdown 展示。'}</QuestionMarkdown>,
+    )
+
+    expect(container.querySelector('.learning-section')).toBeNull()
+    expect(screen.getByText('当前项目事实：', { selector: 'strong' })).toBeTruthy()
+    expect(screen.getByText(/仍按普通 Markdown 展示/)).toBeTruthy()
+  })
+
+  it('keeps annotation marks working inside a transformed section', () => {
+    const annotations = [{
+      id: 'annotation-1',
+      questionId: 'q-1',
+      quote: 'Proxy 代理对象',
+      note: '重点',
+      color: 'yellow' as const,
+      createdAt: '2026-07-21T00:00:00.000Z',
+      updatedAt: '2026-07-21T00:00:00.000Z',
+    }]
+    const { container } = render(
+      <QuestionMarkdown annotations={annotations}>
+        {'**短回答：** Vue3 使用 Proxy 代理对象。'}
+      </QuestionMarkdown>,
+    )
+
+    expect(container.querySelector('#learning-section-answer mark')).toHaveTextContent('Proxy 代理对象')
+  })
+})
+
 describe('QuestionMarkdown diagrams', () => {
   it('renders a trusted same-origin SVG with reserved dimensions and an accessible caption', () => {
     const onDiagramSettled = vi.fn()

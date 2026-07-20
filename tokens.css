@@ -32,6 +32,8 @@
   --color-highlight-rose: oklch(88% 0.08 20);
   --color-overlay: oklch(16% 0.024 245 / 0.45);
   --color-shadow: oklch(18% 0.02 245 / 0.08);
+  --color-rail-bg: oklch(16% 0.024 245);
+  --color-rail-fg: oklch(97% 0.007 245);
 
   --font-display: "Noto Serif SC Variable", ui-serif, serif;
   --font-reading: "Noto Serif SC Variable", ui-serif, serif;
@@ -84,7 +86,7 @@
   --rail-width: 3.5rem;
   --sidebar-width: 20rem;
   --notes-width: 21rem;
-  --reader-measure: 48rem;
+  --reader-measure: 58rem;
   --banner-height: 4rem;
 }
 
@@ -117,4 +119,6 @@
   --color-highlight-rose: oklch(38% 0.08 20);
   --color-overlay: oklch(8% 0.012 248 / 0.66);
   --color-shadow: oklch(8% 0.012 248 / 0.24);
+  --color-rail-bg: oklch(11.5% 0.014 248);
+  --color-rail-fg: oklch(94% 0.008 245);
 }

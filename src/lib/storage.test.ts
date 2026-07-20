@@ -12,7 +12,7 @@ describe('study state storage', () => {
 
     expect(parsed.settings.theme).toBe('dark')
     expect(parsed.settings.readingSize).toBe('comfortable')
-    expect(parsed.settings.pageLayout).toBe('spread')
+    expect(parsed.settings.pageLayout).toBe('single')
   })
 
   it('rejects unrelated json', () => {

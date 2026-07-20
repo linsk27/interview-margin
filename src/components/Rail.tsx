@@ -6,6 +6,7 @@ import {
   ListRestart,
   PanelLeftClose,
   PanelLeftOpen,
+  NotebookPen,
   Settings2,
   LogIn,
   ShieldCheck,
@@ -19,11 +20,13 @@ interface RailProps {
   reviewCount: number
   focusMode: boolean
   libraryOpen: boolean
+  notesOpen: boolean
   readerMode: boolean
   bankHubActive: boolean
   adminActive?: boolean
   user?: SessionUser | null
   onToggleLibrary: () => void
+  onToggleNotes: () => void
   onOpenQuestionBanks: () => void
   onOpenDashboard: () => void
   onOpenReview: () => void
@@ -66,11 +69,13 @@ export function Rail({
   reviewCount,
   focusMode,
   libraryOpen,
+  notesOpen,
   readerMode,
   bankHubActive,
   adminActive = false,
   user = null,
   onToggleLibrary,
+  onToggleNotes,
   onOpenQuestionBanks,
   onOpenDashboard,
   onOpenReview,
@@ -108,6 +113,17 @@ export function Rail({
             controls="question-library"
           >
             {libraryOpen ? <PanelLeftClose aria-hidden="true" /> : <PanelLeftOpen aria-hidden="true" />}
+          </RailButton>
+        )}
+        {readerMode && (
+          <RailButton
+            label={notesOpen ? '收起笔记抽屉' : '展开笔记抽屉'}
+            onClick={onToggleNotes}
+            active={notesOpen}
+            expanded={notesOpen}
+            controls="notes-panel"
+          >
+            <NotebookPen aria-hidden="true" />
           </RailButton>
         )}
         <RailButton label="学习概览" onClick={onOpenDashboard}><ChartNoAxesCombined aria-hidden="true" /></RailButton>

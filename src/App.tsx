@@ -81,9 +81,11 @@ const LOGIN_REASONS = {
 } as const
 
 function drawerStateForStudyState(studyState: StudyState): DrawerState {
+  // The immersive reader always starts with a clear reading canvas. Drawers
+  // remain one click away on the rail and can still be opened independently.
   return studyState.settings.focusMode
     ? setFocusMode(true)
-    : { libraryOpen: true, notesOpen: studyState.settings.notesOpen }
+    : { libraryOpen: false, notesOpen: false }
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -122,7 +124,7 @@ export default function App() {
   const [syncReady, setSyncReady] = useState(false)
   const lastServerState = useRef('')
   const sessionGeneration = useRef(0)
-  const [drawerState, setDrawerState] = useState<DrawerState>({ libraryOpen: true, notesOpen: false })
+  const [drawerState, setDrawerState] = useState<DrawerState>({ libraryOpen: false, notesOpen: false })
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<LibraryFilter>('all')
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false)
@@ -249,7 +251,7 @@ export default function App() {
     lastServerState.current = ''
     window.clearTimeout(undoTimer.current)
     setState(createDefaultState())
-    setDrawerState({ libraryOpen: true, notesOpen: false })
+    setDrawerState({ libraryOpen: false, notesOpen: false })
     setMobileNotesOpen(false)
     setSelection(undefined)
     setComposer(undefined)
@@ -720,11 +722,13 @@ export default function App() {
         reviewCount={railReviewCount}
         focusMode={focusMode}
         libraryOpen={libraryExpanded}
+        notesOpen={notesExpanded}
         readerMode={readerMode}
         bankHubActive={workspaceView === 'banks'}
         adminActive={workspaceView === 'admin'}
         user={user}
         onToggleLibrary={toggleDesktopLibrary}
+        onToggleNotes={toggleNotes}
         onOpenQuestionBanks={openQuestionBanks}
         onOpenDashboard={openDashboard}
         onOpenReview={openReviewLibrary}
@@ -762,6 +766,7 @@ export default function App() {
         filter={filter}
         bank={currentBank}
         mobileOpen={mobileLibraryOpen}
+        expanded={libraryExpanded}
         authenticated={Boolean(user)}
         onQueryChange={setQuery}
         onFilterChange={changeLibraryFilter}
@@ -817,6 +822,7 @@ export default function App() {
           annotations={activeAnnotations}
           composer={composer}
           mobileOpen={mobileNotesOpen}
+          expanded={notesExpanded}
           synced={Boolean(user)}
           onClose={closeNotes}
           onNoteChange={(note) => updateProgress({ note }, { reason: LOGIN_REASONS.notes })}

@@ -32,9 +32,11 @@ function DrawerControlHarness() {
         reviewCount={0}
         focusMode={isFocusMode(drawers)}
         libraryOpen={drawers.libraryOpen}
+        notesOpen={drawers.notesOpen}
         readerMode
         bankHubActive={false}
         onToggleLibrary={() => setDrawers(toggleLibrary)}
+        onToggleNotes={() => setDrawers(toggleNotes)}
         onOpenQuestionBanks={noop}
         onOpenDashboard={noop}
         onOpenReview={noop}
@@ -73,9 +75,11 @@ describe('drawer controls', () => {
         reviewCount={0}
         focusMode={false}
         libraryOpen
+        notesOpen={false}
         readerMode={false}
         bankHubActive
         onToggleLibrary={noop}
+        onToggleNotes={noop}
         onOpenQuestionBanks={onOpenQuestionBanks}
         onOpenDashboard={noop}
         onOpenReview={noop}
@@ -102,9 +106,11 @@ describe('drawer controls', () => {
         reviewCount={0}
         focusMode={false}
         libraryOpen
+        notesOpen={false}
         readerMode
         bankHubActive={false}
         onToggleLibrary={onToggleLibrary}
+        onToggleNotes={noop}
         onOpenQuestionBanks={noop}
         onOpenDashboard={noop}
         onOpenReview={noop}
@@ -117,6 +123,7 @@ describe('drawer controls', () => {
     expect(screen.queryByRole('button', { name: '打开题库' })).toBeNull()
     expect(screen.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-controls')).toBe('question-library')
+    expect(screen.getByRole('button', { name: '展开笔记抽屉' }).getAttribute('aria-controls')).toBe('notes-panel')
   })
 
   it('reports the actual mobile library and notes states in the topbar', () => {

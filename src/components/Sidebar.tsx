@@ -13,6 +13,7 @@ interface SidebarProps {
   filter: LibraryFilter
   bank: QuestionBankDefinition
   mobileOpen: boolean
+  expanded: boolean
   authenticated: boolean
   onQueryChange: (value: string) => void
   onFilterChange: (value: LibraryFilter) => void
@@ -70,6 +71,7 @@ export function Sidebar({
   filter,
   bank,
   mobileOpen,
+  expanded,
   authenticated,
   onQueryChange,
   onFilterChange,
@@ -84,7 +86,13 @@ export function Sidebar({
   const hasSearch = query.trim().length > 0
 
   return (
-    <aside id="question-library" className={`library${mobileOpen ? ' is-mobile-open' : ''}`} aria-label={`${bank.title}题目目录`}>
+    <aside
+      id="question-library"
+      className={`library${mobileOpen ? ' is-mobile-open' : ''}${expanded ? ' is-open' : ''}`}
+      aria-label={`${bank.title}题目目录`}
+      aria-hidden={!expanded}
+      inert={!expanded}
+    >
       <header className="library__header">
         <div>
           <p className="library__kicker">{bank.kicker}</p>

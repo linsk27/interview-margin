@@ -5,6 +5,7 @@ import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import type { Annotation } from '../types'
 import { rehypeAnnotationMarks } from '../lib/annotationPlugin'
+import { remarkLearningSections } from '../lib/learningSections'
 
 const DIAGRAM_SOURCE = /^\/content\/diagrams\/(?:[a-z0-9][a-z0-9-]*\/)*[a-z0-9][a-z0-9._-]*\.svg$/
 
@@ -112,7 +113,7 @@ export function QuestionMarkdown({
 }) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkLearningSections]}
       rehypePlugins={[
         rehypeHighlight,
         [rehypeAnnotationMarks, { annotations }],
