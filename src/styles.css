@@ -1008,17 +1008,22 @@ kbd {
   line-height: 1.85;
 }
 
-.learning-section--glossary ul {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-xs) var(--space-xl);
-  padding: 0;
-  list-style: none;
+.markdown-body .learning-section--glossary ul {
+  display: block;
+  margin-block: var(--space-md) 0;
+  padding-inline-start: var(--space-lg);
+  list-style: disc;
 }
 
-.learning-section--glossary li {
-  padding: var(--space-sm) 0;
-  border-block-end: var(--rule-thin) solid var(--color-rule);
+.markdown-body .learning-section--glossary li {
+  min-width: 0;
+  padding: 0 0 0 var(--space-xs);
+  border: 0;
+  break-inside: avoid;
+}
+
+.markdown-body .learning-section--glossary li + li {
+  margin-block-start: var(--space-sm);
 }
 
 .learning-section--mechanism .markdown-diagram {
@@ -4630,11 +4635,6 @@ body:has(dialog[open]) .reader {
 
   .markdown-body .learning-section--answer .learning-section__heading {
     font-size: var(--text-xs);
-  }
-
-  .learning-section--glossary ul {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
   }
 
   .learning-section--pitfalls {

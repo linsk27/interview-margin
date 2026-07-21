@@ -1,38 +1,35 @@
-# Answer card spacing design QA
+# Glossary list design QA
 
 ## Reference and implementation
 
-- Source visual truth: `C:/Users/lsk69/AppData/Local/Temp/codex-clipboard-b6c59730-88d2-4116-95ae-85b553330d51.png` (1920 × 910, light theme, guest, JavaScript Q1, single-page layout, drawers closed).
-- Desktop implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/answer-card-spacing-2026-07-21/after-light-desktop-1920x910.png` (1920 × 910, matching content and state).
-- Dark-theme implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/answer-card-spacing-2026-07-21/after-desktop-1920x910.png`.
-- Mobile implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/answer-card-spacing-2026-07-21/after-mobile-390x844.png`.
-- Full-view comparison evidence: the source and desktop implementation were opened together in one comparison input at the same requested 1920 × 910 viewport and the same question/scroll region.
-- Focused comparison: not needed because the answer card, label, paragraph baseline, border and adjacent section rhythm are all legible in the full-view evidence.
+- Source visual truth: `C:/Users/lsk69/AppData/Local/Temp/codex-clipboard-557820ae-49eb-4d0e-964e-e7b8a7e6df3b.png` (1920 x 910, light theme, guest, Vue Q1, single-page layout, drawers closed).
+- Desktop implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/glossary-list-2026-07-22/final-desktop-light-1920x910.png` (1920 x 910, matching content and state).
+- Mobile implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/glossary-list-2026-07-22/final-mobile-light-390x844.jpg` (390 x 844, light theme).
+- Full-view comparison evidence: the source and desktop implementation were opened together at the same viewport and content state; the glossary structure and surrounding reading rhythm are legible without a separate crop.
+- Focused comparison: not required because all three glossary items, their dividers, wrapping, and neighboring sections are readable in the full-view evidence.
 
 ## Comparison history
 
-1. Initial P2 finding: the answer label occupied a 159 px fractional grid track even though its visible text was only about 42 px wide. Together with a 24 px column gap, this created the large empty area marked in the source screenshot.
-2. Initial P2 finding: the paragraph inherited a 24 px top margin from the generic Markdown rule, placing it 24 px below the label instead of aligning both at the top.
-3. Fix: replaced the fractional label track with a capped content-sized track (`fit-content(9rem)`), reduced the desktop column gap to 16 px, aligned all non-heading answer content in the second column, and reset inherited direct-child margins in single-page mode.
-4. Post-fix evidence: the label track is 41.6 px, visible label-to-copy gap is 16 px, paragraph top offset is 0 px, card height fell from 135.2 px to 111.2 px, and the document has no horizontal overflow.
+1. Initial P2 finding: the glossary used a two-column grid, so readers had to jump between columns to understand a short sequential definition list.
+2. Initial P2 finding: each item added a full-width bottom border, creating three competing horizontal rules inside an already ruled reading page.
+3. Fix: restored native vertical list semantics, used small disc markers, removed item borders, and kept long entries together with `break-inside: avoid`.
+4. Post-fix evidence: the glossary changed from two columns to one continuous three-item list, internal item borders are `0`, section height fell from about 328 px to 240 px at the desktop reference viewport, and horizontal overflow remains `0`.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: unchanged from the existing reader system; label and body retain their established mono/serif hierarchy, weight and line height.
-- Spacing and layout rhythm: the marked empty region is removed; desktop label/copy alignment is compact and top-aligned, while mobile remains a deliberate one-column stack with a 12 px row gap.
-- Colors and visual tokens: unchanged; the card uses the existing accent, paper, rule and shadow tokens in both light and dark themes.
+- Fonts and typography: unchanged from the existing reader system; terms retain their established emphasis and inline code retains the code treatment.
+- Spacing and layout rhythm: the list uses existing spacing tokens, a compact marker-to-copy gap, and a consistent vertical interval between entries.
+- Colors and visual tokens: native markers use the inherited reader color system; no new colors, shadows, radii, or decorative rules were introduced.
 - Image quality and asset fidelity: no image assets are involved in this component and none were substituted.
-- Copy and content: unchanged; the JavaScript answer and surrounding lesson text match the source state.
+- Copy and content: unchanged; only presentation and list flow were adjusted.
 
 ## Responsive and interaction checks
 
-- 390 × 844: one-column answer card, heading and paragraph share the same x-position, document width equals viewport width.
-- 639 px: one-column layout, no horizontal overflow.
-- 640, 960 and 1216 px: compact two-column layout, 16 px visual gap, 0 px top offset, no horizontal overflow.
-- Double-page mode at 1216 px: answer card remains block layout and preserves its existing page-flow margins.
-- Theme coverage: light desktop/mobile and dark desktop rendered without contrast or layout regression.
-- Primary interactions tested: light/dark theme switch, single/double-page switch, library selection and drawer close state.
+- 320, 375, 390, 639, and 640 px: single vertical list, no item borders, long terms wrap inside the viewport, and horizontal overflow is `0`.
+- 1440 x 900 double-page mode: list remains vertical, avoids item fragmentation, and has no horizontal overflow.
+- Light and dark themes: markers, terms, code, and body copy remain readable without layout regression.
 - Browser console: no warnings or errors in the final pass.
+- Automated verification: production build, database integrity check, and the full Vitest suite passed.
 
 ## Findings
 
