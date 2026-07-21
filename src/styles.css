@@ -970,9 +970,10 @@ kbd {
 
 .learning-section--answer {
   display: grid;
-  grid-template-columns: minmax(6.75rem, 0.24fr) minmax(0, 1fr);
+  grid-template-columns: fit-content(9rem) minmax(0, 1fr);
   align-items: start;
-  gap: var(--space-lg);
+  column-gap: var(--space-md);
+  row-gap: var(--space-sm);
   margin-block: var(--space-sm) var(--space-lg);
   padding: var(--space-lg);
   border: var(--rule-thin) solid var(--color-rule-strong);
@@ -988,6 +989,16 @@ kbd {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   letter-spacing: 0.02em;
+}
+
+.reader:not(.reader--spread) .learning-section--answer > .learning-section__heading {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.reader:not(.reader--spread) .markdown-body .learning-section--answer > :not(.learning-section__heading) {
+  grid-column: 2;
+  margin-block: 0;
 }
 
 .learning-section--answer > p {
@@ -4609,6 +4620,12 @@ body:has(dialog[open]) .reader {
     gap: var(--space-sm);
     margin-block: var(--space-lg);
     padding: var(--space-md);
+  }
+
+  .reader:not(.reader--spread) .learning-section--answer > .learning-section__heading,
+  .reader:not(.reader--spread) .markdown-body .learning-section--answer > :not(.learning-section__heading) {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .markdown-body .learning-section--answer .learning-section__heading {
