@@ -144,6 +144,7 @@ export default function App() {
   const [undo, setUndo] = useState<UndoState>()
   const undoTimer = useRef<number | undefined>(undefined)
   const desktopLibraryLayout = useMediaQuery('(min-width: 60rem)')
+  const desktopNotesLayout = useMediaQuery('(min-width: 60rem)')
   const wideNotesLayout = useMediaQuery('(min-width: 76rem)')
 
   const questions = useMemo(() => flattenQuestions(sections), [sections])
@@ -184,7 +185,7 @@ export default function App() {
   const focusMode = isFocusMode(drawerState)
   const libraryExpanded = desktopLibraryLayout ? drawerState.libraryOpen : mobileLibraryOpen
   const notesVisible = drawerState.notesOpen
-  const notesExpanded = notesVisible && (wideNotesLayout || mobileNotesOpen)
+  const notesExpanded = notesVisible && (desktopNotesLayout || mobileNotesOpen)
 
   const openAuth = (reason = '') => {
     setAuthReason(accountServiceAvailable
@@ -204,8 +205,8 @@ export default function App() {
   }, [desktopLibraryLayout])
 
   useEffect(() => {
-    if (wideNotesLayout) setMobileNotesOpen(false)
-  }, [wideNotesLayout])
+    if (desktopNotesLayout) setMobileNotesOpen(false)
+  }, [desktopNotesLayout])
 
   useEffect(() => {
     const consumeHash = () => {
@@ -443,6 +444,9 @@ export default function App() {
       setActiveId(question.id)
     }
     setMobileLibraryOpen(false)
+    if (!desktopLibraryLayout) {
+      setDrawerState((current) => ({ ...current, libraryOpen: false }))
+    }
   }
 
   const openQuestionBank = (bank: QuestionBankDefinition) => {
@@ -552,9 +556,13 @@ export default function App() {
 
   const openNotes = () => {
     if (!requireUser(LOGIN_REASONS.notes)) return false
-    setDrawerState((current) => ({ ...current, notesOpen: true }))
+    setDrawerState((current) => ({
+      ...current,
+      libraryOpen: wideNotesLayout ? current.libraryOpen : false,
+      notesOpen: true,
+    }))
     setMobileLibraryOpen(false)
-    setMobileNotesOpen(!wideNotesLayout)
+    setMobileNotesOpen(!desktopNotesLayout)
     return true
   }
 
@@ -569,6 +577,18 @@ export default function App() {
     setComposer(undefined)
   }
 
+  const closeLibrary = () => {
+    setDrawerState((current) => ({ ...current, libraryOpen: false }))
+    setMobileLibraryOpen(false)
+  }
+
+  const closeMobileDrawers = () => {
+    setDrawerState((current) => ({ ...current, libraryOpen: false, notesOpen: false }))
+    setMobileLibraryOpen(false)
+    setMobileNotesOpen(false)
+    setComposer(undefined)
+  }
+
   const toggleNotes = () => {
     if (notesExpanded) closeNotes()
     else void openNotes()
@@ -577,14 +597,24 @@ export default function App() {
   const toggleMobileLibrary = () => {
     const nextOpen = !libraryExpanded
     setMobileLibraryOpen(nextOpen)
-    setDrawerState((current) => ({ ...current, libraryOpen: nextOpen }))
+    setDrawerState((current) => ({
+      ...current,
+      libraryOpen: nextOpen,
+      notesOpen: nextOpen ? false : current.notesOpen,
+    }))
     if (nextOpen) {
       setMobileNotesOpen(false)
     }
   }
 
   const toggleDesktopLibrary = () => {
-    setDrawerState(transitionLibrary)
+    setDrawerState((current) => {
+      const next = transitionLibrary(current)
+      return !wideNotesLayout && next.libraryOpen
+        ? { ...next, notesOpen: false }
+        : next
+    })
+    if (!wideNotesLayout) setMobileNotesOpen(false)
   }
 
   const toggleFocus = () => {
@@ -775,7 +805,7 @@ export default function App() {
         onOpenDashboard={() => { setMobileLibraryOpen(false); openDashboard() }}
         onOpenSettings={() => { setMobileLibraryOpen(false); setSettingsOpen(true) }}
         onOpenAccount={() => { setMobileLibraryOpen(false); openAuth() }}
-        onClose={() => setMobileLibraryOpen(false)}
+        onClose={closeLibrary}
           />
 
           <section className="reading-desk">
@@ -925,7 +955,7 @@ export default function App() {
       />
 
       {undo && <UndoToast message="批注已删除" onUndo={restoreAnnotation} onDismiss={() => setUndo(undefined)} />}
-      {workspaceView === 'reader' && (mobileLibraryOpen || mobileNotesOpen) && <button className="mobile-scrim" type="button" onClick={() => { setMobileLibraryOpen(false); setMobileNotesOpen(false) }} aria-label="关闭侧栏" />}
+      {workspaceView === 'reader' && (mobileLibraryOpen || mobileNotesOpen) && <button className="mobile-scrim" type="button" onClick={closeMobileDrawers} aria-label="关闭侧栏" />}
       <div className="sr-only" aria-live="polite">
         {workspaceView === 'reader' ? `当前题目：${activeQuestion.title}` : workspaceView === 'admin' ? '当前页面：内容管理' : '当前页面：题库中心'}
       </div>

@@ -117,7 +117,7 @@ export function Sidebar({
             onClick={onClose}
             aria-label="收起题库"
             aria-controls="question-library"
-            aria-expanded={mobileOpen}
+            aria-expanded={expanded}
             title="收起题库"
           >
             <X aria-hidden="true" />

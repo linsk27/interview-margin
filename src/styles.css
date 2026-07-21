@@ -4066,6 +4066,27 @@ body:has(dialog[open]) .reader {
   }
 }
 
+@media (max-width: 59.99rem) {
+  .library {
+    width: min(92%, 24rem);
+  }
+
+  .library__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-sm);
+  }
+
+  .library__header-actions {
+    width: 100%;
+  }
+
+  .library__close {
+    margin-inline-start: auto;
+  }
+}
+
 @media (min-width: 60rem) {
   body {
     overflow: hidden;
@@ -4237,11 +4258,12 @@ body:has(dialog[open]) .reader {
 
   .library {
     position: fixed;
-    inset-block: 0;
+    inset-block-start: var(--banner-height);
+    inset-block-end: 0;
     inset-inline-start: var(--rail-width);
     z-index: var(--z-dropdown);
     width: var(--sidebar-width);
-    height: 100dvh;
+    height: auto;
     border-inline-end-color: var(--color-rule-strong);
     box-shadow: var(--space-md) 0 var(--space-2xl) color-mix(in oklch, var(--color-ink) 16%, transparent);
   }
@@ -4254,8 +4276,50 @@ body:has(dialog[open]) .reader {
   }
 
   .reading-desk {
+    --reader-dock-start: 0px;
+    --reader-dock-end: 0px;
+
     min-width: 0;
     grid-column: 2;
+    grid-template-columns: var(--reader-dock-start) minmax(0, 1fr) var(--reader-dock-end);
+    transition: grid-template-columns var(--dur-long) var(--ease-out);
+  }
+
+  .app-shell:not(.is-library-closed):not(.is-focus-mode) .reading-desk {
+    --reader-dock-start: var(--sidebar-width);
+  }
+
+  .topbar {
+    grid-column: 1 / -1;
+  }
+
+  .reader-scroll,
+  .status-dock {
+    grid-column: 2;
+  }
+
+  .notes-panel {
+    position: fixed;
+    inset-block-start: var(--banner-height);
+    inset-block-end: 0;
+    inset-inline-end: 0;
+    z-index: var(--z-dropdown);
+    width: var(--notes-width);
+    height: auto;
+    border-inline-start-color: var(--color-rule-strong);
+    box-shadow: calc(-1 * var(--space-md)) 0 var(--space-2xl) color-mix(in oklch, var(--color-ink) 16%, transparent);
+  }
+
+  .app-shell:not(.is-notes-closed):not(.is-focus-mode) .reading-desk {
+    --reader-dock-end: var(--notes-width);
+  }
+
+  .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-fab {
+    inset-inline-end: calc(var(--notes-width) + var(--space-lg));
+  }
+
+  .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-dialog {
+    inset-inline-end: calc(var(--notes-width) + var(--space-lg));
   }
 
   .topbar__search {
@@ -4350,24 +4414,6 @@ body:has(dialog[open]) .reader {
     display: grid;
   }
 
-  .notes-panel {
-    position: fixed;
-    inset-block: 0;
-    inset-inline-end: 0;
-    z-index: var(--z-dropdown);
-    width: var(--notes-width);
-    height: 100dvh;
-    border-inline-start-color: var(--color-rule-strong);
-    box-shadow: calc(-1 * var(--space-md)) 0 var(--space-2xl) color-mix(in oklch, var(--color-ink) 16%, transparent);
-  }
-
-  .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-fab {
-    inset-inline-end: calc(var(--notes-width) + var(--space-lg));
-  }
-
-  .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-dialog {
-    inset-inline-end: calc(var(--notes-width) + var(--space-lg));
-  }
 }
 
 @media (min-width: 90rem) {
@@ -4466,6 +4512,7 @@ body:has(dialog[open]) .reader {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .reading-desk,
   .bank-hub__categories button,
   .bank-package__footer button,
   .bank-package__footer button svg,
