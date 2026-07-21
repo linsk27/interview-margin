@@ -1,6 +1,24 @@
-import { CalendarClock, Check, Edit3, Highlighter, MessageSquareText, PanelRightClose, Save, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import {
+  CalendarClock,
+  Check,
+  ChevronsLeft,
+  ChevronsRight,
+  Edit3,
+  Highlighter,
+  MessageSquareText,
+  PanelRightClose,
+  Save,
+  Trash2,
+} from 'lucide-react'
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { formatRelativeDate } from '../lib/format'
+import { NOTES_PANEL_RESIZE_STEP } from '../lib/notesPanelSizing'
 import type { Annotation, HighlightColor, InterviewQuestion, QuestionProgress } from '../types'
 
 interface ComposerDraft {
@@ -16,7 +34,16 @@ interface NotesPanelProps {
   mobileOpen: boolean
   expanded: boolean
   synced: boolean
+  width: number
+  minWidth: number
+  maxWidth: number
+  compact: boolean
   onClose: () => void
+  onWidthChange: (width: number) => void
+  onResizeStart: () => void
+  onResizeEnd: () => void
+  onToggleWidth: () => void
+  onResetWidth: () => void
   onNoteChange: (note: string) => void
   onAddAnnotation: (quote: string, note: string, color: HighlightColor) => void
   onUpdateAnnotation: (id: string, note: string, color: HighlightColor) => void
@@ -75,7 +102,16 @@ export function NotesPanel({
   mobileOpen,
   expanded,
   synced,
+  width,
+  minWidth,
+  maxWidth,
+  compact,
   onClose,
+  onWidthChange,
+  onResizeStart,
+  onResizeEnd,
+  onToggleWidth,
+  onResetWidth,
   onNoteChange,
   onAddAnnotation,
   onUpdateAnnotation,
@@ -85,6 +121,7 @@ export function NotesPanel({
 }: NotesPanelProps) {
   const [draftNote, setDraftNote] = useState('')
   const [draftColor, setDraftColor] = useState<HighlightColor>('yellow')
+  const resizeGesture = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null)
 
   useEffect(() => {
     if (!composer) return
@@ -98,6 +135,46 @@ export function NotesPanel({
     onComposerClose()
   }
 
+  const finishResize = (target: HTMLDivElement, pointerId: number) => {
+    if (!resizeGesture.current || resizeGesture.current.pointerId !== pointerId) return
+    resizeGesture.current = null
+    if (target.hasPointerCapture?.(pointerId)) target.releasePointerCapture(pointerId)
+    onResizeEnd()
+  }
+
+  const handleResizeStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.currentTarget.focus()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    resizeGesture.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: width,
+    }
+    onResizeStart()
+  }
+
+  const handleResizeMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const gesture = resizeGesture.current
+    if (!gesture || gesture.pointerId !== event.pointerId) return
+    onWidthChange(gesture.startWidth + gesture.startX - event.clientX)
+  }
+
+  const handleResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? NOTES_PANEL_RESIZE_STEP * 3 : NOTES_PANEL_RESIZE_STEP
+    let nextWidth: number | undefined
+
+    if (event.key === 'ArrowLeft') nextWidth = width + step
+    if (event.key === 'ArrowRight') nextWidth = width - step
+    if (event.key === 'Home') nextWidth = minWidth
+    if (event.key === 'End') nextWidth = maxWidth
+    if (nextWidth === undefined) return
+
+    event.preventDefault()
+    onWidthChange(nextWidth)
+  }
+
   return (
     <aside
       id="notes-panel"
@@ -106,14 +183,44 @@ export function NotesPanel({
       aria-hidden={!expanded}
       inert={!expanded}
     >
+      <div
+        className="notes-panel__resizer"
+        role="separator"
+        tabIndex={expanded ? 0 : -1}
+        aria-label="调整批注栏宽度"
+        aria-orientation="vertical"
+        aria-valuemin={minWidth}
+        aria-valuemax={maxWidth}
+        aria-valuenow={Math.round(width)}
+        aria-valuetext={`${Math.round(width)} 像素`}
+        title="拖动调整宽度，双击恢复默认"
+        onPointerDown={handleResizeStart}
+        onPointerMove={handleResizeMove}
+        onPointerUp={(event) => finishResize(event.currentTarget, event.pointerId)}
+        onPointerCancel={(event) => finishResize(event.currentTarget, event.pointerId)}
+        onLostPointerCapture={(event) => finishResize(event.currentTarget, event.pointerId)}
+        onKeyDown={handleResizeKeyDown}
+        onDoubleClick={onResetWidth}
+      />
       <header className="notes-panel__header">
         <div>
           <span>Q{question.number}</span>
           <h2>边注</h2>
         </div>
-        <button className="icon-button notes-panel__close" type="button" onClick={onClose} aria-label="收起边注" title="收起边注">
-          <PanelRightClose aria-hidden="true" />
-        </button>
+        <div className="notes-panel__header-actions">
+          <button
+            className="icon-button notes-panel__width-toggle"
+            type="button"
+            onClick={onToggleWidth}
+            aria-label={compact ? '恢复批注栏宽度' : '收窄批注栏宽度'}
+            title={compact ? '恢复批注栏宽度' : '收窄批注栏宽度'}
+          >
+            {compact ? <ChevronsLeft aria-hidden="true" /> : <ChevronsRight aria-hidden="true" />}
+          </button>
+          <button className="icon-button notes-panel__close" type="button" onClick={onClose} aria-label="收起边注" title="收起边注">
+            <PanelRightClose aria-hidden="true" />
+          </button>
+        </div>
       </header>
 
       <div className="notes-panel__scroll">

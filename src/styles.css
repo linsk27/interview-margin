@@ -1506,6 +1506,18 @@ kbd {
   min-width: 0;
 }
 
+.notes-panel__header > .notes-panel__header-actions {
+  display: flex;
+  min-width: auto;
+  flex: 0 0 auto;
+  gap: var(--space-3xs);
+}
+
+.notes-panel__width-toggle,
+.notes-panel__resizer {
+  display: none;
+}
+
 .library__header-actions {
   display: flex;
   flex: 0 0 auto;
@@ -1823,7 +1835,7 @@ textarea::placeholder {
   color: var(--color-paper);
   box-shadow: 0 var(--space-sm) var(--space-lg) color-mix(in oklch, var(--color-ink) 24%, transparent);
   cursor: pointer;
-  transition: transform var(--dur-short) var(--ease-out), opacity var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+  transition: inset-inline-end var(--dur-long) var(--ease-out), transform var(--dur-short) var(--ease-out), opacity var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
   animation: ai-fab-enter var(--dur-long) var(--ease-out) both;
 }
 
@@ -1859,7 +1871,7 @@ textarea::placeholder {
   pointer-events: none;
   transform: translateY(var(--space-sm)) scale(0.97);
   transform-origin: right bottom;
-  transition: opacity var(--dur-short) var(--ease-out), transform var(--dur-long) var(--ease-out), visibility var(--dur-short) var(--ease-out);
+  transition: inset-inline-end var(--dur-long) var(--ease-out), opacity var(--dur-short) var(--ease-out), transform var(--dur-long) var(--ease-out), visibility var(--dur-short) var(--ease-out);
   visibility: hidden;
 }
 
@@ -4303,23 +4315,73 @@ body:has(dialog[open]) .reader {
     inset-block-start: var(--banner-height);
     inset-block-end: 0;
     inset-inline-end: 0;
-    z-index: var(--z-dropdown);
-    width: var(--notes-width);
+    z-index: calc(var(--z-sticky-nav) - 1);
+    width: var(--notes-panel-width, var(--notes-width));
     height: auto;
     border-inline-start-color: var(--color-rule-strong);
     box-shadow: calc(-1 * var(--space-md)) 0 var(--space-2xl) color-mix(in oklch, var(--color-ink) 16%, transparent);
+    opacity: 1;
+    transition: width var(--dur-long) var(--ease-out), transform var(--dur-long) var(--ease-out), visibility 0s linear var(--dur-long);
   }
 
   .app-shell:not(.is-notes-closed):not(.is-focus-mode) .reading-desk {
-    --reader-dock-end: var(--notes-width);
+    --reader-dock-end: var(--notes-panel-width, var(--notes-width));
   }
 
   .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-fab {
-    inset-inline-end: calc(var(--notes-width) + var(--space-lg));
+    inset-inline-end: calc(var(--notes-panel-width, var(--notes-width)) + var(--space-lg));
   }
 
   .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-dialog {
-    inset-inline-end: calc(var(--notes-width) + var(--space-lg));
+    inset-inline-end: calc(var(--notes-panel-width, var(--notes-width)) + var(--space-lg));
+  }
+
+  .notes-panel__width-toggle {
+    display: inline-grid;
+  }
+
+  .notes-panel__resizer {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: -0.375rem;
+    z-index: 2;
+    display: block;
+    width: 0.75rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  .notes-panel__resizer::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 50%;
+    width: var(--rule-heavy);
+    background: var(--color-accent);
+    opacity: 0;
+    transform: translateX(-50%);
+    transition: opacity var(--dur-short) var(--ease-out);
+  }
+
+  .notes-panel__resizer:hover::after,
+  .notes-panel__resizer:focus-visible::after,
+  .app-shell.is-resizing-notes .notes-panel__resizer::after {
+    opacity: 1;
+  }
+
+  .app-shell.is-resizing-notes {
+    cursor: col-resize;
+    user-select: none;
+  }
+
+  .app-shell.is-resizing-notes .reading-desk,
+  .app-shell.is-resizing-notes .notes-panel,
+  .app-shell.is-resizing-notes .ai-fab,
+  .app-shell.is-resizing-notes .ai-dialog {
+    transition: none;
   }
 
   .topbar__search {
@@ -4513,11 +4575,13 @@ body:has(dialog[open]) .reader {
 
 @media (prefers-reduced-motion: reduce) {
   .reading-desk,
+  .notes-panel,
   .bank-hub__categories button,
   .bank-package__footer button,
   .bank-package__footer button svg,
   .bank-package__track > span,
   .ai-fab,
+  .ai-dialog,
   .ai-dialog__surface,
   .ai-assistant__loading svg,
   .ai-assistant__form button:disabled svg {

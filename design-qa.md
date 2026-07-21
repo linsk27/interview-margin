@@ -42,4 +42,16 @@
 - P2: none remaining.
 - P3: none required for this scoped correction.
 
+## Follow-up: notes motion and resizing (2026-07-22)
+
+- Root cause: the notes panel was conditionally mounted only while open. Its closing transform could never run, while the reading grid continued its 420 ms reflow, producing a mismatched hierarchy animation.
+- Fix: the panel now remains mounted in the reader, then uses `aria-hidden`, `inert`, visibility, pointer events, and the same 420 ms easing as the reading grid to enter and leave safely.
+- Fix: the desktop panel sits above the status and floating controls but below the global toolbar. The AI button and dialog now follow the panel offset with the same easing.
+- Fix: the panel's left edge is a 12 px drag target. Pointer dragging, Arrow keys (16 px), Shift + Arrow (48 px), Home/End, double-click reset, and a header compact/restore control are supported.
+- Width policy: 288 px minimum, 336/352 px responsive default, 480 px maximum, with a dynamic cap that always reserves the rail, an optional library drawer, and at least 544 px for the reader. The preferred width is device-local UI state and is not synced to study data.
+- Dragging disables layout transitions and text selection until pointer release; reduced-motion mode also removes the panel and assistant transitions.
+- Browser evidence at 1440 × 900: default 352 px, compact 288 px, ArrowLeft 304 px, End 480 px, double-click reset 352 px; the panel starts at y=64 and uses z-index 209.
+- Browser evidence at 390 × 844: the existing modal drawer remains 88% wide with a scrim; desktop resize controls are hidden.
+- Automated checks: 12 notes sizing/component tests passed, including pointer, keyboard, compact/restore, persistent hidden state, and accessible separator semantics. The two service suites that timed out only during the parallel full run passed 11/11 when rerun serially; production build passed.
+
 final result: passed

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Highlighter, MessageSquareText } from 'lucide-react'
 import { CommandPalette } from './components/CommandPalette'
 import { DashboardDialog } from './components/DashboardDialog'
@@ -29,6 +29,13 @@ import {
   type DrawerState,
 } from './lib/drawerState'
 import { flattenQuestions, questionFromHash } from './lib/markdown'
+import {
+  NOTES_PANEL_MAX_WIDTH,
+  NOTES_PANEL_MIN_WIDTH,
+  clampNotesPanelWidth,
+  defaultNotesPanelWidth,
+  maximumNotesPanelWidth,
+} from './lib/notesPanelSizing'
 import { clearQueuedState, flushQueuedState, queueStudyState } from './lib/outbox'
 import {
   createDefaultState,
@@ -80,6 +87,22 @@ const LOGIN_REASONS = {
   transfer: '登录后可导入或导出个人学习记录。',
 } as const
 
+const NOTES_PANEL_WIDTH_STORAGE_KEY = 'interview-margin:notes-pane-width:v1'
+
+function loadNotesPanelWidth(): number {
+  const fallback = defaultNotesPanelWidth(window.innerWidth)
+  try {
+    const stored = window.localStorage.getItem(NOTES_PANEL_WIDTH_STORAGE_KEY)
+    if (stored === null) return fallback
+    const saved = Number(stored)
+    return Number.isFinite(saved)
+      ? Math.min(NOTES_PANEL_MAX_WIDTH, Math.max(NOTES_PANEL_MIN_WIDTH, saved))
+      : fallback
+  } catch {
+    return fallback
+  }
+}
+
 function drawerStateForStudyState(studyState: StudyState): DrawerState {
   // The immersive reader always starts with a clear reading canvas. Drawers
   // remain one click away on the rail and can still be opened independently.
@@ -105,6 +128,18 @@ function useMediaQuery(query: string): boolean {
   }, [query])
 
   return matches
+}
+
+function useViewportWidth(): number {
+  const [width, setWidth] = useState(() => window.innerWidth)
+
+  useEffect(() => {
+    const update = () => setWidth(window.innerWidth)
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  return width
 }
 
 export default function App() {
@@ -146,6 +181,14 @@ export default function App() {
   const desktopLibraryLayout = useMediaQuery('(min-width: 60rem)')
   const desktopNotesLayout = useMediaQuery('(min-width: 60rem)')
   const wideNotesLayout = useMediaQuery('(min-width: 76rem)')
+  const viewportWidth = useViewportWidth()
+  const [notesPreferredWidth, setNotesPreferredWidth] = useState(loadNotesPanelWidth)
+  const [notesResizing, setNotesResizing] = useState(false)
+  const lastExpandedNotesWidth = useRef(
+    notesPreferredWidth > NOTES_PANEL_MIN_WIDTH + 1
+      ? notesPreferredWidth
+      : defaultNotesPanelWidth(window.innerWidth),
+  )
 
   const questions = useMemo(() => flattenQuestions(sections), [sections])
   const activeIndex = questions.findIndex((question) => question.id === activeId)
@@ -186,6 +229,16 @@ export default function App() {
   const libraryExpanded = desktopLibraryLayout ? drawerState.libraryOpen : mobileLibraryOpen
   const notesVisible = drawerState.notesOpen
   const notesExpanded = notesVisible && (desktopNotesLayout || mobileNotesOpen)
+  const notesMaximumWidth = maximumNotesPanelWidth(
+    viewportWidth,
+    desktopLibraryLayout && drawerState.libraryOpen,
+  )
+  const notesPanelWidth = clampNotesPanelWidth(
+    notesPreferredWidth,
+    viewportWidth,
+    desktopLibraryLayout && drawerState.libraryOpen,
+  )
+  const notesCompact = notesPanelWidth <= NOTES_PANEL_MIN_WIDTH + 1
 
   const openAuth = (reason = '') => {
     setAuthReason(accountServiceAvailable
@@ -206,7 +259,16 @@ export default function App() {
 
   useEffect(() => {
     if (desktopNotesLayout) setMobileNotesOpen(false)
+    else setNotesResizing(false)
   }, [desktopNotesLayout])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(NOTES_PANEL_WIDTH_STORAGE_KEY, String(notesPreferredWidth))
+    } catch {
+      // A blocked storage API should not affect the reader.
+    }
+  }, [notesPreferredWidth])
 
   useEffect(() => {
     const consumeHash = () => {
@@ -574,7 +636,37 @@ export default function App() {
   const closeNotes = () => {
     setDrawerState((current) => ({ ...current, notesOpen: false }))
     setMobileNotesOpen(false)
+    setNotesResizing(false)
     setComposer(undefined)
+  }
+
+  const resizeNotesPanel = (nextWidth: number) => {
+    const next = clampNotesPanelWidth(
+      nextWidth,
+      viewportWidth,
+      desktopLibraryLayout && drawerState.libraryOpen,
+    )
+    setNotesPreferredWidth(next)
+    if (next > NOTES_PANEL_MIN_WIDTH + 1) lastExpandedNotesWidth.current = next
+  }
+
+  const toggleNotesPanelWidth = () => {
+    if (notesCompact) {
+      setNotesPreferredWidth(Math.min(
+        NOTES_PANEL_MAX_WIDTH,
+        Math.max(lastExpandedNotesWidth.current, defaultNotesPanelWidth(viewportWidth)),
+      ))
+      return
+    }
+
+    lastExpandedNotesWidth.current = Math.max(notesPreferredWidth, notesPanelWidth)
+    setNotesPreferredWidth(NOTES_PANEL_MIN_WIDTH)
+  }
+
+  const resetNotesPanelWidth = () => {
+    const next = defaultNotesPanelWidth(viewportWidth)
+    lastExpandedNotesWidth.current = next
+    setNotesPreferredWidth(next)
   }
 
   const closeLibrary = () => {
@@ -743,9 +835,12 @@ export default function App() {
   }
 
   return (
-    <div className={`app-shell${workspaceView === 'banks' || workspaceView === 'admin'
+    <div
+      className={`app-shell${workspaceView === 'banks' || workspaceView === 'admin'
       ? ' is-bank-hub is-notes-closed is-library-closed'
-      : `${focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${drawerState.libraryOpen ? '' : ' is-library-closed'}`}`}>
+      : `${focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${drawerState.libraryOpen ? '' : ' is-library-closed'}${notesResizing ? ' is-resizing-notes' : ''}`}`}
+      style={{ '--notes-panel-width': `${notesPanelWidth}px` } as CSSProperties}
+    >
       <Rail
         mastered={railMasteredCount}
         total={railQuestions.length}
@@ -845,8 +940,7 @@ export default function App() {
         <StatusDock value={activeProgress.status} onChange={setStatus} />
           </section>
 
-          {notesVisible && (
-            <NotesPanel
+          <NotesPanel
           question={activeQuestion}
           progress={activeProgress}
           annotations={activeAnnotations}
@@ -854,7 +948,16 @@ export default function App() {
           mobileOpen={mobileNotesOpen}
           expanded={notesExpanded}
           synced={Boolean(user)}
+          width={notesPanelWidth}
+          minWidth={NOTES_PANEL_MIN_WIDTH}
+          maxWidth={notesMaximumWidth}
+          compact={notesCompact}
           onClose={closeNotes}
+          onWidthChange={resizeNotesPanel}
+          onResizeStart={() => setNotesResizing(true)}
+          onResizeEnd={() => setNotesResizing(false)}
+          onToggleWidth={toggleNotesPanelWidth}
+          onResetWidth={resetNotesPanelWidth}
           onNoteChange={(note) => updateProgress({ note }, { reason: LOGIN_REASONS.notes })}
           onAddAnnotation={addAnnotation}
           onUpdateAnnotation={updateAnnotation}
@@ -864,8 +967,7 @@ export default function App() {
             { status: 'review', dueAt: dateAfterDays(days) },
             { recordActivity: true, reason: LOGIN_REASONS.review },
           )}
-            />
-          )}
+          />
 
           <SelectionMenu
         selection={selection}
