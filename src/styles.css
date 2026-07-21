@@ -935,7 +935,6 @@ kbd {
   min-width: 0;
   margin: 0;
   padding-block: var(--space-xl);
-  border-block-start: var(--rule-thin) solid var(--color-rule);
   scroll-margin-block-start: 7.5rem;
 }
 
@@ -1050,7 +1049,6 @@ kbd {
 
 .learning-section__details {
   min-width: 0;
-  border-block: var(--rule-thin) solid var(--color-rule);
 }
 
 .learning-section__summary {
@@ -1066,10 +1064,6 @@ kbd {
 
 .learning-section__details[open] {
   padding-block-end: var(--space-md);
-}
-
-.learning-section__details[open] .learning-section__summary {
-  border-block-end: var(--rule-thin) solid var(--color-rule);
 }
 
 .learning-section--sources {

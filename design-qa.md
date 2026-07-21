@@ -1,35 +1,40 @@
-# Glossary list design QA
+# Reader divider removal design QA
 
 ## Reference and implementation
 
-- Source visual truth: `C:/Users/lsk69/AppData/Local/Temp/codex-clipboard-557820ae-49eb-4d0e-964e-e7b8a7e6df3b.png` (1920 x 910, light theme, guest, Vue Q1, single-page layout, drawers closed).
-- Desktop implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/glossary-list-2026-07-22/final-desktop-light-1920x910.png` (1920 x 910, matching content and state).
-- Mobile implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/glossary-list-2026-07-22/final-mobile-light-390x844.jpg` (390 x 844, light theme).
-- Full-view comparison evidence: the source and desktop implementation were opened together at the same viewport and content state; the glossary structure and surrounding reading rhythm are legible without a separate crop.
-- Focused comparison: not required because all three glossary items, their dividers, wrapping, and neighboring sections are readable in the full-view evidence.
+- Source visual truth: `C:/Users/lsk69/AppData/Local/Temp/codex-clipboard-61f158d4-8bb9-4365-b737-096335592594.png` (1920 x 910, light theme, guest, Vue Q1, single-page focus mode, follow-ups closed).
+- Desktop implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/divider-removal-2026-07-22/final-desktop-light-1920x910.jpg` (1920 x 910, matching question, theme, layout, and drawer state).
+- Expanded follow-up implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/divider-removal-2026-07-22/desktop-light-followups-open-1920x910.jpg`.
+- Mobile implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/divider-removal-2026-07-22/final-mobile-light-390x844.jpg`.
+- Double-page implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/divider-removal-2026-07-22/double-page-light-1440x900.jpg`.
+- Dark-theme implementation: `C:/Users/lsk69/.codex/visualizations/2026/07/18/019f756d-390f-7700-83ff-c1889eaa829f/divider-removal-2026-07-22/single-page-dark-1440x900.jpg`.
+- Full-view comparison evidence: the source and final desktop implementation were opened together in one comparison input at the same 1920 x 910 viewport and matching content state.
+- Focused comparison: not required because all three marked horizontal dividers, the adjacent headings, and the surrounding whitespace are clearly readable in the full-view comparison.
 
 ## Comparison history
 
-1. Initial P2 finding: the glossary used a two-column grid, so readers had to jump between columns to understand a short sequential definition list.
-2. Initial P2 finding: each item added a full-width bottom border, creating three competing horizontal rules inside an already ruled reading page.
-3. Fix: restored native vertical list semantics, used small disc markers, removed item borders, and kept long entries together with `break-inside: avoid`.
-4. Post-fix evidence: the glossary changed from two columns to one continuous three-item list, internal item borders are `0`, section height fell from about 328 px to 240 px at the desktop reference viewport, and horizontal overflow remains `0`.
+1. Initial P2 finding: every learning section added a full-width top border, producing visible rules between glossary, mechanism, and follow-up content.
+2. Initial P2 finding: the native follow-up disclosure added top and bottom borders when closed and another divider below its summary when open.
+3. Fix: removed the generic learning-section top border and all decorative borders from the follow-up details container while preserving section padding, disclosure semantics, focus treatment, and touch target size.
+4. Post-fix evidence: the three marked rules are absent in the matched desktop view; the closed and open follow-up states use headings and whitespace only, with no layout shift or lost content.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: unchanged from the existing reader system; terms retain their established emphasis and inline code retains the code treatment.
-- Spacing and layout rhythm: the list uses existing spacing tokens, a compact marker-to-copy gap, and a consistent vertical interval between entries.
-- Colors and visual tokens: native markers use the inherited reader color system; no new colors, shadows, radii, or decorative rules were introduced.
-- Image quality and asset fidelity: no image assets are involved in this component and none were substituted.
-- Copy and content: unchanged; only presentation and list flow were adjusted.
+- Fonts and typography: unchanged; the display hierarchy, body copy, terms, inline code, and disclosure label retain their existing families, weights, sizes, and line heights.
+- Spacing and layout rhythm: existing section padding now provides the grouping rhythm without decorative rules; no neighboring sections overlap or visually merge.
+- Colors and visual tokens: unchanged; no new color or hard-coded theme value was introduced.
+- Image quality and asset fidelity: no image assets are involved in the edited region and none were substituted.
+- Copy and content: unchanged; glossary definitions, mechanism explanation, and follow-up content remain intact.
 
 ## Responsive and interaction checks
 
-- 320, 375, 390, 639, and 640 px: single vertical list, no item borders, long terms wrap inside the viewport, and horizontal overflow is `0`.
-- 1440 x 900 double-page mode: list remains vertical, avoids item fragmentation, and has no horizontal overflow.
-- Light and dark themes: markers, terms, code, and body copy remain readable without layout regression.
+- 390 x 844 light mobile: all marked dividers remain absent and content fits the viewport.
+- 1440 x 900 double-page light: page flow remains intact and the left/right content split has no decorative section lines.
+- 1440 x 900 single-page dark: hierarchy remains readable without contrast or grouping regressions.
+- Follow-up disclosure: mouse click opens and closes the native details element; closed, open, and summary-content boundaries remain line-free.
+- Accessibility retained: native disclosure marker, keyboard behavior, focus-visible outline, and minimum summary height remain unchanged.
 - Browser console: no warnings or errors in the final pass.
-- Automated verification: production build, database integrity check, and the full Vitest suite passed.
+- Production build: passed.
 
 ## Findings
 
