@@ -4122,7 +4122,7 @@ body:has(dialog[open]) .reader {
 
   .rail {
     position: relative;
-    z-index: var(--z-raised);
+    z-index: var(--z-sticky);
     display: flex;
     min-width: 0;
     height: 100dvh;
@@ -4179,6 +4179,22 @@ body:has(dialog[open]) .reader {
   .rail__button.is-active {
     background: color-mix(in oklch, var(--color-rail-fg) 12%, transparent);
     color: white;
+  }
+
+  .rail__button[aria-expanded="true"] {
+    background: color-mix(in oklch, var(--color-accent) 42%, var(--color-rail-bg));
+    color: white;
+    box-shadow: 0 0 0 var(--rule-thin) color-mix(in oklch, var(--color-accent) 72%, transparent) inset;
+  }
+
+  .rail__button[aria-expanded="true"]::before {
+    content: '';
+    position: absolute;
+    inset-block: var(--space-xs);
+    inset-inline-start: calc(-1 * var(--space-xs));
+    width: var(--rule-heavy);
+    border-radius: var(--rule-heavy);
+    background: var(--color-accent);
   }
 
   .rail__button.is-module.is-active {

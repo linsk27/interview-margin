@@ -1,4 +1,4 @@
-import { BarChart3, BookMarked, Check, ChevronDown, Circle, CircleUserRound, Clock3, LibraryBig, LogIn, Search, Settings2, Star, X } from 'lucide-react'
+import { BarChart3, BookMarked, Check, ChevronDown, Circle, CircleUserRound, Clock3, LibraryBig, LogIn, PanelLeftClose, Search, Settings2, Star } from 'lucide-react'
 import type { InterviewQuestion, InterviewSection, QuestionBankDefinition, StudyState, StudyStatus } from '../types'
 import { progressFor } from '../lib/storage'
 
@@ -120,7 +120,7 @@ export function Sidebar({
             aria-expanded={expanded}
             title="收起题库"
           >
-            <X aria-hidden="true" />
+            <PanelLeftClose aria-hidden="true" />
           </button>
         </div>
       </header>
