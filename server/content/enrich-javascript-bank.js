@@ -54,7 +54,9 @@ export function parseJavascriptQuestionInventory(source) {
 }
 
 export function enrichJavascriptMarkdown(source) {
-  const inventory = parseJavascriptQuestionInventory(source)
+  const sourceText = String(source)
+  const newline = sourceText.includes('\r\n') ? '\r\n' : '\n'
+  const inventory = parseJavascriptQuestionInventory(sourceText)
   if (inventory.length !== 100) throw new Error(`javascript: 找到 ${inventory.length} 题，预期 100 题`)
   inventory.forEach((question, index) => {
     if (question.number !== index + 1) throw new Error(`javascript: 题号在 Q${index + 1} 处不连续`)
@@ -70,7 +72,7 @@ export function enrichJavascriptMarkdown(source) {
   })
   const byNumber = new Map([...firstHalf, ...secondHalf].map((entry) => [entry.number, entry]))
 
-  const lines = String(source).replace(/\r\n?/g, '\n').split('\n')
+  const lines = sourceText.replace(/\r\n?/g, '\n').split('\n')
   const output = []
   for (let index = 0; index < lines.length;) {
     if (/^#\s+/.test(lines[index])) {
@@ -102,7 +104,7 @@ export function enrichJavascriptMarkdown(source) {
     )
     index = end
   }
-  return `${output.join('\n').trim()}\n`
+  return `${output.join('\n').trim().replace(/\n/g, newline)}${newline}`
 }
 
 export function enrichJavascriptBank(outputRoot = rootDir) {

@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the Interview Margin SQLite backup each night
+Documentation=file:/opt/interview-margin/current/ops/linux/README.md
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=5min
+AccuracySec=1min
+Unit=interview-margin-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,54 @@
+[Unit]
+Description=Interview Margin web application
+Documentation=file:/opt/interview-margin/current/ops/linux/README.md
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/opt/interview-margin/current /var/lib/interview-margin
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=interview-margin
+Group=interview-margin
+WorkingDirectory=/opt/interview-margin/current
+EnvironmentFile=/etc/interview-margin/app.env
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+UMask=0077
+
+ExecStartPre=/usr/bin/bash /opt/interview-margin/current/ops/linux/db-preflight.sh app
+ExecStart=/usr/bin/env node server/index.js
+
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=90s
+TimeoutStopSec=20s
+KillSignal=SIGTERM
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/interview-margin /opt/interview-margin/current/data /opt/interview-margin/current/backups
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+LimitNOFILE=65536
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=interview-margin
+
+[Install]
+WantedBy=multi-user.target

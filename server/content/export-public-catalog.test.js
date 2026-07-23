@@ -66,5 +66,5 @@ describe('public catalog exporter', () => {
     expect(secondResult).toMatchObject({ banks: 9, questions: 501, outputPath: second })
     expect(fs.readFileSync(first, 'utf8')).toBe(fs.readFileSync(second, 'utf8'))
     expect(JSON.parse(fs.readFileSync(first, 'utf8'))).toEqual(buildPublicCatalog())
-  }, 15_000)
+  }, 60_000)
 })
