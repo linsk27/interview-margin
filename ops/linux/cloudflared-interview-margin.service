@@ -1,0 +1,40 @@
+[Unit]
+Description=Cloudflare Tunnel connector for Interview Margin
+Documentation=https://developers.cloudflare.com/tunnel/setup/
+Wants=network-online.target
+After=network-online.target interview-margin.service
+Requires=interview-margin.service
+
+[Service]
+Type=simple
+User=cloudflared
+Group=cloudflared
+ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate --loglevel info --url http://127.0.0.1:4173 run --token-file /etc/cloudflared/interview-margin.token
+Restart=always
+RestartSec=5s
+TimeoutStopSec=15s
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=interview-margin-tunnel
+
+[Install]
+WantedBy=multi-user.target

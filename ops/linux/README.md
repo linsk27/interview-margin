@@ -82,6 +82,23 @@ sudo systemctl enable --now interview-margin.service
 sudo systemctl enable --now interview-margin-backup.timer
 ```
 
+For a remotely managed Cloudflare Tunnel, install the official `cloudflared`
+package, create a dedicated `cloudflared` system user, and put the connector
+token in `/etc/cloudflared/interview-margin.token` with owner
+`root:cloudflared` and mode `0640`. Install
+`cloudflared-interview-margin.service`, but start it only after the old writer
+has been stopped and the final SQLite backup has been restored:
+
+```bash
+sudo install -m 0644 ops/linux/cloudflared-interview-margin.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now cloudflared-interview-margin.service
+```
+
+Cloudflare Universal SSL provides and renews the public certificate for the
+proxied hostname. The tunnel connects outbound from the ECS, so the application
+and port 4173 remain private.
+
 The timer runs an online SQLite backup around 03:00 and retains the newest 30
 local files. Local retention is not disaster recovery; copy backups encrypted to
 another disk or OSS and perform a restore drill. `server/backup.js` opens the
