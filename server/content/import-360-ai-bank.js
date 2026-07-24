@@ -12,8 +12,8 @@ const SOURCE_PATH = path.join(rootDir, 'docs/source/360-ai-frontend/answers.md')
 const OUTPUT_PATH = path.join(rootDir, 'public/question-banks/360-ai-frontend.md')
 
 const INCLUDED_SECTIONS = new Map([
-  ['2', '开场与岗位匹配'],
-  ['3', '简历风险与真实边界'],
+  ['2', 'RAG 方案选型'],
+  ['3', 'AI 编程工具安全'],
   ['4', '项目技术原理'],
   ['5', 'RAG、Agent 与模型原理'],
   ['6', 'SSE、AI 前端与 React'],
@@ -23,6 +23,21 @@ const INCLUDED_SECTIONS = new Map([
 ])
 
 const EXCLUDED_QUESTIONS = new Set(['5.17', '5.18', '6.20'])
+const RETIRED_PUBLIC_QUESTIONS = new Set([
+  '2.1',
+  '2.2',
+  '2.3',
+  '2.4',
+  '2.6',
+  '2.7',
+  '3.1',
+  '3.2',
+  '3.4',
+  '3.5',
+])
+
+const SOURCE_QUESTION_COUNT = 77
+const PUBLIC_QUESTION_COUNT = 67
 
 const TITLE_OVERRIDES = new Map([
   ['2.1', '如何组织一段 90 秒的技术岗位自我介绍？'],
@@ -87,6 +102,8 @@ const PUBLIC_SAFE_SHORTS = new Map([
 const PUBLIC_SAFE_MECHANISMS = new Map([
   ['2.1', '面试开场的注意力预算很短，因此需要先给结论，再给证据。定位句让面试官建立候选人模型，项目证据证明能力不是标签，边界与动机则降低夸大风险并解释岗位选择。每一段都应能被后续追问验证，无法展开的技能不应放进主线。'],
   ['2.4', '项目介绍本质上是在有限时间内建立一条可验证的因果链：某类用户遇到具体问题，系统接收什么输入、经过哪些关键状态、产出什么结果；候选人负责其中哪一段、为什么选择该方案、如何验证，以及尚未解决什么。缺少任一环，介绍都容易退化成技术名词或功能清单。'],
+  ['2.5', 'RAG 把频繁变化的知识与模型参数解耦。离线链路负责解析、切块、向量化和建索引；在线链路负责查询改写、混合召回、重排、上下文组装、生成和引用校验。全文 Prompt 没有召回误差，但受上下文窗口、成本和噪声限制；关键词搜索擅长精确词，却较难覆盖语义改写；微调主要改变模型行为和输出形式，不适合承载需要频繁更新、逐条追溯的事实。是否选择 RAG，最终要用检索命中率、答案忠实度、引用正确率、延迟和成本共同验证。'],
+  ['3.3', 'AI 编程代理的输入、外部文档和生成结果都应按不可信数据处理。主要风险包括提示注入、密钥或源码外泄、越权写入、危险命令、恶意依赖、许可证冲突，以及生成代码与测试共享同一错误假设。可靠控制链应包含最小文件与网络权限、隔离的凭据、受控命令白名单、逐文件 diff 审查、独立设计的测试、安全与依赖扫描、可追溯日志；发布、删除、上传和权限变更等高影响动作还要保留人工确认。'],
   ['3.4', '地点意愿的核心是信息一致性和可执行性。回答应把偏好、硬约束、确认节点与到岗条件分开：已经决定的部分给清楚结论，尚未决定的部分给确认时间，变化则说明新的信息和决策依据。这样既避免虚假承诺，也让招聘方能够评估实际安排。'],
 ])
 
@@ -103,6 +120,9 @@ const PUBLIC_SAFE_SPECIFICS = new Map([
     pitfalls: `- 不要按简历时间顺序逐段朗读，听完却没有清晰的能力主线。
 - 不要在公共模板中写姓名、学校、地点意愿或雇主信息；个人版本只保存在登录后的私人笔记。
 - 不要把团队成果全部说成个人独立完成，必须能指出职责和代码边界。`,
+  }],
+  ['3.3', {
+    practice: '在不含真实凭据的临时仓库中演练一次受限代理工作流：只开放指定目录的读取和单个分支写入，默认关闭外网与发布权限；先写验收条件和禁止修改清单，再让工具生成候选补丁。随后逐文件审查 diff，运行独立编写的边界测试、类型检查、密钥扫描和依赖审计，并故意放入一条来自 README 的恶意操作指令，验证代理不会越权执行或外传数据。',
   }],
   ['3.4', {
     practice: '把地点回答写成三个事实字段：当前可接受范围、可确认的到岗时间、仍需处理的前置事项。然后检查招聘系统、简历和口头说法是否一致；如果尚未决定，就明确给出最终确认日期，不用模糊承诺换取流程机会。',
@@ -358,6 +378,10 @@ function pitfallsFallback(sectionNumber) {
 function referencesFor(sectionNumber, title) {
   const text = title.toLowerCase()
   if (text.includes('ble')) return [REFERENCES.mdnBluetooth, REFERENCES.job, REFERENCES.browser360]
+  if (text.includes('rag')) return [REFERENCES.ragPaper, REFERENCES.owaspPrompt, REFERENCES.owaspOutput]
+  if (text.includes('codex') || text.includes('cursor')) {
+    return [REFERENCES.owaspPrompt, REFERENCES.owaspOutput, REFERENCES.mcpTools]
+  }
   if (text.includes('promise')) return [REFERENCES.mdnPromise, REFERENCES.mdnEventLoop, REFERENCES.typescript]
   if (text.includes('three.js')) return [REFERENCES.threeProject, REFERENCES.threeDispose, REFERENCES.mdnEventLoop]
   if (text.includes('prompt injection') || text.includes('rag 投毒')) {
@@ -513,18 +537,25 @@ export function build360AiBankMarkdown(source) {
   flush()
 
   const rendered = ['# 360 AI 应用前端一面预判', '']
-  let questionNumber = 1
+  let sourceQuestionNumber = 1
+  let publicQuestionCount = 0
   for (const section of sections.values()) {
     if (!section.questions.length) continue
     rendered.push(`# ${section.title}`, '')
     for (const question of section.questions) {
-      rendered.push(renderQuestion(question, questionNumber), '')
-      questionNumber += 1
+      const stableQuestionNumber = sourceQuestionNumber
+      sourceQuestionNumber += 1
+      if (RETIRED_PUBLIC_QUESTIONS.has(question.key)) continue
+      rendered.push(renderQuestion(question, stableQuestionNumber), '')
+      publicQuestionCount += 1
     }
   }
 
-  if (questionNumber - 1 !== 77) {
-    throw new Error(`360 AI 题库应生成 77 题，实际 ${questionNumber - 1} 题`)
+  if (sourceQuestionNumber - 1 !== SOURCE_QUESTION_COUNT) {
+    throw new Error(`360 AI 题库源编号应覆盖 ${SOURCE_QUESTION_COUNT} 题，实际 ${sourceQuestionNumber - 1} 题`)
+  }
+  if (publicQuestionCount !== PUBLIC_QUESTION_COUNT) {
+    throw new Error(`360 AI 公共技术题库应生成 ${PUBLIC_QUESTION_COUNT} 题，实际 ${publicQuestionCount} 题`)
   }
   const markdown = `${rendered.join('\n').trim()}\n`
   assert360PublicContentSafe(markdown)
@@ -539,7 +570,7 @@ export function import360AiBank({
   const markdown = build360AiBankMarkdown(source)
   fs.mkdirSync(path.dirname(outputPath), { recursive: true })
   fs.writeFileSync(outputPath, markdown, 'utf8')
-  return { questions: 77, sourcePath, outputPath }
+  return { questions: PUBLIC_QUESTION_COUNT, sourcePath, outputPath }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

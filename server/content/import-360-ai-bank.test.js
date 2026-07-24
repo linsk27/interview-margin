@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 
 import { DIAGRAM_URL_PATTERN, inspectMarkdownDiagrams } from './diagram-policy.js'
 import { build360AiBankMarkdown } from './import-360-ai-bank.js'
+import { parseQuestionMarkdown } from './markdown.js'
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const source = fs.readFileSync(
@@ -69,19 +70,41 @@ function assertNoOverusedIdenticalBlocks(questions, startMarker, endMarker) {
 }
 
 describe('360 AI frontend bank importer', () => {
-  it('deterministically generates exactly 77 questions in 8 chapters', () => {
+  it('deterministically publishes 67 technical questions while retaining stable source numbers', () => {
     const first = build360AiBankMarkdown(source)
     const second = build360AiBankMarkdown(source)
     const questions = parseQuestions(first)
     const topLevelHeadings = first.match(/^# (?!#).+$/gm) ?? []
+    const retiredNumbers = new Set([1, 2, 3, 4, 6, 7, 8, 9, 11, 12])
 
     expect(second).toBe(first)
-    expect(questions).toHaveLength(77)
+    expect(questions).toHaveLength(67)
     expect(questions.map(({ number }) => number)).toEqual(
-      Array.from({ length: 77 }, (_, index) => index + 1),
+      Array.from({ length: 77 }, (_, index) => index + 1)
+        .filter((number) => !retiredNumbers.has(number)),
     )
     expect(topLevelHeadings).toHaveLength(9)
     expect(new Set(topLevelHeadings.slice(1)).size).toBe(8)
+    expect(topLevelHeadings).toContain('# RAG 方案选型')
+    expect(topLevelHeadings).toContain('# AI 编程工具安全')
+  })
+
+  it('keeps the published IDs of Q5, Q10, Q13 and Q77 stable', () => {
+    const sections = parseQuestionMarkdown(build360AiBankMarkdown(source), {
+      idPrefix: '360-ai-frontend',
+      baseTags: [],
+      preserveIds: false,
+    })
+    const questionsByNumber = new Map(
+      sections
+        .flatMap((section) => section.questions)
+        .map((question) => [question.number, question]),
+    )
+
+    expect(questionsByNumber.get('5')?.id).toBe('ac6dcacc-415c-5753-823b-b0b595455a19')
+    expect(questionsByNumber.get('10')?.id).toBe('dd550277-dd32-58e2-9d7c-616e9872ec88')
+    expect(questionsByNumber.get('13')?.id).toBe('7116e811-18ef-502d-8274-162089d41a07')
+    expect(questionsByNumber.get('77')?.id).toBe('0414bff8-fe5e-5733-b668-3ba81ce80268')
   })
 
   it('gives every question all six learning markers and at least two sources', () => {
@@ -116,7 +139,11 @@ describe('360 AI frontend bank importer', () => {
     expect(markdown).not.toMatch(/\[(?:请[^\]]*填写[^\]]*|真实|如果真实)[^\]]*\]/)
     expect(markdown).not.toMatch(/我叫[\p{Script=Han}]{2,4}|(?:大学|学院).{0,20}2026\s*届/u)
     expect(markdown).not.toMatch(/ContextForge|广州深圳|只有在真实|校验日期/u)
-    expect(questions[0].body).toContain('如何组织一段 90 秒的技术岗位自我介绍')
+    expect(markdown).not.toMatch(/自我介绍|为什么选择 360|异地求职|地点与到岗意愿/u)
+    expect(questions[0].number).toBe(5)
+    expect(questions[0].body).toContain('为什么使用 RAG')
+    expect(questions[1].number).toBe(10)
+    expect(questions[1].body).toContain('AI 编程工具')
 
     for (const question of questions) {
       const shortAnswer = markerBlock(question.body, '**短回答：**', '**原理：**')

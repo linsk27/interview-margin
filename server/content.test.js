@@ -10,14 +10,14 @@ describe('question catalog seed quality', () => {
   beforeEach(() => { db = createDatabase({ filename: ':memory:', bootstrap: false }).db })
   afterEach(() => db.close())
 
-  it('contains exactly ten banks and 578 unique questions', () => {
+  it('contains exactly ten banks and 568 unique questions', () => {
     expect(db.prepare('SELECT COUNT(*) count FROM question_banks').get().count).toBe(10)
-    expect(db.prepare('SELECT COUNT(*) count FROM questions').get().count).toBe(578)
-    expect(db.prepare('SELECT COUNT(DISTINCT id) count FROM questions').get().count).toBe(578)
+    expect(db.prepare('SELECT COUNT(*) count FROM questions').get().count).toBe(568)
+    expect(db.prepare('SELECT COUNT(DISTINCT id) count FROM questions').get().count).toBe(568)
     expect(db.prepare("SELECT COUNT(*) count FROM questions WHERE id IN ('q-1','js-q-100')").get().count).toBe(2)
     const ids = db.prepare('SELECT id FROM questions ORDER BY id').all().map((row) => row.id).join(' ')
     expect(crypto.createHash('sha256').update(ids).digest('hex'))
-      .toBe('2e84868f7477b661cec3e07380dd97fc3fb584965ac57a0c3a989949b4918182')
+      .toBe('7a5ff653df6521b3ebebaf3fcd0af35f12cd61dbb9e441c1a7047760e7686dd9')
     expect(db.prepare("SELECT COUNT(*) count FROM questions WHERE body_md LIKE '%/content/diagrams/%'").get().count)
       .toBe(19)
   })
@@ -41,7 +41,7 @@ describe('question catalog seed quality', () => {
     const questions = db.prepare(
       "SELECT * FROM questions WHERE bank_id = '360-ai-frontend' ORDER BY sort_order",
     ).all()
-    expect(questions).toHaveLength(77)
+    expect(questions).toHaveLength(67)
     for (const question of questions) {
       expect(question.body_md).toContain('**短回答：**')
       expect(question.body_md).toContain('**原理：**')

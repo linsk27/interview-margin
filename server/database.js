@@ -272,8 +272,9 @@ function seedBuiltins(db, rootDir) {
       body_md=excluded.body_md, plain_text=excluded.plain_text,
       tags_json=excluded.tags_json, read_minutes=excluded.read_minutes,
       sort_order=excluded.sort_order, verified_at=excluded.verified_at,
-      version=questions.version+1, updated_at=excluded.updated_at
+      archived_at=NULL, version=questions.version+1, updated_at=excluded.updated_at
     WHERE questions.provenance='seed' AND (
+      questions.archived_at IS NOT NULL OR
       questions.section_id<>excluded.section_id OR questions.display_number<>excluded.display_number OR
       questions.title<>excluded.title OR questions.body_md<>excluded.body_md OR
       questions.tags_json<>excluded.tags_json OR questions.sort_order<>excluded.sort_order
@@ -295,10 +296,12 @@ function seedBuiltins(db, rootDir) {
         baseTags: bank.baseTags,
         preserveIds: bank.preserveIds,
       })
+      const currentQuestionIds = []
       for (const section of sections) {
         const sectionId = `${bank.id}:${section.id}`
         insertSection.run(sectionId, bank.id, section.title, section.order)
         for (const question of section.questions) {
+          currentQuestionIds.push(question.id)
           const inserted = insertQuestion.run(question.id, bank.id, sectionId, question.number, question.title,
             question.body, question.plainText, JSON.stringify(question.tags),
             question.readMinutes, question.order, now, now, now)
@@ -311,6 +314,16 @@ function seedBuiltins(db, rootDir) {
           }
         }
       }
+      const placeholders = currentQuestionIds.map(() => '?').join(', ')
+      const currentQuestionFilter = currentQuestionIds.length > 0
+        ? `AND id NOT IN (${placeholders})`
+        : ''
+      db.prepare(`
+        UPDATE questions
+        SET archived_at = ?, version = version + 1, updated_at = ?
+        WHERE bank_id = ? AND provenance = 'seed' AND archived_at IS NULL
+          ${currentQuestionFilter}
+      `).run(now, now, bank.id, ...currentQuestionIds)
     }
   })()
 }
