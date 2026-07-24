@@ -60,7 +60,7 @@ describe('built-in question seed synchronization', () => {
   let rootDir
 
   const completeSource = [
-    '# 基础题',
+    '# 旧基础题',
     '',
     '## Q1 会被暂时移除的题目',
     '',
@@ -73,7 +73,7 @@ describe('built-in question seed synchronization', () => {
   ].join('\n')
 
   const sourceWithoutQ1 = [
-    '# 基础题',
+    '# 新基础题',
     '',
     '## Q2 始终保留的题目',
     '',
@@ -106,6 +106,9 @@ describe('built-in question seed synchronization', () => {
     })
 
     const userId = database.db.prepare('SELECT id FROM users WHERE username = ?').get('seed-admin').id
+    const originalSection = database.db.prepare(
+      "SELECT id FROM sections WHERE bank_id = 'interview' AND sort_order = 0",
+    ).get()
     const now = new Date().toISOString()
     database.db.prepare(`
       INSERT INTO progress(user_id, question_id, status, note, updated_at)
@@ -129,6 +132,9 @@ describe('built-in question seed synchronization', () => {
     expect(database.db.prepare(`
       SELECT archived_at FROM questions WHERE id = 'q-2'
     `).get().archived_at).toBeNull()
+    expect(database.db.prepare(`
+      SELECT id, title FROM sections WHERE bank_id = 'interview' AND sort_order = 0
+    `).get()).toEqual({ id: originalSection.id, title: '新基础题' })
     expect(database.db.prepare(`
       SELECT note FROM progress WHERE user_id = ? AND question_id = 'q-1'
     `).get(userId).note).toBe('保留这条学习记录')

@@ -259,7 +259,8 @@ function seedBuiltins(db, rootDir) {
   `)
   const insertSection = db.prepare(`
     INSERT INTO sections(id, bank_id, title, sort_order) VALUES(?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET title=excluded.title, sort_order=excluded.sort_order
+    ON CONFLICT DO UPDATE SET title=excluded.title, sort_order=excluded.sort_order
+    RETURNING id
   `)
   const insertQuestion = db.prepare(`
     INSERT INTO questions(
@@ -298,8 +299,10 @@ function seedBuiltins(db, rootDir) {
       })
       const currentQuestionIds = []
       for (const section of sections) {
-        const sectionId = `${bank.id}:${section.id}`
-        insertSection.run(sectionId, bank.id, section.title, section.order)
+        const proposedSectionId = `${bank.id}:${section.id}`
+        const sectionId = insertSection
+          .get(proposedSectionId, bank.id, section.title, section.order)
+          .id
         for (const question of section.questions) {
           currentQuestionIds.push(question.id)
           const inserted = insertQuestion.run(question.id, bank.id, sectionId, question.number, question.title,
