@@ -49,21 +49,22 @@ describe('server API', () => {
 
   afterEach(() => db.close())
 
-  it('serves all 501 questions while preserving the existing question ids', async () => {
+  it('serves all 578 questions while preserving the existing question ids', async () => {
     const health = await request(app).get('/api/health').expect(200)
-    expect(health.body).toMatchObject({ storage: 'sqlite', banks: 9, questions: 501 })
+    expect(health.body).toMatchObject({ storage: 'sqlite', banks: 10, questions: 578 })
     const catalog = await request(app).get('/api/catalog').set('Accept-Encoding', 'gzip').expect(200)
     expect(health.headers['cache-control']).toBe('no-store')
     expect(catalog.headers['cache-control']).toBe('no-store')
     expect(catalog.headers['content-encoding']).toBe('gzip')
     expect(catalog.headers.vary).toContain('Accept-Encoding')
-    expect(catalog.body.banks).toHaveLength(9)
+    expect(catalog.body.banks).toHaveLength(10)
     expect(catalog.body.banks.map((bank) => bank.id)).toEqual([
       'interview', 'javascript', 'git-engineering', 'vue-core', 'react-core',
       'frontend-engineering', 'backend-fullstack', 'database-cache', 'network-deployment',
+      '360-ai-frontend',
     ])
     const questions = catalog.body.sections.flatMap((section) => section.questions)
-    expect(questions).toHaveLength(501)
+    expect(questions).toHaveLength(578)
     expect(questions[0].id).toBe('q-1')
     expect(questions.some((question) => question.id === 'q-1')).toBe(true)
     expect(questions.some((question) => question.id === 'js-q-100')).toBe(true)

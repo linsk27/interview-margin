@@ -126,7 +126,12 @@ export function QuestionMarkdown({
             {content}<LinkIcon aria-hidden="true" />
           </a>
         ),
-        blockquote: ({ children: content }) => <blockquote><Highlighter aria-hidden="true" />{content}</blockquote>,
+        blockquote: ({ children: content }) => (
+          <blockquote>
+            <Highlighter aria-hidden="true" />
+            <div className="markdown-blockquote__content">{content}</div>
+          </blockquote>
+        ),
         code: ({ className, children: content, ...props }) => (
           <code className={className} {...props}>{content}</code>
         ),

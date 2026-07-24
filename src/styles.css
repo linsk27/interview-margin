@@ -319,6 +319,8 @@ kbd {
   min-width: 0;
   margin-inline: auto;
   padding: var(--space-xl) var(--space-md) var(--space-3xl);
+  container-name: reader;
+  container-type: inline-size;
 }
 
 .reader__viewport,
@@ -1225,7 +1227,7 @@ kbd {
 .markdown-body blockquote {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 1.1rem minmax(0, 1fr);
   gap: var(--space-md);
   padding: var(--space-lg) 0 var(--space-lg) var(--space-md);
   border-inline-start: var(--rule-heavy) solid var(--color-warm);
@@ -1241,6 +1243,32 @@ kbd {
 
 .markdown-body blockquote p {
   margin: 0;
+}
+
+.markdown-blockquote__content {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-sm);
+}
+
+.markdown-blockquote__content > :first-child {
+  margin-block-start: 0;
+}
+
+.markdown-blockquote__content > :last-child {
+  margin-block-end: 0;
+}
+
+@container reader (max-width: 42rem) {
+  .learning-section--answer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reader:not(.reader--spread) .learning-section--answer > .learning-section__heading,
+  .reader:not(.reader--spread) .markdown-body .learning-section--answer > :not(.learning-section__heading) {
+    grid-column: 1;
+    grid-row: auto;
+  }
 }
 
 .code-block {

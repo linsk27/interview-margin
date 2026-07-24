@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Transformer Block 数据流</title>
+  <desc id="desc">输入嵌入加位置信息后进入多头自注意力，通过残差连接和归一化，再进入前馈网络与第二次残差归一化，得到下一层表示；旁侧展示 Q、K、V 与缩放点积注意力公式。</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f9fbff"/><stop offset="1" stop-color="#eef3fb"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0 0L0 6L9 3Z" fill="#3e72a7"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#294864" flood-opacity=".12"/>
+    </filter>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324a}
+      .eyebrow{font-size:15px;font-weight:700;letter-spacing:2px;fill:#2f6fab}
+      .title{font-size:34px;font-weight:800}
+      .subtitle{font-size:17px;fill:#597086}
+      .block{font-size:20px;font-weight:800}
+      .detail{font-size:14px;fill:#5c7285}
+      .pill{font-size:17px;font-weight:800}
+      .formula{font-family:"IBM Plex Mono",Consolas,monospace;font-size:20px;font-weight:650}
+      .note{font-size:15px;font-weight:650}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#background)"/>
+  <text x="58" y="58" class="eyebrow">TRANSFORMER BLOCK</text>
+  <text x="58" y="102" class="title">注意力负责“读谁”，前馈网络负责“怎么变换”</text>
+  <text x="58" y="135" class="subtitle">残差连接保留原表示并改善梯度传播；归一化稳定每层输入，但具体 Pre-LN / Post-LN 顺序取决于模型架构。</text>
+
+  <rect x="68" y="188" width="650" height="464" rx="28" fill="#fff" stroke="#c4d5e4" filter="url(#shadow)"/>
+  <text x="100" y="227" class="note" fill="#2f6fab">一层表示的主干路径</text>
+
+  <rect x="104" y="550" width="188" height="64" rx="18" fill="#e9f3ff" stroke="#91b9dd"/>
+  <text x="198" y="578" text-anchor="middle" class="block">Token Embedding</text>
+  <text x="198" y="600" text-anchor="middle" class="detail">词元语义表示</text>
+  <rect x="338" y="550" width="188" height="64" rx="18" fill="#fff3df" stroke="#dfb366"/>
+  <text x="432" y="578" text-anchor="middle" class="block">Position</text>
+  <text x="432" y="600" text-anchor="middle" class="detail">位置编码 / 旋转位置</text>
+  <circle cx="582" cy="582" r="27" fill="#3476b4"/>
+  <path d="M569 582h26M582 569v26" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M292 582H550M526 582H550" stroke="#3e72a7" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="180" y="423" width="382" height="80" rx="20" fill="#edf3ff" stroke="#8aa9dc"/>
+  <text x="371" y="456" text-anchor="middle" class="block">Multi-Head Self-Attention</text>
+  <text x="371" y="482" text-anchor="middle" class="detail">多个头在不同子空间聚合上下文</text>
+  <path d="M582 555V517C582 501 566 463 562 463" fill="none" stroke="#3e72a7" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="180" y="326" width="382" height="62" rx="18" fill="#f5efff" stroke="#b19ad7"/>
+  <text x="371" y="354" text-anchor="middle" class="block">Add + Norm</text>
+  <text x="371" y="376" text-anchor="middle" class="detail">注意力输出与残差相加后归一化</text>
+  <path d="M371 423V398" stroke="#3e72a7" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M150 552V357H169" fill="none" stroke="#8c6ab9" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+  <text x="112" y="454" class="detail" transform="rotate(-90 112 454)">Residual</text>
+
+  <rect x="180" y="228" width="382" height="64" rx="18" fill="#fff4e4" stroke="#dfb36c"/>
+  <text x="371" y="256" text-anchor="middle" class="block">Feed-Forward Network</text>
+  <text x="371" y="278" text-anchor="middle" class="detail">逐 token 的非线性通道变换</text>
+  <path d="M371 326V302" stroke="#3e72a7" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="180" y="144" width="382" height="52" rx="17" fill="#e8f6ef" stroke="#83bca0"/>
+  <text x="371" y="176" text-anchor="middle" class="block">Add + Norm → 下一层</text>
+  <path d="M371 228V206" stroke="#3e72a7" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M588 356V170H572" fill="none" stroke="#5d9f7e" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+  <text x="616" y="276" class="detail" transform="rotate(-90 616 276)">Residual</text>
+
+  <rect x="762" y="188" width="370" height="464" rx="28" fill="#fff" stroke="#c4d5e4" filter="url(#shadow)"/>
+  <text x="798" y="227" class="note" fill="#2f6fab">一个注意力头内部</text>
+
+  <rect x="800" y="260" width="82" height="52" rx="16" fill="#e6f1ff" stroke="#8eb4d8"/>
+  <text x="841" y="292" text-anchor="middle" class="pill">Q</text>
+  <text x="902" y="290" class="detail">当前 token 想找什么</text>
+  <rect x="800" y="332" width="82" height="52" rx="16" fill="#fff1dc" stroke="#d9aa58"/>
+  <text x="841" y="364" text-anchor="middle" class="pill">K</text>
+  <text x="902" y="362" class="detail">每个 token 提供的索引</text>
+  <rect x="800" y="404" width="82" height="52" rx="16" fill="#e9f7ef" stroke="#85bda0"/>
+  <text x="841" y="436" text-anchor="middle" class="pill">V</text>
+  <text x="902" y="434" class="detail">真正被加权汇总的内容</text>
+
+  <rect x="798" y="494" width="298" height="84" rx="18" fill="#f3f6fa" stroke="#b9c9d7"/>
+  <text x="947" y="528" text-anchor="middle" class="formula">softmax(QKᵀ / √dₖ)V</text>
+  <text x="947" y="555" text-anchor="middle" class="detail">√dₖ 避免点积随维度变大而让 softmax 过饱和</text>
+
+  <rect x="798" y="602" width="298" height="28" rx="14" fill="#e7f1fa"/>
+  <text x="947" y="622" text-anchor="middle" class="detail">Decoder-only 还会加入因果 Mask，不能看未来 token</text>
+</svg>

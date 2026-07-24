@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Function Calling 调用闭环</title>
+  <desc id="desc">用户提出目标，应用向模型提供工具定义；模型返回调用意图，应用完成参数、权限和风险校验后执行工具，再把结构化结果回填模型生成最终回答。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fbff"/><stop offset="1" stop-color="#eef4fb"/>
+    </linearGradient>
+    <marker id="blueArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0 0L0 6L9 3Z" fill="#3172af"/>
+    </marker>
+    <marker id="amberArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0 0L0 6L9 3Z" fill="#bc7412"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="11" flood-color="#224863" flood-opacity=".13"/>
+    </filter>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#163149}
+      .eyebrow{font-size:15px;font-weight:700;letter-spacing:2px;fill:#2f6fab}
+      .title{font-size:34px;font-weight:800}
+      .subtitle{font-size:17px;fill:#597086}
+      .nodeTitle{font-size:22px;font-weight:800}
+      .nodeText{font-size:15px;fill:#5d7184}
+      .step{font-size:15px;font-weight:800;fill:#fff}
+      .edge{font-size:14px;font-weight:700;fill:#37556f}
+      .guard{font-size:16px;font-weight:750}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="58" class="eyebrow">FUNCTION CALLING ≠ FUNCTION EXECUTION</text>
+  <text x="58" y="102" class="title">模型负责提出调用意图，应用负责授权、执行与审计</text>
+  <text x="58" y="135" class="subtitle">工具 schema 是能力说明，不是绕过业务权限的通行证；每次写操作仍需在可信执行层校验。</text>
+
+  <rect x="64" y="262" width="190" height="138" rx="24" fill="#fff" stroke="#b9cede" filter="url(#shadow)"/>
+  <circle cx="159" cy="226" r="38" fill="#dcecff" stroke="#77a9d5" stroke-width="2"/>
+  <path d="M142 229c0-11 7-20 17-20s17 9 17 20M132 249c7-8 16-12 27-12s20 4 27 12" fill="none" stroke="#276da9" stroke-width="4" stroke-linecap="round"/>
+  <text x="159" y="307" text-anchor="middle" class="nodeTitle">用户</text>
+  <text x="159" y="339" text-anchor="middle" class="nodeText">目标 · 约束 · 确认</text>
+  <text x="159" y="363" text-anchor="middle" class="nodeText">最终看到可解释结果</text>
+
+  <rect x="382" y="218" width="276" height="232" rx="26" fill="#fff" stroke="#92b8da" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="406" y="242" width="228" height="42" rx="12" fill="#e5f1ff"/>
+  <text x="520" y="270" text-anchor="middle" class="nodeTitle">应用编排层</text>
+  <text x="420" y="319" class="guard">可信职责</text>
+  <text x="420" y="349" class="nodeText">• 拼装消息与工具 schema</text>
+  <text x="420" y="376" class="nodeText">• 校验参数、身份与资源范围</text>
+  <text x="420" y="403" class="nodeText">• 超时、幂等、预算与审计</text>
+  <text x="420" y="430" class="nodeText">• 高风险写操作等待人工确认</text>
+
+  <rect x="788" y="176" width="326" height="148" rx="24" fill="#f2edff" stroke="#b09ade" filter="url(#shadow)"/>
+  <circle cx="826" cy="216" r="20" fill="#7758b8"/>
+  <path d="M816 216h20M826 206v20" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  <text x="858" y="222" class="nodeTitle">模型</text>
+  <text x="816" y="260" class="nodeText">理解目标并选择工具</text>
+  <text x="816" y="287" class="nodeText">返回 tool name、arguments、call id</text>
+
+  <rect x="788" y="400" width="326" height="148" rx="24" fill="#fff7e8" stroke="#dfb263" filter="url(#shadow)"/>
+  <circle cx="826" cy="440" r="20" fill="#ba7312"/>
+  <path d="M815 440h22M820 432l-7 8 7 8M832 432l7 8-7 8" fill="none" stroke="#fff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="858" y="446" class="nodeTitle">工具 / MCP Server</text>
+  <text x="816" y="484" class="nodeText">只接收通过校验的调用</text>
+  <text x="816" y="511" class="nodeText">返回结构化结果或明确错误</text>
+
+  <path d="M254 308H370" stroke="#3172af" stroke-width="3" marker-end="url(#blueArrow)"/>
+  <circle cx="312" cy="287" r="16" fill="#3172af"/><text x="312" y="292" text-anchor="middle" class="step">1</text>
+  <text x="312" y="337" text-anchor="middle" class="edge">提出目标</text>
+
+  <path d="M658 270C714 242 738 232 778 229" fill="none" stroke="#3172af" stroke-width="3" marker-end="url(#blueArrow)"/>
+  <circle cx="720" cy="232" r="16" fill="#3172af"/><text x="720" y="237" text-anchor="middle" class="step">2</text>
+  <text x="714" y="204" text-anchor="middle" class="edge">消息 + schema</text>
+
+  <path d="M788 297C728 322 703 333 668 337" fill="none" stroke="#7758b8" stroke-width="3" marker-end="url(#blueArrow)"/>
+  <circle cx="725" cy="329" r="16" fill="#7758b8"/><text x="725" y="334" text-anchor="middle" class="step">3</text>
+  <text x="736" y="365" text-anchor="middle" class="edge">调用意图</text>
+
+  <path d="M658 397C711 426 736 445 778 461" fill="none" stroke="#bc7412" stroke-width="3" marker-end="url(#amberArrow)"/>
+  <circle cx="718" cy="428" r="16" fill="#bc7412"/><text x="718" y="433" text-anchor="middle" class="step">4</text>
+  <text x="700" y="464" text-anchor="middle" class="edge">校验后执行</text>
+
+  <path d="M788 520C709 584 563 591 520 462" fill="none" stroke="#bc7412" stroke-width="3" marker-end="url(#amberArrow)"/>
+  <circle cx="674" cy="562" r="16" fill="#bc7412"/><text x="674" y="567" text-anchor="middle" class="step">5</text>
+  <text x="674" y="596" text-anchor="middle" class="edge">结构化 tool result</text>
+
+  <path d="M520 218C526 152 726 125 870 167" fill="none" stroke="#3172af" stroke-width="3" marker-end="url(#blueArrow)"/>
+  <circle cx="682" cy="142" r="16" fill="#3172af"/><text x="682" y="147" text-anchor="middle" class="step">6</text>
+  <text x="682" y="111" text-anchor="middle" class="edge">回填结果，再次调用模型</text>
+
+  <path d="M382 400C338 431 285 434 244 396" fill="none" stroke="#3172af" stroke-width="3" marker-end="url(#blueArrow)"/>
+  <circle cx="312" cy="439" r="16" fill="#3172af"/><text x="312" y="444" text-anchor="middle" class="step">7</text>
+  <text x="312" y="472" text-anchor="middle" class="edge">最终答案 / 状态</text>
+
+  <rect x="136" y="626" width="928" height="48" rx="16" fill="#e7f1fa" stroke="#b3cade"/>
+  <text x="600" y="656" text-anchor="middle" class="guard">最小权限 · 参数 schema · 人工确认 · 幂等键 · 超时预算 · 全链路日志</text>
+</svg>

@@ -28,20 +28,38 @@ try {
   const bankCount = db.prepare('SELECT COUNT(*) AS count FROM question_banks WHERE archived_at IS NULL').get().count
   const questionCount = db.prepare('SELECT COUNT(*) AS count FROM questions WHERE archived_at IS NULL').get().count
   const uniqueCount = db.prepare('SELECT COUNT(DISTINCT id) AS count FROM questions').get().count
-  const newQuestionCount = db.prepare("SELECT COUNT(*) AS count FROM questions WHERE bank_id NOT IN ('interview', 'javascript')").get().count
+  const newQuestionCount = db.prepare(`SELECT COUNT(*) AS count FROM questions
+    WHERE bank_id NOT IN ('interview', 'javascript', '360-ai-frontend')`).get().count
   const sourcedCount = db.prepare(`SELECT COUNT(DISTINCT q.id) AS count FROM questions q
-    JOIN source_refs s ON s.question_id=q.id WHERE q.bank_id NOT IN ('interview','javascript')`).get().count
+    JOIN source_refs s ON s.question_id=q.id
+    WHERE q.bank_id NOT IN ('interview','javascript','360-ai-frontend')`).get().count
+  const ai360QuestionCount = db.prepare(`SELECT COUNT(*) AS count FROM questions
+    WHERE bank_id='360-ai-frontend'`).get().count
+  const ai360SourcedCount = db.prepare(`SELECT COUNT(DISTINCT q.id) AS count FROM questions q
+    JOIN source_refs s ON s.question_id=q.id WHERE q.bank_id='360-ai-frontend'`).get().count
   const incomplete = db.prepare(`SELECT id, title FROM questions WHERE archived_at IS NULL AND
     (trim(title)='' OR trim(body_md)='' OR trim(plain_text)='' OR read_minutes < 1)`).all()
   const missingSections = db.prepare(`SELECT b.id FROM question_banks b LEFT JOIN sections s ON s.bank_id=b.id
     GROUP BY b.id HAVING COUNT(s.id)=0`).all()
-  const missingMarkers = db.prepare(`SELECT id, title FROM questions WHERE bank_id <> 'interview' AND
+  const missingMarkers = db.prepare(`SELECT id, title FROM questions
+    WHERE bank_id NOT IN ('interview','360-ai-frontend') AND
     (body_md NOT LIKE '%**短回答：**%' OR body_md NOT LIKE '%**原理：**%' OR
      body_md NOT LIKE '%**代码 / 场景：**%' OR body_md NOT LIKE '%**递进追问：**%' OR body_md NOT LIKE '%**易错点：**%')`).all()
   const thinEnrichedQuestions = db.prepare(`SELECT q.id, q.title, length(q.body_md) AS body_length,
     (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) AS source_count
-    FROM questions q WHERE q.bank_id <> 'interview' AND
+    FROM questions q WHERE q.bank_id NOT IN ('interview','360-ai-frontend') AND
     (length(q.body_md) < 900 OR q.read_minutes < 2 OR
+      (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) < 2)`).all()
+  const ai360MissingMarkers = db.prepare(`SELECT id, title FROM questions
+    WHERE bank_id='360-ai-frontend' AND
+    (body_md NOT LIKE '%**短回答：**%' OR body_md NOT LIKE '%**原理：**%' OR
+     body_md NOT LIKE '%**代码 / 场景：**%' OR body_md NOT LIKE '%**递进追问：**%' OR
+     body_md NOT LIKE '%**易错点：**%' OR body_md NOT LIKE '%**参考来源：**%')`).all()
+  const thinAi360Questions = db.prepare(`SELECT q.id, q.title, length(q.body_md) AS body_length,
+    q.read_minutes,
+    (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) AS source_count
+    FROM questions q WHERE q.bank_id='360-ai-frontend' AND
+    (length(q.body_md) < 800 OR q.read_minutes < 2 OR
       (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) < 2)`).all()
   const genericTemplateCount = db.prepare(`SELECT COUNT(*) AS count FROM questions WHERE
     body_md LIKE '%这道题的关键是把%放回系统边界中%' OR
@@ -73,19 +91,25 @@ try {
     uniqueIds: uniqueCount,
     generatedQuestions: newQuestionCount,
     generatedQuestionsWithSources: sourcedCount,
+    ai360Questions: ai360QuestionCount,
+    ai360QuestionsWithSources: ai360SourcedCount,
     incomplete,
     missingSections,
     missingRequiredMarkers: missingMarkers,
     thinEnrichedQuestions,
+    missing360RequiredMarkers: ai360MissingMarkers,
+    thin360Questions: thinAi360Questions,
     genericTemplateCount,
     diagramQuestionCount,
     exactDuplicateTitles: exactDuplicates,
     similarTitleReport: similar.slice(0, 30),
   }
   console.log(JSON.stringify(report, null, 2))
-  if (bankCount !== 9 || questionCount !== 501 || uniqueCount !== 501 || newQuestionCount !== 320
-    || sourcedCount !== 320 || incomplete.length || missingSections.length || missingMarkers.length
-    || thinEnrichedQuestions.length || genericTemplateCount || diagramQuestionCount !== 12) {
+  if (bankCount !== 10 || questionCount !== 578 || uniqueCount !== 578 || newQuestionCount !== 320
+    || sourcedCount !== 320 || ai360QuestionCount !== 77 || ai360SourcedCount !== 77
+    || incomplete.length || missingSections.length || missingMarkers.length
+    || thinEnrichedQuestions.length || ai360MissingMarkers.length || thinAi360Questions.length
+    || genericTemplateCount || diagramQuestionCount !== 19) {
     process.exitCode = 1
   }
 } finally {

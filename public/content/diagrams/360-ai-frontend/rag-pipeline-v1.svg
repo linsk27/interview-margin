@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">RAG 完整链路</title>
+  <desc id="desc">上半部分是资料解析、切块、元数据与索引的离线阶段；下半部分是查询、权限过滤、混合召回、重排、上下文组装、生成引用和评测的在线阶段。</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fbff"/>
+      <stop offset="1" stop-color="#eef5ff"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#4177b8"/>
+    </marker>
+    <marker id="arrowAmber" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#c27a12"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#315578" flood-opacity=".12"/>
+    </filter>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#15324b}
+      .eyebrow{font-size:15px;font-weight:700;letter-spacing:2px;fill:#2f6fab}
+      .title{font-size:34px;font-weight:800}
+      .subtitle{font-size:17px;fill:#597086}
+      .stage{font-size:19px;font-weight:750}
+      .detail{font-size:14px;fill:#5a7084}
+      .number{font-size:14px;font-weight:800;fill:#fff}
+      .lane{font-size:15px;font-weight:800;letter-spacing:1px}
+      .metric{font-size:14px;font-weight:650}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#background)"/>
+  <text x="58" y="58" class="eyebrow">RETRIEVAL-AUGMENTED GENERATION</text>
+  <text x="58" y="102" class="title">RAG 不是一次检索，而是两条链路与一个评测闭环</text>
+  <text x="58" y="135" class="subtitle">索引阶段决定证据质量，在线阶段决定召回与回答，评测负责把“感觉有效”变成可验证结果。</text>
+
+  <rect x="58" y="174" width="1084" height="188" rx="24" fill="#fff" stroke="#c9dbeb" filter="url(#shadow)"/>
+  <rect x="78" y="194" width="108" height="30" rx="15" fill="#dcecff"/>
+  <text x="132" y="215" text-anchor="middle" class="lane" fill="#175f9e">离线索引</text>
+
+  <g>
+    <rect x="90" y="244" width="190" height="84" rx="16" fill="#eef6ff" stroke="#9bc3e8"/>
+    <circle cx="115" cy="269" r="14" fill="#2f76b9"/><text x="115" y="274" text-anchor="middle" class="number">1</text>
+    <text x="140" y="274" class="stage">资料接入</text>
+    <text x="112" y="303" class="detail">来源 · 版本 · 权限 · 租户</text>
+  </g>
+  <path d="M280 286H320" stroke="#4177b8" stroke-width="3" marker-end="url(#arrow)"/>
+  <g>
+    <rect x="326" y="244" width="190" height="84" rx="16" fill="#eef6ff" stroke="#9bc3e8"/>
+    <circle cx="351" cy="269" r="14" fill="#2f76b9"/><text x="351" y="274" text-anchor="middle" class="number">2</text>
+    <text x="376" y="274" class="stage">解析清洗</text>
+    <text x="348" y="303" class="detail">结构保留 · 噪声去除</text>
+  </g>
+  <path d="M516 286H556" stroke="#4177b8" stroke-width="3" marker-end="url(#arrow)"/>
+  <g>
+    <rect x="562" y="244" width="190" height="84" rx="16" fill="#eef6ff" stroke="#9bc3e8"/>
+    <circle cx="587" cy="269" r="14" fill="#2f76b9"/><text x="587" y="274" text-anchor="middle" class="number">3</text>
+    <text x="612" y="274" class="stage">切块与哈希</text>
+    <text x="584" y="303" class="detail">标题路径 · Chunk 身份</text>
+  </g>
+  <path d="M752 286H792" stroke="#4177b8" stroke-width="3" marker-end="url(#arrow)"/>
+  <g>
+    <rect x="798" y="244" width="190" height="84" rx="16" fill="#eef6ff" stroke="#9bc3e8"/>
+    <circle cx="823" cy="269" r="14" fill="#2f76b9"/><text x="823" y="274" text-anchor="middle" class="number">4</text>
+    <text x="848" y="274" class="stage">建立索引</text>
+    <text x="820" y="303" class="detail">关键词 · Embedding · 版本</text>
+  </g>
+  <path d="M988 286H1062" stroke="#4177b8" stroke-width="3" marker-end="url(#arrow)"/>
+  <g>
+    <rect x="1066" y="248" width="52" height="76" rx="14" fill="#dcecff" stroke="#7eacd7"/>
+    <path d="M1080 266h24v38h-24zM1085 272h14M1085 280h14M1085 288h10" fill="none" stroke="#2f6fab" stroke-width="2"/>
+  </g>
+
+  <rect x="58" y="390" width="1084" height="218" rx="24" fill="#fff" stroke="#c9dbeb" filter="url(#shadow)"/>
+  <rect x="78" y="410" width="108" height="30" rx="15" fill="#fff0d7"/>
+  <text x="132" y="431" text-anchor="middle" class="lane" fill="#9b5a08">在线回答</text>
+
+  <g>
+    <rect x="88" y="466" width="164" height="98" rx="16" fill="#fff8eb" stroke="#e8be77"/>
+    <circle cx="112" cy="491" r="14" fill="#c78116"/><text x="112" y="496" text-anchor="middle" class="number">1</text>
+    <text x="136" y="496" class="stage">查询与权限</text>
+    <text x="108" y="524" class="detail">问题规范化</text>
+    <text x="108" y="545" class="detail">召回前过滤</text>
+  </g>
+  <path d="M252 515H280" stroke="#c27a12" stroke-width="3" marker-end="url(#arrowAmber)"/>
+  <g>
+    <rect x="286" y="466" width="164" height="98" rx="16" fill="#fff8eb" stroke="#e8be77"/>
+    <circle cx="310" cy="491" r="14" fill="#c78116"/><text x="310" y="496" text-anchor="middle" class="number">2</text>
+    <text x="334" y="496" class="stage">混合召回</text>
+    <text x="306" y="524" class="detail">关键词 + 向量</text>
+    <text x="306" y="545" class="detail">候选并集</text>
+  </g>
+  <path d="M450 515H478" stroke="#c27a12" stroke-width="3" marker-end="url(#arrowAmber)"/>
+  <g>
+    <rect x="484" y="466" width="164" height="98" rx="16" fill="#fff8eb" stroke="#e8be77"/>
+    <circle cx="508" cy="491" r="14" fill="#c78116"/><text x="508" y="496" text-anchor="middle" class="number">3</text>
+    <text x="532" y="496" class="stage">融合与重排</text>
+    <text x="504" y="524" class="detail">RRF · Reranker</text>
+    <text x="504" y="545" class="detail">MMR 去冗余</text>
+  </g>
+  <path d="M648 515H676" stroke="#c27a12" stroke-width="3" marker-end="url(#arrowAmber)"/>
+  <g>
+    <rect x="682" y="466" width="164" height="98" rx="16" fill="#fff8eb" stroke="#e8be77"/>
+    <circle cx="706" cy="491" r="14" fill="#c78116"/><text x="706" y="496" text-anchor="middle" class="number">4</text>
+    <text x="730" y="496" class="stage">上下文组装</text>
+    <text x="702" y="524" class="detail">Token 预算</text>
+    <text x="702" y="545" class="detail">来源与引用编号</text>
+  </g>
+  <path d="M846 515H874" stroke="#c27a12" stroke-width="3" marker-end="url(#arrowAmber)"/>
+  <g>
+    <rect x="880" y="466" width="238" height="98" rx="16" fill="#fff8eb" stroke="#e8be77"/>
+    <circle cx="904" cy="491" r="14" fill="#c78116"/><text x="904" y="496" text-anchor="middle" class="number">5</text>
+    <text x="928" y="496" class="stage">生成 · 引用 · 拒答</text>
+    <text x="900" y="524" class="detail">证据不足时停止猜测</text>
+    <text x="900" y="545" class="detail">输出校验与审计</text>
+  </g>
+
+  <path d="M999 564V638H222V608" fill="none" stroke="#5c7892" stroke-width="2.5" stroke-dasharray="7 7" marker-end="url(#arrow)"/>
+  <rect x="340" y="625" width="542" height="54" rx="18" fill="#e8f2ff" stroke="#9fc1e0"/>
+  <text x="611" y="648" text-anchor="middle" class="metric">评测闭环：Recall@K · MRR · 引用准确率 · TTFT · 成本 · 失败率</text>
+  <text x="611" y="668" text-anchor="middle" class="detail">固定数据与版本，区分“检索漏证据”和“生成没用好证据”</text>
+</svg>

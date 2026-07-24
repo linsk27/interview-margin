@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { createDatabase } from '../database.js'
 import { listCatalog } from '../repository.js'
+import { assert360PublicContentSafe } from './public-content-policy.js'
 
 const currentFile = fileURLToPath(import.meta.url)
 const projectRoot = path.resolve(path.dirname(currentFile), '../..')
@@ -74,10 +75,17 @@ export function buildPublicCatalog({ rootDir = projectRoot } = {}) {
   })
 
   try {
-    return deterministicPublicCatalog(listCatalog(db, {
+    const catalog = deterministicPublicCatalog(listCatalog(db, {
       includeArchived: false,
       includePrivate: false,
     }))
+    const public360Content = catalog.sections
+      .flatMap((section) => section.questions)
+      .filter((question) => question.library === '360-ai-frontend')
+      .map((question) => `${question.title}\n${question.body}`)
+      .join('\n')
+    assert360PublicContentSafe(public360Content, '360 AI 公共目录快照')
+    return catalog
   } finally {
     db.close()
   }

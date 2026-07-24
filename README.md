@@ -2,16 +2,18 @@
 
 面向技术面试复习的多用户阅读工作台。现有 Markdown 内容保持不删减，运行时以本机 SQLite 为权威数据源；登录用户的进度、阅读位置、收藏、复习和批注可跨浏览器同步，访客保持只读。
 
-当前包含 9 个题库、501 道题：原有简历题 81 道、JavaScript 100 道，以及 Git、Vue、React、前端工程、后端、数据库缓存和网络部署共 320 道新增题。
+当前包含 10 个题库、578 道题：原有简历题 81 道、JavaScript 100 道，Git、Vue、React、
+前端工程、后端、数据库缓存和网络部署共 320 道工程题，以及 77 道 360 AI 应用前端一面
+专项题。
 
 完整的架构、数据模型、API、部署方式、当前进度和跨电脑迁移步骤见
 [`docs/PROJECT_ARCHITECTURE_AND_HANDOFF.md`](docs/PROJECT_ARCHITECTURE_AND_HANDOFF.md)。
 
-当前正式环境已部署在 Windows 11 个人电脑上，使用 Node.js `v22.15.0` 和
-cloudflared `2026.7.2`。运行数据库已从 SQLite 一致性备份恢复，Express 与 Tunnel
-由 Windows 计划任务持续运行，另一个计划任务每天执行数据库备份。另有一份独立的
-Vercel 游客备用站 `https://interview-margin.vercel.app`，即使个人电脑离线也能读取构建时
-导出的公开题库快照；登录、批注、进度同步和后台管理仍依赖个人电脑上的账户服务。
+当前正式环境已部署在阿里云 ECS，使用 Node.js `v22.15.0`、systemd 和
+cloudflared。Express 只监听服务器回环地址，Cloudflare Tunnel 提供主站公网入口与免费
+HTTPS；SQLite 位于独立持久化目录，systemd timer 每天创建一致性备份。另有一份独立的
+Vercel 游客备用站 `https://interview-margin.vercel.app`，可读取构建时导出的公开题库快照；
+旧个人电脑不再承担主站、数据库或 Tunnel。
 
 ## 本地运行
 
@@ -33,9 +35,9 @@ npm run build
 直接运行 `npm run content:export`。该快照不读取生产 SQLite，因此后台中仅存在于 SQLite 的
 编辑内容要先同步回题库源并重新部署，才会出现在 Vercel 备用站。
 
-当前回归基线为 28 个测试文件、107/107 项测试通过；`db:check` 为 9 个题库、501 题、
-501 个唯一 ID，420 道结构化富题解均达到正文/来源门禁，12 道核心题含站内 SVG 图解，
-生产构建通过。
+当前内容基线为 10 个题库、578 题和 578 个唯一 ID；497 道结构化富题解均经过正文、
+段落标记和来源门禁，19 道核心题含站内 SVG 图解；33 个测试文件、152 项测试与生产构建
+全部通过。
 
 本机生产服务（供 Cloudflare Tunnel 等反向代理使用）：
 
@@ -53,6 +55,11 @@ JavaScript 与 7 个工程题库采用“原题清单 + 逐题 enrichment + 生�
 `public/question-banks/` 下的生成产物。受控技术图位于 `public/content/diagrams/`，正文只允许
 引用该目录内带替代文本的同源 SVG，远程图片、Base64 和原始内联 SVG 会被拒绝。
 
+360 专项题只在 `docs/source/360-ai-frontend/` 保留生成所需的脱敏答案材料，由
+`server/content/import-360-ai-bank.js` 转换成统一的“短回答、原理、场景、追问、易错点、
+来源”阅读结构。修改源材料或逐题补充后运行 `npm run content:generate:360`，不要直接维护
+生成后的 `public/question-banks/360-ai-frontend.md`。
+
 修改题库源后执行：
 
 ```bash
@@ -62,17 +69,13 @@ npm run db:check
 npm run build
 ```
 
-生成器会校验题号、标题、正文结构和来源，保持 501 个题目 ID 不变。生产启动只覆盖仍标记为
+生成器会校验题号、标题、正文结构和来源，保持 578 个题目 ID 不变。生产启动只覆盖仍标记为
 `seed` 的内置题；管理员已经编辑并转为 `editor` 来源的题目不会被自动正文覆盖。
 
-当前使用 remotely managed Cloudflare Tunnel `interview-margin-local`。Connector 从
-`~/.cloudflared/interview-margin-local.token` 读取私密 token，将
-`http://127.0.0.1:4173` 作为 `--url` 目标，并使用 `--token-file` 参数启动。该方案不依赖
-本机 `config.yml` 或 Tunnel UUID JSON 凭据，也不使用额外的 HTTP(S) 代理。运行
-`ops/install-scheduled-tasks.ps1` 会安装两个 Windows 任务：登录后保持本地服务和 Tunnel
-运行，以及每天 03:00 执行 SQLite 在线备份。日志、数据库、备份和首次凭据分别位于被
-Git 忽略的 `logs/`、`data/`、`backups/` 目录；token 文件位于用户目录，同样不得提交到
-Git。
+正式环境的应用、Cloudflare Tunnel 和备份任务均由 ECS 上的 systemd 管理；服务模板、
+数据库预检、Nginx 示例和发布说明见 `ops/linux/README.md`。Tunnel token 与生产环境变量
+只保存在服务器受限权限目录，不进入 Git、发布包或日志。Windows 计划任务脚本仅保留作
+历史迁移与本地应急参考，不是当前生产运行方式。
 
 首次启动会生成 `data/bootstrap-admin.txt`。该文件只显示一次管理员临时密码，首次
 登录必须修改。管理员可直接创建 `admin / editor / learner` 账号，也可生成一次性
@@ -88,9 +91,9 @@ Git。
 以及学习记录导入导出属于账号记忆功能；游客点击这些入口时才显示带具体原因的登录框。
 个人状态 API 仍由服务端强制鉴权，前端提示不能替代 API 权限检查。
 
-当个人电脑、Tunnel 或账户 API 不可用时，Vercel 站会自动回退到随构建发布的
+当 ECS、Tunnel 或账户 API 不可用时，Vercel 站会自动回退到随构建发布的
 `/catalog.json`，游客阅读、搜索和题目切换仍可使用；需要保存批注、收藏、进度或进入后台
-时会提示账户服务不可用。这里的“备用”解决的是托管电脑离线，不代表访客设备在完全断网时
+时会提示账户服务不可用。这里的“备用”解决的是主服务故障，不代表访客设备在完全断网时
 还能首次打开网页。
 
 ## 邀请注册
@@ -135,16 +138,16 @@ SHA-256 哈希，原始 token 不写入数据库、审计日志或邀请列表�
 | `N` | 打开边注 |
 | `?` | 阅读设置 |
 
-主站为 `https://interview.linsk27.dpdns.org`，由个人电脑上的 Express、SQLite 和
+主站为 `https://interview.linsk27.dpdns.org`，由阿里云 ECS 上的 Express、SQLite 和
 Cloudflare Tunnel 提供完整动态服务；游客备用站为
 `https://interview-margin.vercel.app`，由 Vercel 托管前端、公开题库快照和 AI 函数。
-个人电脑关机、休眠、断网或 Tunnel Connector 停止时，主站和所有账号记忆功能会暂时
-不可用，但 Vercel 备用站仍可进行只读游客浏览。
+个人电脑关机、休眠或断网不会影响主站；只有 ECS 或 Tunnel 故障时动态账号功能才会暂时
+不可用，此时 Vercel 备用站仍可进行只读游客浏览。
 
 当前不要直接把 `interview.linsk27.dpdns.org` 指向 Vercel：`vercel.json` 的 `/api/*`
 目前仍代理到这个主机名，直接切换会形成代理回环。未来如需让 Vercel 承接主域名，应先建立
 独立的 API 子域名（例如 `api.interview.linsk27.dpdns.org`）并让 Tunnel 只把该子域名指向
-个人电脑，再更新 Vercel API 代理、`APP_ORIGINS` 并完成验证后切换主域名。
+ECS，再更新 Vercel API 代理、`APP_ORIGINS` 并完成验证后切换主域名。
 
 ## 数据与权限
 
@@ -169,5 +172,5 @@ OPENAI_MODEL=gpt-5.6-terra
 
 以上为 RayinAI 中转配置。`OPENAI_BASE_URL` 也可以改为其他支持 Chat Completions 的兼容服务地址。变量配置后重新部署；本地仅运行 Vite 时 `/api/ai-chat` 不会存在，因此会提示服务未连接。
 
-本机生产服务未配置 `OPENAI_API_KEY` 时，可以通过 `AI_FALLBACK_URL` 转发到现有的
-Vercel AI 代理。这样密钥仍只保存在 Vercel，本机和浏览器都不会接触密钥。
+ECS 应用未配置 `OPENAI_API_KEY` 时，可以通过 `AI_FALLBACK_URL` 转发到现有的
+Vercel AI 代理。这样密钥仍只保存在 Vercel，ECS 应用进程和浏览器都不会接触原始密钥。

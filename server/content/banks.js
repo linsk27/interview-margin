@@ -27,6 +27,21 @@ const LEGACY_BANKS = [
   },
 ]
 
+const CURATED_BANKS = [
+  {
+    id: '360-ai-frontend',
+    title: '360 AI 应用前端一面预判',
+    shortTitle: '360 AI 一面',
+    kicker: '360 INTERVIEW PLAYBOOK',
+    category: '求职专项',
+    description: '面向 360 AI 应用前端一面的 77 道公开脱敏题解，覆盖岗位表达、RAG、Agent、SSE、React、浏览器与手写题。',
+    source: 'public/question-banks/360-ai-frontend.md',
+    idPrefix: '360-ai-frontend',
+    baseTags: ['360', 'AI 应用前端', '一面'],
+    tone: 'blue',
+  },
+]
+
 export const BUILTIN_BANKS = [
   ...LEGACY_BANKS.map((bank) => ({ ...bank, preserveIds: true })),
   ...GENERATED_BANKS.map((bank) => ({
@@ -42,4 +57,5 @@ export const BUILTIN_BANKS = [
     tone: bank.tone,
     preserveIds: false,
   })),
+  ...CURATED_BANKS.map((bank) => ({ ...bank, preserveIds: false })),
 ]

@@ -94,6 +94,28 @@ describe('QuestionMarkdown learning sections', () => {
 
     expect(container.querySelector('#learning-section-answer mark')).toHaveTextContent('Proxy 代理对象')
   })
+
+  it('keeps every paragraph in a multi-paragraph quote inside one grid content wrapper', () => {
+    const { container } = render(
+      <QuestionMarkdown>{[
+        '**短回答：**',
+        '',
+        '> 第一段先给结论。',
+        '>',
+        '> 第二段补充证据。',
+        '>',
+        '> 第三段说明边界。',
+      ].join('\n')}</QuestionMarkdown>,
+    )
+
+    const quote = container.querySelector('#learning-section-answer blockquote')
+    const content = quote?.querySelector(':scope > .markdown-blockquote__content')
+    expect(quote?.children).toHaveLength(2)
+    expect(content?.querySelectorAll(':scope > p')).toHaveLength(3)
+    expect(content).toHaveTextContent('第一段先给结论。')
+    expect(content).toHaveTextContent('第二段补充证据。')
+    expect(content).toHaveTextContent('第三段说明边界。')
+  })
 })
 
 describe('QuestionMarkdown diagrams', () => {
