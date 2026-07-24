@@ -47,7 +47,7 @@ describe('public catalog failover', () => {
     await expect(getCatalog()).resolves.toEqual(catalog)
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fetchMock.mock.calls[1][0]).toBe('/catalog.json')
-    expect(fetchMock.mock.calls[1][1]).toMatchObject({ cache: 'force-cache' })
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ cache: 'no-cache' })
   })
 
   it('rejects an SPA HTML response and still loads the public snapshot', async () => {
@@ -61,5 +61,20 @@ describe('public catalog failover', () => {
 
     await expect(getCatalog()).resolves.toEqual(catalog)
     expect(fetchMock.mock.calls[1][0]).toBe('/catalog.json')
+  })
+
+  it('uses the cached public snapshot when both live endpoints are offline', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError('Live API unavailable'))
+      .mockRejectedValueOnce(new TypeError('Snapshot revalidation unavailable'))
+      .mockResolvedValueOnce(jsonResponse(catalog))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getCatalog()).resolves.toEqual(catalog)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls[1][0]).toBe('/catalog.json')
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ cache: 'no-cache' })
+    expect(fetchMock.mock.calls[2][0]).toBe('/catalog.json')
+    expect(fetchMock.mock.calls[2][1]).toMatchObject({ cache: 'force-cache' })
   })
 })

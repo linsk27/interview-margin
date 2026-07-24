@@ -77,9 +77,17 @@ export async function getCatalog(): Promise<PublicCatalog> {
     return catalog
   } catch {
     // Vercel keeps this public-only snapshot available when the personal-computer API is offline.
-    const catalog = await api<unknown>('/catalog.json', { cache: 'force-cache' })
-    if (!isPublicCatalog(catalog)) throw new ApiError('云端题库快照返回了无效响应。', 502)
-    return catalog
+    // Revalidate first so a previously visited browser does not keep an old question bank forever.
+    // If the device is offline, fall back once more to the last cached snapshot.
+    try {
+      const catalog = await api<unknown>('/catalog.json', { cache: 'no-cache' })
+      if (!isPublicCatalog(catalog)) throw new ApiError('云端题库快照返回了无效响应。', 502)
+      return catalog
+    } catch {
+      const catalog = await api<unknown>('/catalog.json', { cache: 'force-cache' })
+      if (!isPublicCatalog(catalog)) throw new ApiError('云端题库快照返回了无效响应。', 502)
+      return catalog
+    }
   } finally {
     globalThis.clearTimeout(timeout)
   }
