@@ -105,8 +105,8 @@ try {
     similarTitleReport: similar.slice(0, 30),
   }
   console.log(JSON.stringify(report, null, 2))
-  if (bankCount !== 10 || questionCount !== 568 || uniqueCount !== 568 || newQuestionCount !== 320
-    || sourcedCount !== 320 || ai360QuestionCount !== 67 || ai360SourcedCount !== 67
+  if (bankCount !== 10 || questionCount !== 573 || uniqueCount !== 573 || newQuestionCount !== 320
+    || sourcedCount !== 320 || ai360QuestionCount !== 72 || ai360SourcedCount !== 72
     || incomplete.length || missingSections.length || missingMarkers.length
     || thinEnrichedQuestions.length || ai360MissingMarkers.length || thinAi360Questions.length
     || genericTemplateCount || diagramQuestionCount !== 19) {

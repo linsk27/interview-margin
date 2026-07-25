@@ -70,7 +70,7 @@ function assertNoOverusedIdenticalBlocks(questions, startMarker, endMarker) {
 }
 
 describe('360 AI frontend bank importer', () => {
-  it('deterministically publishes 67 technical questions while retaining stable source numbers', () => {
+  it('deterministically publishes 72 technical questions while retaining stable source numbers', () => {
     const first = build360AiBankMarkdown(source)
     const second = build360AiBankMarkdown(source)
     const questions = parseQuestions(first)
@@ -78,18 +78,19 @@ describe('360 AI frontend bank importer', () => {
     const retiredNumbers = new Set([1, 2, 3, 4, 6, 7, 8, 9, 11, 12])
 
     expect(second).toBe(first)
-    expect(questions).toHaveLength(67)
+    expect(questions).toHaveLength(72)
     expect(questions.map(({ number }) => number)).toEqual(
       Array.from({ length: 77 }, (_, index) => index + 1)
-        .filter((number) => !retiredNumbers.has(number)),
+        .filter((number) => !retiredNumbers.has(number))
+        .concat([78, 79, 80, 81, 82]),
     )
-    expect(topLevelHeadings).toHaveLength(9)
-    expect(new Set(topLevelHeadings.slice(1)).size).toBe(8)
+    expect(topLevelHeadings).toHaveLength(11)
+    expect(new Set(topLevelHeadings.slice(1)).size).toBe(10)
     expect(topLevelHeadings).toContain('# RAG 方案选型')
     expect(topLevelHeadings).toContain('# AI 编程工具安全')
   })
 
-  it('keeps the published IDs of Q5, Q10, Q13 and Q77 stable', () => {
+  it('keeps the published IDs of existing and supplemental questions stable', () => {
     const sections = parseQuestionMarkdown(build360AiBankMarkdown(source), {
       idPrefix: '360-ai-frontend',
       baseTags: [],
@@ -105,6 +106,8 @@ describe('360 AI frontend bank importer', () => {
     expect(questionsByNumber.get('10')?.id).toBe('dd550277-dd32-58e2-9d7c-616e9872ec88')
     expect(questionsByNumber.get('13')?.id).toBe('7116e811-18ef-502d-8274-162089d41a07')
     expect(questionsByNumber.get('77')?.id).toBe('0414bff8-fe5e-5733-b668-3ba81ce80268')
+    expect(questionsByNumber.get('78')?.id).toBe('7e7ac201-c258-5149-8c18-629c0cd96f25')
+    expect(questionsByNumber.get('82')?.id).toBe('44dac7a9-7a6f-580e-97d3-0dfef46aca68')
   })
 
   it('gives every question all six learning markers and at least two sources', () => {

@@ -49,9 +49,9 @@ describe('server API', () => {
 
   afterEach(() => db.close())
 
-  it('serves all 568 questions while preserving the existing question ids', async () => {
+  it('serves all 573 questions while preserving the existing question ids', async () => {
     const health = await request(app).get('/api/health').expect(200)
-    expect(health.body).toMatchObject({ storage: 'sqlite', banks: 10, questions: 568 })
+    expect(health.body).toMatchObject({ storage: 'sqlite', banks: 10, questions: 573 })
     const catalog = await request(app).get('/api/catalog').set('Accept-Encoding', 'gzip').expect(200)
     expect(health.headers['cache-control']).toBe('no-store')
     expect(catalog.headers['cache-control']).toBe('no-store')
@@ -64,7 +64,7 @@ describe('server API', () => {
       '360-ai-frontend',
     ])
     const questions = catalog.body.sections.flatMap((section) => section.questions)
-    expect(questions).toHaveLength(568)
+    expect(questions).toHaveLength(573)
     expect(questions[0].id).toBe('q-1')
     expect(questions.some((question) => question.id === 'q-1')).toBe(true)
     expect(questions.some((question) => question.id === 'js-q-100')).toBe(true)

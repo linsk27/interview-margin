@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { QUESTION_SPECIFICS } from './360-ai-specifics.js'
+import { SUPPLEMENTAL_360_AI_MARKDOWN } from './360-ai-supplementals.js'
 import { assert360PublicContentSafe } from './public-content-policy.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -37,7 +38,8 @@ const RETIRED_PUBLIC_QUESTIONS = new Set([
 ])
 
 const SOURCE_QUESTION_COUNT = 77
-const PUBLIC_QUESTION_COUNT = 67
+const PUBLIC_QUESTION_COUNT = 72
+const SUPPLEMENTAL_QUESTION_NUMBERS = [78, 79, 80, 81, 82]
 
 const TITLE_OVERRIDES = new Map([
   ['2.1', '如何组织一段 90 秒的技术岗位自我介绍？'],
@@ -554,9 +556,25 @@ export function build360AiBankMarkdown(source) {
   if (sourceQuestionNumber - 1 !== SOURCE_QUESTION_COUNT) {
     throw new Error(`360 AI 题库源编号应覆盖 ${SOURCE_QUESTION_COUNT} 题，实际 ${sourceQuestionNumber - 1} 题`)
   }
+  const supplementalMarkdown = SUPPLEMENTAL_360_AI_MARKDOWN.trim()
+  const supplementalQuestionNumbers = [
+    ...supplementalMarkdown.matchAll(/^## Q(\d+)[：:][^\n]*$/gm),
+  ].map((match) => Number(match[1]))
+  if (
+    supplementalQuestionNumbers.length !== SUPPLEMENTAL_QUESTION_NUMBERS.length
+    || supplementalQuestionNumbers.some(
+      (number, index) => number !== SUPPLEMENTAL_QUESTION_NUMBERS[index],
+    )
+  ) {
+    throw new Error(
+      `360 AI 补充题编号应为 ${SUPPLEMENTAL_QUESTION_NUMBERS.join(', ')}，实际 ${supplementalQuestionNumbers.join(', ')}`,
+    )
+  }
+  publicQuestionCount += supplementalQuestionNumbers.length
   if (publicQuestionCount !== PUBLIC_QUESTION_COUNT) {
     throw new Error(`360 AI 公共技术题库应生成 ${PUBLIC_QUESTION_COUNT} 题，实际 ${publicQuestionCount} 题`)
   }
+  rendered.push(supplementalMarkdown, '')
   const markdown = `${rendered.join('\n').trim()}\n`
   assert360PublicContentSafe(markdown)
   return markdown
