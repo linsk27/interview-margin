@@ -283,7 +283,7 @@ function seedBuiltins(db, rootDir) {
   `)
   const insertSource = db.prepare(`
     INSERT OR IGNORE INTO source_refs(id, question_id, title, url, source_kind, verified_at)
-    VALUES(?, ?, ?, ?, 'official', ?)
+    VALUES(?, ?, ?, ?, ?, ?)
   `)
   db.transaction(() => {
     for (const [bankOrder, bank] of BUILTIN_BANKS.entries()) {
@@ -313,7 +313,7 @@ function seedBuiltins(db, rootDir) {
             db.prepare('DELETE FROM source_refs WHERE question_id = ?').run(question.id)
             for (const source of question.sources) {
               const sourceId = crypto.createHash('sha256').update(`${question.id}:${source.url}`).digest('hex').slice(0, 32)
-              insertSource.run(sourceId, question.id, source.title, source.url, now)
+              insertSource.run(sourceId, question.id, source.title, source.url, source.kind ?? 'official', now)
             }
           }
         }

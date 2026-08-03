@@ -10,6 +10,7 @@
     "start": "node server/index.js",
     "start:local": "npm run build && node server/index.js",
     "content:generate": "node server/content/generate-all.js",
+    "content:generate:community": "node server/content/generate-community-interview-banks.js",
     "content:generate:360": "node server/content/import-360-ai-bank.js",
     "content:export": "node server/content/export-public-catalog.js",
     "db:backup": "node server/backup.js",

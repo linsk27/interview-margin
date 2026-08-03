@@ -1,4 +1,5 @@
 import { GENERATED_BANKS } from './question-data.js'
+import { COMMUNITY_INTERVIEW_BANKS } from './community-banks/index.js'
 
 const LEGACY_BANKS = [
   {
@@ -45,6 +46,19 @@ const CURATED_BANKS = [
 export const BUILTIN_BANKS = [
   ...LEGACY_BANKS.map((bank) => ({ ...bank, preserveIds: true })),
   ...GENERATED_BANKS.map((bank) => ({
+    id: bank.id,
+    title: bank.title,
+    shortTitle: bank.shortTitle,
+    kicker: bank.kicker,
+    category: bank.category,
+    description: bank.description,
+    source: bank.source,
+    idPrefix: bank.id,
+    baseTags: bank.baseTags,
+    tone: bank.tone,
+    preserveIds: false,
+  })),
+  ...COMMUNITY_INTERVIEW_BANKS.map((bank) => ({
     id: bank.id,
     title: bank.title,
     shortTitle: bank.shortTitle,

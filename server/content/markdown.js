@@ -49,9 +49,31 @@ function extractSources(markdown) {
   const pattern = /\[([^\]]+)]\((https?:\/\/[^)]+)\)/g
   let match
   while ((match = pattern.exec(markdown))) {
-    sources.push({ title: match[1].trim(), url: match[2].trim() })
+    const title = match[1].trim()
+    const url = match[2].trim()
+    const kind = /^真实面经线索(?:（[^）]+）)?[：:]/.test(title)
+      ? 'community-interview'
+      : sourceKindForUrl(url)
+    sources.push({ title, url, kind })
   }
   return sources.filter((source, index) => sources.findIndex((item) => item.url === source.url) === index)
+}
+
+const COMMUNITY_SOURCE_HOSTS = [
+  'nowcoder.com',
+  'maimai.cn',
+  'xiaohongshu.com',
+]
+
+export function sourceKindForUrl(value) {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase()
+    return COMMUNITY_SOURCE_HOSTS.some((host) => hostname === host || hostname.endsWith(`.${host}`))
+      ? 'community-interview'
+      : 'official'
+  } catch {
+    return 'official'
+  }
 }
 
 export function parseQuestionMarkdown(source, options) {

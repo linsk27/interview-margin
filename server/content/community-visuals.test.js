@@ -1,0 +1,35 @@
+// @vitest-environment node
+
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { describe, expect, it } from 'vitest'
+
+import { DIAGRAM_URL_PATTERN } from './diagram-policy.js'
+import { communityVisualEntries } from './community-visuals.js'
+
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+
+describe('community interview diagram mappings', () => {
+  it('uses compact, accessible and script-free local SVG assets', () => {
+    const entries = communityVisualEntries()
+    expect(entries.length).toBeGreaterThanOrEqual(8)
+    for (const { bankId, visual } of entries) {
+      expect(bankId).toMatch(/^[a-z0-9-]+$/)
+      expect(visual.alt.trim().length).toBeGreaterThan(12)
+      expect(visual.caption.trim().length).toBeGreaterThan(16)
+      expect(DIAGRAM_URL_PATTERN.test(visual.src)).toBe(true)
+
+      const filename = path.join(rootDir, 'public', visual.src)
+      expect(fs.existsSync(filename), `${visual.src} 不存在`).toBe(true)
+      const svg = fs.readFileSync(filename, 'utf8')
+      expect(Buffer.byteLength(svg)).toBeLessThan(100_000)
+      expect(svg).toMatch(/^<svg\b/)
+      expect(svg).toMatch(/\bviewBox="0 0 1200 720"/)
+      expect(svg).toMatch(/<title\b/)
+      expect(svg).toMatch(/<desc\b/)
+      expect(svg).not.toMatch(/<script\b|<foreignObject\b|\son[a-z]+\s*=|\b(?:href|xlink:href)\s*=/i)
+    }
+  })
+})

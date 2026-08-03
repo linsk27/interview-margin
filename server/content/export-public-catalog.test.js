@@ -39,12 +39,13 @@ describe('public catalog exporter', () => {
     const catalog = buildPublicCatalog()
     const questions = catalog.sections.flatMap((section) => section.questions)
 
-    expect(catalog.banks).toHaveLength(10)
-    expect(questions).toHaveLength(573)
-    expect(new Set(questions.map((question) => question.id)).size).toBe(573)
+    expect(catalog.banks).toHaveLength(13)
+    expect(questions).toHaveLength(701)
+    expect(new Set(questions.map((question) => question.id)).size).toBe(701)
     expect(catalog.banks.map((bank) => bank.id)).toEqual([
       'interview', 'javascript', 'git-engineering', 'vue-core', 'react-core',
       'frontend-engineering', 'backend-fullstack', 'database-cache', 'network-deployment',
+      'frontend-ai-interviews', 'java-backend-interviews', 'java-ai-applications',
       '360-ai-frontend',
     ])
     expect(catalog.banks.every((bank) => bank.visibility === 'public')).toBe(true)
@@ -67,8 +68,8 @@ describe('public catalog exporter', () => {
     const firstResult = exportPublicCatalog({ outputPath: first })
     const secondResult = exportPublicCatalog({ outputPath: second })
 
-    expect(firstResult).toMatchObject({ banks: 10, questions: 573, outputPath: first })
-    expect(secondResult).toMatchObject({ banks: 10, questions: 573, outputPath: second })
+    expect(firstResult).toMatchObject({ banks: 13, questions: 701, outputPath: first })
+    expect(secondResult).toMatchObject({ banks: 13, questions: 701, outputPath: second })
     expect(fs.readFileSync(first, 'utf8')).toBe(fs.readFileSync(second, 'utf8'))
     expect(JSON.parse(fs.readFileSync(first, 'utf8'))).toEqual(buildPublicCatalog())
   }, 60_000)

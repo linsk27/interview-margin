@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">ThreadPoolExecutor 任务接纳与拒绝流程</title>
+  <desc id="desc">展示任务先尝试创建核心线程，再进入有界队列、扩展到最大线程，最后执行拒绝策略，并标出容量规划与运行监控指标。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffdf7"/><stop offset="1" stop-color="#f4f7fb"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#52677b"/></marker>
+    <marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#27865d"/></marker>
+    <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#172d40}.title{font-size:34px;font-weight:800}.sub{font-size:17px;fill:#65788a}.step{font-size:19px;font-weight:750}.detail{font-size:14px;fill:#617487}.branch{font-size:14px;font-weight:800}.metric{font-size:15px;font-weight:700}</style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="62" class="title">线程池不是“线程数量配置”，而是一套过载决策</text>
+  <text x="58" y="96" class="sub">队列容量、最大线程和拒绝策略共同决定排队时延、资源上限与调用方看到的失败方式。</text>
+
+  <rect x="58" y="154" width="180" height="92" rx="18" fill="#fff" stroke="#aab9c6"/><text x="84" y="190" class="step">提交任务</text><text x="84" y="218" class="detail">execute(command)</text>
+  <path d="M238 200H294" stroke="#52677b" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="302" y="146" width="206" height="108" rx="18" fill="#eef6ff" stroke="#77a8d3"/><text x="328" y="184" class="step">核心线程未满？</text><text x="328" y="215" class="detail">workerCount &lt; corePoolSize</text>
+  <path d="M405 254V316" stroke="#27865d" stroke-width="3" marker-end="url(#ok)"/><text x="417" y="289" class="branch" fill="#27865d">是</text>
+  <rect x="312" y="324" width="186" height="84" rx="18" fill="#eaf8f1" stroke="#63af8a"/><text x="338" y="359" class="step">创建 Worker</text><text x="338" y="385" class="detail">直接执行首个任务</text>
+  <path d="M508 200H566" stroke="#52677b" stroke-width="3" marker-end="url(#arrow)"/><text x="522" y="187" class="branch">否</text>
+
+  <rect x="574" y="146" width="220" height="108" rx="18" fill="#fff8e8" stroke="#dfa94d"/><text x="600" y="184" class="step">队列还能接纳？</text><text x="600" y="215" class="detail">workQueue.offer(command)</text>
+  <path d="M684 254V316" stroke="#27865d" stroke-width="3" marker-end="url(#ok)"/><text x="696" y="289" class="branch" fill="#27865d">是</text>
+  <rect x="591" y="324" width="186" height="84" rx="18" fill="#fff4d8" stroke="#dfa94d"/><text x="617" y="359" class="step">有界排队</text><text x="617" y="385" class="detail">等待 Worker 获取</text>
+  <path d="M794 200H852" stroke="#52677b" stroke-width="3" marker-end="url(#arrow)"/><text x="808" y="187" class="branch">否</text>
+
+  <rect x="860" y="146" width="224" height="108" rx="18" fill="#fff0ee" stroke="#db8279"/><text x="886" y="184" class="step">最大线程未满？</text><text x="886" y="215" class="detail">workerCount &lt; maximum</text>
+  <path d="M972 254V316" stroke="#27865d" stroke-width="3" marker-end="url(#ok)"/><text x="984" y="289" class="branch" fill="#27865d">是</text>
+  <rect x="879" y="324" width="186" height="84" rx="18" fill="#eaf8f1" stroke="#63af8a"/><text x="905" y="359" class="step">扩展 Worker</text><text x="905" y="385" class="detail">应对短时突发</text>
+  <path d="M1084 200H1124V438H1012" fill="none" stroke="#c5544d" stroke-width="3" marker-end="url(#arrow)"/><text x="1094" y="187" class="branch" fill="#b3423b">否</text>
+  <rect x="784" y="430" width="228" height="90" rx="18" fill="#fff0ee" stroke="#d76e67"/><text x="810" y="466" class="step">执行拒绝策略</text><text x="810" y="494" class="detail">失败、调用方执行或丢弃</text>
+
+  <rect x="58" y="456" width="650" height="64" rx="18" fill="#eef3f7" stroke="#bdc9d3"/>
+  <text x="84" y="483" class="metric">任务完成 / 异常后：Worker 继续取队列；空闲超时或关闭条件满足才退出</text>
+  <text x="84" y="507" class="detail">任务异常必须隔离并被观测，不能让线程悄然死亡后只看“池大小还在”。</text>
+
+  <rect x="58" y="566" width="1084" height="106" rx="20" fill="#152d42"/>
+  <text x="84" y="601" class="metric" style="fill:#fff">容量验证：Little's Law 只是起点，最终必须用业务流量压测</text>
+  <text x="84" y="632" class="detail" style="fill:#d5e4ef">持续观测 activeCount · queue size/age · rejection rate · task p95/p99 · downstream timeout · CPU/GC</text>
+  <text x="84" y="657" class="detail" style="fill:#a9c3d5">无界队列会隐藏过载并放大延迟/内存；盲目提高 maximumPoolSize 会把压力转移到数据库、RPC 与操作系统。</text>
+</svg>

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Cache Aside 写入、失效与并发竞态</title>
+  <desc id="desc">左侧展示常规读写流程，右侧展示旧查询晚到并把旧值写回缓存的竞态，以及版本、消息补偿和监控等治理手段。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fbff"/><stop offset="1" stop-color="#fff9ef"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#4e677e"/></marker>
+    <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#173047}.title{font-size:34px;font-weight:800}.sub{font-size:17px;fill:#64798c}.head{font-size:20px;font-weight:800}.step{font-size:16px;font-weight:750}.detail{font-size:14px;fill:#60768a}.num{font-size:13px;font-weight:800;fill:#fff}</style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="62" class="title">缓存一致性要先描述“不一致窗口”，再选择补偿手段</text>
+  <text x="58" y="96" class="sub">Cache Aside 常见做法是先提交数据库、再删除缓存；它缩短窗口，但并不自动提供强一致性。</text>
+
+  <rect x="58" y="136" width="514" height="426" rx="24" fill="#fff" stroke="#c6d6e3"/>
+  <text x="84" y="176" class="head">正常路径</text>
+  <rect x="86" y="204" width="138" height="64" rx="14" fill="#eaf4ff" stroke="#83add1"/><text x="155" y="242" text-anchor="middle" class="step">应用服务</text>
+  <rect x="352" y="204" width="138" height="64" rx="14" fill="#fff4d9" stroke="#dda84c"/><text x="421" y="242" text-anchor="middle" class="step">Redis</text>
+  <rect x="352" y="444" width="138" height="64" rx="14" fill="#edf8f1" stroke="#70a98a"/><text x="421" y="482" text-anchor="middle" class="step">数据库</text>
+  <path d="M224 226H340" stroke="#4e677e" stroke-width="2.5" marker-end="url(#arrow)"/><circle cx="258" cy="226" r="13" fill="#3977ad"/><text x="258" y="231" text-anchor="middle" class="num">1</text><text x="244" y="212" class="detail">读缓存</text>
+  <path d="M490 236H530V476H490" fill="none" stroke="#4e677e" stroke-width="2.5" marker-end="url(#arrow)"/><circle cx="530" cy="310" r="13" fill="#3977ad"/><text x="530" y="315" text-anchor="middle" class="num">2</text><text x="402" y="315" class="detail">未命中才读库</text>
+  <path d="M352 476H218V258" fill="none" stroke="#4e677e" stroke-width="2.5" marker-end="url(#arrow)"/><circle cx="278" cy="476" r="13" fill="#3977ad"/><text x="278" y="481" text-anchor="middle" class="num">3</text><text x="245" y="463" class="detail">返回并填缓存</text>
+  <text x="86" y="330" class="step">写路径</text>
+  <rect x="86" y="346" width="120" height="58" rx="13" fill="#eef8f4" stroke="#70a98a"/><circle cx="106" cy="375" r="13" fill="#2d865f"/><text x="106" y="380" text-anchor="middle" class="num">1</text><text x="126" y="381" class="detail">写数据库</text>
+  <path d="M206 375H226" stroke="#4e677e" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="234" y="346" width="120" height="58" rx="13" fill="#eef8f4" stroke="#70a98a"/><circle cx="254" cy="375" r="13" fill="#2d865f"/><text x="254" y="380" text-anchor="middle" class="num">2</text><text x="274" y="381" class="detail">事务提交</text>
+  <path d="M354 375H374" stroke="#4e677e" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="382" y="346" width="120" height="58" rx="13" fill="#fff4d9" stroke="#dda84c"/><circle cx="402" cy="375" r="13" fill="#c67b18"/><text x="402" y="380" text-anchor="middle" class="num">3</text><text x="422" y="381" class="detail">删除缓存</text>
+
+  <rect x="602" y="136" width="540" height="426" rx="24" fill="#fff" stroke="#e0c9c6"/>
+  <text x="628" y="176" class="head">并发竞态：旧读晚到</text>
+  <line x1="702" y1="210" x2="702" y2="505" stroke="#97a9b9" stroke-width="2"/><line x1="874" y1="210" x2="874" y2="505" stroke="#97a9b9" stroke-width="2"/><line x1="1040" y1="210" x2="1040" y2="505" stroke="#97a9b9" stroke-width="2"/>
+  <text x="702" y="204" text-anchor="middle" class="step">请求 A（读）</text><text x="874" y="204" text-anchor="middle" class="step">请求 B（写）</text><text x="1040" y="204" text-anchor="middle" class="step">缓存 / DB</text>
+  <path d="M702 248H1028" stroke="#4e677e" stroke-width="2.5" marker-end="url(#arrow)"/><text x="720" y="238" class="detail">1. 缓存未命中，开始慢查询旧值 v1</text>
+  <path d="M874 310H1028" stroke="#2d865f" stroke-width="3" marker-end="url(#arrow)"/><text x="892" y="300" class="detail">2. DB 提交 v2</text>
+  <path d="M1040 352H886" stroke="#c67b18" stroke-width="3" marker-end="url(#arrow)"/><text x="900" y="342" class="detail">3. 删除缓存</text>
+  <path d="M1040 416H714" stroke="#c44e47" stroke-width="3" marker-end="url(#arrow)"/><text x="730" y="406" class="detail">4. A 的旧查询返回 v1</text>
+  <path d="M702 466H1028" stroke="#c44e47" stroke-width="3" marker-end="url(#arrow)"/><text x="720" y="456" class="detail">5. 旧值重新写入缓存</text>
+  <rect x="650" y="492" width="444" height="46" rx="13" fill="#fff0ee" stroke="#df8c86"/><text x="872" y="521" text-anchor="middle" class="step" fill="#a63b35">结果：DB=v2，Cache=v1，直到下一次失效</text>
+
+  <rect x="58" y="594" width="1084" height="86" rx="20" fill="#173047"/>
+  <text x="84" y="625" class="step" style="fill:#fff">治理按一致性目标组合：短 TTL · 版本/时间戳防旧写 · 事务后消息/Outbox 补删 · 对账修复 · 强一致请求绕过缓存</text>
+  <text x="84" y="655" class="detail" style="fill:#cfe0ec">用故障注入复现“删缓存失败、消息重复/延迟、旧查询晚到”，监控 cache version lag 与补偿积压；不要只展示正常时序。</text>
+</svg>

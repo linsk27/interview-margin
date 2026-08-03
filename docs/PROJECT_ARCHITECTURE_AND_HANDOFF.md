@@ -1,6 +1,6 @@
 # 面试边注：项目架构、部署与开发交接文档
 
-> 更新时间：2026-07-20
+> 更新时间：2026-08-04
 > 仓库：`https://github.com/linsk27/interview-margin`  
 > 主站（完整动态服务）：`https://interview.linsk27.dpdns.org`
 > 游客备用站（静态题库）：`https://interview-margin.vercel.app`
@@ -36,7 +36,7 @@ Cloudflare Tunnel token 或个人批注内容。
 
 ### 1.3 已完成状态
 
-- 9 个题库、501 道题已写入 SQLite。
+- 13 个题库、701 道题已写入 SQLite。
 - 原有 181 题全部保留，新增 320 题均带来源记录。
 - `admin / editor / learner` 三级 RBAC 已实现。
 - 登录、改密、停用账号、重置一次性密码和会话撤销已实现。
@@ -55,7 +55,7 @@ Cloudflare Tunnel token 或个人批注内容。
 - 两个 Windows 计划任务已安装，分别负责公网服务监督和每天 03:00 的数据库备份。
 - Vercel 游客备用站独立发布前端和公开题库快照；账户服务失败不会阻塞公开题库渲染。
 - `npm run build` 会先导出公开、未归档的内置题为 `public/catalog.json`，供静态部署回退。
-- 当前回归基线：28 个测试文件、107/107 项测试通过；构建通过，501 题数据检查通过。
+- 当前回归基线：37 个测试文件、186/186 项测试通过；构建通过，701 题数据检查通过。
 
 最近几个关键提交：
 
@@ -180,7 +180,7 @@ Cookie 当前会话用户完全一致；缺失或不一致时返回 `409 USER_SE
 数据读写到新账号。IndexedDB 升级到版本 2 时会移除旧的未分区 `study-state` 项。
 
 当前采用“完整学习状态 upsert”，不是每条进度和批注一个独立接口。这个设计适合当前
-501 题和小规模用户，但 `X-Expected-User-Id` 只防止跨账号错写，不解决同一账号多设备
+701 题和小规模用户，但 `X-Expected-User-Id` 只防止跨账号错写，不解决同一账号多设备
 同时编辑的最后写入覆盖；以后并发用户增多时应改成细粒度 mutation、版本号和冲突合并。
 
 ### 3.4 邀请注册链路
@@ -214,12 +214,16 @@ Cookie 当前会话用户完全一致；缺失或不一致时返回 `409 USER_SE
 - `server/content/enrichments/*.js` 按稳定题号保存逐题原理、示例、追问、易错点和来源；
   `npm run content:generate` 生成 `public/question-banks/*.md`，禁止只手改生成产物。
 - JavaScript 100 题保留原选择题与答案，由两个 enrichment 文件幂等补齐深度内容。
-- `public/content/diagrams/` 保存 12 张受控同源 SVG；Markdown 不允许远程图、Base64、
+- `server/content/community-banks/` 保存三套公开社区面经题库的数据；社区帖子只证明题目主题
+  确实被报告过，答案由官方规范和项目文档独立校准。每题至少包含一个公开面经来源和一个
+  官方来源，且过滤自我介绍、薪资、职业规划等非技术内容。来源清单由
+  `npm run content:generate:community` 写入 `docs/COMMUNITY_INTERVIEW_SOURCE_AUDIT.md`。
+- `public/content/diagrams/` 保存受控同源 SVG；Markdown 不允许远程图、Base64、
   空替代文本或原始内联 SVG。
-- 420 道结构化富题解都通过正文长度、来源、重复模板和题号/标题一一对应门禁；题目 ID
+- 620 道结构化富题解都通过正文长度、来源、重复模板和题号/标题一一对应门禁；题目 ID
   集合 SHA-256 固定测试可防止重排导致学习记录错绑。
 
-因此：只迁移 Git 可以恢复程序和内置 501 题，但不能恢复账号、进度、批注和后台编辑结果。
+因此：只迁移 Git 可以恢复程序和内置 701 题，但不能恢复账号、进度、批注和后台编辑结果。
 
 ### 3.6 Vercel 静态题库快照
 
@@ -455,9 +459,9 @@ npm run build
 
 验收信号：
 
-- 28 个测试文件、107/107 项测试通过。
-- `db:check` 返回 9 个题库、501 题、501 个唯一 ID；420 道结构化题解无缺段、无薄弱
-  正文、无旧通用模板，12 道核心题带受控 SVG 图解。
+- 37 个测试文件、186/186 项测试通过。
+- `db:check` 返回 13 个题库、701 题、701 个唯一 ID；620 道结构化题解无缺段、无薄弱
+  正文、无旧通用模板，32 道核心题带受控 SVG 图解。
 - `dist/` 构建成功。
 - `dist/catalog.json` 存在且只包含公开、未归档题库，不包含账号或个人学习数据。
 - `http://127.0.0.1:4173/api/health` 返回 `ok: true`。
@@ -552,7 +556,7 @@ npm run db:check
 npm run build
 ```
 
-部署后至少检查备用站首页不再跳回主站、`/catalog.json` 能返回 9 个题库/501 题，并模拟
+部署后至少检查备用站首页不再跳回主站、`/catalog.json` 能返回 13 个题库/701 题，并模拟
 账户 API 不可用验证游客仍能打开正文。不要把生产 SQLite、`.env`、Tunnel token 或
 `public/catalog.json` 手工上传；Vercel 应从受版本控制的题库源重新构建快照。
 
@@ -641,7 +645,7 @@ Tunnel 管理方式，也必须遵守三个原则：运行数据库来自一致�
 
 ### P1：内容质量
 
-- 420 道短题已完成逐题 enrichment，后续仍应按月抽查版本敏感内容、网络协议、数据库
+- 620 道短题已完成逐题 enrichment，后续仍应按月抽查版本敏感内容、网络协议、数据库
   事务以及 React/Vue/构建工具的新版本行为。
 - 继续为适合用流程表达的核心题补图，但应优先复用当前 SVG 设计语言，避免装饰性图片。
 - 更新事实时保留来源和 `verified_at`，不要无依据改答案。
@@ -693,7 +697,7 @@ Tunnel 管理方式，也必须遵守三个原则：运行数据库来自一致�
 4. 完成备份恢复演练、审计日志 UI、回收站和运行监控。
 
 约束：
-- 不删除现有 501 题，不修改旧题 ID。
+- 不删除现有 701 题，不修改旧题 ID。
 - 不把 .env、data/、backups/、logs/ 或 Cloudflare 凭据提交到 Git。
 - 不在浏览器暴露 AI Key。
 - 不影响博客根域名 linsk27.dpdns.org，只维护 interview.linsk27.dpdns.org。
@@ -753,6 +757,6 @@ Tunnel 管理方式，也必须遵守三个原则：运行数据库来自一致�
 npm run db:check
 ```
 
-确认输出应为 9 个题库、501 题。主站动态目录不对时检查生产 SQLite；Vercel 静态目录不对时
+确认输出应为 13 个题库、701 题。主站动态目录不对时检查生产 SQLite；Vercel 静态目录不对时
 运行 `npm run content:export` 并重新部署。仅存在于生产 SQLite 的后台新增/编辑内容不会自动
 进入静态快照。

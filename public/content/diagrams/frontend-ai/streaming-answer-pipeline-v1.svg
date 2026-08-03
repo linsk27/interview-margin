@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">AI 流式回答从模型到稳定界面的完整链路</title>
+  <desc id="desc">展示服务端事件、网络字节、前端解码与分帧、批量渲染、自动滚动和取消传播，并标出各阶段应观测的性能指标。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7fbff"/><stop offset="1" stop-color="#eef4fb"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#173b62" flood-opacity=".12"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#3476b9"/></marker>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#15324b}.title{font-size:34px;font-weight:800}.sub{font-size:17px;fill:#60758a}.lane{font-size:15px;font-weight:800;letter-spacing:1px}.step{font-size:19px;font-weight:750}.detail{font-size:14px;fill:#5b7186}.metric{font-size:15px;font-weight:700}.mono{font-family:"IBM Plex Mono",monospace;font-size:14px}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="62" class="title">流式 UI 的正确性不止是“逐字显示”</text>
+  <text x="58" y="96" class="sub">字节边界、事件边界、渲染节奏与取消信号必须分别处理；原始文本始终是唯一真相。</text>
+
+  <g filter="url(#shadow)">
+    <rect x="58" y="142" width="1084" height="126" rx="22" fill="#fff" stroke="#c9daea"/>
+    <rect x="78" y="162" width="118" height="30" rx="15" fill="#e6f1ff"/><text x="137" y="183" text-anchor="middle" class="lane" fill="#1765a8">服务端</text>
+    <rect x="226" y="170" width="214" height="72" rx="16" fill="#f2f8ff" stroke="#98bee3"/><text x="246" y="199" class="step">模型增量事件</text><text x="246" y="222" class="detail">delta · tool · usage · done</text>
+    <path d="M440 206H498" stroke="#3476b9" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="506" y="170" width="258" height="72" rx="16" fill="#f2f8ff" stroke="#98bee3"/><text x="526" y="199" class="step">协议帧与心跳</text><text x="526" y="222" class="detail">requestId · eventId · retry</text>
+    <path d="M764 206H822" stroke="#3476b9" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="830" y="170" width="276" height="72" rx="16" fill="#f2f8ff" stroke="#98bee3"/><text x="850" y="199" class="step">落库与最终状态</text><text x="850" y="222" class="detail">只提交当前请求 · 可恢复</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="58" y="292" width="1084" height="230" rx="22" fill="#fff" stroke="#c9daea"/>
+    <rect x="78" y="312" width="118" height="30" rx="15" fill="#fff0d9"/><text x="137" y="333" text-anchor="middle" class="lane" fill="#9d5b08">浏览器</text>
+    <rect x="86" y="368" width="182" height="106" rx="16" fill="#fff9ee" stroke="#e5bd7d"/><text x="106" y="399" class="step">读取字节</text><text x="106" y="425" class="mono">ReadableStream</text><text x="106" y="450" class="detail">AbortSignal 贯穿链路</text>
+    <path d="M268 421H304" stroke="#3476b9" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="312" y="368" width="182" height="106" rx="16" fill="#fff9ee" stroke="#e5bd7d"/><text x="332" y="399" class="step">增量解码</text><text x="332" y="425" class="mono">TextDecoder</text><text x="332" y="450" class="detail">保留残缺 UTF-8 尾部</text>
+    <path d="M494 421H530" stroke="#3476b9" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="538" y="368" width="182" height="106" rx="16" fill="#fff9ee" stroke="#e5bd7d"/><text x="558" y="399" class="step">事件分帧</text><text x="558" y="425" class="mono">buffer + delimiter</text><text x="558" y="450" class="detail">半帧留到下一批</text>
+    <path d="M720 421H756" stroke="#3476b9" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="764" y="368" width="182" height="106" rx="16" fill="#fff9ee" stroke="#e5bd7d"/><text x="784" y="399" class="step">合并原文</text><text x="784" y="425" class="mono">rawText += delta</text><text x="784" y="450" class="detail">按帧/时间批量提交</text>
+    <path d="M946 421H982" stroke="#3476b9" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="990" y="368" width="126" height="106" rx="16" fill="#eaf4ff" stroke="#79abd8"/><text x="1008" y="399" class="step">渲染</text><text x="1008" y="425" class="detail">尾块暂存</text><text x="1008" y="450" class="detail">结束后全量校验</text>
+  </g>
+
+  <path d="M190 522V564H1010V522" fill="none" stroke="#8397aa" stroke-width="2.5" stroke-dasharray="7 7"/>
+  <rect x="58" y="558" width="1084" height="116" rx="22" fill="#102b43"/>
+  <text x="86" y="593" class="metric" style="fill:#fff">观测四段，而不是只看总耗时</text>
+  <text x="86" y="624" class="mono" style="fill:#a9d5ff">TTFT</text><text x="142" y="624" class="detail" style="fill:#d8e8f5">首事件到达</text>
+  <text x="300" y="624" class="mono" style="fill:#a9d5ff">tokens/s</text><text x="390" y="624" class="detail" style="fill:#d8e8f5">持续生成速度</text>
+  <text x="590" y="624" class="mono" style="fill:#ffd79c">long tasks</text><text x="690" y="624" class="detail" style="fill:#f6e7ce">解析与渲染卡顿</text>
+  <text x="880" y="624" class="mono" style="fill:#ffb5b5">cancel lag</text><text x="982" y="624" class="detail" style="fill:#f7dddd">取消生效延迟</text>
+  <text x="86" y="654" class="detail" style="fill:#bcd0df">失败时记录 requestId、最后 eventId、已提交字符数和终止原因，才能区分模型慢、网络断、解析错与 UI 卡。</text>
+</svg>
