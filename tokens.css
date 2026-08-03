@@ -36,7 +36,9 @@
   --color-rail-fg: oklch(97% 0.007 245);
 
   --font-display: "Noto Serif SC Variable", ui-serif, serif;
-  --font-reading: "Noto Serif SC Variable", ui-serif, serif;
+  --font-reading-serif: "Noto Serif SC Variable", ui-serif, serif;
+  --font-reading-sans: "Noto Sans SC Variable", ui-sans-serif, sans-serif;
+  --font-reading: var(--font-reading-serif);
   --font-body: "Noto Sans SC Variable", ui-sans-serif, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
@@ -121,4 +123,8 @@
   --color-shadow: oklch(8% 0.012 248 / 0.24);
   --color-rail-bg: oklch(11.5% 0.014 248);
   --color-rail-fg: oklch(94% 0.008 245);
+}
+
+[data-reading-font="sans"] {
+  --font-reading: var(--font-reading-sans);
 }

@@ -11,6 +11,7 @@ import { parseQuestionMarkdown } from './content/markdown.js'
 const DEFAULT_SETTINGS = {
   theme: 'light',
   readingSize: 'comfortable',
+  readingFont: 'serif',
   pageLayout: 'spread',
   focusMode: false,
   notesOpen: true,

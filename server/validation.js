@@ -6,6 +6,7 @@ export const roleSchema = z.enum(['admin', 'editor', 'learner'])
 export const settingsSchema = z.object({
   theme: z.enum(['light', 'dark']),
   readingSize: z.enum(['compact', 'comfortable', 'large']),
+  readingFont: z.enum(['serif', 'sans']).default('serif'),
   pageLayout: z.enum(['single', 'spread']),
   focusMode: z.boolean(),
   notesOpen: z.boolean(),

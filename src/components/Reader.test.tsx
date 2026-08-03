@@ -123,11 +123,48 @@ describe('Reader learning document structure', () => {
     const answerLink = screen.getByRole('button', { name: /速答/ })
     expect(answerLink).toHaveAttribute('aria-controls', 'learning-section-answer')
     expect(answerLink).toHaveAttribute('data-learning-kind', 'answer')
+    expect(answerLink).toHaveAttribute('aria-current', 'location')
     expect(document.getElementById('learning-section-answer')).toHaveAttribute('tabindex', '-1')
 
     fireEvent.click(answerLink)
     expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalled()
     expect(document.activeElement).toBe(document.getElementById('learning-section-answer'))
+  })
+
+  it('moves the current learning location when a different outline item is selected', () => {
+    renderReader()
+
+    const answerLink = screen.getByRole('button', { name: /速答/ })
+    const mechanismLink = screen.getByRole('button', { name: /原理/ })
+
+    expect(answerLink).toHaveAttribute('aria-current', 'location')
+    expect(mechanismLink).not.toHaveAttribute('aria-current')
+
+    fireEvent.click(mechanismLink)
+
+    expect(answerLink).not.toHaveAttribute('aria-current')
+    expect(mechanismLink).toHaveAttribute('aria-current', 'location')
+    expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalled()
+    expect(document.activeElement).toBe(document.getElementById('learning-section-mechanism'))
+  })
+
+  it('opens a collapsed source section when its outline item is selected', () => {
+    renderReader()
+
+    const answerLink = screen.getByRole('button', { name: /速答/ })
+    const sourcesLink = screen.getByRole('button', { name: /来源/ })
+    const sourcesSection = document.getElementById('learning-section-sources')
+    const sourcesDetails = sourcesSection?.querySelector('details')
+
+    expect(sourcesDetails).toBeInstanceOf(HTMLDetailsElement)
+    expect(sourcesDetails).not.toHaveAttribute('open')
+
+    fireEvent.click(sourcesLink)
+
+    expect(answerLink).not.toHaveAttribute('aria-current')
+    expect(sourcesLink).toHaveAttribute('aria-current', 'location')
+    expect(sourcesDetails).toHaveAttribute('open')
+    expect(document.activeElement).toBe(sourcesSection)
   })
 
   it('focuses the new question title without putting it in the tab order', () => {

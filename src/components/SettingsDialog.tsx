@@ -1,6 +1,25 @@
-import { BookOpen, FileText, Focus, Keyboard, Moon, MonitorSmartphone, Sun, X } from 'lucide-react'
+import { BookOpen, FileText, Focus, Keyboard, Moon, MonitorSmartphone, Sun, Type, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import type { ReaderSettings, ReadingSize, ThemeMode } from '../types'
+import type { ReaderSettings, ReadingFont, ReadingSize, ThemeMode } from '../types'
+
+const READING_FONT_OPTIONS: Array<{
+  value: ReadingFont
+  label: string
+  description: string
+}> = [
+  { value: 'serif', label: '书刊宋体', description: '层次鲜明，适合沉浸长文' },
+  { value: 'sans', label: '清晰黑体', description: '笔画利落，适合快速扫读' },
+]
+
+const READING_SIZE_OPTIONS: Array<{
+  value: ReadingSize
+  label: string
+  pixels: string
+}> = [
+  { value: 'compact', label: '紧凑', pixels: '15 px' },
+  { value: 'comfortable', label: '标准', pixels: '17 px' },
+  { value: 'large', label: '大字', pixels: '20 px' },
+]
 
 export function SettingsDialog({ open, settings, spreadAvailable, onClose, onChange }: {
   open: boolean
@@ -20,6 +39,7 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
 
   const setTheme = (theme: ThemeMode) => onChange({ ...settings, theme })
   const setSize = (readingSize: ReadingSize) => onChange({ ...settings, readingSize })
+  const setFont = (readingFont: ReadingFont) => onChange({ ...settings, readingFont })
   const setPageLayout = (pageLayout: ReaderSettings['pageLayout']) => onChange({ ...settings, pageLayout })
 
   return (
@@ -37,20 +57,44 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
           </div>
         </section>
         <section className="settings-panel">
-          <div className="settings-row__label"><span className="settings-aa">Aa</span><div><strong>正文字号</strong><span>只调整阅读区，工具栏保持稳定。</span></div></div>
-          <div className="settings-segment settings-size-segment" role="radiogroup" aria-label="正文字号">
-            {(['compact', 'comfortable', 'large'] as ReadingSize[]).map((size, index) => (
+          <div className="settings-row__label"><Type aria-hidden="true" /><div><strong>正文字体</strong><span>标题保持书刊层次，正文可按阅读习惯切换。</span></div></div>
+          <div className="settings-font-segment" role="radiogroup" aria-label="正文字体">
+            {READING_FONT_OPTIONS.map((option) => (
               <button
-                key={size}
+                key={option.value}
                 type="button"
                 role="radio"
-                aria-label={['紧凑字号', '舒适字号', '大字号'][index]}
-                aria-checked={settings.readingSize === size}
-                className={`settings-size-option settings-size-option--${size}${settings.readingSize === size ? ' is-active' : ''}`}
-                onClick={() => setSize(size)}
+                aria-checked={settings.readingFont === option.value}
+                className={`settings-font-option settings-font-option--${option.value}${settings.readingFont === option.value ? ' is-active' : ''}`}
+                onClick={() => setFont(option.value)}
               >
-                <span className="settings-size-option__sample" aria-hidden="true">Aa</span>
-                <span className="settings-size-option__label">{['紧凑', '舒适', '大字'][index]}</span>
+                <span className="settings-font-option__sample" aria-hidden="true">
+                  <strong>响应式与并发</strong>
+                  <small>Aa 0123</small>
+                </span>
+                <span className="settings-font-option__copy">
+                  <strong>{option.label}</strong>
+                  <small>{option.description}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="settings-panel">
+          <div className="settings-row__label"><span className="settings-aa">Aa</span><div><strong>正文字号</strong><span>正文与段落标题同步缩放，三档尺寸直接对应实际阅读效果。</span></div></div>
+          <div className="settings-segment settings-size-segment" role="radiogroup" aria-label="正文字号">
+            {READING_SIZE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-label={`${option.label}字号，${option.pixels}`}
+                aria-checked={settings.readingSize === option.value}
+                className={`settings-size-option settings-size-option--${option.value}${settings.readingSize === option.value ? ' is-active' : ''}`}
+                onClick={() => setSize(option.value)}
+              >
+                <span className="settings-size-option__sample" aria-hidden="true">面试阅读</span>
+                <span className="settings-size-option__label">{option.label}<small>{option.pixels}</small></span>
               </button>
             ))}
           </div>

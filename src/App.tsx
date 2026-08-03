@@ -430,6 +430,10 @@ export default function App() {
   }, [state.settings.theme])
 
   useEffect(() => {
+    document.documentElement.dataset.readingFont = state.settings.readingFont
+  }, [state.settings.readingFont])
+
+  useEffect(() => {
     const handleHistory = () => {
       if (window.location.hash === '#question-banks') {
         setWorkspaceView('banks')

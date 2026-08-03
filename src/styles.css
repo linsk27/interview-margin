@@ -886,6 +886,10 @@ kbd {
   background: transparent;
   color: var(--color-muted);
   cursor: pointer;
+  transition:
+    background-color var(--dur-short) var(--ease-out),
+    color var(--dur-short) var(--ease-out),
+    box-shadow var(--dur-short) var(--ease-out);
 }
 
 .reader__learning-link span {
@@ -901,12 +905,21 @@ kbd {
   white-space: nowrap;
 }
 
-.reader__learning-link[data-learning-kind='answer'] {
+.reader__learning-link[aria-current='location'] {
   background: var(--color-accent-soft);
+  color: var(--color-accent);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}
+
+.reader__learning-link[aria-current='location'] span {
   color: var(--color-accent);
 }
 
-.reader__learning-link[data-learning-kind='pitfalls'] {
+.reader__learning-link[aria-current='location'] strong {
+  font-weight: 800;
+}
+
+.reader__learning-link[data-learning-kind='pitfalls']:not([aria-current='location']) {
   color: var(--color-warm);
 }
 
@@ -932,12 +945,17 @@ kbd {
 
 .reader--compact .markdown-body {
   font-size: 0.9375rem;
-  line-height: 1.74;
+  line-height: 1.72;
+}
+
+.reader--comfortable .markdown-body {
+  font-size: 1.0625rem;
+  line-height: 1.82;
 }
 
 .reader--large .markdown-body {
-  font-size: var(--text-md);
-  line-height: 1.84;
+  font-size: 1.25rem;
+  line-height: 1.9;
 }
 
 .markdown-body > :first-child {
@@ -976,7 +994,7 @@ kbd {
   border: 0;
   color: var(--color-ink);
   font-family: var(--font-display);
-  font-size: var(--text-lg);
+  font-size: 1.25em;
   line-height: 1.4;
   text-wrap: balance;
 }
@@ -1103,21 +1121,21 @@ kbd {
 
 .markdown-body h2 {
   margin: var(--space-xl) 0 var(--space-md);
-  font-size: var(--text-xl);
+  font-size: 1.45em;
   line-height: 1.4;
   text-wrap: balance;
 }
 
 .markdown-body h3 {
   margin: var(--space-lg) 0 var(--space-sm);
-  font-size: var(--text-lg);
+  font-size: 1.25em;
   line-height: 1.45;
   text-wrap: balance;
 }
 
 .markdown-body h4 {
   margin: var(--space-lg) 0 var(--space-sm);
-  font-size: var(--text-md);
+  font-size: 1.1em;
 }
 
 .markdown-body p,
@@ -3694,6 +3712,84 @@ body:has(dialog[open]) .reader {
   font-weight: 750;
 }
 
+.settings-font-segment {
+  display: grid;
+  width: min(20rem, 100%);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xs);
+}
+
+.settings-font-option {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border: var(--rule-thin) solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: start;
+  transition:
+    border-color var(--dur-short) var(--ease-out),
+    background-color var(--dur-short) var(--ease-out),
+    box-shadow var(--dur-short) var(--ease-out);
+}
+
+.settings-font-option.is-active {
+  border-color: var(--color-accent);
+  background: color-mix(in oklch, var(--color-accent-soft) 72%, var(--color-paper));
+  box-shadow: inset 0 0 0 var(--rule-thin) var(--color-accent);
+}
+
+.settings-font-option__sample {
+  display: grid;
+  gap: var(--space-3xs);
+  padding-block-end: var(--space-xs);
+  border-block-end: var(--rule-thin) solid var(--color-rule);
+}
+
+.settings-font-option__sample strong {
+  overflow: hidden;
+  font-size: 1.05rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-font-option--serif .settings-font-option__sample strong {
+  font-family: var(--font-reading-serif);
+}
+
+.settings-font-option--sans .settings-font-option__sample strong {
+  font-family: var(--font-reading-sans);
+  font-weight: 700;
+}
+
+.settings-font-option__sample small {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+}
+
+.settings-font-option__copy {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.settings-font-option__copy strong {
+  font-size: var(--text-xs);
+  font-weight: 750;
+}
+
+.settings-font-option__copy small {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
 .settings-segment {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3723,11 +3819,12 @@ body:has(dialog[open]) .reader {
 }
 
 .settings-size-segment {
+  width: min(20rem, 100%);
   align-items: stretch;
 }
 
 .settings-segment button.settings-size-option {
-  min-height: 3.75rem;
+  min-height: 4.75rem;
   flex-direction: column;
   gap: var(--space-3xs);
   padding: var(--space-xs) var(--space-2xs);
@@ -3741,18 +3838,20 @@ body:has(dialog[open]) .reader {
 }
 
 .settings-size-option--compact .settings-size-option__sample {
-  font-size: var(--text-sm);
+  font-size: 0.9375rem;
 }
 
 .settings-size-option--comfortable .settings-size-option__sample {
-  font-size: var(--text-md);
+  font-size: 1.0625rem;
 }
 
 .settings-size-option--large .settings-size-option__sample {
-  font-size: var(--text-xl);
+  font-size: 1.25rem;
 }
 
 .settings-size-option__label {
+  display: grid;
+  gap: 0.1rem;
   color: var(--color-muted);
   font-family: var(--font-body);
   font-size: var(--text-xs);
@@ -3760,9 +3859,26 @@ body:has(dialog[open]) .reader {
   line-height: 1.2;
 }
 
+.settings-size-option__label small {
+  color: var(--color-rule-strong);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
 .settings-size-option.is-active .settings-size-option__label {
   color: var(--color-ink);
   font-weight: 700;
+}
+
+.settings-size-option.is-active .settings-size-option__label small {
+  color: var(--color-accent);
+}
+
+.settings-segment button.settings-size-option.is-active {
+  box-shadow:
+    inset 0 0 0 var(--rule-thin) var(--color-accent),
+    0 var(--space-3xs) var(--space-xs) var(--color-shadow);
 }
 
 .settings-segment button.is-active {
@@ -4620,7 +4736,7 @@ body:has(dialog[open]) .reader {
     text-decoration-color: currentColor;
   }
 
-  .reader__learning-link:hover {
+  .reader__learning-link:not([aria-current='location']):hover {
     background: var(--color-paper-3);
     color: var(--color-rail-bg);
   }
@@ -4802,7 +4918,7 @@ body:has(dialog[open]) .reader {
 
   .markdown-body .learning-section__heading {
     margin-block-end: var(--space-sm);
-    font-size: var(--text-md);
+    font-size: 1.2em;
   }
 
   .learning-section--answer {
@@ -5657,6 +5773,12 @@ body:has(.admin-overlay) {
     width: 1.75rem;
     height: 1.75rem;
     min-width: 1.75rem;
+  }
+}
+
+@media (max-width: 30rem) {
+  .settings-font-segment {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

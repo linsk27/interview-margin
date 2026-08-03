@@ -204,6 +204,7 @@ export function Reader({
   const flowRef = useRef<HTMLDivElement>(null)
   const snapshotLayerRef = useRef<HTMLDivElement>(null)
   const articleRef = useRef<HTMLElement>(null)
+  const studyGuideRef = useRef<HTMLElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const previousQuestionIdRef = useRef(question.id)
   const scrollTimer = useRef<number | undefined>(undefined)
@@ -211,6 +212,7 @@ export function Reader({
   const turnEndTimer = useRef<number | undefined>(undefined)
   const turnSequence = useRef(0)
   const turnLocked = useRef(false)
+  const learningNavFrame = useRef<number | undefined>(undefined)
   const spreadIndexRef = useRef(initialSpreadIndex)
   const onSpreadChangeRef = useRef(onSpreadChange)
   const onSpreadAvailabilityChangeRef = useRef(onSpreadAvailabilityChange)
@@ -223,6 +225,7 @@ export function Reader({
   const titleId = questionTitleId(question.id)
   const learningGuideId = `${titleId}-learning-guide`
   const learningOutline = useMemo(() => getLearningOutline(question.body), [question.body])
+  const [activeLearningSectionId, setActiveLearningSectionId] = useState(learningOutline[0]?.id ?? '')
 
   const updateReadingProgress = useCallback(() => {
     const container = scrollRef.current
@@ -231,10 +234,55 @@ export function Reader({
     setReadingProgress((current) => current === nextProgress ? current : nextProgress)
   }, [])
 
+  const updateActiveLearningSection = useCallback(() => {
+    if (spreadMode || learningOutline.length === 0) return
+    const container = scrollRef.current
+    const article = articleRef.current
+    if (!container || !article) return
+
+    const firstSectionId = learningOutline[0].id
+    if (container.scrollTop <= 1) {
+      setActiveLearningSectionId((current) => current === firstSectionId ? current : firstSectionId)
+      return
+    }
+
+    const lastSectionId = learningOutline[learningOutline.length - 1].id
+    const reachedEnd = container.scrollTop + container.clientHeight >= container.scrollHeight - 4
+    if (reachedEnd) {
+      setActiveLearningSectionId((current) => current === lastSectionId ? current : lastSectionId)
+      return
+    }
+
+    const containerTop = container.getBoundingClientRect().top
+    const guideBottom = studyGuideRef.current?.getBoundingClientRect().bottom ?? containerTop
+    let nextSectionId = firstSectionId
+
+    for (const item of learningOutline) {
+      const target = document.getElementById(item.id)
+      if (!(target instanceof HTMLElement) || !article.contains(target)) continue
+      const scrollMargin = Number.parseFloat(getComputedStyle(target).scrollMarginBlockStart) || 0
+      const activationLine = scrollMargin > 0
+        ? containerTop + scrollMargin + 4
+        : Math.max(containerTop, guideBottom) + 16
+      if (target.getBoundingClientRect().top > activationLine) break
+      nextSectionId = item.id
+    }
+
+    setActiveLearningSectionId((current) => current === nextSectionId ? current : nextSectionId)
+  }, [learningOutline, spreadMode])
+
+  const scheduleLearningSectionUpdate = useCallback(() => {
+    window.cancelAnimationFrame(learningNavFrame.current ?? 0)
+    learningNavFrame.current = window.requestAnimationFrame(updateActiveLearningSection)
+  }, [updateActiveLearningSection])
+
   const handleDiagramSettled = useCallback(() => {
     setContentRevision((current) => current + 1)
-    window.requestAnimationFrame(updateReadingProgress)
-  }, [updateReadingProgress])
+    window.requestAnimationFrame(() => {
+      updateReadingProgress()
+      updateActiveLearningSection()
+    })
+  }, [updateActiveLearningSection, updateReadingProgress])
 
   useEffect(() => {
     onSpreadChangeRef.current = onSpreadChange
@@ -277,7 +325,8 @@ export function Reader({
     spreadIndexRef.current = initialSpreadIndex
     setSpreadIndex(initialSpreadIndex)
     setReadingProgress(0)
-  }, [question.id])
+    setActiveLearningSectionId(learningOutline[0]?.id ?? '')
+  }, [learningOutline, question.id])
 
   useEffect(() => {
     if (spreadMode) return
@@ -293,21 +342,28 @@ export function Reader({
     const container = scrollRef.current
     if (!container) return
     container.scrollTop = spreadMode ? 0 : initialScrollTop
-    const frame = window.requestAnimationFrame(updateReadingProgress)
+    const frame = window.requestAnimationFrame(() => {
+      updateReadingProgress()
+      updateActiveLearningSection()
+    })
     return () => window.cancelAnimationFrame(frame)
-  }, [question.id, initialScrollTop, spreadMode, updateReadingProgress])
+  }, [question.id, initialScrollTop, spreadMode, updateActiveLearningSection, updateReadingProgress])
 
   useLayoutEffect(() => {
     const container = scrollRef.current
     const article = articleRef.current
     if (!container || !article) return
 
-    updateReadingProgress()
-    const observer = new ResizeObserver(updateReadingProgress)
+    const updateReaderMeasurements = () => {
+      updateReadingProgress()
+      scheduleLearningSectionUpdate()
+    }
+    updateReaderMeasurements()
+    const observer = new ResizeObserver(updateReaderMeasurements)
     observer.observe(container)
     observer.observe(article)
     return () => observer.disconnect()
-  }, [annotations.length, contentRevision, question.id, readingSize, updateReadingProgress])
+  }, [annotations.length, contentRevision, question.id, readingSize, scheduleLearningSectionUpdate, updateReadingProgress])
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current
@@ -372,6 +428,7 @@ export function Reader({
   useEffect(() => () => {
     turnSequence.current += 1
     window.clearTimeout(scrollTimer.current)
+    window.cancelAnimationFrame(learningNavFrame.current ?? 0)
     window.cancelAnimationFrame(turnStartFrame.current ?? 0)
     window.clearTimeout(turnEndTimer.current)
     clearSpreadSnapshot(snapshotLayerRef.current)
@@ -399,6 +456,7 @@ export function Reader({
   const handleScroll = () => {
     if (spreadMode) return
     updateReadingProgress()
+    scheduleLearningSectionUpdate()
     window.clearTimeout(scrollTimer.current)
     scrollTimer.current = window.setTimeout(() => {
       onScrollPosition(scrollRef.current?.scrollTop ?? 0)
@@ -425,6 +483,10 @@ export function Reader({
     const article = articleRef.current
     const target = document.getElementById(sectionId)
     if (!article || !(target instanceof HTMLElement) || !article.contains(target)) return
+
+    setActiveLearningSectionId(sectionId)
+    const disclosure = target.querySelector<HTMLDetailsElement>('details.learning-section__details')
+    if (disclosure) disclosure.open = true
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (spreadMode && flowRef.current) {
@@ -554,7 +616,7 @@ export function Reader({
           data-spread-index={spreadMode ? spreadIndex : undefined}
         >
           <div className="reader__flow" ref={flowRef}>
-            <section className="reader__study-guide" aria-labelledby={learningGuideId}>
+            <section className="reader__study-guide" ref={studyGuideRef} aria-labelledby={learningGuideId}>
               <header className="reader__study-guide-header">
                 <div className="reader__study-guide-title">
                   <p className="reader__study-guide-kicker">LEARNING ROUTE</p>
@@ -575,11 +637,12 @@ export function Reader({
                 <nav className="reader__learning-outline" aria-label="跳转到本题学习段落">
                   {learningOutline.map((item, index) => (
                     <button
-                      className="reader__learning-link"
+                      className={`reader__learning-link${activeLearningSectionId === item.id ? ' is-active' : ''}`}
                       type="button"
                       key={item.id}
                       data-learning-kind={item.kind}
                       aria-controls={item.id}
+                      aria-current={activeLearningSectionId === item.id ? 'location' : undefined}
                       onClick={() => openLearningSection(item.id)}
                     >
                       <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>

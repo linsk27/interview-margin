@@ -277,7 +277,7 @@ export function createApp(options = {}) {
         VALUES(?, ?, ?, ?, 1, ?, ?)`).run(id, data.username, data.displayName, passwordHash(password), now, now)
       db.prepare('INSERT INTO user_roles(user_id, role_id) VALUES(?, ?)').run(id, data.role)
       db.prepare('INSERT INTO settings(user_id, data_json, updated_at) VALUES(?, ?, ?)')
-        .run(id, JSON.stringify({ theme: 'light', readingSize: 'comfortable', pageLayout: 'spread', focusMode: false, notesOpen: true }), now)
+        .run(id, JSON.stringify({ theme: 'light', readingSize: 'comfortable', readingFont: 'serif', pageLayout: 'spread', focusMode: false, notesOpen: true }), now)
     })()
     audit(db, req, 'user.create', 'user', id, { username: data.username, role: data.role })
     return res.status(201).json({ user: listUsers(db).find((user) => user.id === id), temporaryPassword: password })

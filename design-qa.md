@@ -55,3 +55,57 @@
 - Automated checks: 12 notes sizing/component tests passed, including pointer, keyboard, compact/restore, persistent hidden state, and accessible separator semantics. The two service suites that timed out only during the parallel full run passed 11/11 when rerun serially; production build passed.
 
 final result: passed
+
+---
+
+# Design QA — 学习导览与阅读字体
+
+## Evidence
+
+- Source visual truth: `C:\Users\lsk69\AppData\Local\Temp\codex-clipboard-f2a9759d-5f89-45c2-b46e-d164c191589d.png`
+- Implementation URL: `http://127.0.0.1:4173/`
+- Full desktop capture: `artifacts/learning-route-full-qa.png`
+- Focused navigation capture: `artifacts/learning-route-focused-qa.png`
+- Side-by-side comparison: `artifacts/learning-route-comparison.png`
+- Desktop font-settings capture: `artifacts/font-settings-qa.png`
+- Mobile font-settings capture: `artifacts/font-settings-mobile-qa.png`
+- Desktop viewport: 1280 × 720 CSS px, device scale factor 1
+- Mobile viewport: 390 × 844 CSS px, device scale factor 1
+- Source navigation pixels: 536 × 80
+- Focused implementation navigation pixels: 536 × 80
+- State: light theme, single-page reader, Q1; navigation verified at answer, mechanism, and follow-up sections; settings verified with serif/sans and 15/17/20 px options
+
+The source and focused implementation navigation were compared at the same 536 × 80 pixel size. A focused comparison was necessary because the supplied source is a cropped navigation strip rather than a full application screen. The number of visible route items is content-driven (the source question has six sections; the verification question has four), so fidelity was judged on hierarchy, density, active-state behavior, and legibility rather than item count.
+
+## Findings
+
+No actionable P0, P1, or P2 issues remain.
+
+- Fonts and typography: the reader now exposes two genuinely different bundled Chinese families—Noto Serif SC and Noto Sans SC—and the setting cards preview the same Chinese phrase in each family. Body sizes resolve to 15, 17, and 20 px; section headings scale with the selected body size. At 390 px the two font cards stack, and both preview strings render without truncation.
+- Spacing and layout rhythm: the learning route retains the compact strip from the source. The current item adds a blue surface, stronger weight, and a 2 px inset underline without shifting surrounding items. The font-setting cards fit both 1280 px and 390 px viewports with no horizontal overflow.
+- Colors and visual tokens: active navigation and selected font/size cards use the existing accent tokens. Inactive items remain neutral, while the pitfalls label preserves its warm semantic color.
+- Image quality and asset fidelity: this change introduces no raster or illustrative assets. Existing Lucide interface icons and bundled web fonts remain sharp at both tested densities.
+- Copy and content: route labels remain content-derived (`速答 / 术语 / 原理 / 追问…`). Font choices are named `书刊宋体` and `清晰黑体`, with concise usage descriptions; size choices show their actual pixel values.
+- Accessibility and interaction: exactly one route button exposes `aria-current="location"`. Clicking a route item scrolls and focuses its target. Clicking `追问` or `来源` opens the related disclosure. Font and size options are radio groups with correct checked state.
+
+## Comparison History
+
+1. Initial browser pass found that clicking `原理` scrolled it into the correct visual position, but the scrollspy still reported `术语` because the activation line ignored the section's CSS scroll margin.
+   - Fix: derive each section's activation threshold from its computed `scroll-margin-block-start`.
+   - Post-fix evidence: clicking `原理` settled with `03 原理` as the current item; restored scroll position also selected `03 原理`; clicking the final `追问` section settled with `04 追问` and opened its details content.
+2. First 390 px pass showed the two font-preview cards side by side, causing the Chinese sample to truncate.
+   - Fix: stack font cards below 30 rem while retaining the two-column desktop layout.
+   - Post-fix evidence: the final 390 × 844 capture has one full-width card per font, no horizontal overflow, and each preview's `clientWidth` equals its `scrollWidth`.
+
+## Verification
+
+- Primary interactions tested: route clicks, smooth scrolling, active section updates, follow-up disclosure opening, font-family switching, size switching, and narrow-screen layout.
+- Computed result after selecting `清晰黑体 + 大字`: `Noto Sans SC Variable`, 20 px body text, 38 px line height.
+- Browser console: no warning or error entries.
+- Automated checks: production build passed; 38 test files / 190 tests passed before the final responsive-only refinement; focused post-refinement checks passed for Reader, SettingsDialog, and storage migration.
+
+## Follow-up Polish
+
+- P3: during a long smooth scroll, the highlight intentionally follows the intermediate sections before settling on the clicked destination. This is consistent with the scrollspy model and does not block use.
+
+final result: passed
