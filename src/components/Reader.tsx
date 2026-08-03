@@ -235,12 +235,32 @@ export function Reader({
   }, [])
 
   const updateActiveLearningSection = useCallback(() => {
-    if (spreadMode || learningOutline.length === 0) return
-    const container = scrollRef.current
+    if (learningOutline.length === 0) return
     const article = articleRef.current
-    if (!container || !article) return
+    if (!article) return
 
     const firstSectionId = learningOutline[0].id
+    if (spreadMode) {
+      const viewport = viewportRef.current
+      if (!viewport) return
+      const activationLine = viewport.getBoundingClientRect().left + 8
+      let nextSectionId = firstSectionId
+
+      for (const item of learningOutline) {
+        const target = document.getElementById(item.id)
+        if (!(target instanceof HTMLElement) || !article.contains(target)) continue
+        const targetRect = target.getBoundingClientRect()
+        if (targetRect.width === 0 && targetRect.height === 0) continue
+        if (targetRect.left > activationLine) break
+        nextSectionId = item.id
+      }
+
+      setActiveLearningSectionId((current) => current === nextSectionId ? current : nextSectionId)
+      return
+    }
+
+    const container = scrollRef.current
+    if (!container) return
     if (container.scrollTop <= 1) {
       setActiveLearningSectionId((current) => current === firstSectionId ? current : firstSectionId)
       return
@@ -365,6 +385,27 @@ export function Reader({
     return () => observer.disconnect()
   }, [annotations.length, contentRevision, question.id, readingSize, scheduleLearningSectionUpdate, updateReadingProgress])
 
+  useEffect(() => {
+    if (!spreadMode) return
+    const article = articleRef.current
+    if (!article) return
+
+    const handleDisclosureToggle = (event: Event) => {
+      const disclosure = event.target
+      if (
+        disclosure instanceof HTMLDetailsElement
+        && disclosure.classList.contains('learning-section__details')
+      ) {
+        // Opening or closing a disclosure changes the multi-column scrollWidth,
+        // not its observed content box. Force spread geometry to be measured again.
+        setContentRevision((current) => current + 1)
+      }
+    }
+
+    article.addEventListener('toggle', handleDisclosureToggle, true)
+    return () => article.removeEventListener('toggle', handleDisclosureToggle, true)
+  }, [question.id, spreadMode])
+
   useLayoutEffect(() => {
     const viewport = viewportRef.current
     const flow = flowRef.current
@@ -405,6 +446,7 @@ export function Reader({
         // column flow directly so each spread always starts on an exact page.
         viewport.scrollLeft = 0
         positionSpreadFlow(flow, nextIndex, nextGeometry)
+        scheduleLearningSectionUpdate()
         if (nextIndex !== spreadIndexRef.current) {
           spreadIndexRef.current = nextIndex
           setSpreadIndex(nextIndex)
@@ -423,7 +465,7 @@ export function Reader({
       window.cancelAnimationFrame(frame)
       observer.disconnect()
     }
-  }, [annotations.length, contentRevision, question.id, readingSize, spreadMode])
+  }, [annotations.length, contentRevision, question.id, readingSize, scheduleLearningSectionUpdate, spreadMode])
 
   useEffect(() => () => {
     turnSequence.current += 1
@@ -477,6 +519,7 @@ export function Reader({
     spreadIndexRef.current = nextIndex
     setSpreadIndex(nextIndex)
     onSpreadChangeRef.current(nextIndex)
+    scheduleLearningSectionUpdate()
   }
 
   const openLearningSection = (sectionId: string) => {
@@ -486,7 +529,9 @@ export function Reader({
 
     setActiveLearningSectionId(sectionId)
     const disclosure = target.querySelector<HTMLDetailsElement>('details.learning-section__details')
-    if (disclosure) disclosure.open = true
+    if (disclosure && !disclosure.open) {
+      disclosure.open = true
+    }
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (spreadMode && flowRef.current) {

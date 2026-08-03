@@ -3751,20 +3751,23 @@ body:has(dialog[open]) .reader {
 
 .settings-font-option__sample strong {
   overflow: hidden;
-  font-size: 1.05rem;
+  font-size: 1.28rem;
   font-weight: 650;
-  line-height: 1.35;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .settings-font-option--serif .settings-font-option__sample strong {
   font-family: var(--font-reading-serif);
+  font-weight: 600;
+  letter-spacing: 0.025em;
 }
 
 .settings-font-option--sans .settings-font-option__sample strong {
   font-family: var(--font-reading-sans);
-  font-weight: 700;
+  font-weight: 760;
+  letter-spacing: -0.02em;
 }
 
 .settings-font-option__sample small {
@@ -5779,6 +5782,23 @@ body:has(.admin-overlay) {
 @media (max-width: 30rem) {
   .settings-font-segment {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-size-segment {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-segment button.settings-size-option {
+    min-height: 4rem;
+    flex-direction: row;
+    justify-content: space-between;
+    padding-inline: var(--space-sm);
+  }
+
+  .settings-size-option__label {
+    grid-template-columns: auto auto;
+    align-items: baseline;
+    gap: var(--space-xs);
   }
 }
 

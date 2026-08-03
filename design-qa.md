@@ -109,3 +109,14 @@ No actionable P0, P1, or P2 issues remain.
 - P3: during a long smooth scroll, the highlight intentionally follows the intermediate sections before settling on the clicked destination. This is consistent with the scrollspy model and does not block use.
 
 final result: passed
+
+## Iteration 3 — responsive font contrast and spread reflow (2026-08-04)
+
+- Font comparison cards now use the same enlarged `永 · 阅读` specimen. Serif and sans samples also use deliberately different weight and tracking, making the structural difference visible before selection.
+- The 320 x 760 verification stacks both font cards and all three size choices. Size choices become full-width rows, so the 15/17/20 px samples remain readable without overlap.
+- New mobile evidence: `artifacts/font-settings-320-qa.png`. Updated desktop evidence: `artifacts/font-settings-qa.png`.
+- The learning-route current item follows the actual single-page scroll position and the visible spread in two-page mode. Directly toggling follow-up/source disclosures now forces spread geometry to be measured again because those changes affect multi-column `scrollWidth` rather than the observed content box.
+- Browser verification: page-end selected `追问`; clicking `原理` selected it immediately and aligned the section heading to the reading viewport. No clipping was observed at 1280 px or 320 px.
+- Automated verification: 38 test files / 191 tests passed; focused Reader and SettingsDialog checks passed again after the final visual refinement; production build passed.
+
+final result: passed

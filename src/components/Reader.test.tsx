@@ -5,9 +5,11 @@ import type { InterviewQuestion } from '../types'
 import { Reader } from './Reader'
 
 class ResizeObserverMock {
+  static instanceCount = 0
   private readonly callback: ResizeObserverCallback
 
   constructor(callback: ResizeObserverCallback) {
+    ResizeObserverMock.instanceCount += 1
     this.callback = callback
   }
 
@@ -68,7 +70,10 @@ const secondQuestion: InterviewQuestion = {
   title: 'Q2：React 为什么需要 key？',
 }
 
-function renderReader(question = firstQuestion) {
+function renderReader(
+  question = firstQuestion,
+  overrides: Partial<Parameters<typeof Reader>[0]> = {},
+) {
   const props = {
     question,
     annotations: [],
@@ -81,11 +86,13 @@ function renderReader(question = firstQuestion) {
     onScrollPosition: vi.fn(),
     onSpreadChange: vi.fn(),
     onSpreadAvailabilityChange: vi.fn(),
+    ...overrides,
   }
   return { ...render(<Reader {...props} />), props }
 }
 
 beforeEach(() => {
+  ResizeObserverMock.instanceCount = 0
   vi.stubGlobal('ResizeObserver', ResizeObserverMock)
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
     callback(0)
@@ -109,6 +116,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 describe('Reader learning document structure', () => {
@@ -158,13 +166,41 @@ describe('Reader learning document structure', () => {
 
     expect(sourcesDetails).toBeInstanceOf(HTMLDetailsElement)
     expect(sourcesDetails).not.toHaveAttribute('open')
-
     fireEvent.click(sourcesLink)
 
     expect(answerLink).not.toHaveAttribute('aria-current')
     expect(sourcesLink).toHaveAttribute('aria-current', 'location')
     expect(sourcesDetails).toHaveAttribute('open')
     expect(document.activeElement).toBe(sourcesSection)
+  })
+
+  it('remeasures spread geometry when a learning disclosure is toggled', () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('reader-scroll')) return 1200
+      if (this.classList.contains('reader__flow')) return 1000
+      return 0
+    })
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('reader-scroll') ? 800 : 0
+    })
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('reader__flow') ? 2400 : 0
+    })
+
+    const { props } = renderReader(firstQuestion, { pageLayout: 'spread' })
+    const sourcesDetails = document
+      .getElementById('learning-section-sources')
+      ?.querySelector<HTMLDetailsElement>('details')
+
+    expect(props.onSpreadAvailabilityChange).toHaveBeenCalledWith(true)
+    expect(sourcesDetails).toBeInstanceOf(HTMLDetailsElement)
+    if (!sourcesDetails) return
+
+    const observerCountBeforeToggle = ResizeObserverMock.instanceCount
+    sourcesDetails.open = true
+    fireEvent(sourcesDetails, new Event('toggle'))
+
+    expect(ResizeObserverMock.instanceCount).toBeGreaterThan(observerCountBeforeToggle)
   })
 
   it('focuses the new question title without putting it in the tab order', () => {
