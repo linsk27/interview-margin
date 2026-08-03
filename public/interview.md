@@ -26,7 +26,18 @@
 - **getter / setter**：读取 `obj.name` 时执行 getter；写入 `obj.name = 'A'` 时执行 setter。
 - **Proxy**：在对象外包一层代理，所有读、写、删除等操作都先经过代理。
 
-**原理 / 流程：** Vue2 初始化时要遍历对象已有字段，新增字段需要额外 API；数组也要通过改写 `push` 等方法补足监听。Vue3 的 Proxy 直接拦截对象操作，例如读取字段时收集依赖，修改字段时通知依赖更新。注意：Vue3 的优势不等于“Proxy 一定更快”，核心是拦截能力更完整、实现边界更少。
+**原理 / 流程：**
+
+先按四个维度比较，不要只背“一个是 getter/setter，一个是 Proxy”：
+
+| 维度 | Vue2 | Vue3 |
+| --- | --- | --- |
+| 拦截单位 | 初始化时逐个处理已有属性 | 代理整个对象的操作 |
+| 新增 / 删除 | 通常需要 `Vue.set`、`Vue.delete` | 可直接拦截 `set`、`deleteProperty` |
+| 数组与集合 | 依靠数组方法补丁，集合能力有限 | 可覆盖索引、`Map`、`Set` 等操作 |
+| 核心收益 | 兼容旧浏览器 | 边界更完整，响应式实现更统一 |
+
+两者的共同流程仍是“读取时建立依赖，写入时通知依赖”。Vue3 的优势不等于“Proxy 一定更快”；准确结论是拦截能力更完整、特殊 API 更少，具体性能仍取决于数据规模和访问方式。
 
 **继续追问：为什么 Vue2 深层表单更容易有性能问题？**
 
@@ -56,6 +67,8 @@ state.name = 'Lin' // 写入 name 时 trigger(state, 'name')，上面的 effect 
 ```
 
 `Set` 用来存 effect，是因为同一个 effect 可能多次读取同一字段，但只能执行一次。`WeakMap` 的 key 是原始对象；原始对象没有其他引用时可被垃圾回收，依赖记录不会强行把它留在内存里。
+
+![Vue 响应式系统从读取收集依赖到写入触发更新的完整数据流](/content/diagrams/vue-core/dependency-tracking-v1.svg "读取时 track，写入时 trigger，调度器负责去重与刷新")
 
 **继续追问：为什么不能“数据一改就把所有组件都刷新”？**
 
@@ -365,6 +378,8 @@ function canEnter(step: StepState) {
 **通用流程：** `上传资料 -> 解析文本 -> chunk + overlap -> Embedding/关键词索引 -> 查询召回 -> 可选重排 -> 截断到 token budget -> prompt -> LLM SSE 输出`。
 
 **当前项目流程：** `文章/手动资料 -> HTML 规范化 -> chunk + overlap -> 关键词索引（Embedding 配置后可用向量）-> 查询召回 -> token budget 截断 -> prompt -> LLM SSE 输出`。PDF/Word 自动解析、独立 reranker 目前未实现，面试时不要说已经上线。
+
+![RAG 从资料接入、切块索引到检索生成与评测的完整链路](/content/diagrams/360-ai-frontend/rag-pipeline-v1.svg "RAG 要同时管理离线索引、在线检索和质量闭环")
 
 **继续追问：为什么不把全文塞进 prompt？**
 
@@ -1629,6 +1644,8 @@ ON orders(user_id, status, created_at DESC);
 
 **原理 / 流程：** 先在索引中定位 `user_id=1001`，再缩小到 `status='PAID'`，之后按 `created_at` 的有序区间扫描。`created_at` 放在后面也有利于 `ORDER BY ... LIMIT 20` 少排序、少回表。是否完全避免额外排序要以 `EXPLAIN` 为准。
 
+![B+ 树索引从根节点定位叶子页并沿叶子链完成范围扫描](/content/diagrams/database-cache/b-plus-tree-v1.svg "联合索引先用等值列缩小范围，再沿有序叶子页完成范围与排序")
+
 **继续追问：能不能再加 `(status, user_id, created_at)`？**
 
 答：不能因为“字段都在”就乱加。要看查询模式和选择性。若绝大多数查询都先固定 user，再查该用户订单，user 放前面合理；每多一个索引都会占空间、拖慢 insert/update/delete。
@@ -1743,6 +1760,8 @@ TCP 的 `socket.on('data')` 不能假设“一次 data 回调就是一条业务�
 - **SYN**：请求建立连接的标志；**ACK**：确认收到了某个序列范围；**FIN**：本端不再发送数据。
 - **滑动窗口**：接收方告诉发送方自己还能接收多少数据，发送方不用每发一个字节就等待一次确认。
 - **TIME_WAIT**：主动关闭方等待一段时间，确保最后 ACK 可重发，也避免旧报文影响新连接。
+
+![TCP 建连、数据传输与 TLS 握手之间的时序关系](/content/diagrams/network-deployment/tcp-tls-handshake-v1.svg "TCP 负责可靠连接，TLS 在其上建立加密会话")
 
 **继续追问：可靠是否代表绝不丢包？**
 
@@ -2193,6 +2212,8 @@ return Response(
 ```
 
 **前端当前读取逻辑：**
+
+![流式响应中生产、网络缓冲、前端消费与背压控制的关系](/content/diagrams/backend-fullstack/stream-backpressure-v1.svg "网络分片不等于业务消息，消费者必须维护缓冲和取消边界")
 
 ```ts
 const reader = response.body.getReader()

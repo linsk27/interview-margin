@@ -24,7 +24,10 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
   const [copied, setCopied] = useState(false)
   const code = textFromNode(children).replace(/\n$/, '')
   const languageElement = Children.toArray(children).find(isValidElement) as React.ReactElement<{ className?: string }> | undefined
-  const language = languageElement?.props.className?.replace(/^language-/, '') || 'code'
+  const languageClass = languageElement?.props.className
+    ?.split(/\s+/)
+    .find((className) => className.startsWith('language-'))
+  const language = languageClass?.slice('language-'.length) || 'text'
 
   const copy = async () => {
     await navigator.clipboard.writeText(code)

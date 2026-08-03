@@ -23,6 +23,14 @@ afterEach(() => {
 })
 
 describe('AI learning assistant', () => {
+  it('shows the question number only once when the stored title already has a Q prefix', () => {
+    render(<AiAssistant question={{ ...question, title: 'Q1：为什么 Vue3 使用 Proxy？' }} focusToken={0} />)
+
+    expect(screen.getByText('Q1')).toBeTruthy()
+    expect(screen.getByText('为什么 Vue3 使用 Proxy？')).toBeTruthy()
+    expect(screen.queryByText('Q1：为什么 Vue3 使用 Proxy？')).toBeNull()
+  })
+
   it('sends the active question with the user prompt to the server proxy', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -56,5 +64,39 @@ describe('AI learning assistant', () => {
 
     await waitFor(() => expect(screen.getByText('解释如下：')).toBeTruthy())
     expect(screen.queryByRole('img')).toBeNull()
+  })
+
+  it('renders streamed SSE deltas in one assistant message', async () => {
+    const stream = [
+      'data: {"delta":"先说结论："}\n\n',
+      'data: {"delta":"Proxy 能统一拦截对象操作。"}\n\n',
+      'data: [DONE]\n\n',
+    ].join('')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream, {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+    })))
+
+    render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '解释原理' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+
+    await waitFor(() => expect(screen.getByText('先说结论：Proxy 能统一拦截对象操作。')).toBeTruthy())
+    expect(screen.queryByText('正在组织回答…')).toBeNull()
+  })
+
+  it('keeps the failed prompt and offers an accessible retry action', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: '服务繁忙，请稍后再试。' }),
+    }))
+
+    render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '继续追问' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('服务繁忙'))
+    expect(screen.getByText('继续追问')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '重试' })).toBeTruthy()
   })
 })

@@ -1,4 +1,5 @@
 import { createDatabase } from './database.js'
+import { denseProseBlocks } from './content/readability.js'
 
 function normalizeTitle(value) {
   return value.toLowerCase()
@@ -64,8 +65,17 @@ try {
   const genericTemplateCount = db.prepare(`SELECT COUNT(*) AS count FROM questions WHERE
     body_md LIKE '%这道题的关键是把%放回系统边界中%' OR
     body_md LIKE '%先记录可复现输入和关键指标，再做最小实验验证%' OR
-    body_md LIKE '%不要只背术语，也不要把局部优化包装成通用架构%'`).get().count
+    body_md LIKE '%不要只背术语，也不要把局部优化包装成通用架构%' OR
+    body_md LIKE '%不能只停留在定义。%完整解释应包含输入与输出%'`).get().count
   const diagramQuestionCount = db.prepare("SELECT COUNT(*) AS count FROM questions WHERE body_md LIKE '%/content/diagrams/%'").get().count
+  const denseParagraphs = db.prepare('SELECT id, bank_id, title, body_md FROM questions WHERE archived_at IS NULL').all()
+    .flatMap((question) => denseProseBlocks(question.body_md).map((paragraph) => ({
+      id: question.id,
+      bankId: question.bank_id,
+      title: question.title,
+      length: paragraph.length,
+      preview: paragraph.slice(0, 96),
+    })))
 
   const titles = db.prepare('SELECT id, bank_id, title FROM questions ORDER BY bank_id, sort_order').all()
   const exact = new Map()
@@ -101,6 +111,7 @@ try {
     thin360Questions: thinAi360Questions,
     genericTemplateCount,
     diagramQuestionCount,
+    denseParagraphs,
     exactDuplicateTitles: exactDuplicates,
     similarTitleReport: similar.slice(0, 30),
   }
@@ -109,7 +120,7 @@ try {
     || sourcedCount !== 320 || ai360QuestionCount !== 72 || ai360SourcedCount !== 72
     || incomplete.length || missingSections.length || missingMarkers.length
     || thinEnrichedQuestions.length || ai360MissingMarkers.length || thinAi360Questions.length
-    || genericTemplateCount || diagramQuestionCount !== 19) {
+    || genericTemplateCount || diagramQuestionCount !== 24 || denseParagraphs.length) {
     process.exitCode = 1
   }
 } finally {

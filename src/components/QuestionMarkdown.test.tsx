@@ -118,6 +118,16 @@ describe('QuestionMarkdown learning sections', () => {
   })
 })
 
+describe('QuestionMarkdown code blocks', () => {
+  it('shows only the normalized language name in the code toolbar', () => {
+    render(<QuestionMarkdown>{['```jsx', 'const view = <main />', '```'].join('\n')}</QuestionMarkdown>)
+
+    expect(screen.getByText('jsx', { selector: '.code-block figcaption > span' })).toBeTruthy()
+    expect(screen.queryByText('hljs language-jsx')).toBeNull()
+    expect(screen.getByRole('button', { name: '复制代码' })).toBeTruthy()
+  })
+})
+
 describe('QuestionMarkdown diagrams', () => {
   it('renders a trusted same-origin SVG with reserved dimensions and an accessible caption', () => {
     const onDiagramSettled = vi.fn()

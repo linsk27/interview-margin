@@ -34,6 +34,11 @@ const FORBIDDEN_360_PUBLIC_PATTERNS = [
     pattern: /\[(?:请|待|列出|补充|替换|真实|如果真实)[^\]\n]{0,120}\]/iu,
     message: '包含未完成的个性化占位符',
   },
+  {
+    id: 'generic-mechanism-fallback',
+    pattern: /不能只停留在定义。.{0,100}完整解释应包含输入与输出/iu,
+    message: '包含未针对题目编写的通用原理模板',
+  },
 ]
 
 export function inspect360PublicContent(content) {

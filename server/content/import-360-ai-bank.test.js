@@ -143,6 +143,7 @@ describe('360 AI frontend bank importer', () => {
     expect(markdown).not.toMatch(/我叫[\p{Script=Han}]{2,4}|(?:大学|学院).{0,20}2026\s*届/u)
     expect(markdown).not.toMatch(/ContextForge|广州深圳|只有在真实|校验日期/u)
     expect(markdown).not.toMatch(/自我介绍|为什么选择 360|异地求职|地点与到岗意愿/u)
+    expect(markdown).not.toContain('不能只停留在定义')
     expect(questions[0].number).toBe(5)
     expect(questions[0].body).toContain('为什么使用 RAG')
     expect(questions[1].number).toBe(10)

@@ -4,6 +4,7 @@ import crypto from 'node:crypto'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createDatabase } from './database.js'
+import { denseProseBlocks } from './content/readability.js'
 
 describe('question catalog seed quality', () => {
   let db
@@ -19,7 +20,7 @@ describe('question catalog seed quality', () => {
     expect(crypto.createHash('sha256').update(ids).digest('hex'))
       .toBe('555e19677287bdd087c9f8a4deaba27d4dd2a65a3f88c79c28e64d3c089f02ed')
     expect(db.prepare("SELECT COUNT(*) count FROM questions WHERE body_md LIKE '%/content/diagrams/%'").get().count)
-      .toBe(19)
+      .toBe(24)
   })
 
   it('gives every added question complete interview sections and official sources', () => {
@@ -54,5 +55,12 @@ describe('question catalog seed quality', () => {
       expect(db.prepare('SELECT COUNT(*) count FROM source_refs WHERE question_id=?').get(question.id).count)
         .toBeGreaterThanOrEqual(2)
     }
+  })
+
+  it('keeps every public question free of wall-of-text prose blocks', () => {
+    const questions = db.prepare('SELECT id, body_md FROM questions WHERE archived_at IS NULL').all()
+    const dense = questions.flatMap((question) => denseProseBlocks(question.body_md)
+      .map((paragraph) => ({ id: question.id, length: paragraph.length })))
+    expect(dense).toEqual([])
   })
 })

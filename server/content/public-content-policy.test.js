@@ -26,6 +26,7 @@ describe('360 public content policy', () => {
     ['private project', '打开 ContextForge 演示完整链路。', 'private-project-name'],
     ['private location script', '只有在真实接受北京时使用。', 'private-location-script'],
     ['unfinished placeholder', '这个月新增了 [列出真实新增模块]。', 'unresolved-personalization'],
+    ['generic mechanism fallback', '这道题不能只停留在定义。完整解释应包含输入与输出、状态和数据流。', 'generic-mechanism-fallback'],
   ])('blocks %s before public export', (_label, content, ruleId) => {
     expect(inspect360PublicContent(content)).toEqual([
       expect.objectContaining({ id: ruleId }),

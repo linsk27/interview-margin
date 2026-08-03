@@ -1,7 +1,7 @@
-import { X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { AiAssistant } from './AiAssistant'
 import type { InterviewQuestion } from '../types'
+import styles from './AiAssistant.module.css'
 
 interface AiAssistantDialogProps {
   open: boolean
@@ -34,21 +34,18 @@ export function AiAssistantDialog({ open, question, focusToken, onClose }: AiAss
 
   return (
     <div
-      className={`ai-dialog${open ? ' is-open' : ''}`}
+      className={`ai-dialog ${styles.dialogRoot}${open ? ` is-open ${styles.dialogOpen}` : ''}`}
       aria-hidden={!open}
     >
       <section
         id="ai-dialog"
-        className="ai-dialog__surface"
+        className={styles.surface}
         role="dialog"
         aria-modal={false}
         aria-labelledby="ai-assistant-title"
         tabIndex={-1}
       >
-        <button className="icon-button ai-dialog__close" type="button" onClick={onClose} aria-label="关闭 AI 助手" title="关闭 AI 助手">
-          <X aria-hidden="true" />
-        </button>
-        <AiAssistant question={question} focusToken={focusToken} />
+        <AiAssistant question={question} focusToken={focusToken} onClose={onClose} />
       </section>
     </div>
   )

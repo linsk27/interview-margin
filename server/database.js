@@ -296,6 +296,7 @@ function seedBuiltins(db, rootDir) {
         idPrefix: bank.idPrefix,
         baseTags: bank.baseTags,
         preserveIds: bank.preserveIds,
+        normalizeReadability: true,
       })
       const currentQuestionIds = []
       for (const section of sections) {

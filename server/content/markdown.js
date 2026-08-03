@@ -4,6 +4,8 @@ import { toString } from 'mdast-util-to-string'
 import remarkParse from 'remark-parse'
 import { unified } from 'unified'
 
+import { normalizeReadableQuestionBody } from './readability.js'
+
 function stableUuid(value) {
   const bytes = Buffer.from(crypto.createHash('sha256').update(value).digest().subarray(0, 16))
   bytes[6] = (bytes[6] & 0x0f) | 0x50
@@ -88,7 +90,10 @@ export function parseQuestionMarkdown(source, options) {
         break
       }
     }
-    const body = source.slice(start, end).trim()
+    const rawBody = source.slice(start, end).trim()
+    const body = options.normalizeReadability
+      ? normalizeReadableQuestionBody(rawBody)
+      : rawBody
     const plainText = toString(unified().use(remarkParse).parse(body)).replace(/\s+/g, ' ').trim()
     const number = numberMatch[1]
     const prefix = options.idPrefix ? `${options.idPrefix}-` : ''
