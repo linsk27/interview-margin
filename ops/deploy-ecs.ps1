@@ -39,7 +39,7 @@ function Get-RemoteDeploymentObservation {
     [Parameter(Mandatory = $true)][string[]]$SshArguments
   )
 
-  $observationCommand = 'current=$(readlink -f /opt/interview-margin/current 2>/dev/null || true); printf "current=%s\n" "$current"; state=/var/lib/interview-margin-deploy/pending.state; if [ -e "$state" ] || [ -L "$state" ]; then [ -f "$state" ] && [ ! -L "$state" ] && [ "$(stat -c %U:%G "$state")" = root:root ] && [ "$(stat -c %a "$state")" = 600 ] || exit 42; printf "pending=present\n"; cat -- "$state"; else printf "pending=absent\n"; fi'
+  $observationCommand = 'current=$(readlink -f /opt/interview-margin/current 2>/dev/null || true); echo "current=$current"; state=/var/lib/interview-margin-deploy/pending.state; if [ -e "$state" ] || [ -L "$state" ]; then [ -f "$state" ] && [ ! -L "$state" ] && [ "$(stat -c %U:%G "$state")" = root:root ] && [ "$(stat -c %a "$state")" = 600 ] || exit 42; echo pending=present; cat -- "$state"; else echo pending=absent; fi'
   $lines = @(& ssh @SshArguments $SshTarget $observationCommand)
   if ($LASTEXITCODE -ne 0) {
     throw "Unable to read a trustworthy remote deployment state (ssh exit $LASTEXITCODE)."
