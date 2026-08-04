@@ -24,7 +24,7 @@ function Invoke-CheckedCommand {
 function Get-PublicSmoke {
   param([Parameter(Mandatory = $true)][Uri]$BaseUri)
 
-  $page = Invoke-WebRequest -Uri $BaseUri.AbsoluteUri -Method Get -TimeoutSec 20
+  $page = Invoke-WebRequest -Uri $BaseUri.AbsoluteUri -Method Get -TimeoutSec 20 -UseBasicParsing
   $healthUri = [Uri]::new($BaseUri, '/api/health')
   $health = Invoke-RestMethod -Uri $healthUri.AbsoluteUri -Method Get -TimeoutSec 20
   if ($page.StatusCode -ne 200 -or $health.ok -ne $true) {

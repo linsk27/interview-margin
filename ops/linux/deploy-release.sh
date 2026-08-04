@@ -198,6 +198,9 @@ deploy_release() {
 
   cleanup_deploy() {
     local status=$?
+    if [[ "$#" -eq 1 ]]; then
+      status="$1"
+    fi
     trap - EXIT
     if [[ "$status" -ne 0 && "$pending_created" -eq 1 ]]; then
       if rollback_code_only "$old_release"; then
@@ -227,7 +230,7 @@ deploy_release() {
     printf 'deployment=already-current\ncurrent_release=%s\n' "$new_release"
     curl -fsS http://127.0.0.1:4173/api/health
     printf '\n'
-    return
+    cleanup_deploy 0
   fi
 
   [[ -d "$data_root" && -d "$backup_root" ]] || fail 'persistent data directories are missing'
@@ -324,6 +327,7 @@ deploy_release() {
     "$old_release" "$new_release" "$backup"
   curl -fsS http://127.0.0.1:4173/api/health
   printf '\n'
+  cleanup_deploy 0
 }
 
 case "$action" in
