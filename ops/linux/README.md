@@ -23,8 +23,15 @@ Install dependencies on Linux with `npm ci --include=optional`; never copy
 
 ```bash
 sudo useradd --system --home-dir /var/lib/interview-margin --shell /usr/sbin/nologin interview-margin
+sudo install -d -o interview-margin -g interview-margin -m 0700 /var/lib/interview-margin
 sudo install -d -o interview-margin -g interview-margin -m 0700 /var/lib/interview-margin/data
 sudo install -d -o interview-margin -g interview-margin -m 0700 /var/lib/interview-margin/backups
+sudo install -d -o root -g root -m 0700 /opt/interview-margin/deploy
+sudo install -d -o root -g root -m 0700 /var/lib/interview-margin-deploy
+sudo install -d -o root -g root -m 0700 /var/lib/interview-margin-deploy/incoming
+sudo install -d -o interview-margin -g interview-margin -m 0700 /var/cache/interview-margin-npm
+sudo install -o root -g root -m 0500 ops/linux/deploy-release.sh \
+  /opt/interview-margin/deploy/deploy-release.sh
 sudo install -d -o root -g interview-margin -m 0750 /etc/interview-margin
 sudo install -o root -g interview-margin -m 0640 app.env /etc/interview-margin/app.env
 ```
@@ -67,6 +74,29 @@ npm run db:check
 npm run build
 sudo -u interview-margin /usr/bin/bash ops/linux/db-preflight.sh app
 ```
+
+## Repeatable release
+
+From a clean, committed Windows worktree, use the checked-in wrapper instead
+of composing SSH commands manually:
+
+```powershell
+npm run deploy:ecs
+```
+
+The wrapper returns after smoke checks when the full commit SHA is already
+current. It also requires the installed root-only entrypoint to be byte-for-byte
+identical to the checked-in script; repeat the `install` command above whenever
+that script changes. Otherwise it builds and hashes the exact commit archive. The Linux
+script locks deployment, builds, tests, and preflights a staging release as the
+service account, then creates and integrity-checks an online SQLite backup with
+the old release immediately before atomically switching `current`. A single
+root-only `/var/lib/interview-margin-deploy/pending.state` blocks overlapping
+unconfirmed releases. Failed local health rolls code back immediately and only
+clears that state after recovery succeeds. The Windows wrapper then verifies the
+public page and API and either confirms the release or requests a code-only
+rollback. An already-current full commit SHA always takes the smoke-only path;
+publish a new commit when release contents need to change.
 
 ## systemd
 

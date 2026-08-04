@@ -15,6 +15,7 @@
     "content:export": "node server/content/export-public-catalog.js",
     "db:backup": "node server/backup.js",
     "db:check": "node server/check-content.js",
+    "deploy:ecs": "powershell -NoProfile -ExecutionPolicy Bypass -File ops/deploy-ecs.ps1",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview"
