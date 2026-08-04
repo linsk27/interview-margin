@@ -58,6 +58,47 @@ final result: passed
 
 ---
 
+# Design QA — AI composer focus state (2026-08-05)
+
+## Evidence
+
+- Source visual truth: `artifacts/qa/ai-composer-focus-before.png` (368 × 119 px), supplied bug state showing a focused AI composer with an inner textarea outline plus an outer form ring.
+- Browser-rendered implementation: `artifacts/qa/ai-composer-focus-after.png` (368 × 119 px).
+- Full browser capture: `artifacts/qa/ai-focus-full.png` (1280 × 720 px).
+- Normalized side-by-side comparison: `artifacts/qa/ai-composer-focus-before-after.png` (736 × 119 px; left = before, right = after).
+- CSS viewport: 1280 × 720 px at device scale factor 1; focused crop normalized to the same 368 × 119 pixels as the source.
+- State: light theme, authenticated reader, Q1, AI workspace open, empty textarea focused.
+
+The focused comparison was required because the request concerns the composer focus treatment rather than the surrounding reader. Both sides use the same crop dimensions and show the same interaction state.
+
+## Findings
+
+No actionable P0, P1, or P2 issues remain.
+
+- Fonts and typography: placeholder and helper copy retain the existing family, size, line height, and wrapping; the correction does not alter text metrics.
+- Spacing and layout rhythm: composer dimensions, padding, control alignment, radius, and button size remain stable. Focus no longer creates a visually competing inner rectangle.
+- Colors and visual tokens: the focused textarea now uses one accent border with a low-opacity halo and the existing neutral elevation shadow. Contrast remains visible without the saturated double-blue treatment.
+- Image quality and asset fidelity: no raster, illustration, logo, or icon assets were introduced or replaced; the existing icon-library arrow remains sharp.
+- Copy and content: placeholder and keyboard guidance are unchanged.
+- Accessibility and interaction: the textarea still has a clear keyboard focus indicator on the enclosing composer. Its own redundant outline resolves to `none`; the form retains the semantic focus color and halo. The parent treatment is scoped with `:has(textarea:focus-visible)`, so focusing another control does not add a second parent ring.
+
+## Comparison history
+
+1. Initial P2: the global `textarea:focus-visible` outline and the component's `:focus-within` border/halo rendered simultaneously, producing the double-blue frame visible in the source.
+2. Fix: added a higher-specificity textarea focus override and restricted the parent focus treatment to the textarea's visible keyboard-focus state. The remaining ring was softened to 10% accent opacity while preserving a clear accent edge.
+3. Post-fix evidence: the normalized comparison shows one continuous rounded focus boundary with no inner rectangle, no layout shift, and unchanged button alignment.
+
+## Verification
+
+- Primary interactions tested: opening the AI workspace, focusing the textarea, entering a draft, and retaining the enabled send state without transmitting the draft.
+- Computed focused textarea: `outline-style: none`; active element confirmed as `#ai-question`.
+- Browser console: no application warnings or errors.
+- Automated checks: AI Assistant and Notes Panel tests passed (14/14); TypeScript validation and production build passed.
+
+final result: passed
+
+---
+
 # Design QA — 学习导览与阅读字体
 
 ## Evidence

@@ -667,9 +667,9 @@
   transition: border-color var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
 }
 
-.composer:focus-within {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 var(--rule-heavy) color-mix(in oklch, var(--color-accent) 13%, transparent), 0 var(--space-2xs) var(--space-md) color-mix(in oklch, var(--color-ink) 7%, transparent);
+.composer:has(textarea:focus-visible) {
+  border-color: color-mix(in oklch, var(--color-accent) 72%, var(--color-rule-strong));
+  box-shadow: 0 0 0 0.18rem color-mix(in oklch, var(--color-accent) 10%, transparent), 0 var(--space-2xs) var(--space-md) color-mix(in oklch, var(--color-ink) 7%, transparent);
 }
 
 .composer textarea {
@@ -685,6 +685,10 @@
   font-size: var(--text-sm);
   line-height: 1.5;
   resize: none;
+}
+
+.composer textarea:focus-visible {
+  outline: none;
 }
 
 .composer textarea::placeholder {
