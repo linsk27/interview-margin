@@ -128,6 +128,40 @@ describe('QuestionMarkdown code blocks', () => {
   })
 })
 
+describe('QuestionMarkdown reading rhythm', () => {
+  it('marks long prose for a calmer reading treatment without changing its text', () => {
+    const paragraph = '长段落需要先给结论，再解释机制、边界与验证方式。'.repeat(12)
+    const { container } = render(<QuestionMarkdown>{paragraph}</QuestionMarkdown>)
+
+    const rendered = container.querySelector('p[data-reading-density="long"]')
+    expect(rendered).toBeTruthy()
+    expect(rendered).toHaveTextContent(paragraph)
+  })
+
+  it('turns markdown rules into whitespace rhythm instead of visible divider lines', () => {
+    const { container } = render(<QuestionMarkdown>{['第一部分', '', '---', '', '第二部分'].join('\n')}</QuestionMarkdown>)
+
+    expect(container.querySelector('hr')).toBeNull()
+    expect(container.querySelector('[data-markdown-break="true"]')).toBeTruthy()
+    expect(screen.getByText('第一部分')).toBeTruthy()
+    expect(screen.getByText('第二部分')).toBeTruthy()
+  })
+
+  it('keeps a wide table keyboard-scrollable and labelled', () => {
+    render(
+      <QuestionMarkdown>{[
+        '| 方案 | 适用场景 |',
+        '| --- | --- |',
+        '| SSE | 单向流式响应 |',
+      ].join('\n')}</QuestionMarkdown>,
+    )
+
+    const tableRegion = screen.getByRole('region', { name: '数据表格' })
+    expect(tableRegion).toHaveAttribute('tabindex', '0')
+    expect(tableRegion.querySelector('table')).toBeTruthy()
+  })
+})
+
 describe('QuestionMarkdown diagrams', () => {
   it('renders a trusted same-origin SVG with reserved dimensions and an accessible caption', () => {
     const onDiagramSettled = vi.fn()

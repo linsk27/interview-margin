@@ -162,7 +162,7 @@ kbd {
 
 .notes-panel {
   inset-inline-end: 0;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   border-inline-start: var(--rule-thin) solid var(--color-rule);
   transform: translateX(calc(100% + var(--rule-thin)));
 }
@@ -176,6 +176,43 @@ kbd {
   visibility: visible;
   transform: translateX(0);
   transition-delay: 0s;
+}
+
+@media (max-width: 59.99rem) {
+  .notes-panel {
+    inset-block-start: auto;
+    inset-block-end: 0;
+    inset-inline: 0;
+    width: 100%;
+    height: min(82dvh, 44rem);
+    border: var(--rule-thin) solid var(--color-rule-strong);
+    border-block-end: 0;
+    border-radius: calc(var(--radius-md) + var(--space-xs)) calc(var(--radius-md) + var(--space-xs)) 0 0;
+    box-shadow: 0 -1rem 3rem color-mix(in oklch, var(--color-ink) 20%, transparent);
+    transform: translateY(calc(100% + var(--rule-thin)));
+  }
+
+  .notes-panel::before {
+    content: '';
+    position: absolute;
+    inset-block-start: var(--space-xs);
+    inset-inline-start: 50%;
+    z-index: 1;
+    width: 2.5rem;
+    height: var(--space-2xs);
+    border-radius: 999px;
+    background: var(--color-rule-strong);
+    transform: translateX(-50%);
+  }
+
+  .notes-panel.is-mobile-open,
+  .notes-panel.is-open {
+    transform: translateY(0);
+  }
+
+  .notes-panel__header {
+    padding-block-start: var(--space-lg);
+  }
 }
 
 .mobile-scrim {
@@ -908,7 +945,17 @@ kbd {
 .reader__learning-link[aria-current='location'] {
   background: var(--color-accent-soft);
   color: var(--color-accent);
-  box-shadow: inset 0 -2px 0 var(--color-accent);
+  box-shadow: inset 0 0 0 var(--rule-thin) color-mix(in oklch, var(--color-accent) 26%, transparent), 0 var(--space-3xs) var(--space-xs) var(--color-shadow);
+}
+
+.reader__learning-link[aria-current='location']::after {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-sm);
+  inset-block-end: 0;
+  height: var(--rule-heavy);
+  border-radius: var(--rule-heavy) var(--rule-heavy) 0 0;
+  background: var(--color-accent);
 }
 
 .reader__learning-link[aria-current='location'] span {
@@ -1507,7 +1554,8 @@ kbd {
 
 .selection-menu {
   position: fixed;
-  z-index: var(--z-tooltip);
+  /* Keep text actions above the reader, but below modal drawers and their scrim. */
+  z-index: calc(var(--z-modal) - 2);
   display: flex;
   max-width: calc(100% - 2 * var(--space-md));
   align-items: center;
@@ -1633,6 +1681,68 @@ kbd {
   color: var(--color-accent);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+}
+
+.context-workspace__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2xs);
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: var(--rule-thin) solid var(--color-rule);
+  background: color-mix(in oklch, var(--color-paper-2) 72%, var(--color-paper));
+}
+
+.context-workspace__tabs button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding-inline: var(--space-sm);
+  border: var(--rule-thin) solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  transition: background-color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
+}
+
+.context-workspace__tabs button.is-active {
+  border-color: var(--color-rule);
+  background: var(--color-raised);
+  color: var(--color-accent);
+  box-shadow: 0 var(--space-3xs) var(--space-xs) var(--color-shadow);
+}
+
+.context-workspace__tabs button > svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  stroke-width: 1.8;
+}
+
+.context-workspace__tabs button > span {
+  display: grid;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-paper-3);
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+}
+
+.context-workspace__ai {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.context-workspace__panel[hidden] {
+  display: none;
 }
 
 .search-field {
@@ -1900,98 +2010,6 @@ textarea::placeholder {
 .notes-panel__scroll > section {
   padding-block: var(--space-md);
   border: 0;
-}
-
-.ai-fab {
-  position: fixed;
-  inset-inline-end: var(--space-lg);
-  inset-block-end: calc(4.5rem + env(safe-area-inset-bottom));
-  z-index: var(--z-sticky);
-  display: grid;
-  width: 3.25rem;
-  height: 3.25rem;
-  place-items: center;
-  border: var(--rule-thin) solid color-mix(in oklch, var(--color-paper) 35%, transparent);
-  border-radius: var(--radius-md);
-  background: var(--color-ink);
-  color: var(--color-paper);
-  box-shadow: 0 var(--space-sm) var(--space-lg) color-mix(in oklch, var(--color-ink) 24%, transparent);
-  cursor: pointer;
-  transition: inset-inline-end var(--dur-long) var(--ease-out), transform var(--dur-short) var(--ease-out), opacity var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
-  animation: ai-fab-enter var(--dur-long) var(--ease-out) both;
-}
-
-.ai-fab > svg:first-child {
-  width: 1.2rem;
-  height: 1.2rem;
-  stroke-width: 1.8;
-}
-
-.ai-fab__sparkle {
-  position: absolute;
-  inset-inline-end: var(--space-2xs);
-  inset-block-start: var(--space-2xs);
-  width: 0.7rem;
-  height: 0.7rem;
-  color: var(--color-warm);
-  fill: var(--color-warm);
-}
-
-.ai-fab.is-open {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(var(--space-sm)) scale(0.9);
-}
-
-.ai-dialog {
-  position: fixed;
-  inset-inline-end: var(--space-lg);
-  inset-block-end: calc(8.75rem + env(safe-area-inset-bottom));
-  z-index: calc(var(--z-tooltip) + 1);
-  width: min(25rem, calc(100vw - 2 * var(--space-lg)));
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(var(--space-sm)) scale(0.97);
-  transform-origin: right bottom;
-  transition: inset-inline-end var(--dur-long) var(--ease-out), opacity var(--dur-short) var(--ease-out), transform var(--dur-long) var(--ease-out), visibility var(--dur-short) var(--ease-out);
-  visibility: hidden;
-}
-
-.ai-dialog.is-open {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0) scale(1);
-  visibility: visible;
-}
-
-.ai-dialog__surface {
-  position: relative;
-  display: grid;
-  width: 100%;
-  max-height: min(39rem, calc(100dvh - 10rem));
-  min-height: min(28rem, calc(100dvh - 10rem));
-  overflow: hidden;
-  padding: var(--space-lg);
-  border: var(--rule-thin) solid var(--color-rule-strong);
-  border-radius: var(--radius-md);
-  background: color-mix(in oklch, var(--color-paper) 96%, var(--color-accent-soft));
-  box-shadow: 0 var(--space-md) var(--space-2xl) color-mix(in oklch, var(--color-ink) 22%, transparent), 0 0 0 1px color-mix(in oklch, var(--color-paper) 40%, transparent) inset;
-}
-
-.ai-dialog__close {
-  position: absolute;
-  inset-inline-end: var(--space-md);
-  inset-block-start: var(--space-md);
-  z-index: 1;
-  width: 2.25rem;
-  height: 2.25rem;
-  flex-basis: 2.25rem;
-  background: var(--color-paper-2);
-}
-
-@keyframes ai-fab-enter {
-  from { opacity: 0; transform: translateY(var(--space-md)) scale(0.9); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .ai-assistant {
@@ -2820,26 +2838,6 @@ textarea::placeholder {
 
   .bank-package__copy > span {
     -webkit-line-clamp: 3;
-  }
-
-  .ai-fab {
-    inset-inline-end: var(--space-md);
-    inset-block-end: calc(4rem + env(safe-area-inset-bottom));
-  }
-
-  .ai-dialog {
-    inset-inline-end: var(--space-md);
-    inset-block-end: calc(7.75rem + env(safe-area-inset-bottom));
-    width: calc(100vw - 2 * var(--space-md));
-  }
-
-  .ai-dialog__surface {
-    width: 100%;
-    min-height: min(28rem, calc(100dvh - 9rem));
-    max-height: calc(100dvh - 9rem);
-    padding: var(--space-md);
-    border: var(--rule-thin) solid var(--color-rule-strong);
-    border-radius: var(--radius-md);
   }
 
   .ai-assistant__heading {
@@ -3720,6 +3718,7 @@ body:has(dialog[open]) .reader {
 }
 
 .settings-font-option {
+  position: relative;
   display: grid;
   min-width: 0;
   gap: var(--space-xs);
@@ -3739,11 +3738,27 @@ body:has(dialog[open]) .reader {
 .settings-font-option.is-active {
   border-color: var(--color-accent);
   background: color-mix(in oklch, var(--color-accent-soft) 72%, var(--color-paper));
-  box-shadow: inset 0 0 0 var(--rule-thin) var(--color-accent);
+  box-shadow: inset 0 0 0 var(--rule-heavy) color-mix(in oklch, var(--color-accent) 72%, transparent), 0 var(--space-2xs) var(--space-sm) var(--color-shadow);
+}
+
+.settings-font-option.is-active::after {
+  content: '已选择';
+  position: absolute;
+  inset-block-start: var(--space-xs);
+  inset-inline-end: var(--space-xs);
+  padding: var(--space-3xs) var(--space-xs);
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-family: var(--font-body);
+  font-size: 0.58rem;
+  font-weight: 700;
 }
 
 .settings-font-option__sample {
   display: grid;
+  min-height: 4.5rem;
+  align-content: center;
   gap: var(--space-3xs);
   padding-block-end: var(--space-xs);
   border-block-end: var(--rule-thin) solid var(--color-rule);
@@ -3751,7 +3766,7 @@ body:has(dialog[open]) .reader {
 
 .settings-font-option__sample strong {
   overflow: hidden;
-  font-size: 1.28rem;
+  font-size: 1.5rem;
   font-weight: 650;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -3760,14 +3775,16 @@ body:has(dialog[open]) .reader {
 
 .settings-font-option--serif .settings-font-option__sample strong {
   font-family: var(--font-reading-serif);
-  font-weight: 600;
-  letter-spacing: 0.025em;
+  font-weight: 540;
+  letter-spacing: 0.08em;
+  line-height: 1.36;
 }
 
 .settings-font-option--sans .settings-font-option__sample strong {
   font-family: var(--font-reading-sans);
-  font-weight: 760;
-  letter-spacing: -0.02em;
+  font-weight: 820;
+  letter-spacing: -0.045em;
+  line-height: 1.12;
 }
 
 .settings-font-option__sample small {
@@ -3775,6 +3792,17 @@ body:has(dialog[open]) .reader {
   font-family: var(--font-mono);
   font-size: 0.62rem;
   letter-spacing: 0.04em;
+}
+
+.settings-font-option--serif .settings-font-option__sample small {
+  font-family: var(--font-reading-serif);
+  letter-spacing: 0.08em;
+}
+
+.settings-font-option--sans .settings-font-option__sample small {
+  font-family: var(--font-reading-sans);
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .settings-font-option__copy {
@@ -4476,7 +4504,7 @@ body:has(dialog[open]) .reader {
     inset-block-start: var(--banner-height);
     inset-block-end: 0;
     inset-inline-start: var(--rail-width);
-    z-index: var(--z-dropdown);
+    z-index: calc(var(--z-sticky-nav) - 1);
     width: var(--sidebar-width);
     height: auto;
     border-inline-end-color: var(--color-rule-strong);
@@ -4486,6 +4514,7 @@ body:has(dialog[open]) .reader {
   .library__mobile-tool,
   .topbar__mobile,
   .topbar__notes,
+  .notes-panel__close,
   .mobile-scrim {
     display: none;
   }
@@ -4531,14 +4560,6 @@ body:has(dialog[open]) .reader {
     --reader-dock-end: var(--notes-panel-width, var(--notes-width));
   }
 
-  .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-fab {
-    inset-inline-end: calc(var(--notes-panel-width, var(--notes-width)) + var(--space-lg));
-  }
-
-  .app-shell:not(.is-notes-closed):not(.is-focus-mode) .ai-dialog {
-    inset-inline-end: calc(var(--notes-panel-width, var(--notes-width)) + var(--space-lg));
-  }
-
   .notes-panel__width-toggle {
     display: inline-grid;
   }
@@ -4581,9 +4602,7 @@ body:has(dialog[open]) .reader {
   }
 
   .app-shell.is-resizing-notes .reading-desk,
-  .app-shell.is-resizing-notes .notes-panel,
-  .app-shell.is-resizing-notes .ai-fab,
-  .app-shell.is-resizing-notes .ai-dialog {
+  .app-shell.is-resizing-notes .notes-panel {
     transition: none;
   }
 
@@ -4622,6 +4641,16 @@ body:has(dialog[open]) .reader {
   .status-dock__label,
   .status-dock__hint {
     display: none;
+  }
+}
+
+@media (min-width: 60rem) and (max-width: 75.99rem) {
+  .app-shell:not(.is-library-closed):not(.is-focus-mode) .reading-desk {
+    --reader-dock-start: 0px;
+  }
+
+  .app-shell:not(.is-notes-closed):not(.is-focus-mode) .reading-desk {
+    --reader-dock-end: 0px;
   }
 }
 
@@ -4764,11 +4793,6 @@ body:has(dialog[open]) .reader {
     outline-offset: var(--space-3xs);
   }
 
-  .ai-fab:hover {
-    box-shadow: 0 var(--space-md) var(--space-xl) color-mix(in oklch, var(--color-ink) 30%, transparent);
-    transform: translateY(calc(-1 * var(--space-2xs)));
-  }
-
   .ai-assistant__quick-actions button:hover {
     border-color: var(--color-accent);
     background: var(--color-accent-soft);
@@ -4783,9 +4807,6 @@ body:has(dialog[open]) .reader {
   .bank-package__footer button,
   .bank-package__footer button svg,
   .bank-package__track > span,
-  .ai-fab,
-  .ai-dialog,
-  .ai-dialog__surface,
   .ai-assistant__loading svg,
   .ai-assistant__form button:disabled svg {
     animation: none;

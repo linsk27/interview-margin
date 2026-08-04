@@ -207,6 +207,8 @@ export function Reader({
   const studyGuideRef = useRef<HTMLElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const previousQuestionIdRef = useRef(question.id)
+  const questionIdRef = useRef(question.id)
+  const learningLinkRefs = useRef(new Map<string, HTMLButtonElement>())
   const scrollTimer = useRef<number | undefined>(undefined)
   const turnStartFrame = useRef<number | undefined>(undefined)
   const turnEndTimer = useRef<number | undefined>(undefined)
@@ -275,15 +277,15 @@ export function Reader({
 
     const containerTop = container.getBoundingClientRect().top
     const guideBottom = studyGuideRef.current?.getBoundingClientRect().bottom ?? containerTop
+    const activationLine = Math.min(
+      containerTop + container.clientHeight * 0.38,
+      Math.max(containerTop, guideBottom) + 220,
+    )
     let nextSectionId = firstSectionId
 
     for (const item of learningOutline) {
       const target = document.getElementById(item.id)
       if (!(target instanceof HTMLElement) || !article.contains(target)) continue
-      const scrollMargin = Number.parseFloat(getComputedStyle(target).scrollMarginBlockStart) || 0
-      const activationLine = scrollMargin > 0
-        ? containerTop + scrollMargin + 4
-        : Math.max(containerTop, guideBottom) + 16
       if (target.getBoundingClientRect().top > activationLine) break
       nextSectionId = item.id
     }
@@ -292,9 +294,13 @@ export function Reader({
   }, [learningOutline, spreadMode])
 
   const scheduleLearningSectionUpdate = useCallback(() => {
+    const scheduledQuestionId = question.id
     window.cancelAnimationFrame(learningNavFrame.current ?? 0)
-    learningNavFrame.current = window.requestAnimationFrame(updateActiveLearningSection)
-  }, [updateActiveLearningSection])
+    learningNavFrame.current = window.requestAnimationFrame(() => {
+      if (questionIdRef.current !== scheduledQuestionId) return
+      updateActiveLearningSection()
+    })
+  }, [question.id, updateActiveLearningSection])
 
   const handleDiagramSettled = useCallback(() => {
     setContentRevision((current) => current + 1)
@@ -330,7 +336,12 @@ export function Reader({
   }, [pageLayout, updateReadingProgress])
 
   useLayoutEffect(() => {
+    questionIdRef.current = question.id
     if (previousQuestionIdRef.current === question.id) return
+    window.clearTimeout(scrollTimer.current)
+    scrollTimer.current = undefined
+    window.cancelAnimationFrame(learningNavFrame.current ?? 0)
+    learningNavFrame.current = undefined
     previousQuestionIdRef.current = question.id
     titleRef.current?.focus({ preventScroll: true })
   }, [question.id])
@@ -347,6 +358,14 @@ export function Reader({
     setReadingProgress(0)
     setActiveLearningSectionId(learningOutline[0]?.id ?? '')
   }, [learningOutline, question.id])
+
+  useEffect(() => {
+    if (!activeLearningSectionId) return
+    learningLinkRefs.current.get(activeLearningSectionId)?.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+    })
+  }, [activeLearningSectionId, question.id])
 
   useEffect(() => {
     if (spreadMode) return
@@ -500,8 +519,12 @@ export function Reader({
     updateReadingProgress()
     scheduleLearningSectionUpdate()
     window.clearTimeout(scrollTimer.current)
+    const scheduledQuestionId = question.id
+    const scrollTop = scrollRef.current?.scrollTop ?? 0
     scrollTimer.current = window.setTimeout(() => {
-      onScrollPosition(scrollRef.current?.scrollTop ?? 0)
+      if (questionIdRef.current !== scheduledQuestionId) return
+      scrollTimer.current = undefined
+      onScrollPosition(scrollTop)
     }, 180)
     onSelection(undefined)
   }
@@ -685,6 +708,10 @@ export function Reader({
                       className={`reader__learning-link${activeLearningSectionId === item.id ? ' is-active' : ''}`}
                       type="button"
                       key={item.id}
+                      ref={(node) => {
+                        if (node) learningLinkRefs.current.set(item.id, node)
+                        else learningLinkRefs.current.delete(item.id)
+                      }}
                       data-learning-kind={item.kind}
                       aria-controls={item.id}
                       aria-current={activeLearningSectionId === item.id ? 'location' : undefined}

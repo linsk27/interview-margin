@@ -23,6 +23,15 @@ afterEach(() => {
 })
 
 describe('AI learning assistant', () => {
+  it('can render as an embedded workspace without a duplicate title or close action', () => {
+    render(<AiAssistant question={question} focusToken={0} embedded onClose={vi.fn()} />)
+
+    expect(screen.queryByRole('heading', { name: 'AI 学习助手' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '关闭 AI 助手' })).toBeNull()
+    expect(screen.getByText('正在讨论')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: '向 AI 提问' })).toBeTruthy()
+  })
+
   it('shows the question number only once when the stored title already has a Q prefix', () => {
     render(<AiAssistant question={{ ...question, title: 'Q1：为什么 Vue3 使用 Proxy？' }} focusToken={0} />)
 
@@ -98,5 +107,41 @@ describe('AI learning assistant', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('服务繁忙'))
     expect(screen.getByText('继续追问')).toBeTruthy()
     expect(screen.getByRole('button', { name: '重试' })).toBeTruthy()
+  })
+
+  it('keeps an explicit stopped state when generation is cancelled', async () => {
+    const fetchMock = vi.fn()
+      .mockImplementationOnce((_url: string, options: RequestInit) => (
+        new Promise((_resolve, reject) => {
+          options.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+        })
+      ))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ message: '新的完整回答。' }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '继续解释' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+
+    const stopButton = await screen.findByRole('button', { name: '停止生成' })
+    fireEvent.click(stopButton)
+
+    await waitFor(() => expect(screen.getByText('已停止生成')).toBeTruthy())
+    expect(screen.getByRole('button', { name: '重新生成' })).toBeTruthy()
+    expect(screen.getByText('上一次回答已停止，可直接调整问题后再次发送。')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '换个角度说明' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+    await waitFor(() => expect(screen.getByText('新的完整回答。')).toBeTruthy())
+
+    const [, secondOptions] = fetchMock.mock.calls[1] as [string, RequestInit]
+    const secondPayload = JSON.parse(secondOptions.body as string)
+    expect(secondPayload.messages).toEqual([
+      { role: 'user', content: '继续解释' },
+      { role: 'user', content: '换个角度说明' },
+    ])
   })
 })

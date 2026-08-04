@@ -1,4 +1,5 @@
 import {
+  Bot,
   CalendarClock,
   Check,
   ChevronsLeft,
@@ -6,9 +7,9 @@ import {
   Edit3,
   Highlighter,
   MessageSquareText,
-  PanelRightClose,
   Save,
   Trash2,
+  X,
 } from 'lucide-react'
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -17,6 +18,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { AiAssistant } from './AiAssistant'
 import { formatRelativeDate } from '../lib/format'
 import { NOTES_PANEL_RESIZE_STEP } from '../lib/notesPanelSizing'
 import type { Annotation, HighlightColor, InterviewQuestion, QuestionProgress } from '../types'
@@ -38,7 +40,10 @@ interface NotesPanelProps {
   minWidth: number
   maxWidth: number
   compact: boolean
+  mode: 'notes' | 'assistant'
+  assistantFocusToken: number
   onClose: () => void
+  onModeChange: (mode: 'notes' | 'assistant') => void
   onWidthChange: (width: number) => void
   onResizeStart: () => void
   onResizeEnd: () => void
@@ -106,7 +111,10 @@ export function NotesPanel({
   minWidth,
   maxWidth,
   compact,
+  mode,
+  assistantFocusToken,
   onClose,
+  onModeChange,
   onWidthChange,
   onResizeStart,
   onResizeEnd,
@@ -178,8 +186,11 @@ export function NotesPanel({
   return (
     <aside
       id="notes-panel"
-      className={`notes-panel${mobileOpen ? ' is-mobile-open' : ''}${expanded ? ' is-open' : ''}`}
-      aria-label="批注与复习记录"
+      className={`notes-panel context-workspace${mobileOpen ? ' is-mobile-open' : ''}${expanded ? ' is-open' : ''}`}
+      data-mode={mode}
+      role={mobileOpen ? 'dialog' : 'complementary'}
+      aria-modal={mobileOpen || undefined}
+      aria-label="当前题目工作区"
       aria-hidden={!expanded}
       inert={!expanded}
     >
@@ -204,8 +215,8 @@ export function NotesPanel({
       />
       <header className="notes-panel__header">
         <div>
-          <span>Q{question.number}</span>
-          <h2>边注</h2>
+          <span>CONTEXT · Q{question.number}</span>
+          <h2>本题工作区</h2>
         </div>
         <div className="notes-panel__header-actions">
           <button
@@ -217,13 +228,48 @@ export function NotesPanel({
           >
             {compact ? <ChevronsLeft aria-hidden="true" /> : <ChevronsRight aria-hidden="true" />}
           </button>
-          <button className="icon-button notes-panel__close" type="button" onClick={onClose} aria-label="收起边注" title="收起边注">
-            <PanelRightClose aria-hidden="true" />
+          <button className="icon-button notes-panel__close" type="button" onClick={onClose} aria-label="关闭本题工作区" title="关闭本题工作区">
+            <X aria-hidden="true" />
           </button>
         </div>
       </header>
 
-      <div className="notes-panel__scroll">
+      <div className="context-workspace__tabs" role="tablist" aria-label="工作区工具">
+        <button
+          id="context-tab-notes"
+          type="button"
+          role="tab"
+          aria-selected={mode === 'notes'}
+          aria-controls="context-panel-notes"
+          className={mode === 'notes' ? 'is-active' : ''}
+          onClick={() => onModeChange('notes')}
+        >
+          <Highlighter aria-hidden="true" />
+          批注
+          {annotations.length > 0 && <span>{annotations.length}</span>}
+        </button>
+        <button
+          id="context-tab-assistant"
+          type="button"
+          role="tab"
+          aria-selected={mode === 'assistant'}
+          aria-controls="context-panel-assistant"
+          className={mode === 'assistant' ? 'is-active' : ''}
+          onClick={() => onModeChange('assistant')}
+        >
+          <Bot aria-hidden="true" />
+          AI 助手
+        </button>
+      </div>
+
+      <div
+        id="context-panel-notes"
+        className="notes-panel__scroll context-workspace__panel"
+        role="tabpanel"
+        aria-labelledby="context-tab-notes"
+        hidden={mode !== 'notes'}
+        inert={mode !== 'notes'}
+      >
         {composer && (
           <section className="annotation-composer">
             <div className="annotation-composer__title">
@@ -309,6 +355,16 @@ export function NotesPanel({
             </div>
           )}
         </section>
+      </div>
+      <div
+        id="context-panel-assistant"
+        className="context-workspace__ai context-workspace__panel"
+        role="tabpanel"
+        aria-labelledby="context-tab-assistant"
+        hidden={mode !== 'assistant'}
+        inert={mode !== 'assistant'}
+      >
+        <AiAssistant question={question} focusToken={assistantFocusToken} embedded />
       </div>
     </aside>
   )

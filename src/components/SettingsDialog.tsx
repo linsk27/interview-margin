@@ -69,8 +69,8 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
                 onClick={() => setFont(option.value)}
               >
                 <span className="settings-font-option__sample" aria-hidden="true">
-                  <strong>永 · 阅读</strong>
-                  <small>Aa 0123</small>
+                  <strong>响应式更新</strong>
+                  <small>原理 · 边界 · Aa 0123</small>
                 </span>
                 <span className="settings-font-option__copy">
                   <strong>{option.label}</strong>

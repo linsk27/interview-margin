@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { InterviewQuestion } from '../types'
 import { Reader } from './Reader'
@@ -115,6 +115,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -154,6 +155,106 @@ describe('Reader learning document structure', () => {
     expect(mechanismLink).toHaveAttribute('aria-current', 'location')
     expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalled()
     expect(document.activeElement).toBe(document.getElementById('learning-section-mechanism'))
+  })
+
+  it('scrolls the active learning link horizontally into the nearest visible position', () => {
+    renderReader()
+    const mechanismLink = document.querySelector<HTMLButtonElement>(
+      'button[aria-controls="learning-section-mechanism"]',
+    )
+    expect(mechanismLink).not.toBeNull()
+    if (!mechanismLink) return
+
+    const scrollLinkIntoView = vi.fn()
+    Object.defineProperty(mechanismLink, 'scrollIntoView', {
+      configurable: true,
+      value: scrollLinkIntoView,
+    })
+
+    fireEvent.click(mechanismLink)
+
+    expect(scrollLinkIntoView).toHaveBeenCalledWith({
+      block: 'nearest',
+      inline: 'nearest',
+    })
+  })
+
+  it('cancels a pending scroll-position save when the question changes', () => {
+    vi.useFakeTimers()
+    const saveFirstQuestionScroll = vi.fn()
+    const saveSecondQuestionScroll = vi.fn()
+    const { props, rerender } = renderReader(firstQuestion, {
+      onScrollPosition: saveFirstQuestionScroll,
+    })
+    const scroller = document.querySelector<HTMLDivElement>('.reader-scroll')
+    expect(scroller).not.toBeNull()
+    if (!scroller) return
+
+    Object.defineProperty(scroller, 'scrollTop', {
+      configurable: true,
+      writable: true,
+      value: 420,
+    })
+    fireEvent.scroll(scroller)
+
+    rerender(
+      <Reader
+        {...props}
+        question={secondQuestion}
+        initialScrollTop={0}
+        onScrollPosition={saveSecondQuestionScroll}
+      />,
+    )
+    act(() => vi.advanceTimersByTime(200))
+
+    expect(saveFirstQuestionScroll).not.toHaveBeenCalled()
+    expect(saveSecondQuestionScroll).not.toHaveBeenCalled()
+  })
+
+  it('ignores a queued scroll-spy frame from the previous question', () => {
+    let nextFrameId = 0
+    const frames = new Map<number, FrameRequestCallback>()
+    const cancelFrame = vi.fn((frameId: number) => frames.delete(frameId))
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      nextFrameId += 1
+      frames.set(nextFrameId, callback)
+      return nextFrameId
+    }))
+    vi.stubGlobal('cancelAnimationFrame', cancelFrame)
+
+    const blocks = firstQuestion.body.split('\n\n')
+    const answerOnlyQuestion = {
+      ...firstQuestion,
+      body: blocks.slice(0, 2).join('\n\n'),
+    }
+    const mechanismOnlyQuestion = {
+      ...secondQuestion,
+      body: blocks.slice(4, 6).join('\n\n'),
+    }
+    const { props, rerender } = renderReader(answerOnlyQuestion)
+    const scroller = document.querySelector<HTMLDivElement>('.reader-scroll')
+    expect(scroller).not.toBeNull()
+    if (!scroller) return
+
+    fireEvent.scroll(scroller)
+    const staleFrameId = nextFrameId
+    const staleFrame = frames.get(staleFrameId)
+    expect(staleFrame).toBeDefined()
+
+    rerender(<Reader {...props} question={mechanismOnlyQuestion} />)
+    expect(cancelFrame).toHaveBeenCalledWith(staleFrameId)
+    expect(document.querySelector(
+      'button[aria-controls="learning-section-mechanism"]',
+    )).toHaveAttribute('aria-current', 'location')
+
+    act(() => staleFrame?.(0))
+
+    expect(document.querySelector(
+      'button[aria-controls="learning-section-mechanism"]',
+    )).toHaveAttribute('aria-current', 'location')
+    expect(document.querySelector(
+      'button[aria-controls="learning-section-answer"]',
+    )).toBeNull()
   })
 
   it('opens a collapsed source section when its outline item is selected', () => {

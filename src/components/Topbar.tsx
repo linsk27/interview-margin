@@ -6,6 +6,7 @@ interface TopbarProps {
   progress: QuestionProgress
   libraryOpen: boolean
   notesOpen: boolean
+  workspaceOpen?: boolean
   pageLayout: PageLayout
   spreadAvailable: boolean
   hasPrevious: boolean
@@ -24,6 +25,7 @@ export function Topbar({
   progress,
   libraryOpen,
   notesOpen,
+  workspaceOpen = notesOpen,
   pageLayout,
   spreadAvailable,
   hasPrevious,
@@ -100,10 +102,10 @@ export function Topbar({
           className={`icon-button topbar__notes${notesOpen ? ' is-active' : ''}`}
           type="button"
           onClick={onToggleNotes}
-          aria-label={notesOpen ? '收起批注' : '展开批注'}
+          aria-label={notesOpen ? '收起批注工作区' : workspaceOpen ? '切换到批注' : '展开批注工作区'}
           aria-controls="notes-panel"
-          aria-expanded={notesOpen}
-          title={`${notesOpen ? '收起' : '展开'}批注（N）`}
+          aria-expanded={workspaceOpen}
+          title={`${notesOpen ? '收起批注工作区' : workspaceOpen ? '切换到批注' : '展开批注工作区'}（N）`}
         >
           {notesOpen ? <PanelRightClose aria-hidden="true" /> : <PanelRightOpen aria-hidden="true" />}
         </button>

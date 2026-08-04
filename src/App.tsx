@@ -2,7 +2,6 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Highlighter, MessageSquareText } from 'lucide-react'
 import { CommandPalette } from './components/CommandPalette'
 import { DashboardDialog } from './components/DashboardDialog'
-import { AiAssistantDialog } from './components/AiAssistantDialog'
 import { AdminPanel } from './components/AdminPanel'
 import { AuthDialog } from './components/AuthDialog'
 import { FloatingAiButton } from './components/FloatingAiButton'
@@ -169,7 +168,7 @@ export default function App() {
   const [commandOpen, setCommandOpen] = useState(false)
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [assistantOpen, setAssistantOpen] = useState(false)
+  const [contextMode, setContextMode] = useState<'notes' | 'assistant'>('notes')
   const [assistantFocusToken, setAssistantFocusToken] = useState(0)
   const [library, setLibrary] = useState<QuestionLibrary>('')
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('reader')
@@ -178,9 +177,11 @@ export default function App() {
   const [composer, setComposer] = useState<ComposerDraft>()
   const [undo, setUndo] = useState<UndoState>()
   const undoTimer = useRef<number | undefined>(undefined)
+  const mobileDrawerTrigger = useRef<HTMLElement | null>(null)
+  const mobileDrawerWasOpen = useRef(false)
   const desktopLibraryLayout = useMediaQuery('(min-width: 60rem)')
   const desktopNotesLayout = useMediaQuery('(min-width: 60rem)')
-  const wideNotesLayout = useMediaQuery('(min-width: 76rem)')
+  const wideNotesLayout = useMediaQuery('(min-width: 90rem)')
   const viewportWidth = useViewportWidth()
   const [notesPreferredWidth, setNotesPreferredWidth] = useState(loadNotesPanelWidth)
   const [notesResizing, setNotesResizing] = useState(false)
@@ -241,6 +242,7 @@ export default function App() {
   const libraryExpanded = desktopLibraryLayout ? visibleDrawers.libraryOpen : visibleMobileLibrary
   const notesVisible = visibleDrawers.notesOpen
   const notesExpanded = notesVisible && (desktopNotesLayout || visibleMobileNotes)
+  const mobileDrawerOpen = visibleMobileLibrary || visibleMobileNotes
   const notesMaximumWidth = maximumNotesPanelWidth(
     viewportWidth,
     desktopLibraryLayout && visibleDrawers.libraryOpen,
@@ -265,6 +267,17 @@ export default function App() {
     return false
   }
 
+  const clearActiveSelection = () => {
+    window.getSelection()?.removeAllRanges()
+    setSelection(undefined)
+  }
+
+  const rememberMobileDrawerTrigger = () => {
+    if (!desktopLibraryLayout && !mobileDrawerOpen && document.activeElement instanceof HTMLElement) {
+      mobileDrawerTrigger.current = document.activeElement
+    }
+  }
+
   useEffect(() => {
     if (desktopLibraryLayout) setMobileLibraryOpen(false)
   }, [desktopLibraryLayout])
@@ -273,6 +286,45 @@ export default function App() {
     if (desktopNotesLayout) setMobileNotesOpen(false)
     else setNotesResizing(false)
   }, [desktopNotesLayout])
+
+  useEffect(() => {
+    if (wideNotesLayout) return
+    setDrawerState((current) => (
+      current.libraryOpen && current.notesOpen
+        ? { ...current, libraryOpen: false }
+        : current
+    ))
+  }, [wideNotesLayout])
+
+  useEffect(() => {
+    let focusFrame: number | undefined
+
+    if (mobileDrawerOpen) {
+      if (!mobileDrawerWasOpen.current && !mobileDrawerTrigger.current && document.activeElement instanceof HTMLElement) {
+        mobileDrawerTrigger.current = document.activeElement
+      }
+      const drawer = document.getElementById(visibleMobileLibrary ? 'question-library' : 'notes-panel')
+      focusFrame = window.requestAnimationFrame(() => {
+        const preferredControl = drawer?.querySelector<HTMLElement>(
+          visibleMobileLibrary ? '.library__close' : '.notes-panel__close',
+        )
+        const fallbackControl = drawer?.querySelector<HTMLElement>('button, input, textarea, select')
+        const focusTarget = preferredControl ?? fallbackControl
+        focusTarget?.focus({ preventScroll: true })
+      })
+    } else if (mobileDrawerWasOpen.current) {
+      const trigger = mobileDrawerTrigger.current
+      mobileDrawerTrigger.current = null
+      focusFrame = window.requestAnimationFrame(() => {
+        if (trigger?.isConnected) trigger.focus({ preventScroll: true })
+      })
+    }
+
+    mobileDrawerWasOpen.current = mobileDrawerOpen
+    return () => {
+      if (focusFrame !== undefined) window.cancelAnimationFrame(focusFrame)
+    }
+  }, [mobileDrawerOpen, visibleMobileLibrary])
 
   useEffect(() => {
     try {
@@ -484,7 +536,7 @@ export default function App() {
       if (route.view !== 'reader') {
         setMobileLibraryOpen(false)
         setMobileNotesOpen(false)
-        setAssistantOpen(false)
+        setContextMode('notes')
       }
     }
     window.addEventListener('popstate', handleHistory)
@@ -544,6 +596,7 @@ export default function App() {
   }, [activeQuestion?.id, user?.id, workspaceView])
 
   const openQuestion = (question: InterviewQuestion) => {
+    clearActiveSelection()
     setLibrary(question.library)
     setWorkspaceView('reader')
     writeWorkspaceHash(questionHash(question.id))
@@ -567,20 +620,22 @@ export default function App() {
   }
 
   const openQuestionBanks = () => {
+    clearActiveSelection()
     writeWorkspaceHash('#question-banks')
     setWorkspaceView('banks')
     setMobileLibraryOpen(false)
     setMobileNotesOpen(false)
-    setAssistantOpen(false)
+    setContextMode('notes')
   }
 
   const openAdmin = () => {
     if (!user?.permissions.includes('banks.write')) return
+    clearActiveSelection()
     writeWorkspaceHash('#admin')
     setWorkspaceView('admin')
     setMobileLibraryOpen(false)
     setMobileNotesOpen(false)
-    setAssistantOpen(false)
+    setContextMode('notes')
   }
 
   const updateProgress = (patch: Partial<QuestionProgress>, options: ProgressUpdateOptions = {}) => {
@@ -661,6 +716,9 @@ export default function App() {
 
   const openNotes = () => {
     if (!requireUser(LOGIN_REASONS.notes)) return false
+    rememberMobileDrawerTrigger()
+    clearActiveSelection()
+    setContextMode('notes')
     setFocusMode(false)
     setDrawerState((current) => ({
       ...transitionOpenNotes(current),
@@ -672,7 +730,16 @@ export default function App() {
   }
 
   const openAssistant = () => {
-    setAssistantOpen(true)
+    rememberMobileDrawerTrigger()
+    clearActiveSelection()
+    setContextMode('assistant')
+    setFocusMode(false)
+    setDrawerState((current) => ({
+      ...transitionOpenNotes(current),
+      libraryOpen: wideNotesLayout ? current.libraryOpen : false,
+    }))
+    setMobileLibraryOpen(false)
+    setMobileNotesOpen(!desktopNotesLayout)
     setAssistantFocusToken((current) => current + 1)
   }
 
@@ -725,11 +792,15 @@ export default function App() {
   }
 
   const toggleNotes = () => {
-    if (notesExpanded) closeNotes()
+    if (notesExpanded && contextMode === 'notes') closeNotes()
     else void openNotes()
   }
 
   const toggleMobileLibrary = () => {
+    if (!libraryExpanded || focusMode) {
+      rememberMobileDrawerTrigger()
+      clearActiveSelection()
+    }
     if (focusMode) {
       setFocusMode(false)
       setMobileLibraryOpen(true)
@@ -753,6 +824,7 @@ export default function App() {
   }
 
   const toggleDesktopLibrary = () => {
+    if (!libraryExpanded || focusMode) clearActiveSelection()
     if (focusMode) {
       setFocusMode(false)
       setDrawerState((current) => {
@@ -805,6 +877,13 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
+      if (mobileDrawerOpen) {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          closeMobileDrawers()
+        }
+        return
+      }
       if (isTypingTarget(event.target)) return
       const commandKey = event.ctrlKey || event.metaKey
       if ((commandKey && event.key.toLowerCase() === 'k') || event.key === '/') {
@@ -899,7 +978,9 @@ export default function App() {
         reviewCount={railReviewCount}
         focusMode={focusMode}
         libraryOpen={libraryExpanded}
-        notesOpen={notesExpanded}
+        notesOpen={notesExpanded && contextMode === 'notes'}
+        workspaceOpen={notesExpanded}
+        modalBlocked={mobileDrawerOpen}
         readerMode={readerMode}
         bankHubActive={workspaceView === 'banks'}
         adminActive={workspaceView === 'admin'}
@@ -955,12 +1036,13 @@ export default function App() {
         onClose={closeLibrary}
           />
 
-          <section className="reading-desk">
+          <section className="reading-desk" inert={mobileDrawerOpen}>
         <Topbar
           question={activeQuestion}
           progress={activeProgress}
           libraryOpen={libraryExpanded}
-          notesOpen={notesExpanded}
+          notesOpen={notesExpanded && contextMode === 'notes'}
+          workspaceOpen={notesExpanded}
           pageLayout={state.settings.pageLayout}
           spreadAvailable={spreadAvailable}
           hasPrevious={activeLibraryIndex > 0}
@@ -1004,7 +1086,13 @@ export default function App() {
           minWidth={NOTES_PANEL_MIN_WIDTH}
           maxWidth={notesMaximumWidth}
           compact={notesCompact}
+          mode={contextMode}
+          assistantFocusToken={assistantFocusToken}
           onClose={closeNotes}
+          onModeChange={(mode) => {
+            if (mode === 'assistant') openAssistant()
+            else void openNotes()
+          }}
           onWidthChange={resizeNotesPanel}
           onResizeStart={() => setNotesResizing(true)}
           onResizeEnd={() => setNotesResizing(false)}
@@ -1036,13 +1124,7 @@ export default function App() {
         }}
           />
 
-          <FloatingAiButton open={assistantOpen} onOpen={openAssistant} />
-          <AiAssistantDialog
-            open={assistantOpen}
-            question={activeQuestion}
-            focusToken={assistantFocusToken}
-            onClose={() => setAssistantOpen(false)}
-          />
+          {!notesExpanded && !visibleMobileLibrary && <FloatingAiButton open={false} onOpen={openAssistant} />}
         </>
       )}
 
@@ -1109,7 +1191,7 @@ export default function App() {
       />
 
       {undo && <UndoToast message="批注已删除" onUndo={restoreAnnotation} onDismiss={() => setUndo(undefined)} />}
-      {workspaceView === 'reader' && (visibleMobileLibrary || visibleMobileNotes) && <button className="mobile-scrim" type="button" onClick={closeMobileDrawers} aria-label="关闭侧栏" />}
+      {workspaceView === 'reader' && mobileDrawerOpen && <button className="mobile-scrim" type="button" tabIndex={-1} aria-hidden="true" onClick={closeMobileDrawers} aria-label="关闭侧栏" />}
       <div className="sr-only" aria-live="polite">
         {workspaceView === 'reader' ? `当前题目：${activeQuestion.title}` : workspaceView === 'admin' ? '当前页面：内容管理' : '当前页面：题库中心'}
       </div>

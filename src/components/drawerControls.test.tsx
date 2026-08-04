@@ -109,7 +109,7 @@ describe('drawer controls', () => {
       />,
     )
 
-    const hubButton = screen.getByRole('button', { name: '题库中心' })
+    const hubButton = screen.getByRole('button', { name: '全部题库' })
     expect(hubButton.getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByRole('button', { name: 'JavaScript 100 题' })).toBeNull()
     fireEvent.click(hubButton)
@@ -142,13 +142,13 @@ describe('drawer controls', () => {
 
     expect(screen.getByRole('img', { name: '面试边注' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: '打开题库' })).toBeNull()
-    expect(screen.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-controls')).toBe('question-library')
-    expect(screen.getByRole('button', { name: '展开笔记抽屉' }).getAttribute('aria-controls')).toBe('notes-panel')
+    expect(screen.getByRole('button', { name: '收起当前题库目录' }).getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('button', { name: '收起当前题库目录' }).getAttribute('aria-controls')).toBe('question-library')
+    expect(screen.getByRole('button', { name: '展开批注工作区' }).getAttribute('aria-controls')).toBe('notes-panel')
   })
 
   it('reports the actual mobile library and notes states in the topbar', () => {
-    const { rerender } = render(
+    const { rerender, container } = render(
       <Topbar
         question={question}
         progress={progress}
@@ -168,9 +168,11 @@ describe('drawer controls', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: '收起题库' }).getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByRole('button', { name: '收起题库' }).getAttribute('aria-controls')).toBe('question-library')
-    expect(screen.getByRole('button', { name: '展开批注' }).getAttribute('aria-expanded')).toBe('false')
+    const topbar = within(container)
+
+    expect(topbar.getByRole('button', { name: '收起题库' }).getAttribute('aria-expanded')).toBe('true')
+    expect(topbar.getByRole('button', { name: '收起题库' }).getAttribute('aria-controls')).toBe('question-library')
+    expect(topbar.getByRole('button', { name: '展开批注工作区' }).getAttribute('aria-expanded')).toBe('false')
 
     rerender(
       <Topbar
@@ -192,9 +194,9 @@ describe('drawer controls', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: '展开题库' }).getAttribute('aria-expanded')).toBe('false')
-    expect(screen.getByRole('button', { name: '收起批注' }).getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByRole('button', { name: '收起批注' }).getAttribute('aria-controls')).toBe('notes-panel')
+    expect(topbar.getByRole('button', { name: '展开题库' }).getAttribute('aria-expanded')).toBe('false')
+    expect(topbar.getByRole('button', { name: '收起批注工作区' }).getAttribute('aria-expanded')).toBe('true')
+    expect(topbar.getByRole('button', { name: '收起批注工作区' }).getAttribute('aria-controls')).toBe('notes-panel')
   })
 
   it('keeps focus independent, restores drawers, and exits focus when a drawer opens', () => {
@@ -204,37 +206,89 @@ describe('drawer controls', () => {
 
     fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
     expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('true')
-    expect(rail.getByRole('button', { name: '展开题库侧栏' }).getAttribute('aria-expanded')).toBe('false')
-    expect(topbar.getByRole('button', { name: '展开批注' }).getAttribute('aria-expanded')).toBe('false')
+    expect(rail.getByRole('button', { name: '展开当前题库目录' }).getAttribute('aria-expanded')).toBe('false')
+    expect(topbar.getByRole('button', { name: '展开批注工作区' }).getAttribute('aria-expanded')).toBe('false')
 
     fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
     expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
-    expect(rail.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-expanded')).toBe('true')
-    expect(topbar.getByRole('button', { name: '收起批注' }).getAttribute('aria-expanded')).toBe('true')
+    expect(rail.getByRole('button', { name: '收起当前题库目录' }).getAttribute('aria-expanded')).toBe('true')
+    expect(topbar.getByRole('button', { name: '收起批注工作区' }).getAttribute('aria-expanded')).toBe('true')
 
-    fireEvent.click(topbar.getByRole('button', { name: '收起批注' }))
-    fireEvent.click(rail.getByRole('button', { name: '收起题库侧栏' }))
+    fireEvent.click(topbar.getByRole('button', { name: '收起批注工作区' }))
+    fireEvent.click(rail.getByRole('button', { name: '收起当前题库目录' }))
     expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
-    expect(rail.getByRole('button', { name: '展开题库侧栏' }).getAttribute('aria-expanded')).toBe('false')
-    expect(topbar.getByRole('button', { name: '展开批注' }).getAttribute('aria-expanded')).toBe('false')
-
-    fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
-    fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
-    expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
-    expect(rail.getByRole('button', { name: '展开题库侧栏' }).getAttribute('aria-expanded')).toBe('false')
-    expect(topbar.getByRole('button', { name: '展开批注' }).getAttribute('aria-expanded')).toBe('false')
+    expect(rail.getByRole('button', { name: '展开当前题库目录' }).getAttribute('aria-expanded')).toBe('false')
+    expect(topbar.getByRole('button', { name: '展开批注工作区' }).getAttribute('aria-expanded')).toBe('false')
 
     fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
-    fireEvent.click(rail.getByRole('button', { name: '展开题库侧栏' }))
+    fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
     expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
-    expect(rail.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-expanded')).toBe('true')
-    expect(topbar.getByRole('button', { name: '展开批注' }).getAttribute('aria-expanded')).toBe('false')
+    expect(rail.getByRole('button', { name: '展开当前题库目录' }).getAttribute('aria-expanded')).toBe('false')
+    expect(topbar.getByRole('button', { name: '展开批注工作区' }).getAttribute('aria-expanded')).toBe('false')
 
     fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
-    fireEvent.click(topbar.getByRole('button', { name: '展开批注' }))
+    fireEvent.click(rail.getByRole('button', { name: '展开当前题库目录' }))
     expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
-    expect(rail.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-expanded')).toBe('true')
-    expect(topbar.getByRole('button', { name: '收起批注' }).getAttribute('aria-expanded')).toBe('true')
+    expect(rail.getByRole('button', { name: '收起当前题库目录' }).getAttribute('aria-expanded')).toBe('true')
+    expect(topbar.getByRole('button', { name: '展开批注工作区' }).getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
+    fireEvent.click(topbar.getByRole('button', { name: '展开批注工作区' }))
+    expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
+    expect(rail.getByRole('button', { name: '收起当前题库目录' }).getAttribute('aria-expanded')).toBe('true')
+    expect(topbar.getByRole('button', { name: '收起批注工作区' }).getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('reports an open AI workspace while offering a switch to the notes tab', () => {
+    const { container } = render(
+      <Topbar
+        question={question}
+        progress={progress}
+        libraryOpen={false}
+        notesOpen={false}
+        workspaceOpen
+        pageLayout="single"
+        spreadAvailable
+        hasPrevious
+        hasNext
+        onPrevious={noop}
+        onNext={noop}
+        onToggleLibrary={noop}
+        onToggleNotes={noop}
+        onPageLayoutChange={noop}
+        onOpenSearch={noop}
+        onToggleFavorite={noop}
+      />,
+    )
+
+    const notesButton = within(container).getByRole('button', { name: '切换到批注' })
+    expect(notesButton).toHaveAttribute('aria-expanded', 'true')
+    expect(notesButton).not.toHaveClass('is-active')
+  })
+
+  it('makes the rail inert while a mobile modal drawer is open', () => {
+    const { container } = render(
+      <Rail
+        mastered={0}
+        total={81}
+        reviewCount={0}
+        focusMode={false}
+        libraryOpen={false}
+        notesOpen={false}
+        modalBlocked
+        readerMode
+        bankHubActive={false}
+        onToggleLibrary={noop}
+        onToggleNotes={noop}
+        onOpenQuestionBanks={noop}
+        onOpenDashboard={noop}
+        onOpenReview={noop}
+        onToggleFocus={noop}
+        onOpenSettings={noop}
+      />,
+    )
+
+    expect(container.querySelector('.rail')).toHaveAttribute('inert')
   })
 
   it('reports and changes the selected page layout only when spread mode is available', () => {

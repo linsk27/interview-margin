@@ -1,6 +1,8 @@
 import {
   ArrowUp,
   Bot,
+  BriefcaseBusiness,
+  Check,
   CircleAlert,
   Lightbulb,
   LoaderCircle,
@@ -22,31 +24,38 @@ interface AssistantMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
-  status?: 'streaming' | 'complete'
+  status?: 'streaming' | 'complete' | 'stopped'
 }
 
 interface AiAssistantProps {
   question: InterviewQuestion
   focusToken: number
   onClose?: () => void
+  embedded?: boolean
 }
 
 const QUICK_PROMPTS = [
   {
-    label: '用大白话讲',
-    description: '一句结论、一个类比、一个最小例子',
+    label: '讲得更简单',
+    description: '结论、类比和最小例子',
     prompt: '我没有理解这道题。请先用一句话给出结论，再用生活或项目类比解释，最后给一个最小例子。',
     icon: Lightbulb,
   },
   {
-    label: '梳理原理',
-    description: '按因果链拆开关键机制和边界',
-    prompt: '请把这道题的原理按“触发条件 → 核心过程 → 结果 → 边界”分点讲清楚，并指出最容易混淆的地方。',
+    label: '画出流程',
+    description: '用步骤和箭头梳理机制',
+    prompt: '请把这道题的原理整理成简洁的文本流程图，并按“触发条件 → 核心过程 → 结果 → 边界”解释每一步。',
     icon: Network,
   },
   {
+    label: '举真实例子',
+    description: '放进具体项目场景中',
+    prompt: '请给出一个真实项目中的使用场景，说明为什么要用这项技术、具体怎么实现，以及不用它会出现什么问题。',
+    icon: BriefcaseBusiness,
+  },
+  {
     label: '模拟追问',
-    description: '继续追问 3 层并给出回答要点',
+    description: '追问三层并给回答要点',
     prompt: '请模拟面试官围绕这道题继续追问 3 层，每一层都给出简洁的回答框架和关键点。',
     icon: MessagesSquare,
   },
@@ -142,7 +151,7 @@ async function readReply(response: Response, onDelta: (delta: string) => void): 
   return reply
 }
 
-export function AiAssistant({ question, focusToken, onClose }: AiAssistantProps) {
+export function AiAssistant({ question, focusToken, onClose, embedded = false }: AiAssistantProps) {
   const displayQuestionTitle = question.title.replace(/^Q[\d.]+[：:]?\s*/i, '')
   const [messages, setMessages] = useState<AssistantMessage[]>([])
   const [draft, setDraft] = useState('')
@@ -240,7 +249,10 @@ export function AiAssistant({ question, focusToken, onClose }: AiAssistantProps)
     const content = value.trim()
     if (!content || isLoading) return
 
-    const conversation = [...messages.filter((message) => message.status !== 'streaming'), newMessage('user', content, 'complete')]
+    const conversation = [
+      ...messages.filter((message) => message.status !== 'streaming' && message.status !== 'stopped'),
+      newMessage('user', content, 'complete'),
+    ]
     setDraft('')
     await requestReply(conversation)
   }
@@ -249,14 +261,17 @@ export function AiAssistant({ question, focusToken, onClose }: AiAssistantProps)
     abortRef.current?.abort()
     abortRef.current = undefined
     setIsLoading(false)
-    setMessages((current) => current
-      .filter((message) => message.status !== 'streaming' || message.content)
-      .map((message) => message.status === 'streaming' ? { ...message, status: 'complete' } : message))
+    setMessages((current) => current.map((message) => (
+      message.status === 'streaming' ? { ...message, status: 'stopped' } : message
+    )))
   }
 
-  const retry = () => {
-    const conversation = messages.filter((message) => message.status !== 'streaming')
-    if (conversation.at(-1)?.role !== 'user') return
+  const retryFromLastUser = () => {
+    const lastUserIndex = messages.map((message) => message.role).lastIndexOf('user')
+    if (lastUserIndex < 0) return
+    const conversation = messages
+      .slice(0, lastUserIndex + 1)
+      .filter((message) => message.status !== 'streaming' && message.status !== 'stopped')
     void requestReply(conversation)
   }
 
@@ -282,40 +297,58 @@ export function AiAssistant({ question, focusToken, onClose }: AiAssistantProps)
   }
 
   const hasConversation = messages.length > 0
+  const hasStoppedReply = messages.at(-1)?.status === 'stopped'
 
   return (
-    <section className={styles.assistant} aria-labelledby="ai-assistant-title">
-      <header className={styles.header}>
-        <span className={styles.brandMark}><Bot aria-hidden="true" /></span>
-        <div className={styles.headingCopy}>
-          <h3 id="ai-assistant-title">AI 学习助手</h3>
-          <p><span aria-hidden="true" />已关联当前题目</p>
-        </div>
-        <div className={styles.headerActions}>
-          {hasConversation && (
-            <button className={styles.iconButton} type="button" onClick={clear} aria-label="清空本题 AI 对话" title="清空对话">
-              <Trash2 aria-hidden="true" />
-            </button>
-          )}
-          {onClose && (
-            <button className={styles.iconButton} type="button" onClick={onClose} aria-label="关闭 AI 助手" title="关闭 AI 助手">
-              <X aria-hidden="true" />
-            </button>
-          )}
-        </div>
-      </header>
+    <section
+      className={`${styles.assistant}${embedded ? ` ${styles.embedded}` : ''}`}
+      aria-labelledby={embedded ? undefined : 'ai-assistant-title'}
+      aria-label={embedded ? 'AI 学习助手' : undefined}
+    >
+      {!embedded && (
+        <header className={styles.header}>
+          <span className={styles.brandMark}><Bot aria-hidden="true" /></span>
+          <div className={styles.headingCopy}>
+            <h3 id="ai-assistant-title">AI 学习助手</h3>
+            <p><span aria-hidden="true" />已关联当前题目</p>
+          </div>
+          <div className={styles.headerActions}>
+            {hasConversation && (
+              <button className={styles.iconButton} type="button" onClick={clear} aria-label="清空本题 AI 对话" title="清空对话">
+                <Trash2 aria-hidden="true" />
+              </button>
+            )}
+            {onClose && (
+              <button className={styles.iconButton} type="button" onClick={onClose} aria-label="关闭 AI 助手" title="关闭 AI 助手">
+                <X aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        </header>
+      )}
 
       <div className={styles.conversation} role="log" aria-live="polite" aria-busy={isLoading}>
         <div className={styles.context} title={displayQuestionTitle}>
-          <span>Q{question.number}</span>
-          <strong>{displayQuestionTitle}</strong>
+          <span className={styles.contextIndex}>Q{question.number}</span>
+          <div className={styles.contextCopy}>
+            <span>正在讨论</span>
+            <strong>{displayQuestionTitle}</strong>
+          </div>
+          {embedded && hasConversation && (
+            <button className={styles.contextClear} type="button" onClick={clear} aria-label="清空本题 AI 对话" title="清空对话">
+              <Trash2 aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         {!hasConversation && !error && (
           <div className={styles.emptyState}>
-            <div>
-              <h4>从哪里开始？</h4>
-              <p>选择一种方式，AI 会只围绕当前题目继续讲解。</p>
+            <div className={styles.emptyIntro}>
+              <span className={styles.emptyMark}><Bot aria-hidden="true" /></span>
+              <div>
+                <h4>把不理解的地方问清楚</h4>
+                <p>我会沿用当前题目的上下文，不需要重复粘贴题干。</p>
+              </div>
             </div>
             <div className={styles.quickActions} aria-label="快捷提问">
               {QUICK_PROMPTS.map(({ label, description, prompt, icon: Icon }) => (
@@ -340,14 +373,28 @@ export function AiAssistant({ question, focusToken, onClose }: AiAssistantProps)
                   {message.role === 'assistant' ? <Bot /> : <UserRound />}
                 </span>
                 <div className={styles.messageContent}>
-                  <span className={styles.roleLabel}>{message.role === 'assistant' ? 'AI 助手' : '你'}</span>
+                  <span className={styles.roleLabel}>
+                    {message.role === 'assistant' ? 'AI 助手' : '你'}
+                    {message.status === 'streaming' && message.content && <em>正在生成</em>}
+                    {message.status === 'complete' && message.role === 'assistant' && <Check aria-label="回答完成" />}
+                  </span>
                   <div className={styles.messageBody}>
                     {message.role === 'assistant'
                       ? message.content
                         ? <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={['img']}>{message.content}</ReactMarkdown>
-                        : <p className={styles.thinking}><LoaderCircle aria-hidden="true" />正在组织回答…</p>
+                        : message.status === 'stopped'
+                          ? <p className={styles.stoppedCopy}>生成已停止，你可以重新生成或换一种问法。</p>
+                          : <div className={styles.thinking} role="status"><LoaderCircle aria-hidden="true" /><span><strong>正在分析题目</strong><small>整理关键概念与回答结构…</small></span></div>
                       : <p>{message.content}</p>}
                   </div>
+                  {message.status === 'stopped' && message.role === 'assistant' && (
+                    <div className={styles.stoppedState} role="status">
+                      <span>已停止生成</span>
+                      <button type="button" onClick={retryFromLastUser} disabled={isLoading}>
+                        <RotateCcw aria-hidden="true" />重新生成
+                      </button>
+                    </div>
+                  )}
                 </div>
               </article>
             ))}
@@ -362,7 +409,7 @@ export function AiAssistant({ question, focusToken, onClose }: AiAssistantProps)
               <p>{error}</p>
             </div>
             {messages.at(-1)?.role === 'user' && (
-              <button type="button" onClick={retry} disabled={isLoading}>
+              <button type="button" onClick={retryFromLastUser} disabled={isLoading}>
                 <RotateCcw aria-hidden="true" />重试
               </button>
             )}
@@ -372,6 +419,9 @@ export function AiAssistant({ question, focusToken, onClose }: AiAssistantProps)
       </div>
 
       <footer className={styles.composerArea}>
+        {hasStoppedReply && (
+          <p className={styles.composerStatus}><Square aria-hidden="true" />上一次回答已停止，可直接调整问题后再次发送。</p>
+        )}
         <form className={styles.composer} onSubmit={submit}>
           <label className="sr-only" htmlFor="ai-question">向 AI 提问</label>
           <textarea
@@ -380,7 +430,7 @@ export function AiAssistant({ question, focusToken, onClose }: AiAssistantProps)
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="继续追问当前题目…"
+            placeholder="追问本题，或让 AI 换一种讲法…"
             rows={1}
             disabled={isLoading}
           />
@@ -394,7 +444,7 @@ export function AiAssistant({ question, focusToken, onClose }: AiAssistantProps)
             </button>
           )}
         </form>
-        <p className={styles.hint}><span>Enter 发送 · Shift + Enter 换行</span><span>回答可能有误，请核对关键结论</span></p>
+        <p className={styles.hint}><span>Enter 发送 · Shift + Enter 换行</span><span>AI 可能出错，请核对关键结论</span></p>
       </footer>
     </section>
   )

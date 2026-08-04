@@ -13,7 +13,7 @@ export function FloatingAiButton({ open, onOpen }: FloatingAiButtonProps) {
       type="button"
       onClick={onOpen}
       aria-label="打开 AI 学习助手"
-      aria-controls="ai-dialog"
+      aria-controls="notes-panel"
       aria-expanded={open}
       title="询问 AI"
     >

@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import type { Annotation } from '../types'
 import { rehypeAnnotationMarks } from '../lib/annotationPlugin'
 import { remarkLearningSections } from '../lib/learningSections'
+import styles from './QuestionMarkdown.module.css'
 
 const DIAGRAM_SOURCE = /^\/content\/diagrams\/(?:[a-z0-9][a-z0-9-]*\/)*[a-z0-9][a-z0-9._-]*\.svg$/
 
@@ -18,6 +19,17 @@ function textFromNode(node: React.ReactNode): string {
   if (Array.isArray(node)) return node.map(textFromNode).join('')
   if (isValidElement<{ children?: React.ReactNode }>(node)) return textFromNode(node.props.children)
   return ''
+}
+
+function classNames(...values: Array<string | undefined | false>): string {
+  return values.filter(Boolean).join(' ')
+}
+
+function readingDensity(node: React.ReactNode): 'short' | 'regular' | 'long' {
+  const length = textFromNode(node).replace(/\s+/g, '').length
+  if (length >= 180) return 'long'
+  if (length >= 72) return 'regular'
+  return 'short'
 }
 
 function CodeBlock({ children }: { children: React.ReactNode }) {
@@ -36,15 +48,15 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <figure className="code-block">
-      <figcaption>
-        <span>{language}</span>
-        <button type="button" onClick={copy} aria-label="复制代码" title="复制代码">
+    <figure className={classNames('code-block', styles.codeBlock)}>
+      <figcaption className={styles.codeCaption}>
+        <span className={styles.codeLanguage}>{language}</span>
+        <button className={styles.copyButton} type="button" onClick={copy} aria-label="复制代码" title="复制代码">
           {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           <span>{copied ? '已复制' : '复制'}</span>
         </button>
       </figcaption>
-      <pre>{children}</pre>
+      <pre className={styles.codePre}>{children}</pre>
     </figure>
   )
 }
@@ -56,7 +68,7 @@ function DiagramPlaceholder({ reason }: { reason: 'alt' | 'source' | 'load' }) {
       ? '图解地址不受信任，已停止加载。'
       : '图解暂时无法加载。'
   return (
-    <span className="markdown-diagram markdown-diagram--unavailable" role="note">
+    <span className={classNames('markdown-diagram', 'markdown-diagram--unavailable', styles.diagramUnavailable)} role="note">
       <ImageOff aria-hidden="true" />
       <span>{message}</span>
     </span>
@@ -86,7 +98,7 @@ function MarkdownDiagram({
   if (failed) return <DiagramPlaceholder reason="load" />
 
   return (
-    <span className="markdown-diagram" role="group" aria-label="技术图解">
+    <span className={classNames('markdown-diagram', styles.diagram)} role="group" aria-label="技术图解">
       <img
         src={src}
         alt={description}
@@ -98,7 +110,7 @@ function MarkdownDiagram({
         onLoad={onSettled}
         onError={() => { setFailed(true); onSettled?.() }}
       />
-      {title?.trim() && <span className="markdown-diagram__caption">{title.trim()}</span>}
+      {title?.trim() && <span className={classNames('markdown-diagram__caption', styles.diagramCaption)}>{title.trim()}</span>}
     </span>
   )
 }
@@ -123,20 +135,47 @@ export function QuestionMarkdown({
       ]}
       components={{
         pre: ({ children: content }) => <CodeBlock>{content}</CodeBlock>,
-        table: ({ children: content }) => <div className="table-wrap"><table>{content}</table></div>,
+        p: ({ children: content }) => (
+          <p className={styles.paragraph} data-reading-density={readingDensity(content)}>
+            {content}
+          </p>
+        ),
+        h1: ({ children: content }) => <h1 className={classNames(styles.heading, styles.heading1)}>{content}</h1>,
+        h2: ({ children: content }) => <h2 className={classNames(styles.heading, styles.heading2)}>{content}</h2>,
+        h3: ({ className, children: content, id }) => {
+          const isLearningHeading = className?.split(/\s+/).includes('learning-section__heading')
+          return (
+            <h3
+              className={classNames(className, isLearningHeading ? styles.learningHeading : styles.heading, !isLearningHeading && styles.heading3)}
+              id={id}
+            >
+              {content}
+            </h3>
+          )
+        },
+        h4: ({ children: content }) => <h4 className={classNames(styles.heading, styles.heading4)}>{content}</h4>,
+        ul: ({ children: content }) => <ul className={classNames(styles.list, styles.unorderedList)}>{content}</ul>,
+        ol: ({ children: content }) => <ol className={classNames(styles.list, styles.orderedList)}>{content}</ol>,
+        li: ({ children: content }) => <li className={styles.listItem}>{content}</li>,
+        table: ({ children: content }) => (
+          <div className={classNames('table-wrap', styles.tableWrap)} role="region" aria-label="数据表格" tabIndex={0}>
+            <table className={styles.table}>{content}</table>
+          </div>
+        ),
         a: ({ href, children: content }) => (
-          <a href={href} target="_blank" rel="noopener noreferrer">
+          <a className={styles.link} href={href} target="_blank" rel="noopener noreferrer">
             {content}<LinkIcon aria-hidden="true" />
           </a>
         ),
         blockquote: ({ children: content }) => (
-          <blockquote>
-            <Highlighter aria-hidden="true" />
-            <div className="markdown-blockquote__content">{content}</div>
+          <blockquote className={styles.blockquote}>
+            <Highlighter className={styles.blockquoteIcon} aria-hidden="true" />
+            <div className={classNames('markdown-blockquote__content', styles.blockquoteContent)}>{content}</div>
           </blockquote>
         ),
+        hr: () => <span className={styles.sectionBreath} data-markdown-break="true" aria-hidden="true" />,
         code: ({ className, children: content, ...props }) => (
-          <code className={className} {...props}>{content}</code>
+          <code className={classNames(className, styles.inlineCode)} {...props}>{content}</code>
         ),
         mark: ({ children: content, ...props }) => <mark {...props}>{content}</mark>,
         img: ({ src, alt, title }) => (

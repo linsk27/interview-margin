@@ -5,7 +5,7 @@ export const NOTES_PANEL_MAX_WIDTH = 480
 export const NOTES_PANEL_RESIZE_STEP = 16
 
 export const APP_RAIL_WIDTH = 56
-export const READER_MIN_WIDTH = 544
+export const READER_MIN_WIDTH = 680
 export const LIBRARY_PANEL_WIDTH = 320
 export const LIBRARY_PANEL_LARGE_WIDTH = 336
 export const LARGE_VIEWPORT_BREAKPOINT = 1440

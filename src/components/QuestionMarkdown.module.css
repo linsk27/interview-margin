@@ -1,0 +1,270 @@
+:global(.markdown-body) .paragraph {
+  max-inline-size: min(100%, 43em);
+  margin-block: clamp(0.8rem, 1.5cqi, 1.15rem);
+  color: var(--color-ink-2);
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  hanging-punctuation: first last;
+  letter-spacing: 0.006em;
+  line-height: 1.86;
+  orphans: 3;
+  text-wrap: pretty;
+  widows: 3;
+}
+
+:global(.markdown-body) .paragraph[data-reading-density='long'] {
+  max-inline-size: min(100%, 42em);
+  margin-block: clamp(1rem, 2cqi, 1.4rem);
+  line-height: 1.94;
+}
+
+:global(.markdown-body) .paragraph[data-reading-density='long']::first-line {
+  color: var(--color-ink);
+  font-weight: 560;
+}
+
+:global(.markdown-body) li > .paragraph,
+:global(.markdown-body) .blockquoteContent > .paragraph,
+:global(.markdown-body) :global(.learning-section--answer) > .paragraph {
+  max-inline-size: 100%;
+  margin-block: 0;
+}
+
+:global(.markdown-body) .heading {
+  max-inline-size: 34em;
+  margin-inline: 0;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: 720;
+  letter-spacing: -0.018em;
+  text-wrap: balance;
+}
+
+:global(.markdown-body) .heading1 {
+  margin-block: 0 1.5rem;
+  font-size: clamp(1.75rem, 4cqi, 2.4rem);
+  line-height: 1.2;
+}
+
+:global(.markdown-body) .heading2 {
+  margin-block: clamp(2rem, 4cqi, 2.8rem) 0.85rem;
+  font-size: clamp(1.35rem, 2.7cqi, 1.65rem);
+  line-height: 1.32;
+}
+
+:global(.markdown-body) .heading3 {
+  margin-block: clamp(1.6rem, 3cqi, 2.1rem) 0.7rem;
+  font-size: clamp(1.16rem, 2.3cqi, 1.35rem);
+  line-height: 1.4;
+}
+
+:global(.markdown-body) .heading4 {
+  margin-block: 1.4rem 0.6rem;
+  font-family: var(--font-body);
+  font-size: 1em;
+  letter-spacing: 0;
+  line-height: 1.5;
+}
+
+:global(.markdown-body) .learningHeading {
+  text-wrap: balance;
+}
+
+:global(.markdown-body) .list {
+  max-inline-size: min(100%, 43em);
+  gap: 0.55rem;
+  margin-block: 1rem 1.25rem;
+  padding-inline-start: 1.35rem;
+}
+
+:global(.markdown-body) .listItem {
+  padding-inline-start: 0.25rem;
+  color: var(--color-ink-2);
+  line-height: 1.76;
+}
+
+:global(.markdown-body) .listItem::marker {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  font-weight: 700;
+}
+
+:global(.markdown-body) .unorderedList {
+  list-style-type: disc;
+}
+
+:global(.markdown-body) .orderedList {
+  list-style-type: decimal;
+}
+
+:global(.markdown-body) .list .list {
+  margin-block: 0.55rem 0.15rem;
+}
+
+:global(.markdown-body) .blockquote {
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.85rem;
+  margin-block: 1.35rem;
+  padding: 1.1rem 1.25rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: color-mix(in oklch, var(--color-accent-soft) 22%, var(--color-paper-2));
+  box-shadow: none;
+  color: var(--color-neutral);
+}
+
+:global(.markdown-body) .blockquote > .blockquoteIcon {
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0.48rem;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--color-accent-soft) 64%, var(--color-paper));
+  color: var(--color-accent);
+  stroke-width: 1.8;
+}
+
+:global(.markdown-body) .blockquoteContent {
+  gap: 0.7rem;
+  align-self: center;
+}
+
+:global(.markdown-body) .codeBlock {
+  margin-block: 1.45rem;
+  border-color: color-mix(in oklch, var(--color-rule) 78%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklch, var(--color-paper-2) 82%, var(--color-paper));
+  box-shadow: 0 0.8rem 2.2rem color-mix(in oklch, var(--color-shadow) 45%, transparent);
+}
+
+:global(.markdown-body) .codeCaption {
+  min-height: 2.65rem;
+  padding-inline: 1rem 0.45rem;
+  border-bottom-color: color-mix(in oklch, var(--color-rule) 72%, transparent);
+  background: color-mix(in oklch, var(--color-paper-2) 72%, var(--color-paper));
+}
+
+:global(.markdown-body) .codeLanguage {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+:global(.markdown-body) .copyButton {
+  min-height: 2.15rem;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
+}
+
+:global(.markdown-body) .copyButton:hover {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+:global(.markdown-body) .codePre {
+  padding: clamp(1rem, 2.5cqi, 1.35rem);
+  font-size: clamp(0.78rem, 1.5cqi, 0.86rem);
+  line-height: 1.72;
+}
+
+:global(.markdown-body) .inlineCode {
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+:global(.markdown-body) .tableWrap {
+  margin-block: 1.45rem;
+  border-color: color-mix(in oklch, var(--color-rule) 76%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  box-shadow: 0 0.6rem 1.8rem color-mix(in oklch, var(--color-shadow) 34%, transparent);
+  scrollbar-width: thin;
+}
+
+:global(.markdown-body) .tableWrap:focus-visible {
+  outline: var(--rule-heavy) solid var(--color-focus);
+  outline-offset: var(--space-2xs);
+}
+
+:global(.markdown-body) .table {
+  min-width: 32rem;
+  font-size: 0.9em;
+  line-height: 1.62;
+}
+
+:global(.markdown-body) .table th {
+  padding: 0.8rem 1rem;
+  border-bottom: var(--rule-thin) solid var(--color-rule-strong);
+  background: color-mix(in oklch, var(--color-accent-soft) 25%, var(--color-paper-2));
+  color: var(--color-ink);
+  font-size: 0.82em;
+  letter-spacing: 0.035em;
+}
+
+:global(.markdown-body) .table td {
+  padding: 0.8rem 1rem;
+  border-bottom: 0;
+}
+
+:global(.markdown-body) .table tbody tr:nth-child(even) {
+  background: color-mix(in oklch, var(--color-paper-2) 54%, transparent);
+}
+
+:global(.markdown-body) .link {
+  font-weight: 620;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+}
+
+:global(.markdown-body) .diagram {
+  margin-block: clamp(1.5rem, 3cqi, 2.15rem);
+  border-color: color-mix(in oklch, var(--color-rule) 78%, transparent);
+  box-shadow: 0 0.8rem 2.4rem color-mix(in oklch, var(--color-shadow) 42%, transparent);
+}
+
+:global(.markdown-body) .diagramCaption {
+  border-top-color: color-mix(in oklch, var(--color-rule) 70%, transparent);
+  background: color-mix(in oklch, var(--color-paper-2) 58%, var(--color-paper));
+}
+
+:global(.markdown-body) .diagramUnavailable {
+  box-shadow: none;
+}
+
+:global(.markdown-body) .sectionBreath {
+  display: block;
+  height: clamp(0.35rem, 1.2cqi, 0.8rem);
+  margin: 0;
+  border: 0;
+}
+
+@media (max-width: 48rem) {
+  :global(.markdown-body) .paragraph,
+  :global(.markdown-body) .paragraph[data-reading-density='long'] {
+    max-inline-size: 100%;
+    letter-spacing: 0;
+    line-height: 1.82;
+  }
+
+  :global(.markdown-body) .paragraph[data-reading-density='long']::first-line {
+    font-weight: inherit;
+  }
+
+  :global(.markdown-body) .blockquote {
+    grid-template-columns: 1.65rem minmax(0, 1fr);
+    gap: 0.65rem;
+    padding: 0.9rem;
+  }
+
+  :global(.markdown-body) .blockquote > .blockquoteIcon {
+    width: 1.65rem;
+    height: 1.65rem;
+    padding: 0.38rem;
+  }
+
+  :global(.markdown-body) .table {
+    min-width: 28rem;
+  }
+}

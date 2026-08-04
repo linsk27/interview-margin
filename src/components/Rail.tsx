@@ -21,6 +21,8 @@ interface RailProps {
   focusMode: boolean
   libraryOpen: boolean
   notesOpen: boolean
+  workspaceOpen?: boolean
+  modalBlocked?: boolean
   readerMode: boolean
   bankHubActive: boolean
   adminActive?: boolean
@@ -70,6 +72,8 @@ export function Rail({
   focusMode,
   libraryOpen,
   notesOpen,
+  workspaceOpen = notesOpen,
+  modalBlocked = false,
   readerMode,
   bankHubActive,
   adminActive = false,
@@ -87,13 +91,13 @@ export function Rail({
   const progress = total ? Math.round((mastered / total) * 100) : 0
 
   return (
-    <nav className="rail" aria-label="主工具栏">
+    <nav className="rail" aria-label="主工具栏" inert={modalBlocked}>
       <span className="rail__brand" role="img" aria-label="面试边注">
         <BookOpenCheck aria-hidden="true" />
       </span>
 
       <div className="rail__modules" aria-label="学习模块">
-        <RailButton label="题库中心" onClick={onOpenQuestionBanks} active={bankHubActive} module>
+        <RailButton label="全部题库" onClick={onOpenQuestionBanks} active={bankHubActive} module>
           <BookOpenText aria-hidden="true" />
         </RailButton>
         {user?.permissions.includes('banks.write') && (
@@ -106,7 +110,7 @@ export function Rail({
       <div className="rail__tools">
         {readerMode && (
           <RailButton
-            label={libraryOpen ? '收起题库侧栏' : '展开题库侧栏'}
+            label={libraryOpen ? '收起当前题库目录' : '展开当前题库目录'}
             onClick={onToggleLibrary}
             active={libraryOpen}
             expanded={libraryOpen}
@@ -117,10 +121,10 @@ export function Rail({
         )}
         {readerMode && (
           <RailButton
-            label={notesOpen ? '收起笔记抽屉' : '展开笔记抽屉'}
+            label={notesOpen ? '收起批注工作区' : workspaceOpen ? '切换到批注' : '展开批注工作区'}
             onClick={onToggleNotes}
             active={notesOpen}
-            expanded={notesOpen}
+            expanded={workspaceOpen}
             controls="notes-panel"
           >
             <NotebookPen aria-hidden="true" />

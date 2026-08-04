@@ -247,7 +247,7 @@ describe('App guest mode', () => {
 
   it('asks for login before opening personal notes or creating an annotation', async () => {
     await renderGuest()
-    fireEvent.click(screen.getByRole('button', { name: /展开批注|收起批注/ }))
+    fireEvent.click(screen.getAllByRole('button', { name: '展开批注工作区' })[0])
     await expectContextualLogin(/批注|边注|笔记/)
   })
 

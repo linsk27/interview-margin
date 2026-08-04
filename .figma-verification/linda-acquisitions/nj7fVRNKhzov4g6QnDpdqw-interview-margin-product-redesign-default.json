@@ -1,0 +1,61 @@
+{
+  "providerLabel": "screenshot-exploratory",
+  "assurance": "visual-inference",
+  "file": {
+    "key": "nj7fVRNKhzov4g6QnDpdqw",
+    "url": "https://www.figma.com/design/nj7fVRNKhzov4g6QnDpdqw/Codex-Figma-Worker?node-id=0-1",
+    "page": "Interview Margin Product Redesign",
+    "root": "0:1",
+    "state": "default"
+  },
+  "providerFingerprint": {
+    "runId": "20260804T133833Z-2221c868",
+    "buildHash": "8fb22d7548ee811ffba2af69cecb1fd25e21b8ad6c03b2af18eb023b387a1883",
+    "sourceSha256": "2d992ed2ddf372b8a5378d28d9127e1a36a165471a8aa84015130f3376b5c411"
+  },
+  "assets": [
+    {
+      "name": "foundations",
+      "path": "C:\\codex-figma-workspaces\\interview-margin\\figma-worker\\.worker-state\\previews\\20260804T133833Z-2221c868\\foundations.png",
+      "sha256": "11bc662c428ef5805a02aea6ce04583be5750707a271bc07845adfc20e2dfc42",
+      "referenceDimensions": { "width": 1440, "height": 1120 },
+      "previewDimensions": { "width": 504, "height": 392 }
+    },
+    {
+      "name": "bank-hub",
+      "path": "C:\\codex-figma-workspaces\\interview-margin\\figma-worker\\.worker-state\\previews\\20260804T133833Z-2221c868\\bank-hub.png",
+      "sha256": "f7a122bb1337b8fc32fb703b6304d6cc05f5cf5da3149bec54bb72d73c87fa6d",
+      "referenceDimensions": { "width": 1440, "height": 1024 },
+      "previewDimensions": { "width": 504, "height": 359 }
+    },
+    {
+      "name": "reader-notes",
+      "path": "C:\\codex-figma-workspaces\\interview-margin\\figma-worker\\.worker-state\\previews\\20260804T133833Z-2221c868\\reader-notes.png",
+      "sha256": "da7cbbe89668ad151db554b00caf21d95f0c7fd94d63cb41c21139e6c835d3f7",
+      "referenceDimensions": { "width": 1440, "height": 1024 },
+      "previewDimensions": { "width": 504, "height": 359 }
+    },
+    {
+      "name": "reader-ai",
+      "path": "C:\\codex-figma-workspaces\\interview-margin\\figma-worker\\.worker-state\\previews\\20260804T133833Z-2221c868\\reader-ai.png",
+      "sha256": "619298067d48e8ee8b93e17ed68176c1ef8d23c7ac1e5c6880090442055d44b1",
+      "referenceDimensions": { "width": 1440, "height": 1024 },
+      "previewDimensions": { "width": 504, "height": 359 }
+    },
+    {
+      "name": "mobile-reader",
+      "path": "C:\\codex-figma-workspaces\\interview-margin\\figma-worker\\.worker-state\\previews\\20260804T133833Z-2221c868\\mobile-reader.png",
+      "sha256": "511ef4e4daa997011c55cef8395bfd293893e72422a1f4e5a1bace29e7b29480",
+      "referenceDimensions": { "width": 390, "height": 844 },
+      "previewDimensions": { "width": 137, "height": 296 }
+    },
+    {
+      "name": "mobile-ai",
+      "path": "C:\\codex-figma-workspaces\\interview-margin\\figma-worker\\.worker-state\\previews\\20260804T133833Z-2221c868\\mobile-ai.png",
+      "sha256": "a4eab227503bc9fcc7a5882f87a97947dacb3dfdf2717c8a4d6e8057b06d0fe7",
+      "referenceDimensions": { "width": 390, "height": 844 },
+      "previewDimensions": { "width": 137, "height": 296 }
+    }
+  ],
+  "acquiredAt": "2026-08-04T13:39:03.103874+00:00"
+}

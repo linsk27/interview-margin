@@ -38,7 +38,10 @@ function createProps(overrides: Partial<ComponentProps<typeof NotesPanel>> = {})
     minWidth: 288,
     maxWidth: 480,
     compact: false,
+    mode: 'notes' as const,
+    assistantFocusToken: 0,
     onClose: vi.fn(),
+    onModeChange: vi.fn(),
     onWidthChange: vi.fn(),
     onResizeStart: vi.fn(),
     onResizeEnd: vi.fn(),
@@ -57,6 +60,23 @@ function createProps(overrides: Partial<ComponentProps<typeof NotesPanel>> = {})
 afterEach(cleanup)
 
 describe('NotesPanel resizing controls', () => {
+  it('switches between notes and the embedded AI workspace without opening a second drawer', () => {
+    const onModeChange = vi.fn()
+    const { rerender } = render(<NotesPanel {...createProps({ onModeChange })} />)
+    const assistantBeforeSwitch = screen.getByRole('region', { name: 'AI 学习助手', hidden: true })
+
+    expect(screen.getByRole('tab', { name: '批注' })).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(screen.getByRole('tab', { name: 'AI 助手' }))
+    expect(onModeChange).toHaveBeenCalledWith('assistant')
+
+    rerender(<NotesPanel {...createProps({ mode: 'assistant', onModeChange })} />)
+    expect(screen.getByRole('tab', { name: 'AI 助手' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('region', { name: 'AI 学习助手' })).toBe(assistantBeforeSwitch)
+
+    rerender(<NotesPanel {...createProps({ mode: 'notes', onModeChange })} />)
+    expect(screen.getByRole('region', { name: 'AI 学习助手', hidden: true })).toBe(assistantBeforeSwitch)
+  })
+
   it('stays mounted but becomes hidden and inert when collapsed', () => {
     const { container } = render(<NotesPanel {...createProps({ expanded: false })} />)
     const panel = container.querySelector('#notes-panel')

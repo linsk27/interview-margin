@@ -18,9 +18,9 @@ describe('notes panel sizing', () => {
   })
 
   it('keeps enough room for the rail, reader, and optional library panel', () => {
-    expect(maximumNotesPanelWidth(960, false)).toBe(360)
-    expect(maximumNotesPanelWidth(1216, true)).toBe(296)
-    expect(maximumNotesPanelWidth(1440, true)).toBe(NOTES_PANEL_MAX_WIDTH)
+    expect(maximumNotesPanelWidth(960, false)).toBe(NOTES_PANEL_MIN_WIDTH)
+    expect(maximumNotesPanelWidth(1216, true)).toBe(NOTES_PANEL_MIN_WIDTH)
+    expect(maximumNotesPanelWidth(1440, true)).toBe(368)
     expect(maximumNotesPanelWidth(1920, false)).toBe(NOTES_PANEL_MAX_WIDTH)
   })
 
@@ -31,7 +31,7 @@ describe('notes panel sizing', () => {
 
   it('clamps preferred widths to the current desktop layout', () => {
     expect(clampNotesPanelWidth(200, 1440, false)).toBe(NOTES_PANEL_MIN_WIDTH)
-    expect(clampNotesPanelWidth(440, 960, false)).toBe(360)
+    expect(clampNotesPanelWidth(440, 960, false)).toBe(NOTES_PANEL_MIN_WIDTH)
     expect(clampNotesPanelWidth(440, 1920, false)).toBe(440)
     expect(clampNotesPanelWidth(900, 1920, false)).toBe(NOTES_PANEL_MAX_WIDTH)
   })
@@ -42,7 +42,7 @@ describe('notes panel sizing', () => {
   })
 
   it('clamps pointer resizing at both bounds', () => {
-    expect(notesPanelWidthFromPointer(336, 1100, 800, 960, false)).toBe(360)
+    expect(notesPanelWidthFromPointer(336, 1100, 800, 960, false)).toBe(NOTES_PANEL_MIN_WIDTH)
     expect(notesPanelWidthFromPointer(336, 1100, 1300, 1440, false)).toBe(
       NOTES_PANEL_MIN_WIDTH,
     )

@@ -91,8 +91,8 @@ export function QuestionBankHub({
       <div className="bank-hub__body">
         <section className="bank-hub__intro" aria-labelledby="bank-hub-title">
           <div className="bank-hub__intro-copy">
-            <h1 id="bank-hub-title">选择一个题库包</h1>
-            <p>按知识方向独立维护题目、进度、复习计划与批注。</p>
+            <h1 id="bank-hub-title">选择一个方向，继续上次学习</h1>
+            <p>每个题库独立记录学习进度、复习计划与批注；游客也可直接阅读全部内容。</p>
           </div>
           <dl className="bank-hub__metrics" aria-label="题库总览">
             <div><dt>题库包</dt><dd>{banks.length}</dd></div>

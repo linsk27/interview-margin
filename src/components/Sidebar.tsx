@@ -89,6 +89,8 @@ export function Sidebar({
     <aside
       id="question-library"
       className={`library${mobileOpen ? ' is-mobile-open' : ''}${expanded ? ' is-open' : ''}`}
+      role={mobileOpen ? 'dialog' : 'navigation'}
+      aria-modal={mobileOpen || undefined}
       aria-label={`${bank.title}题目目录`}
       aria-hidden={!expanded}
       inert={!expanded}
@@ -99,7 +101,7 @@ export function Sidebar({
           <h1>{bank.shortTitle}</h1>
         </div>
         <div className="library__header-actions">
-          <button className="icon-button library__mobile-tool" type="button" onClick={onOpenQuestionBanks} aria-label="返回题库中心" title="题库中心">
+          <button className="icon-button library__mobile-tool" type="button" onClick={onOpenQuestionBanks} aria-label="返回全部题库" title="全部题库">
             <LibraryBig aria-hidden="true" />
           </button>
           <button className="icon-button library__mobile-tool" type="button" onClick={onOpenDashboard} aria-label="打开学习概览" title="学习概览">
