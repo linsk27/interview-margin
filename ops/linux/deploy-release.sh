@@ -265,7 +265,7 @@ deploy_release() {
         npm audit --omit=dev --registry=https://registry.npmjs.org
     fi
     sudo -u interview-margin env HOME=/var/lib/interview-margin \
-      npm_config_cache="$npm_cache_root" npm test
+      npm_config_cache="$npm_cache_root" npm test -- --maxWorkers=1
     sudo -u interview-margin env HOME=/var/lib/interview-margin \
       npm_config_cache="$npm_cache_root" npm run db:check
     sudo -u interview-margin env HOME=/var/lib/interview-margin \

@@ -289,9 +289,10 @@ try {
     if (-not (Test-ObservationMatchesRelease -Observation $postFailureObservation -ReleaseSha $sha)) {
       $knownFailedBeforeSwitch = $postFailureObservation.Current -eq $initialObservation.Current -and
         $postFailureObservation.Pending -eq 'absent'
-      if (-not $knownFailedBeforeSwitch) {
-        $preserveRemoteArchive = $true
+      if ($knownFailedBeforeSwitch) {
+        throw "The deployment failed before the release switch; production remains on $($postFailureObservation.Current). Original error: $($deployCommandError.Exception.Message)"
       }
+      $preserveRemoteArchive = $true
       throw "The deployment SSH command failed and remote state is not safely recoverable: current=$($postFailureObservation.Current), pending=$($postFailureObservation.PendingSha). No confirm or rollback was attempted. Original error: $($deployCommandError.Exception.Message)"
     }
 
