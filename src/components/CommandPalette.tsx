@@ -49,7 +49,7 @@ export function CommandPalette({ open, questions, state, onClose, onSelect }: {
           ref={inputRef}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="搜索题目、技术点或项目…"
+          placeholder="搜索全部题库：题目、技术点或项目"
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown') {
               event.preventDefault()

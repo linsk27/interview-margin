@@ -4303,6 +4303,10 @@ body:has(dialog[open]) .reader {
     height: 100dvh;
   }
 
+  .app-shell.is-bank-hub .bank-hub__actions {
+    display: none;
+  }
+
   .rail {
     position: relative;
     z-index: var(--z-sticky);

@@ -83,7 +83,7 @@ export function Topbar({
             <span>双页</span>
           </button>
         </div>
-        <button className="icon-button topbar__search" type="button" onClick={onOpenSearch} aria-label="搜索题库" title="搜索题库（/）">
+        <button className="icon-button topbar__search" type="button" onClick={onOpenSearch} aria-label="搜索全部题库" title="搜索全部题库（/）">
           <Search aria-hidden="true" /><kbd>/</kbd>
         </button>
         <button className={`icon-button${progress.favorite ? ' is-active' : ''}`} type="button" onClick={onToggleFavorite} aria-label={progress.favorite ? '取消收藏' : '收藏题目'} title={progress.favorite ? '取消收藏' : '收藏题目（F）'}>

@@ -22,13 +22,13 @@ import { dateAfterDays } from './lib/format'
 import { consumeInvitationToken } from './lib/invitations'
 import { getCatalog, getMyState, getSession, saveMyState } from './lib/api'
 import {
-  isFocusMode,
-  setFocusMode,
-  toggleFocusMode as transitionFocusMode,
+  openLibrary as transitionOpenLibrary,
+  openNotes as transitionOpenNotes,
   toggleLibrary as transitionLibrary,
+  visibleDrawerState,
   type DrawerState,
 } from './lib/drawerState'
-import { flattenQuestions, questionFromHash } from './lib/markdown'
+import { flattenQuestions } from './lib/markdown'
 import {
   NOTES_PANEL_MAX_WIDTH,
   NOTES_PANEL_MIN_WIDTH,
@@ -36,6 +36,7 @@ import {
   defaultNotesPanelWidth,
   maximumNotesPanelWidth,
 } from './lib/notesPanelSizing'
+import { selectLibraryResumeQuestion } from './lib/questionSelection'
 import { clearQueuedState, flushQueuedState, queueStudyState } from './lib/outbox'
 import {
   createDefaultState,
@@ -46,6 +47,12 @@ import {
   uid,
   withActivity,
 } from './lib/storage'
+import {
+  questionHash,
+  resolveWorkspaceRoute,
+  writeWorkspaceHash,
+  type WorkspaceView,
+} from './lib/workspaceRoute'
 import type {
   Annotation,
   HighlightColor,
@@ -78,8 +85,6 @@ interface ProgressUpdateOptions {
   reason?: string
 }
 
-type WorkspaceView = 'reader' | 'banks' | 'admin'
-
 const LOGIN_REASONS = {
   progress: '登录后可保存收藏、掌握状态和阅读进度。',
   notes: '登录后可高亮正文、添加批注和本题总结。',
@@ -104,11 +109,7 @@ function loadNotesPanelWidth(): number {
 }
 
 function drawerStateForStudyState(studyState: StudyState): DrawerState {
-  // The immersive reader always starts with a clear reading canvas. Drawers
-  // remain one click away on the rail and can still be opened independently.
-  return studyState.settings.focusMode
-    ? setFocusMode(true)
-    : { libraryOpen: false, notesOpen: false }
+  return { libraryOpen: false, notesOpen: studyState.settings.notesOpen }
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -160,6 +161,7 @@ export default function App() {
   const lastServerState = useRef('')
   const sessionGeneration = useRef(0)
   const [drawerState, setDrawerState] = useState<DrawerState>({ libraryOpen: false, notesOpen: false })
+  const [focusMode, setFocusMode] = useState(false)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<LibraryFilter>('all')
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false)
@@ -170,9 +172,7 @@ export default function App() {
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [assistantFocusToken, setAssistantFocusToken] = useState(0)
   const [library, setLibrary] = useState<QuestionLibrary>('')
-  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() => (
-    window.location.hash === '#question-banks' ? 'banks' : window.location.hash === '#admin' ? 'admin' : 'reader'
-  ))
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('reader')
   const [spreadAvailable, setSpreadAvailable] = useState(false)
   const [selection, setSelection] = useState<SelectionDraft>()
   const [composer, setComposer] = useState<ComposerDraft>()
@@ -191,6 +191,16 @@ export default function App() {
   )
 
   const questions = useMemo(() => flattenQuestions(sections), [sections])
+  const workspaceRouteContext = useRef({
+    questions,
+    activeId,
+    canAccessAdmin: Boolean(user?.permissions.includes('banks.write')),
+  })
+  workspaceRouteContext.current = {
+    questions,
+    activeId,
+    canAccessAdmin: Boolean(user?.permissions.includes('banks.write')),
+  }
   const activeIndex = questions.findIndex((question) => question.id === activeId)
   const activeQuestion = questions[activeIndex]
   const activeLibraryQuestions = activeQuestion
@@ -225,18 +235,20 @@ export default function App() {
     const progress = progressFor(state, question.id)
     return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
   }).length
-  const focusMode = isFocusMode(drawerState)
-  const libraryExpanded = desktopLibraryLayout ? drawerState.libraryOpen : mobileLibraryOpen
-  const notesVisible = drawerState.notesOpen
-  const notesExpanded = notesVisible && (desktopNotesLayout || mobileNotesOpen)
+  const visibleDrawers = visibleDrawerState(drawerState, focusMode)
+  const visibleMobileLibrary = focusMode ? false : mobileLibraryOpen
+  const visibleMobileNotes = focusMode ? false : mobileNotesOpen
+  const libraryExpanded = desktopLibraryLayout ? visibleDrawers.libraryOpen : visibleMobileLibrary
+  const notesVisible = visibleDrawers.notesOpen
+  const notesExpanded = notesVisible && (desktopNotesLayout || visibleMobileNotes)
   const notesMaximumWidth = maximumNotesPanelWidth(
     viewportWidth,
-    desktopLibraryLayout && drawerState.libraryOpen,
+    desktopLibraryLayout && visibleDrawers.libraryOpen,
   )
   const notesPanelWidth = clampNotesPanelWidth(
     notesPreferredWidth,
     viewportWidth,
-    desktopLibraryLayout && drawerState.libraryOpen,
+    desktopLibraryLayout && visibleDrawers.libraryOpen,
   )
   const notesCompact = notesPanelWidth <= NOTES_PANEL_MIN_WIDTH + 1
 
@@ -315,6 +327,7 @@ export default function App() {
     window.clearTimeout(undoTimer.current)
     setState(createDefaultState())
     setDrawerState({ libraryOpen: false, notesOpen: false })
+    setFocusMode(false)
     setMobileNotesOpen(false)
     setSelection(undefined)
     setComposer(undefined)
@@ -340,6 +353,7 @@ export default function App() {
       lastServerState.current = JSON.stringify(serverState)
       setState(serverState)
       setDrawerState(drawerStateForStudyState(serverState))
+      setFocusMode(serverState.settings.focusMode)
       setMigrationOpen(offerMigration && Boolean(legacyStudyState()) && !session.user.mustChangePassword)
       setSyncReady(true)
     } else {
@@ -369,6 +383,7 @@ export default function App() {
                 lastServerState.current = JSON.stringify(serverState)
                 setState(serverState)
                 setDrawerState(drawerStateForStudyState(serverState))
+                setFocusMode(serverState.settings.focusMode)
                 setMigrationOpen(Boolean(legacyStudyState()))
                 setSyncReady(true)
               }
@@ -383,9 +398,26 @@ export default function App() {
         }
         if (cancelled) return
         const loadedQuestions = flattenQuestions(catalog.sections)
-        const hashQuestion = questionFromHash(loadedQuestions)
-        setActiveId(hashQuestion?.id ?? loadedQuestions[0]?.id ?? '')
-        setLibrary(hashQuestion?.library ?? catalog.banks[0]?.id ?? '')
+        const route = resolveWorkspaceRoute({
+          hash: window.location.hash,
+          questions: loadedQuestions,
+          canAccessAdmin: Boolean(session.user?.permissions.includes('banks.write')),
+        })
+        if (route) {
+          workspaceRouteContext.current = {
+            questions: loadedQuestions,
+            activeId: route.question.id,
+            canAccessAdmin: Boolean(session.user?.permissions.includes('banks.write')),
+          }
+          setActiveId(route.question.id)
+          setLibrary(route.question.library)
+          setWorkspaceView(route.view)
+          if (route.needsReplace) writeWorkspaceHash(route.hash, 'replace')
+        } else {
+          setActiveId('')
+          setLibrary(catalog.banks[0]?.id ?? '')
+          setWorkspaceView('reader')
+        }
         setHydrated(true)
       })
       .catch((error: Error) => { if (!cancelled) setLoadError(error.message) })
@@ -435,24 +467,33 @@ export default function App() {
 
   useEffect(() => {
     const handleHistory = () => {
-      if (window.location.hash === '#question-banks') {
-        setWorkspaceView('banks')
-        return
-      }
-      if (window.location.hash === '#admin' && user?.permissions.includes('banks.write')) {
-        setWorkspaceView('admin')
-        return
-      }
-      const match = questionFromHash(questions)
-      if (match) {
-        setActiveId(match.id)
-        setLibrary(match.library)
-        setWorkspaceView('reader')
+      const routeContext = workspaceRouteContext.current
+      const route = resolveWorkspaceRoute({
+        hash: window.location.hash,
+        questions: routeContext.questions,
+        canAccessAdmin: routeContext.canAccessAdmin,
+        preferredQuestionId: routeContext.activeId,
+      })
+      if (!route) return
+
+      if (route.needsReplace) writeWorkspaceHash(route.hash, 'replace')
+      workspaceRouteContext.current.activeId = route.question.id
+      setActiveId(route.question.id)
+      setLibrary(route.question.library)
+      setWorkspaceView(route.view)
+      if (route.view !== 'reader') {
+        setMobileLibraryOpen(false)
+        setMobileNotesOpen(false)
+        setAssistantOpen(false)
       }
     }
     window.addEventListener('popstate', handleHistory)
-    return () => window.removeEventListener('popstate', handleHistory)
-  }, [questions, user])
+    window.addEventListener('hashchange', handleHistory)
+    return () => {
+      window.removeEventListener('popstate', handleHistory)
+      window.removeEventListener('hashchange', handleHistory)
+    }
+  }, [])
 
   useEffect(() => {
     if (!activeQuestion || workspaceView !== 'reader' || !user) return
@@ -505,10 +546,9 @@ export default function App() {
   const openQuestion = (question: InterviewQuestion) => {
     setLibrary(question.library)
     setWorkspaceView('reader')
-    if (question.id !== activeId || window.location.hash !== `#${question.id}`) {
-      window.history.pushState(null, '', `#${question.id}`)
-      setActiveId(question.id)
-    }
+    writeWorkspaceHash(questionHash(question.id))
+    workspaceRouteContext.current.activeId = question.id
+    setActiveId(question.id)
     setMobileLibraryOpen(false)
     if (!desktopLibraryLayout) {
       setDrawerState((current) => ({ ...current, libraryOpen: false }))
@@ -520,15 +560,14 @@ export default function App() {
     setWorkspaceView('reader')
     setQuery('')
     setFilter('all')
-    setDrawerState((current) => ({ ...current, libraryOpen: true }))
-    const firstQuestion = questions.find((question) => question.library === bank.id)
-    if (firstQuestion) openQuestion(firstQuestion)
+    setFocusMode(false)
+    setDrawerState(transitionOpenLibrary)
+    const resumeQuestion = selectLibraryResumeQuestion(questions, state, bank.id)
+    if (resumeQuestion) openQuestion(resumeQuestion)
   }
 
   const openQuestionBanks = () => {
-    if (window.location.hash !== '#question-banks') {
-      window.history.pushState(null, '', '#question-banks')
-    }
+    writeWorkspaceHash('#question-banks')
     setWorkspaceView('banks')
     setMobileLibraryOpen(false)
     setMobileNotesOpen(false)
@@ -537,7 +576,7 @@ export default function App() {
 
   const openAdmin = () => {
     if (!user?.permissions.includes('banks.write')) return
-    window.history.pushState(null, '', '#admin')
+    writeWorkspaceHash('#admin')
     setWorkspaceView('admin')
     setMobileLibraryOpen(false)
     setMobileNotesOpen(false)
@@ -622,10 +661,10 @@ export default function App() {
 
   const openNotes = () => {
     if (!requireUser(LOGIN_REASONS.notes)) return false
+    setFocusMode(false)
     setDrawerState((current) => ({
-      ...current,
+      ...transitionOpenNotes(current),
       libraryOpen: wideNotesLayout ? current.libraryOpen : false,
-      notesOpen: true,
     }))
     setMobileLibraryOpen(false)
     setMobileNotesOpen(!desktopNotesLayout)
@@ -648,7 +687,7 @@ export default function App() {
     const next = clampNotesPanelWidth(
       nextWidth,
       viewportWidth,
-      desktopLibraryLayout && drawerState.libraryOpen,
+      desktopLibraryLayout && visibleDrawers.libraryOpen,
     )
     setNotesPreferredWidth(next)
     if (next > NOTES_PANEL_MIN_WIDTH + 1) lastExpandedNotesWidth.current = next
@@ -691,6 +730,16 @@ export default function App() {
   }
 
   const toggleMobileLibrary = () => {
+    if (focusMode) {
+      setFocusMode(false)
+      setMobileLibraryOpen(true)
+      setMobileNotesOpen(false)
+      setDrawerState((current) => ({
+        ...transitionOpenLibrary(current),
+        notesOpen: false,
+      }))
+      return
+    }
     const nextOpen = !libraryExpanded
     setMobileLibraryOpen(nextOpen)
     setDrawerState((current) => ({
@@ -704,6 +753,15 @@ export default function App() {
   }
 
   const toggleDesktopLibrary = () => {
+    if (focusMode) {
+      setFocusMode(false)
+      setDrawerState((current) => {
+        const next = transitionOpenLibrary(current)
+        return !wideNotesLayout ? { ...next, notesOpen: false } : next
+      })
+      if (!wideNotesLayout) setMobileNotesOpen(false)
+      return
+    }
     setDrawerState((current) => {
       const next = transitionLibrary(current)
       return !wideNotesLayout && next.libraryOpen
@@ -714,9 +772,7 @@ export default function App() {
   }
 
   const toggleFocus = () => {
-    setDrawerState(transitionFocusMode)
-    setMobileLibraryOpen(false)
-    setMobileNotesOpen(false)
+    setFocusMode((current) => !current)
   }
 
   const openReviewLibrary = () => {
@@ -728,7 +784,8 @@ export default function App() {
     if (reviewQuestion) openQuestion(reviewQuestion)
     else if (activeQuestion) openQuestion(activeQuestion)
     setFilter('review')
-    setDrawerState((current) => ({ ...current, libraryOpen: true }))
+    setFocusMode(false)
+    setDrawerState(transitionOpenLibrary)
   }
 
   const openDashboard = () => {
@@ -777,9 +834,8 @@ export default function App() {
     if (!requireUser(LOGIN_REASONS.transfer)) return
     try {
       const imported = parseStudyState(await file.text())
-      setDrawerState(imported.settings.focusMode
-        ? setFocusMode(true)
-        : { libraryOpen: true, notesOpen: imported.settings.notesOpen })
+      setDrawerState({ libraryOpen: true, notesOpen: imported.settings.notesOpen })
+      setFocusMode(imported.settings.focusMode)
       setMobileLibraryOpen(false)
       setMobileNotesOpen(false)
       setState(imported)
@@ -790,21 +846,13 @@ export default function App() {
   }
 
   const changeSettings = (settings: ReaderSettings) => {
-    const nextDrawerState = settings.focusMode === focusMode
-      ? drawerState
-      : setFocusMode(settings.focusMode)
-
-    if (nextDrawerState !== drawerState) {
-      setDrawerState(nextDrawerState)
-      setMobileLibraryOpen(false)
-      setMobileNotesOpen(false)
-    }
+    if (settings.focusMode !== focusMode) setFocusMode(settings.focusMode)
     setState((current) => ({
       ...current,
       settings: {
         ...settings,
-        focusMode: isFocusMode(nextDrawerState),
-        notesOpen: nextDrawerState.notesOpen,
+        focusMode: settings.focusMode,
+        notesOpen: drawerState.notesOpen,
       },
     }))
   }
@@ -842,7 +890,7 @@ export default function App() {
     <div
       className={`app-shell${workspaceView === 'banks' || workspaceView === 'admin'
       ? ' is-bank-hub is-notes-closed is-library-closed'
-      : `${focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${drawerState.libraryOpen ? '' : ' is-library-closed'}${notesResizing ? ' is-resizing-notes' : ''}`}`}
+      : `${focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${visibleDrawers.libraryOpen ? '' : ' is-library-closed'}${notesResizing ? ' is-resizing-notes' : ''}`}`}
       style={{ '--notes-panel-width': `${notesPanelWidth}px` } as CSSProperties}
     >
       <Rail
@@ -894,7 +942,7 @@ export default function App() {
         query={query}
         filter={filter}
         bank={currentBank}
-        mobileOpen={mobileLibraryOpen}
+        mobileOpen={visibleMobileLibrary}
         expanded={libraryExpanded}
         authenticated={Boolean(user)}
         onQueryChange={setQuery}
@@ -949,7 +997,7 @@ export default function App() {
           progress={activeProgress}
           annotations={activeAnnotations}
           composer={composer}
-          mobileOpen={mobileNotesOpen}
+          mobileOpen={visibleMobileNotes}
           expanded={notesExpanded}
           synced={Boolean(user)}
           width={notesPanelWidth}
@@ -1061,7 +1109,7 @@ export default function App() {
       />
 
       {undo && <UndoToast message="批注已删除" onUndo={restoreAnnotation} onDismiss={() => setUndo(undefined)} />}
-      {workspaceView === 'reader' && (mobileLibraryOpen || mobileNotesOpen) && <button className="mobile-scrim" type="button" onClick={closeMobileDrawers} aria-label="关闭侧栏" />}
+      {workspaceView === 'reader' && (visibleMobileLibrary || visibleMobileNotes) && <button className="mobile-scrim" type="button" onClick={closeMobileDrawers} aria-label="关闭侧栏" />}
       <div className="sr-only" aria-live="polite">
         {workspaceView === 'reader' ? `当前题目：${activeQuestion.title}` : workspaceView === 'admin' ? '当前页面：内容管理' : '当前页面：题库中心'}
       </div>

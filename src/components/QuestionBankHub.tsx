@@ -120,15 +120,14 @@ export function QuestionBankHub({
               <span>知识方向</span>
               <span>{visibleBanks.length} / {banks.length}</span>
             </div>
-            <div className="bank-hub__categories" role="tablist" aria-label="题库分类">
+            <div className="bank-hub__categories" role="group" aria-label="题库分类筛选">
               {categories.map((item) => {
                 const count = item === '全部' ? banks.length : banks.filter((bank) => bank.category === item).length
                 return (
                   <button
                     key={item}
                     type="button"
-                    role="tab"
-                    aria-selected={category === item}
+                    aria-pressed={category === item}
                     className={category === item ? 'is-active' : ''}
                     onClick={() => setCategory(item)}
                   >

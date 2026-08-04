@@ -59,7 +59,10 @@ describe('QuestionBankHub', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('tab', { name: '前端基础' }))
+    const categoryFilter = screen.getByRole('button', { name: '前端基础' })
+    expect(categoryFilter).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(categoryFilter)
+    expect(categoryFilter).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('heading', { name: 'JavaScript 基础 100 题' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: '简历技术面试题' })).toBeNull()
   })

@@ -3,18 +3,10 @@ export interface DrawerState {
   notesOpen: boolean
 }
 
-export function isFocusMode(state: DrawerState): boolean {
-  return !state.libraryOpen && !state.notesOpen
-}
-
-export function setFocusMode(enabled: boolean): DrawerState {
-  return enabled
+export function visibleDrawerState(state: DrawerState, focusMode: boolean): DrawerState {
+  return focusMode
     ? { libraryOpen: false, notesOpen: false }
-    : { libraryOpen: true, notesOpen: true }
-}
-
-export function toggleFocusMode(state: DrawerState): DrawerState {
-  return setFocusMode(!isFocusMode(state))
+    : state
 }
 
 export function toggleLibrary(state: DrawerState): DrawerState {
@@ -23,4 +15,12 @@ export function toggleLibrary(state: DrawerState): DrawerState {
 
 export function toggleNotes(state: DrawerState): DrawerState {
   return { ...state, notesOpen: !state.notesOpen }
+}
+
+export function openLibrary(state: DrawerState): DrawerState {
+  return state.libraryOpen ? state : { ...state, libraryOpen: true }
+}
+
+export function openNotes(state: DrawerState): DrawerState {
+  return state.notesOpen ? state : { ...state, notesOpen: true }
 }

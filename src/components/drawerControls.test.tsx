@@ -2,10 +2,11 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import {
-  isFocusMode,
-  toggleFocusMode,
+  openLibrary,
+  openNotes,
   toggleLibrary,
   toggleNotes,
+  visibleDrawerState,
   type DrawerState,
 } from '../lib/drawerState'
 import { Rail } from './Rail'
@@ -23,6 +24,26 @@ const noop = () => undefined
 
 function DrawerControlHarness() {
   const [drawers, setDrawers] = useState<DrawerState>({ libraryOpen: true, notesOpen: true })
+  const [focusMode, setFocusMode] = useState(false)
+  const visibleDrawers = visibleDrawerState(drawers, focusMode)
+
+  const toggleLibraryControl = () => {
+    if (focusMode) {
+      setFocusMode(false)
+      setDrawers(openLibrary)
+      return
+    }
+    setDrawers(toggleLibrary)
+  }
+
+  const toggleNotesControl = () => {
+    if (focusMode) {
+      setFocusMode(false)
+      setDrawers(openNotes)
+      return
+    }
+    setDrawers(toggleNotes)
+  }
 
   return (
     <>
@@ -30,32 +51,32 @@ function DrawerControlHarness() {
         mastered={0}
         total={81}
         reviewCount={0}
-        focusMode={isFocusMode(drawers)}
-        libraryOpen={drawers.libraryOpen}
-        notesOpen={drawers.notesOpen}
+        focusMode={focusMode}
+        libraryOpen={visibleDrawers.libraryOpen}
+        notesOpen={visibleDrawers.notesOpen}
         readerMode
         bankHubActive={false}
-        onToggleLibrary={() => setDrawers(toggleLibrary)}
-        onToggleNotes={() => setDrawers(toggleNotes)}
+        onToggleLibrary={toggleLibraryControl}
+        onToggleNotes={toggleNotesControl}
         onOpenQuestionBanks={noop}
         onOpenDashboard={noop}
         onOpenReview={noop}
-        onToggleFocus={() => setDrawers(toggleFocusMode)}
+        onToggleFocus={() => setFocusMode((current) => !current)}
         onOpenSettings={noop}
       />
       <Topbar
         question={question}
         progress={progress}
-        libraryOpen={drawers.libraryOpen}
-        notesOpen={drawers.notesOpen}
+        libraryOpen={visibleDrawers.libraryOpen}
+        notesOpen={visibleDrawers.notesOpen}
         pageLayout="spread"
         spreadAvailable
         hasPrevious
         hasNext
         onPrevious={noop}
         onNext={noop}
-        onToggleLibrary={() => setDrawers(toggleLibrary)}
-        onToggleNotes={() => setDrawers(toggleNotes)}
+        onToggleLibrary={toggleLibraryControl}
+        onToggleNotes={toggleNotesControl}
         onPageLayoutChange={noop}
         onOpenSearch={noop}
         onToggleFavorite={noop}
@@ -176,7 +197,7 @@ describe('drawer controls', () => {
     expect(screen.getByRole('button', { name: '收起批注' }).getAttribute('aria-controls')).toBe('notes-panel')
   })
 
-  it('keeps library, notes, and focus controls synchronized through mixed clicks', () => {
+  it('keeps focus independent, restores drawers, and exits focus when a drawer opens', () => {
     const { container } = render(<DrawerControlHarness />)
     const rail = within(container.querySelector('.rail') as HTMLElement)
     const topbar = within(container.querySelector('.topbar') as HTMLElement)
@@ -186,20 +207,33 @@ describe('drawer controls', () => {
     expect(rail.getByRole('button', { name: '展开题库侧栏' }).getAttribute('aria-expanded')).toBe('false')
     expect(topbar.getByRole('button', { name: '展开批注' }).getAttribute('aria-expanded')).toBe('false')
 
+    fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
+    expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
+    expect(rail.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-expanded')).toBe('true')
+    expect(topbar.getByRole('button', { name: '收起批注' }).getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.click(topbar.getByRole('button', { name: '收起批注' }))
+    fireEvent.click(rail.getByRole('button', { name: '收起题库侧栏' }))
+    expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
+    expect(rail.getByRole('button', { name: '展开题库侧栏' }).getAttribute('aria-expanded')).toBe('false')
+    expect(topbar.getByRole('button', { name: '展开批注' }).getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
+    fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
+    expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
+    expect(rail.getByRole('button', { name: '展开题库侧栏' }).getAttribute('aria-expanded')).toBe('false')
+    expect(topbar.getByRole('button', { name: '展开批注' }).getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
     fireEvent.click(rail.getByRole('button', { name: '展开题库侧栏' }))
     expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
     expect(rail.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-expanded')).toBe('true')
     expect(topbar.getByRole('button', { name: '展开批注' }).getAttribute('aria-expanded')).toBe('false')
 
     fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
-    fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
-    expect(rail.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-expanded')).toBe('true')
-    expect(topbar.getByRole('button', { name: '收起批注' }).getAttribute('aria-expanded')).toBe('true')
-
-    fireEvent.click(rail.getByRole('button', { name: '专注阅读' }))
     fireEvent.click(topbar.getByRole('button', { name: '展开批注' }))
     expect(rail.getByRole('button', { name: '专注阅读' }).getAttribute('aria-pressed')).toBe('false')
-    expect(rail.getByRole('button', { name: '展开题库侧栏' }).getAttribute('aria-expanded')).toBe('false')
+    expect(rail.getByRole('button', { name: '收起题库侧栏' }).getAttribute('aria-expanded')).toBe('true')
     expect(topbar.getByRole('button', { name: '收起批注' }).getAttribute('aria-expanded')).toBe('true')
   })
 

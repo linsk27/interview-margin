@@ -180,6 +180,31 @@ afterEach(() => {
 })
 
 describe('App guest mode', () => {
+  it.each(['', '#missing-question', '#admin'])(
+    'canonicalizes the unsupported initial route %s to the first public question',
+    async (hash) => {
+      window.history.replaceState(null, '', `/${hash}`)
+
+      await renderGuest()
+
+      expect(window.location.hash).toBe('#public-q-1')
+    },
+  )
+
+  it('recovers an empty history entry to the last valid reader question', async () => {
+    await renderGuest()
+
+    window.history.pushState(null, '', '#public-q-2')
+    fireEvent(window, new PopStateEvent('popstate'))
+    await waitFor(() => expect(screen.getByTestId('reader-question')).toHaveTextContent(secondQuestion.title))
+
+    window.history.pushState(null, '', '/')
+    fireEvent(window, new PopStateEvent('popstate'))
+
+    await waitFor(() => expect(window.location.hash).toBe('#public-q-2'))
+    expect(screen.getByTestId('reader-question')).toHaveTextContent(secondQuestion.title)
+  })
+
   it('loads public content and navigates between questions without asking for login', async () => {
     await renderGuest()
 
@@ -253,7 +278,7 @@ describe('App guest mode', () => {
   it('gates filters derived from a personal study state', async () => {
     await renderGuest()
     fireEvent.click(screen.getByRole('button', { name: '展开题库' }))
-    fireEvent.click(await screen.findByRole('tab', { name: '收藏' }))
+    fireEvent.click(await screen.findByRole('button', { name: '收藏' }))
     await expectContextualLogin(/收藏|个人|学习记录/)
   })
 })

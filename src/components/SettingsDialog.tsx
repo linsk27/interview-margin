@@ -127,7 +127,7 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
           <div className="settings-row__label"><Keyboard aria-hidden="true" /><div><strong>快捷键</strong><span>光标不在输入框时生效。</span></div></div>
           <dl>
             <div><dt><kbd>J</kbd> / <kbd>K</kbd></dt><dd>下一题 / 上一题</dd></div>
-            <div><dt><kbd>/</kbd> 或 <kbd>Ctrl K</kbd></dt><dd>搜索题库</dd></div>
+            <div><dt><kbd>/</kbd> 或 <kbd>Ctrl K</kbd></dt><dd>搜索全部题库</dd></div>
             <div><dt><kbd>M</kbd> / <kbd>R</kbd></dt><dd>标记掌握 / 复习</dd></div>
             <div><dt><kbd>F</kbd> / <kbd>N</kbd></dt><dd>收藏 / 展开或收起边注</dd></div>
           </dl>

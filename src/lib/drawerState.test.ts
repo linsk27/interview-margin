@@ -1,38 +1,39 @@
 import { describe, expect, it } from 'vitest'
 import {
-  isFocusMode,
-  setFocusMode,
-  toggleFocusMode,
+  openLibrary,
+  openNotes,
   toggleLibrary,
   toggleNotes,
+  visibleDrawerState,
 } from './drawerState'
 
 describe('drawer state', () => {
-  it('derives focus mode only when both drawers are closed', () => {
-    expect(isFocusMode({ libraryOpen: false, notesOpen: false })).toBe(true)
-    expect(isFocusMode({ libraryOpen: true, notesOpen: false })).toBe(false)
-    expect(isFocusMode({ libraryOpen: false, notesOpen: true })).toBe(false)
+  it('keeps focus independent when both drawers are manually closed', () => {
+    let focusMode = false
+    let drawers = { libraryOpen: true, notesOpen: true }
+
+    drawers = toggleLibrary(drawers)
+    drawers = toggleNotes(drawers)
+
+    expect(drawers).toEqual({ libraryOpen: false, notesOpen: false })
+    expect(focusMode).toBe(false)
+    expect(visibleDrawerState(drawers, focusMode)).toBe(drawers)
   })
 
-  it('closes both drawers from any non-focus state and restores both from focus mode', () => {
-    expect(toggleFocusMode({ libraryOpen: true, notesOpen: false })).toEqual({
+  it('hides drawers during focus without overwriting the state restored on exit', () => {
+    const drawers = { libraryOpen: true, notesOpen: false }
+
+    expect(visibleDrawerState(drawers, true)).toEqual({
       libraryOpen: false,
       notesOpen: false,
     })
-    expect(toggleFocusMode({ libraryOpen: false, notesOpen: true })).toEqual({
-      libraryOpen: false,
-      notesOpen: false,
-    })
-    expect(toggleFocusMode({ libraryOpen: false, notesOpen: false })).toEqual({
-      libraryOpen: true,
-      notesOpen: true,
-    })
+    expect(visibleDrawerState(drawers, false)).toBe(drawers)
   })
 
-  it('lets each drawer leave focus mode without opening the other drawer', () => {
-    const focused = setFocusMode(true)
+  it('can explicitly open either drawer when leaving focus', () => {
+    const drawers = { libraryOpen: false, notesOpen: false }
 
-    expect(toggleLibrary(focused)).toEqual({ libraryOpen: true, notesOpen: false })
-    expect(toggleNotes(focused)).toEqual({ libraryOpen: false, notesOpen: true })
+    expect(openLibrary(drawers)).toEqual({ libraryOpen: true, notesOpen: false })
+    expect(openNotes(drawers)).toEqual({ libraryOpen: false, notesOpen: true })
   })
 })

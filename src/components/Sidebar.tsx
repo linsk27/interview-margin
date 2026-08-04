@@ -127,22 +127,20 @@ export function Sidebar({
 
       <label className="search-field">
         <Search aria-hidden="true" />
-        <span className="sr-only">搜索题目和正文</span>
+        <span className="sr-only">筛选当前题库的题目和正文</span>
         <input
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="搜索题目、原理或项目…"
+          placeholder="筛选当前题库：题目、原理或项目"
         />
-        <kbd>/</kbd>
       </label>
 
-      <div className="filter-strip" role="tablist" aria-label="题库筛选">
+      <div className="filter-strip" role="group" aria-label="当前题库筛选">
         {FILTERS.map((item) => (
           <button
             key={item.id}
             type="button"
-            role="tab"
-            aria-selected={filter === item.id}
+            aria-pressed={filter === item.id}
             className={filter === item.id ? 'is-active' : ''}
             onClick={() => onFilterChange(item.id)}
           >
