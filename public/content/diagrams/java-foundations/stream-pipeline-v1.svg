@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Java Stream 流水线：数据源、中间操作与终止操作</title>
+  <desc id="desc">展示集合数据源经过 filter、map、sorted 等惰性中间操作，在 collect 等终止操作出现后才触发一次遍历；并标注短路、按元素融合执行以及流不可重复消费等关键特征。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fbfe"/><stop offset="1" stop-color="#eff6f4"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#527087"/></marker>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif;fill:#173149}.title{font-size:34px;font-weight:700}.sub{font-size:17px;fill:#62788b}
+      .head{font-size:20px;font-weight:700}.step{font-size:17px;font-weight:700}.body{font-size:15px;fill:#526a7d}.small{font-size:13px;fill:#6c8192}
+      .mono{font-family:"IBM Plex Mono","Cascadia Mono",monospace;font-size:15px}.num{font-size:14px;font-weight:700}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="62" class="title">Stream 是一份“计算计划”，终止操作才按下执行键</text>
+  <text x="58" y="96" class="sub">中间操作只描述转换；终止操作到来后，流水线通常按元素融合执行，而不是生成一串中间集合。</text>
+
+  <rect x="58" y="140" width="1084" height="354" rx="24" fill="#ffffff" stroke="#cad9e3"/>
+  <text x="86" y="178" class="head">流水线结构</text>
+  <rect x="86" y="210" width="194" height="190" rx="20" fill="#edf5fb" stroke="#8aaec7"/>
+  <text x="183" y="245" text-anchor="middle" class="step">数据源 Source</text>
+  <text x="183" y="272" text-anchor="middle" class="body">List&lt;Order&gt;</text>
+  <g fill="#6f9fbe"><circle cx="125" cy="315" r="13"/><circle cx="165" cy="315" r="13"/><circle cx="205" cy="315" r="13"/><circle cx="245" cy="315" r="13"/></g>
+  <text x="183" y="360" text-anchor="middle" class="small">提供元素，不复制数据</text>
+  <text x="183" y="382" text-anchor="middle" class="mono">orders.stream()</text>
+
+  <path d="M280 305H340" stroke="#527087" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="348" y="190" width="480" height="230" rx="20" fill="#f7fafc" stroke="#b9cbd7"/>
+  <text x="588" y="225" text-anchor="middle" class="step">中间操作 Intermediate · 惰性</text>
+  <rect x="378" y="258" width="122" height="72" rx="15" fill="#eaf7f1" stroke="#76ad94"/>
+  <text x="439" y="287" text-anchor="middle" class="mono">filter</text><text x="439" y="312" text-anchor="middle" class="small">保留有效订单</text>
+  <path d="M500 294H530" stroke="#527087" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="538" y="258" width="122" height="72" rx="15" fill="#eaf7f1" stroke="#76ad94"/>
+  <text x="599" y="287" text-anchor="middle" class="mono">map</text><text x="599" y="312" text-anchor="middle" class="small">提取金额</text>
+  <path d="M660 294H690" stroke="#527087" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="698" y="258" width="100" height="72" rx="15" fill="#fff6e6" stroke="#d2a65c"/>
+  <text x="748" y="287" text-anchor="middle" class="mono">sorted</text><text x="748" y="312" text-anchor="middle" class="small">有状态操作</text>
+  <rect x="398" y="354" width="380" height="40" rx="12" fill="#eef2f5"/>
+  <text x="588" y="379" text-anchor="middle" class="body">此时尚未遍历数据，也没有业务结果</text>
+
+  <path d="M828 305H888" stroke="#2f8564" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="858" y="287" text-anchor="middle" class="small">触发</text>
+  <rect x="896" y="210" width="218" height="190" rx="20" fill="#eaf7f1" stroke="#76ad94"/>
+  <text x="1005" y="245" text-anchor="middle" class="step">终止操作 Terminal</text>
+  <text x="1005" y="280" text-anchor="middle" class="mono">collect(toList())</text>
+  <path d="M947 315H1063" stroke="#2f8564" stroke-width="5" marker-end="url(#arrow)"/>
+  <text x="1005" y="348" text-anchor="middle" class="body">开始拉取并消费元素</text>
+  <text x="1005" y="376" text-anchor="middle" class="small">产生结果 · 流随即关闭</text>
+
+  <rect x="86" y="438" width="1028" height="34" rx="11" fill="#edf5fb"/>
+  <text x="600" y="461" text-anchor="middle" class="body">执行视角：元素 1 → filter → map → 后续步骤，再处理元素 2；能融合的操作在一次遍历中完成</text>
+
+  <rect x="58" y="530" width="1084" height="132" rx="22" fill="#173149"/>
+  <text x="84" y="567" class="head" style="fill:#ffffff">面试时要补充的边界</text>
+  <rect x="84" y="588" width="238" height="50" rx="13" fill="#24465e"/>
+  <text x="203" y="609" text-anchor="middle" class="step" style="fill:#bfe7d5">短路</text><text x="203" y="630" text-anchor="middle" class="small" style="fill:#dce9ef">findFirst / anyMatch 可提前结束</text>
+  <rect x="338" y="588" width="238" height="50" rx="13" fill="#24465e"/>
+  <text x="457" y="609" text-anchor="middle" class="step" style="fill:#bfdcf0">一次消费</text><text x="457" y="630" text-anchor="middle" class="small" style="fill:#dce9ef">终止后不能复用同一个 Stream</text>
+  <rect x="592" y="588" width="238" height="50" rx="13" fill="#24465e"/>
+  <text x="711" y="609" text-anchor="middle" class="step" style="fill:#f5d89f">有状态操作</text><text x="711" y="630" text-anchor="middle" class="small" style="fill:#dce9ef">sorted / distinct 可能需要缓冲</text>
+  <rect x="846" y="588" width="270" height="50" rx="13" fill="#24465e"/>
+  <text x="981" y="609" text-anchor="middle" class="step" style="fill:#f0c6c3">并行不等于更快</text><text x="981" y="630" text-anchor="middle" class="small" style="fill:#dce9ef">关注拆分成本、顺序与共享状态</text>
+</svg>

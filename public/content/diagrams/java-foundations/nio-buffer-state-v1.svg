@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Java NIO Buffer 的 capacity、position、limit 与状态切换</title>
+  <desc id="desc">通过写入、flip 切换读取、读取进行中和 clear 重新写入四个状态，展示 capacity、position 与 limit 的相对位置；强调 flip 令 limit 等于原 position 并将 position 归零，clear 只重置游标而不会擦除底层数据。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fbfe"/><stop offset="1" stop-color="#f3f6fb"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#527087"/></marker>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif;fill:#173149}.title{font-size:34px;font-weight:700}.sub{font-size:17px;fill:#62788b}
+      .head{font-size:20px;font-weight:700}.step{font-size:17px;font-weight:700}.body{font-size:15px;fill:#526a7d}.small{font-size:13px;fill:#6c8192}
+      .mono{font-family:"IBM Plex Mono","Cascadia Mono",monospace;font-size:14px}.marker{font-size:13px;font-weight:700}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="62" class="title">Buffer 的核心不是“数组”，而是三个游标定义的可操作区间</text>
+  <text x="58" y="96" class="sub">始终满足 0 ≤ position ≤ limit ≤ capacity；读写模式的切换，本质是重新设定 position 与 limit。</text>
+
+  <rect x="58" y="138" width="1084" height="372" rx="24" fill="#ffffff" stroke="#cad9e3"/>
+  <text x="88" y="176" class="head">从写入到再次写入</text>
+
+  <text x="88" y="218" class="step">① 写入中</text>
+  <text x="88" y="245" class="mono">position=6 · limit=12 · capacity=12</text>
+  <g transform="translate(88 274)">
+    <g fill="#9ec5de" stroke="#ffffff"><rect x="0" width="54" height="50"/><rect x="56" width="54" height="50"/><rect x="112" width="54" height="50"/><rect x="168" width="54" height="50"/><rect x="224" width="54" height="50"/><rect x="280" width="54" height="50"/></g>
+    <g fill="#edf2f5" stroke="#ffffff"><rect x="336" width="54" height="50"/><rect x="392" width="54" height="50"/><rect x="448" width="54" height="50"/><rect x="504" width="54" height="50"/><rect x="560" width="54" height="50"/><rect x="616" width="54" height="50"/></g>
+    <path d="M336 -11V58" stroke="#2f8564" stroke-width="3"/><text x="336" y="78" text-anchor="middle" class="marker" fill="#2f8564">position 6</text>
+    <path d="M672 -11V58" stroke="#b9782b" stroke-width="3"/><text x="672" y="78" text-anchor="middle" class="marker" fill="#a66b24">limit / capacity 12</text>
+  </g>
+  <path d="M804 299H876" stroke="#527087" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="884" y="250" width="214" height="100" rx="18" fill="#eaf7f1" stroke="#76ad94"/>
+  <text x="991" y="283" text-anchor="middle" class="step">flip()</text>
+  <text x="991" y="310" text-anchor="middle" class="mono">limit = position</text>
+  <text x="991" y="334" text-anchor="middle" class="mono">position = 0</text>
+
+  <text x="88" y="400" class="step">② 读取中</text>
+  <text x="88" y="427" class="mono">position=3 · limit=6 · capacity=12</text>
+  <g transform="translate(88 450)">
+    <g fill="#d8e4eb" stroke="#ffffff"><rect x="0" width="54" height="38"/><rect x="56" width="54" height="38"/><rect x="112" width="54" height="38"/></g>
+    <g fill="#a9d7c2" stroke="#ffffff"><rect x="168" width="54" height="38"/><rect x="224" width="54" height="38"/><rect x="280" width="54" height="38"/></g>
+    <g fill="#f3f5f7" stroke="#ffffff"><rect x="336" width="54" height="38"/><rect x="392" width="54" height="38"/><rect x="448" width="54" height="38"/><rect x="504" width="54" height="38"/><rect x="560" width="54" height="38"/><rect x="616" width="54" height="38"/></g>
+    <path d="M168 -9V46" stroke="#2f8564" stroke-width="3"/><text x="168" y="63" text-anchor="middle" class="marker" fill="#2f8564">position 3</text>
+    <path d="M336 -9V46" stroke="#b9782b" stroke-width="3"/><text x="336" y="63" text-anchor="middle" class="marker" fill="#a66b24">limit 6</text>
+    <path d="M672 -9V46" stroke="#6e8292" stroke-width="3"/><text x="672" y="63" text-anchor="middle" class="marker">capacity 12</text>
+  </g>
+  <rect x="884" y="402" width="214" height="86" rx="18" fill="#edf5fb" stroke="#8aaec7"/>
+  <text x="991" y="435" text-anchor="middle" class="step">remaining()</text>
+  <text x="991" y="463" text-anchor="middle" class="mono">limit - position = 3</text>
+
+  <rect x="58" y="548" width="1084" height="114" rx="22" fill="#173149"/>
+  <text x="84" y="584" class="head" style="fill:#ffffff">常用状态转换</text>
+  <text x="84" y="617" class="body" style="fill:#dce9ef"><tspan class="mono" style="fill:#bfe7d5">flip()</tspan>：写 → 读，保护已写区间　　<tspan class="mono" style="fill:#bfdcf0">compact()</tspan>：保留未读数据并继续写　　<tspan class="mono" style="fill:#f5d89f">clear()</tspan>：position=0、limit=capacity</text>
+  <text x="84" y="645" class="body" style="fill:#f0c6c3">注意：clear() 不会擦除底层字节，只是把整个容量重新标记为可写；敏感数据需要另行覆盖。</text>
+</svg>

@@ -56,6 +56,47 @@ describe('community interview bank quality gate', () => {
     expect(assertCommunityInterviewBank(bank)).toBe(bank)
   })
 
+  it('accepts an official-only foundation bank without fabricating community provenance', () => {
+    const questions = Array.from({ length: 24 }, (_, index) => {
+      const question = validQuestion(index + 1)
+      return {
+        ...question,
+        sources: question.sources
+          .filter((source) => source.kind !== 'community-interview')
+          .map((source) => ({ ...source, kind: 'official' })),
+      }
+    })
+    const bank = {
+      id: 'java-foundations',
+      title: '官方基础题库',
+      sourcePolicy: 'official-only',
+      source: 'public/question-banks/java-foundations.md',
+      sections: [{ title: '章节', questions }],
+    }
+    expect(assertCommunityInterviewBank(bank)).toBe(bank)
+  })
+
+  it('rejects community or lookalike domains from the official-only foundation bank', () => {
+    const communityQuestion = validQuestion(1)
+    expect(() => assertCommunityInterviewBank({
+      id: 'java-foundations',
+      title: '官方基础题库',
+      sourcePolicy: 'official-only',
+      source: 'public/question-banks/java-foundations.md',
+      sections: [{ title: '章节', questions: [{ ...communityQuestion, sources: communityQuestion.sources }] }],
+    }, { minimumQuestions: 1 })).toThrow('只允许白名单官方来源')
+
+    const lookalike = validQuestion(2)
+    lookalike.sources = [{ label: '伪官方文档', url: 'https://docs.oracle.com.example.com/java', kind: 'official' }]
+    expect(() => assertCommunityInterviewBank({
+      id: 'java-foundations',
+      title: '官方基础题库',
+      sourcePolicy: 'official-only',
+      source: 'public/question-banks/java-foundations.md',
+      sections: [{ title: '章节', questions: [lookalike] }],
+    }, { minimumQuestions: 1 })).toThrow('只允许白名单官方来源')
+  })
+
   it('rejects behavioral filler even when the rest of the entry is complete', () => {
     const question = validQuestion(1)
     question.title = '请做一下自我介绍'

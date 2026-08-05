@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">JVM 进程内存：堆、元空间、直接内存与线程栈</title>
+  <desc id="desc">在 JVM 进程总内存边界中展示 Java 堆、元空间、直接内存、多个线程栈、代码缓存和本地库等组成，说明 Xmx 只限制 Java 堆，进程常驻内存还包含大量堆外部分，因此堆未满也可能发生系统内存压力或堆外内存错误。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fbfe"/><stop offset="1" stop-color="#f1f6f4"/></linearGradient>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif;fill:#173149}.title{font-size:34px;font-weight:700}.sub{font-size:17px;fill:#62788b}
+      .head{font-size:20px;font-weight:700}.label{font-size:17px;font-weight:700}.body{font-size:15px;fill:#526a7d}.small{font-size:13px;fill:#6c8192}
+      .mono{font-family:"IBM Plex Mono","Cascadia Mono",monospace;font-size:14px}.big{font-size:25px;font-weight:700}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="62" class="title">JVM 进程总内存远不止 Java 堆</text>
+  <text x="58" y="96" class="sub">-Xmx 只约束堆；容量规划与故障定位要同时观察堆外内存、线程数量和容器 / 操作系统限制。</text>
+
+  <rect x="58" y="132" width="1084" height="428" rx="26" fill="#ffffff" stroke="#b9cad6" stroke-width="2"/>
+  <text x="84" y="170" class="head">JVM 进程地址空间（受容器 limit / 物理内存约束）</text>
+
+  <rect x="84" y="198" width="548" height="326" rx="22" fill="#edf5fb" stroke="#78a6c5"/>
+  <text x="112" y="238" class="big">Java Heap</text>
+  <text x="112" y="268" class="body">对象实例 · 数组 · GC 主要管理区域</text>
+  <rect x="112" y="298" width="214" height="174" rx="18" fill="#dbeaf4" stroke="#8fb3cb"/>
+  <text x="219" y="330" text-anchor="middle" class="label">Young</text>
+  <rect x="136" y="354" width="66" height="88" rx="12" fill="#bcd7e8"/><text x="169" y="402" text-anchor="middle" class="small">Eden</text>
+  <rect x="212" y="354" width="42" height="88" rx="12" fill="#c9dfed"/><text x="233" y="402" text-anchor="middle" class="small">S0</text>
+  <rect x="264" y="354" width="42" height="88" rx="12" fill="#c9dfed"/><text x="285" y="402" text-anchor="middle" class="small">S1</text>
+  <rect x="344" y="298" width="252" height="174" rx="18" fill="#d3e7de" stroke="#86b19c"/>
+  <text x="470" y="330" text-anchor="middle" class="label">Old</text>
+  <g fill="#9fc8b4"><rect x="372" y="358" width="54" height="74" rx="10"/><rect x="438" y="342" width="54" height="90" rx="10"/><rect x="504" y="374" width="54" height="58" rx="10"/></g>
+  <text x="354" y="500" class="mono">-Xms / -Xmx</text>
+
+  <rect x="662" y="198" width="214" height="138" rx="20" fill="#fff6e6" stroke="#d2a65c"/>
+  <text x="688" y="234" class="label">Metaspace</text>
+  <text x="688" y="263" class="body">类元数据 · 常量池</text>
+  <text x="688" y="290" class="body">ClassLoader 生命周期</text>
+  <text x="688" y="316" class="mono">-XX:MaxMetaspaceSize</text>
+
+  <rect x="900" y="198" width="214" height="138" rx="20" fill="#eaf7f1" stroke="#76ad94"/>
+  <text x="926" y="234" class="label">Direct Memory</text>
+  <text x="926" y="263" class="body">NIO DirectByteBuffer</text>
+  <text x="926" y="290" class="body">网络 / 文件零拷贝缓冲</text>
+  <text x="926" y="316" class="mono">MaxDirectMemorySize</text>
+
+  <rect x="662" y="360" width="294" height="164" rx="20" fill="#f2effb" stroke="#9d91c1"/>
+  <text x="688" y="396" class="label">Thread Stacks</text>
+  <text x="688" y="423" class="body">每个线程独立：栈帧 · 局部变量 · 返回地址</text>
+  <g fill="#c9c1e0"><rect x="688" y="450" width="46" height="44" rx="9"/><rect x="744" y="450" width="46" height="44" rx="9"/><rect x="800" y="450" width="46" height="44" rx="9"/><rect x="856" y="450" width="46" height="44" rx="9"/></g>
+  <text x="919" y="478" class="mono">… × N</text>
+  <text x="688" y="514" class="small">约为线程数 × -Xss，线程过多会放大进程内存</text>
+
+  <rect x="980" y="360" width="134" height="164" rx="20" fill="#eef2f5" stroke="#aab9c6"/>
+  <text x="1047" y="397" text-anchor="middle" class="label">其他 Native</text>
+  <text x="1047" y="429" text-anchor="middle" class="small">Code Cache</text>
+  <text x="1047" y="454" text-anchor="middle" class="small">JNI / 动态库</text>
+  <text x="1047" y="479" text-anchor="middle" class="small">GC 结构</text>
+  <text x="1047" y="504" text-anchor="middle" class="small">JVM 自身</text>
+
+  <rect x="58" y="594" width="1084" height="82" rx="20" fill="#173149"/>
+  <text x="84" y="626" class="label" style="fill:#ffffff">进程 RSS ≈ Heap + Metaspace + Direct + Thread Stacks + Code Cache + Native</text>
+  <text x="84" y="654" class="body" style="fill:#f0c6c3">因此：堆占用不高 ≠ 进程内存安全。排查时同时查看 GC、NMT、线程数、direct buffer 与容器 OOM 事件。</text>
+</svg>

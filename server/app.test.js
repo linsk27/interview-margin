@@ -49,23 +49,23 @@ describe('server API', () => {
 
   afterEach(() => db.close())
 
-  it('serves all 701 questions while preserving the existing question ids', async () => {
+  it('serves all 801 questions while preserving the existing question ids', async () => {
     const health = await request(app).get('/api/health').expect(200)
-    expect(health.body).toMatchObject({ storage: 'sqlite', banks: 13, questions: 701 })
+    expect(health.body).toMatchObject({ storage: 'sqlite', banks: 14, questions: 801 })
     const catalog = await request(app).get('/api/catalog').set('Accept-Encoding', 'gzip').expect(200)
     expect(health.headers['cache-control']).toBe('no-store')
     expect(catalog.headers['cache-control']).toBe('no-store')
     expect(catalog.headers['content-encoding']).toBe('gzip')
     expect(catalog.headers.vary).toContain('Accept-Encoding')
-    expect(catalog.body.banks).toHaveLength(13)
+    expect(catalog.body.banks).toHaveLength(14)
     expect(catalog.body.banks.map((bank) => bank.id)).toEqual([
       'interview', 'javascript', 'git-engineering', 'vue-core', 'react-core',
       'frontend-engineering', 'backend-fullstack', 'database-cache', 'network-deployment',
-      'frontend-ai-interviews', 'java-backend-interviews', 'java-ai-applications',
+      'frontend-ai-interviews', 'java-foundations', 'java-backend-interviews', 'java-ai-applications',
       '360-ai-frontend',
     ])
     const questions = catalog.body.sections.flatMap((section) => section.questions)
-    expect(questions).toHaveLength(701)
+    expect(questions).toHaveLength(801)
     expect(questions[0].id).toBe('q-1')
     expect(questions.some((question) => question.id === 'q-1')).toBe(true)
     expect(questions.some((question) => question.id === 'js-q-100')).toBe(true)

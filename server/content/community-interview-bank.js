@@ -10,6 +10,8 @@ const currentFile = fileURLToPath(import.meta.url)
 const projectRoot = path.resolve(path.dirname(currentFile), '../..')
 
 const NON_TECHNICAL_TITLE = /(?:自我介绍|职业规划|为什么选择(?:我们|公司|岗位)|期望薪资|有什么要问|反问|能否实习|是否接受加班|手里.*offer)/i
+const OFFICIAL_ONLY_BANK_IDS = new Set(['java-foundations'])
+const JAVA_FOUNDATION_SOURCE_HOSTS = new Set(['docs.oracle.com', 'openjdk.org'])
 
 function questionList(bank) {
   return bank.sections.flatMap((section) => section.questions)
@@ -33,6 +35,9 @@ export function assertCommunityInterviewBank(bank, { minimumQuestions = 24 } = {
   }
   if (!/^public\/question-banks\/[a-z0-9-]+\.md$/.test(bank.source)) {
     throw new Error(`${bank.id}: source 必须位于 public/question-banks`)
+  }
+  if (bank.sourcePolicy === 'official-only' && !OFFICIAL_ONLY_BANK_IDS.has(bank.id)) {
+    throw new Error(`${bank.id}: 未获准使用 official-only 来源策略`)
   }
   const questions = questionList(bank)
   if (questions.length < minimumQuestions) {
@@ -58,13 +63,23 @@ export function assertCommunityInterviewBank(bank, { minimumQuestions = 24 } = {
       || question.pitfalls.some((item) => enrichmentTextLength(item) < 12)) {
       throw new Error(`${label}: 至少需要两个具体易错点`)
     }
-    if (!Array.isArray(question.sources) || question.sources.length < 2
+    const minimumSources = bank.sourcePolicy === 'official-only' ? 1 : 2
+    if (!Array.isArray(question.sources) || question.sources.length < minimumSources
       || question.sources.some((source) => !source?.label || !/^https:\/\//.test(source.url))) {
       throw new Error(`${label}: 来源不完整`)
     }
     const sourceKinds = new Set(question.sources.map((source) => source.kind ?? sourceKindForUrl(source.url)))
-    if (!sourceKinds.has('community-interview') || !sourceKinds.has('official')) {
-      throw new Error(`${label}: 必须同时有真实面经线索和官方技术来源`)
+    if (!sourceKinds.has('official')) {
+      throw new Error(`${label}: 必须包含官方技术来源`)
+    }
+    if (bank.sourcePolicy === 'official-only') {
+      const invalidSource = question.sources.find((source) => {
+        if (source.kind !== 'official') return true
+        return !JAVA_FOUNDATION_SOURCE_HOSTS.has(new URL(source.url).hostname.toLowerCase())
+      })
+      if (invalidSource) throw new Error(`${label}: Java 基础题只允许白名单官方来源`)
+    } else if (!sourceKinds.has('community-interview')) {
+      throw new Error(`${label}: 面经题库必须同时包含真实面经线索和官方技术来源`)
     }
   })
   return bank
@@ -108,7 +123,7 @@ export function generateCommunityInterviewBanks(banks, {
           throw new Error(`${bank.id}: 与 ${seenTitles.get(normalized)} 重复题目：${question.title}`)
         }
         seenTitles.set(normalized, `${bank.id} Q${number}`)
-        lines.push(...renderQuestion(bank, question, number, verifiedAt))
+        lines.push(...renderQuestion(bank, question, number, bank.verifiedAt ?? verifiedAt))
         number += 1
       }
     }
@@ -170,7 +185,7 @@ export function renderCommunitySourceAudit(banks, { verifiedAt = '2026-08-04' } 
   lines.push('', '## 质量规则', '',
     '- 过滤自我介绍、职业规划、薪资、反问等非技术内容。',
     '- 同一问题只保留一个中性、可验证的版本，避免把公司隐私或作者项目数据照搬进题库。',
-    '- 每题至少包含一个面经来源和一个官方技术来源。',
+    '- 本审计表覆盖的社区面经题每题至少包含一个面经来源和一个官方技术来源；Java 基础题另行只接受白名单官方域名。',
     '- 社区作者给出的答案不视为标准答案；涉及版本差异时以题目中标注的官方文档为准。',
     '')
   return lines.join('\n')

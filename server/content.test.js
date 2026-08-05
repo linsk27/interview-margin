@@ -8,11 +8,13 @@ import { denseProseBlocks } from './content/readability.js'
 
 const COMMUNITY_BANK_COUNTS = {
   'frontend-ai-interviews': 40,
+  'java-foundations': 100,
   'java-backend-interviews': 48,
   'java-ai-applications': 40,
 }
 
 const COMMUNITY_BANK_IDS = Object.keys(COMMUNITY_BANK_COUNTS)
+const OFFICIAL_ONLY_BANK_IDS = new Set(['java-foundations'])
 const NON_TECHNICAL_TITLE = /(?:自我介绍|职业规划|为什么选择(?:我们|公司|岗位)|期望薪资|有什么要问|反问|能否实习|是否接受加班|手里.*offer)/i
 
 function normalizedTitle(value) {
@@ -27,10 +29,10 @@ describe('question catalog seed quality', () => {
   beforeEach(() => { db = createDatabase({ filename: ':memory:', bootstrap: false }).db })
   afterEach(() => db.close())
 
-  it('contains thirteen banks and 701 unique questions', () => {
-    expect(db.prepare('SELECT COUNT(*) count FROM question_banks').get().count).toBe(13)
-    expect(db.prepare('SELECT COUNT(*) count FROM questions').get().count).toBe(701)
-    expect(db.prepare('SELECT COUNT(DISTINCT id) count FROM questions').get().count).toBe(701)
+  it('contains fourteen banks and 801 unique questions', () => {
+    expect(db.prepare('SELECT COUNT(*) count FROM question_banks').get().count).toBe(14)
+    expect(db.prepare('SELECT COUNT(*) count FROM questions').get().count).toBe(801)
+    expect(db.prepare('SELECT COUNT(DISTINCT id) count FROM questions').get().count).toBe(801)
     expect(db.prepare("SELECT COUNT(*) count FROM questions WHERE id IN ('q-1','js-q-100')").get().count).toBe(2)
     const ids = db.prepare(`
       SELECT id FROM questions
@@ -41,6 +43,30 @@ describe('question catalog seed quality', () => {
       .toBe('555e19677287bdd087c9f8a4deaba27d4dd2a65a3f88c79c28e64d3c089f02ed')
     expect(db.prepare("SELECT COUNT(*) count FROM questions WHERE body_md LIKE '%/content/diagrams/%'").get().count)
       .toBeGreaterThanOrEqual(24)
+  })
+
+  it('locks the Java foundation identity map and all five teaching diagrams', () => {
+    const questions = db.prepare(`
+      SELECT id, display_number, title, body_md
+      FROM questions WHERE bank_id='java-foundations' ORDER BY sort_order
+    `).all()
+    expect(questions).toHaveLength(100)
+    const identityMap = questions
+      .map((question) => [question.id, question.display_number, question.title].join('|'))
+      .join('\n')
+    expect(crypto.createHash('sha256').update(identityMap).digest('hex'))
+      .toBe('450222c4b40bb83189dbcb6031d4e673faee3a0e1f8736ba1e27a7cfd8928be6')
+
+    const diagrams = questions.flatMap((question) => (
+      question.body_md.match(/\/content\/diagrams\/java-foundations\/[a-z0-9-]+\.svg/g) ?? []
+    ))
+    expect(diagrams).toEqual([
+      '/content/diagrams/java-foundations/object-contract-v1.svg',
+      '/content/diagrams/java-foundations/stream-pipeline-v1.svg',
+      '/content/diagrams/java-foundations/nio-buffer-state-v1.svg',
+      '/content/diagrams/java-foundations/thread-coordination-v1.svg',
+      '/content/diagrams/java-foundations/jvm-memory-v1.svg',
+    ])
   })
 
   it('keeps every community interview bank technical, substantial and independently sourced', () => {
@@ -63,8 +89,10 @@ describe('question catalog seed quality', () => {
         const kinds = db.prepare(
           'SELECT DISTINCT source_kind FROM source_refs WHERE question_id = ?',
         ).all(question.id).map((source) => source.source_kind)
-        expect(kinds, `${bankId}: ${question.title}`).toContain('community-interview')
         expect(kinds, `${bankId}: ${question.title}`).toContain('official')
+        if (!OFFICIAL_ONLY_BANK_IDS.has(bankId)) {
+          expect(kinds, `${bankId}: ${question.title}`).toContain('community-interview')
+        }
       }
     }
 
@@ -83,7 +111,7 @@ describe('question catalog seed quality', () => {
     const generated = db.prepare(
       `SELECT * FROM questions WHERE bank_id NOT IN (
         'interview','javascript','360-ai-frontend',
-        'frontend-ai-interviews','java-backend-interviews','java-ai-applications'
+        'frontend-ai-interviews','java-foundations','java-backend-interviews','java-ai-applications'
       )`,
     ).all()
     expect(generated).toHaveLength(320)

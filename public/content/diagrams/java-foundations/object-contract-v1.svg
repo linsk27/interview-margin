@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Java 对象判等：==、equals 与 hashCode 的契约</title>
+  <desc id="desc">以两个业务编号相同但实例不同的用户对象为例，说明双等号比较引用身份，equals 比较业务语义，hashCode 决定散列表候选桶；equals 相等必须拥有相同散列值，但散列值相同不代表 equals 相等。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f8fbfe"/>
+      <stop offset="1" stop-color="#eef5f8"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 10 5 0 10Z" fill="#527087"/>
+    </marker>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif;fill:#173149}
+      .title{font-size:34px;font-weight:700}.sub{font-size:17px;fill:#62788b}.head{font-size:20px;font-weight:700}
+      .label{font-size:16px;font-weight:700}.body{font-size:15px;fill:#526a7d}.mono{font-family:"IBM Plex Mono","Cascadia Mono",monospace;font-size:15px}
+      .small{font-size:13px;fill:#6c8192}.rule{font-size:16px;font-weight:700}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="62" class="title">对象判等：先分清“是不是同一个”，再判断“业务上是否相同”</text>
+  <text x="58" y="96" class="sub">散列表先用 hashCode 缩小候选范围，再用 equals 做最终确认；三者解决的是不同层次的问题。</text>
+
+  <rect x="58" y="132" width="1084" height="344" rx="24" fill="#ffffff" stroke="#c9d8e3"/>
+  <line x1="418" y1="158" x2="418" y2="448" stroke="#e0e8ee"/>
+  <line x1="778" y1="158" x2="778" y2="448" stroke="#e0e8ee"/>
+
+  <text x="88" y="174" class="head">1  引用身份：==</text>
+  <text x="88" y="202" class="body">比较两个变量是否指向同一实例</text>
+  <rect x="88" y="230" width="112" height="54" rx="14" fill="#edf5fb" stroke="#8aaec7"/>
+  <text x="144" y="263" text-anchor="middle" class="mono">userA</text>
+  <rect x="88" y="340" width="112" height="54" rx="14" fill="#edf5fb" stroke="#8aaec7"/>
+  <text x="144" y="373" text-anchor="middle" class="mono">userB</text>
+  <path d="M200 257H270" stroke="#527087" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M200 367H270" stroke="#527087" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="278" y="220" width="108" height="74" rx="16" fill="#eaf7f1" stroke="#76ad94"/>
+  <text x="332" y="250" text-anchor="middle" class="label">实例 A</text>
+  <text x="332" y="274" text-anchor="middle" class="mono">id = 42</text>
+  <rect x="278" y="330" width="108" height="74" rx="16" fill="#fff6e6" stroke="#d2a65c"/>
+  <text x="332" y="360" text-anchor="middle" class="label">实例 B</text>
+  <text x="332" y="384" text-anchor="middle" class="mono">id = 42</text>
+  <rect x="108" y="416" width="278" height="36" rx="12" fill="#fff0ee"/>
+  <text x="247" y="440" text-anchor="middle" class="rule" fill="#a94d47">userA == userB → false</text>
+
+  <text x="448" y="174" class="head">2  业务语义：equals</text>
+  <text x="448" y="202" class="body">由类型定义“相等”意味着什么</text>
+  <circle cx="506" cy="277" r="48" fill="#eaf7f1" stroke="#76ad94"/>
+  <text x="506" y="273" text-anchor="middle" class="label">实例 A</text>
+  <text x="506" y="297" text-anchor="middle" class="mono">id=42</text>
+  <circle cx="690" cy="277" r="48" fill="#fff6e6" stroke="#d2a65c"/>
+  <text x="690" y="273" text-anchor="middle" class="label">实例 B</text>
+  <text x="690" y="297" text-anchor="middle" class="mono">id=42</text>
+  <path d="M554 277H642" stroke="#2f8564" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="598" y="257" text-anchor="middle" class="mono">equals</text>
+  <text x="598" y="337" text-anchor="middle" class="body">若以 id 定义业务身份</text>
+  <rect x="448" y="368" width="300" height="48" rx="14" fill="#e9f6f0" stroke="#93bda9"/>
+  <text x="598" y="398" text-anchor="middle" class="rule" fill="#276f55">userA.equals(userB) → true</text>
+  <text x="448" y="442" class="small">需满足：自反、对称、传递、一致，并正确处理 null</text>
+
+  <text x="808" y="174" class="head">3  散列定位：hashCode</text>
+  <text x="808" y="202" class="body">先定位候选桶，再在桶内执行 equals</text>
+  <rect x="808" y="232" width="132" height="52" rx="14" fill="#eaf7f1" stroke="#76ad94"/>
+  <text x="874" y="264" text-anchor="middle" class="mono">A → 1263</text>
+  <rect x="808" y="300" width="132" height="52" rx="14" fill="#fff6e6" stroke="#d2a65c"/>
+  <text x="874" y="332" text-anchor="middle" class="mono">B → 1263</text>
+  <path d="M940 258H982V326H1022" fill="none" stroke="#527087" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M940 326H1022" stroke="#527087" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="1030" y="278" width="82" height="96" rx="16" fill="#edf5fb" stroke="#8aaec7"/>
+  <text x="1071" y="308" text-anchor="middle" class="label">桶 7</text>
+  <circle cx="1054" cy="342" r="11" fill="#2f8564"/><circle cx="1088" cy="342" r="11" fill="#c58a30"/>
+  <text x="960" y="408" text-anchor="middle" class="body">同一桶 ≠ 一定相等</text>
+  <text x="960" y="438" text-anchor="middle" class="small">散列冲突必须由 equals 消解</text>
+
+  <rect x="58" y="512" width="1084" height="150" rx="22" fill="#173149"/>
+  <text x="84" y="550" class="head" style="fill:#ffffff">必须同时记住的契约</text>
+  <rect x="84" y="572" width="310" height="62" rx="14" fill="#24465e"/>
+  <text x="239" y="597" text-anchor="middle" class="label" style="fill:#bfe7d5">equals 为 true</text>
+  <text x="239" y="620" text-anchor="middle" class="body" style="fill:#e1edf3">⇒ hashCode 必须相同</text>
+  <rect x="412" y="572" width="310" height="62" rx="14" fill="#24465e"/>
+  <text x="567" y="597" text-anchor="middle" class="label" style="fill:#f5d89f">hashCode 相同</text>
+  <text x="567" y="620" text-anchor="middle" class="body" style="fill:#e1edf3">⇏ equals 一定为 true</text>
+  <rect x="740" y="572" width="376" height="62" rx="14" fill="#24465e"/>
+  <text x="928" y="597" text-anchor="middle" class="label" style="fill:#bfdcf0">重写 equals 时</text>
+  <text x="928" y="620" text-anchor="middle" class="body" style="fill:#e1edf3">必须同步重写 hashCode，字段口径保持一致</text>
+</svg>

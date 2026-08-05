@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Java 线程状态与 interrupt、wait/notify、join 协作机制</title>
+  <desc id="desc">上半部分展示线程从新建到可运行、阻塞或等待再到终止的主要状态转换；下半部分对比 interrupt 的协作式取消、wait 与 notify 的条件等待，以及 join 等待目标线程结束三种协调方式及其锁语义。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fbfe"/><stop offset="1" stop-color="#eff6f4"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#527087"/></marker>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif;fill:#173149}.title{font-size:34px;font-weight:700}.sub{font-size:17px;fill:#62788b}
+      .head{font-size:20px;font-weight:700}.state{font-size:16px;font-weight:700}.body{font-size:15px;fill:#526a7d}.small{font-size:13px;fill:#6c8192}
+      .mono{font-family:"IBM Plex Mono","Cascadia Mono",monospace;font-size:14px}.note{font-size:14px;font-weight:700}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="62" class="title">线程协作的本质：用状态与协议等待，而不是靠忙等或强制停止</text>
+  <text x="58" y="96" class="sub">状态描述“线程在等什么”；interrupt、wait/notify、join 则分别解决取消、条件同步和生命周期依赖。</text>
+
+  <rect x="58" y="132" width="1084" height="286" rx="24" fill="#ffffff" stroke="#cad9e3"/>
+  <text x="86" y="170" class="head">主要状态转换</text>
+  <rect x="86" y="206" width="128" height="58" rx="15" fill="#edf5fb" stroke="#8aaec7"/>
+  <text x="150" y="241" text-anchor="middle" class="state">NEW</text>
+  <path d="M214 235H272" stroke="#527087" stroke-width="2.5" marker-end="url(#arrow)"/><text x="243" y="220" text-anchor="middle" class="small">start()</text>
+  <rect x="280" y="194" width="180" height="82" rx="17" fill="#eaf7f1" stroke="#76ad94"/>
+  <text x="370" y="229" text-anchor="middle" class="state">RUNNABLE</text><text x="370" y="253" text-anchor="middle" class="small">可运行 / 正在运行</text>
+  <path d="M460 220H530" stroke="#527087" stroke-width="2.5" marker-end="url(#arrow)"/><text x="495" y="205" text-anchor="middle" class="small">等待 monitor</text>
+  <rect x="538" y="190" width="170" height="62" rx="16" fill="#fff0ee" stroke="#d28c86"/>
+  <text x="623" y="227" text-anchor="middle" class="state">BLOCKED</text>
+  <path d="M623 252V292H442V276" fill="none" stroke="#2f8564" stroke-width="2.5" marker-end="url(#arrow)"/><text x="535" y="286" text-anchor="middle" class="small">获得 monitor</text>
+  <path d="M460 250H500V334H530" fill="none" stroke="#527087" stroke-width="2.5" marker-end="url(#arrow)"/><text x="500" y="316" text-anchor="middle" class="small">进入等待</text>
+  <rect x="538" y="300" width="226" height="68" rx="16" fill="#fff6e6" stroke="#d2a65c"/>
+  <text x="651" y="327" text-anchor="middle" class="state">WAITING</text><text x="651" y="351" text-anchor="middle" class="small">wait / join / park</text>
+  <path d="M538 352H478V266H460" fill="none" stroke="#2f8564" stroke-width="2.5" marker-end="url(#arrow)"/><text x="482" y="374" class="small">条件满足 / 中断</text>
+  <rect x="790" y="300" width="226" height="68" rx="16" fill="#fff6e6" stroke="#d2a65c"/>
+  <text x="903" y="327" text-anchor="middle" class="state">TIMED_WAITING</text><text x="903" y="351" text-anchor="middle" class="small">sleep / wait(timeout) / join(timeout)</text>
+  <path d="M460 258H500V282H820V221H842" fill="none" stroke="#527087" stroke-width="2.5" marker-end="url(#arrow)"/><text x="680" y="276" text-anchor="middle" class="small">run() 返回或未捕获异常</text>
+  <rect x="850" y="178" width="220" height="86" rx="18" fill="#eef2f5" stroke="#aab9c6"/>
+  <text x="960" y="216" text-anchor="middle" class="state">TERMINATED</text><text x="960" y="242" text-anchor="middle" class="small">不可再次 start</text>
+  <text x="86" y="394" class="small">注：RUNNABLE 同时包含操作系统层面的“就绪”和“运行”；等待状态会在条件、超时或中断后重新进入 RUNNABLE。</text>
+
+  <text x="58" y="464" class="head">三种常见协作协议</text>
+  <rect x="58" y="486" width="342" height="166" rx="20" fill="#ffffff" stroke="#cad9e3"/>
+  <circle cx="88" cy="520" r="15" fill="#6f9fbe"/><text x="88" y="525" text-anchor="middle" class="note" style="fill:#ffffff">1</text>
+  <text x="116" y="526" class="state">interrupt：请求协作式取消</text>
+  <text x="84" y="558" class="body">设置中断标记；阻塞方法通常抛出</text>
+  <text x="84" y="582" class="mono">InterruptedException</text>
+  <text x="84" y="612" class="small">捕获后应退出、清理，或重新设置中断标记；</text>
+  <text x="84" y="634" class="small">它不会安全地“杀死”线程。</text>
+
+  <rect x="429" y="486" width="342" height="166" rx="20" fill="#ffffff" stroke="#cad9e3"/>
+  <circle cx="459" cy="520" r="15" fill="#2f8564"/><text x="459" y="525" text-anchor="middle" class="note" style="fill:#ffffff">2</text>
+  <text x="487" y="526" class="state">wait / notify：等待条件变化</text>
+  <text x="455" y="558" class="body">必须持有同一 monitor；wait 会释放锁，</text>
+  <text x="455" y="582" class="body">被唤醒后需重新竞争锁，并在 while 中复检条件。</text>
+  <rect x="455" y="602" width="290" height="30" rx="10" fill="#eaf7f1"/>
+  <text x="600" y="622" text-anchor="middle" class="mono">while (!ready) lock.wait();</text>
+
+  <rect x="800" y="486" width="342" height="166" rx="20" fill="#ffffff" stroke="#cad9e3"/>
+  <circle cx="830" cy="520" r="15" fill="#b9782b"/><text x="830" y="525" text-anchor="middle" class="note" style="fill:#ffffff">3</text>
+  <text x="858" y="526" class="state">join：等待目标线程结束</text>
+  <text x="826" y="558" class="body">调用者进入等待，目标线程终止后继续；</text>
+  <text x="826" y="582" class="body">适合表达明确的生命周期依赖。</text>
+  <text x="826" y="612" class="small">生产代码通常配合超时与中断，避免无限等待。</text>
+  <text x="826" y="634" class="mono">worker.join(timeout)</text>
+</svg>

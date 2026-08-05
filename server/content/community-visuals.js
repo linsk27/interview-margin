@@ -54,6 +54,51 @@ const RULES = [
     },
   },
   {
+    bankId: 'java-foundations',
+    title: /契约为什么必须成对设计/,
+    visual: {
+      src: '/content/diagrams/java-foundations/object-contract-v1.svg',
+      alt: 'Java 引用相等、equals 语义相等与 hashCode 散列契约关系图',
+      caption: '先区分引用身份与业务相等，再确保相等对象产生相同散列值，集合才能稳定定位元素。',
+    },
+  },
+  {
+    bankId: 'java-foundations',
+    title: /Stream 为什么是惰性的/,
+    visual: {
+      src: '/content/diagrams/java-foundations/stream-pipeline-v1.svg',
+      alt: 'Java Stream 从数据源、中间操作到终止操作的惰性流水线图',
+      caption: '中间操作只描述流水线，终止操作才触发拉取与融合执行；流消费后不能再次复用。',
+    },
+  },
+  {
+    bankId: 'java-foundations',
+    title: /ByteBuffer 的 position/,
+    visual: {
+      src: '/content/diagrams/java-foundations/nio-buffer-state-v1.svg',
+      alt: 'ByteBuffer 的 capacity、position、limit 以及 flip clear compact 状态变化图',
+      caption: '读写切换本质是重设 position 与 limit；clear 不擦除数据，compact 才保留未读区间。',
+    },
+  },
+  {
+    bankId: 'java-foundations',
+    title: /wait 与 notify 为什么/,
+    visual: {
+      src: '/content/diagrams/java-foundations/thread-coordination-v1.svg',
+      alt: 'Java 线程在监视器等待、通知、中断与 join 协作中的状态流转图',
+      caption: '条件循环守住业务谓词，通知只让等待者重新竞争锁；中断与 join 都必须明确传播策略。',
+    },
+  },
+  {
+    bankId: 'java-foundations',
+    title: /Java 堆、Metaspace 与直接内存/,
+    visual: {
+      src: '/content/diagrams/java-foundations/jvm-memory-v1.svg',
+      alt: 'Java 进程中堆、Metaspace、直接内存和线程栈的边界与限制图',
+      caption: 'Xmx 只约束 Java 堆；容量规划还要给类元数据、直接缓冲区、线程栈和本地组件留出余量。',
+    },
+  },
+  {
     bankId: 'java-ai-applications',
     title: /RAG.*全链路|全链路.*RAG/,
     visual: {

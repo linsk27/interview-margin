@@ -31,16 +31,21 @@ try {
   const uniqueCount = db.prepare('SELECT COUNT(DISTINCT id) AS count FROM questions').get().count
   const newQuestionCount = db.prepare(`SELECT COUNT(*) AS count FROM questions
     WHERE bank_id NOT IN ('interview', 'javascript', '360-ai-frontend',
-      'frontend-ai-interviews', 'java-backend-interviews', 'java-ai-applications')`).get().count
+      'frontend-ai-interviews', 'java-foundations', 'java-backend-interviews', 'java-ai-applications')`).get().count
   const sourcedCount = db.prepare(`SELECT COUNT(DISTINCT q.id) AS count FROM questions q
     JOIN source_refs s ON s.question_id=q.id
     WHERE q.bank_id NOT IN ('interview','javascript','360-ai-frontend',
-      'frontend-ai-interviews','java-backend-interviews','java-ai-applications')`).get().count
+      'frontend-ai-interviews','java-foundations','java-backend-interviews','java-ai-applications')`).get().count
   const communityQuestionCount = db.prepare(`SELECT COUNT(*) AS count FROM questions
     WHERE bank_id IN ('frontend-ai-interviews','java-backend-interviews','java-ai-applications')`).get().count
   const communityDualSourcedCount = db.prepare(`SELECT COUNT(*) AS count FROM questions q
     WHERE q.bank_id IN ('frontend-ai-interviews','java-backend-interviews','java-ai-applications')
       AND EXISTS (SELECT 1 FROM source_refs s WHERE s.question_id=q.id AND s.source_kind='community-interview')
+      AND EXISTS (SELECT 1 FROM source_refs s WHERE s.question_id=q.id AND s.source_kind='official')`).get().count
+  const foundationQuestionCount = db.prepare(`SELECT COUNT(*) AS count FROM questions
+    WHERE bank_id='java-foundations'`).get().count
+  const foundationOfficialSourcedCount = db.prepare(`SELECT COUNT(*) AS count FROM questions q
+    WHERE q.bank_id='java-foundations'
       AND EXISTS (SELECT 1 FROM source_refs s WHERE s.question_id=q.id AND s.source_kind='official')`).get().count
   const ai360QuestionCount = db.prepare(`SELECT COUNT(*) AS count FROM questions
     WHERE bank_id='360-ai-frontend'`).get().count
@@ -57,9 +62,15 @@ try {
   const thinEnrichedQuestions = db.prepare(`SELECT q.id, q.title, length(q.body_md) AS body_length,
     (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) AS source_count
     FROM questions q WHERE q.bank_id NOT IN ('interview','360-ai-frontend',
-      'frontend-ai-interviews','java-backend-interviews','java-ai-applications') AND
+      'frontend-ai-interviews','java-foundations','java-backend-interviews','java-ai-applications') AND
     (length(q.body_md) < 900 OR q.read_minutes < 2 OR
       (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) < 2)`).all()
+  const thinFoundationQuestions = db.prepare(`SELECT q.id, q.title, length(q.body_md) AS body_length,
+    q.read_minutes,
+    (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) AS source_count
+    FROM questions q WHERE q.bank_id='java-foundations' AND
+    (length(q.body_md) < 780 OR q.read_minutes < 2 OR
+      (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id AND s.source_kind='official') < 1)`).all()
   const thinCommunityQuestions = db.prepare(`SELECT q.id, q.title, length(q.body_md) AS body_length,
     q.read_minutes,
     (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) AS source_count
@@ -119,6 +130,8 @@ try {
     generatedQuestionsWithSources: sourcedCount,
     communityInterviewQuestions: communityQuestionCount,
     communityQuestionsWithInterviewAndOfficialSources: communityDualSourcedCount,
+    javaFoundationQuestions: foundationQuestionCount,
+    javaFoundationQuestionsWithOfficialSources: foundationOfficialSourcedCount,
     ai360Questions: ai360QuestionCount,
     ai360QuestionsWithSources: ai360SourcedCount,
     incomplete,
@@ -126,6 +139,7 @@ try {
     missingRequiredMarkers: missingMarkers,
     thinEnrichedQuestions,
     thinCommunityQuestions,
+    thinFoundationQuestions,
     missing360RequiredMarkers: ai360MissingMarkers,
     thin360Questions: thinAi360Questions,
     genericTemplateCount,
@@ -135,11 +149,12 @@ try {
     similarTitleReport: similar.slice(0, 30),
   }
   console.log(JSON.stringify(report, null, 2))
-  if (bankCount !== 13 || questionCount !== 701 || uniqueCount !== 701 || newQuestionCount !== 320
+  if (bankCount !== 14 || questionCount !== 801 || uniqueCount !== 801 || newQuestionCount !== 320
     || sourcedCount !== 320 || ai360QuestionCount !== 72 || ai360SourcedCount !== 72
     || communityQuestionCount !== 128 || communityDualSourcedCount !== 128
+    || foundationQuestionCount !== 100 || foundationOfficialSourcedCount !== 100
     || incomplete.length || missingSections.length || missingMarkers.length
-    || thinEnrichedQuestions.length || thinCommunityQuestions.length
+    || thinEnrichedQuestions.length || thinCommunityQuestions.length || thinFoundationQuestions.length
     || ai360MissingMarkers.length || thinAi360Questions.length
     || genericTemplateCount || diagramQuestionCount < 29 || denseParagraphs.length) {
     process.exitCode = 1

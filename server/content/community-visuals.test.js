@@ -15,6 +15,14 @@ describe('community interview diagram mappings', () => {
   it('uses compact, accessible and script-free local SVG assets', () => {
     const entries = communityVisualEntries()
     expect(entries.length).toBeGreaterThanOrEqual(8)
+    expect(entries.filter(({ bankId }) => bankId === 'java-foundations').map(({ visual }) => visual.src))
+      .toEqual([
+        '/content/diagrams/java-foundations/object-contract-v1.svg',
+        '/content/diagrams/java-foundations/stream-pipeline-v1.svg',
+        '/content/diagrams/java-foundations/nio-buffer-state-v1.svg',
+        '/content/diagrams/java-foundations/thread-coordination-v1.svg',
+        '/content/diagrams/java-foundations/jvm-memory-v1.svg',
+      ])
     for (const { bankId, visual } of entries) {
       expect(bankId).toMatch(/^[a-z0-9-]+$/)
       expect(visual.alt.trim().length).toBeGreaterThan(12)
