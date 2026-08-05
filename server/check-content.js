@@ -72,14 +72,14 @@ try {
     q.read_minutes,
     (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) AS source_count
     FROM questions q WHERE q.bank_id='java-foundations' AND
-    (length(q.body_md) < 780 OR q.read_minutes < 2 OR
+    (length(q.body_md) < 620 OR q.read_minutes < 1 OR
       (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id AND s.source_kind='official') < 1)`).all()
   const thinCommunityQuestions = db.prepare(`SELECT q.id, q.title, length(q.body_md) AS body_length,
     q.read_minutes,
     (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) AS source_count
     FROM questions q WHERE q.bank_id IN
       ('frontend-ai-interviews','java-backend-interviews','java-ai-applications') AND
-    (length(q.body_md) < 780 OR q.read_minutes < 2 OR
+    (length(q.body_md) < 620 OR q.read_minutes < 1 OR
       (SELECT COUNT(*) FROM source_refs s WHERE s.question_id=q.id) < 2)`).all()
   const ai360MissingMarkers = db.prepare(`SELECT id, title FROM questions
     WHERE bank_id='360-ai-frontend' AND
@@ -153,11 +153,11 @@ try {
     similarTitleReport: similar.slice(0, 30),
   }
   console.log(JSON.stringify(report, null, 2))
-  if (bankCount !== 14 || questionCount !== 801 || uniqueCount !== 801 || newQuestionCount !== 320
+  if (bankCount !== 14 || questionCount !== 741 || uniqueCount !== 741 || newQuestionCount !== 320
     || sourcedCount !== 320 || ai360QuestionCount !== 72 || ai360SourcedCount !== 72
-    || communityQuestionCount !== 128 || communityDualSourcedCount !== 128
-    || foundationQuestionCount !== 100 || foundationOfficialSourcedCount !== 100
-    || javaCuratedGuideSourcedCount !== 188
+    || communityQuestionCount !== 118 || communityDualSourcedCount !== 118
+    || foundationQuestionCount !== 50 || foundationOfficialSourcedCount !== 50
+    || javaCuratedGuideSourcedCount !== 128
     || incomplete.length || missingSections.length || missingMarkers.length
     || thinEnrichedQuestions.length || thinCommunityQuestions.length || thinFoundationQuestions.length
     || ai360MissingMarkers.length || thinAi360Questions.length

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">HashMap put 与扩容流程</title>
+  <desc id="desc">展示 HashMap 写入时从哈希计算、桶定位、空桶写入、同键覆盖、冲突追加或树化，到达到阈值后扩容迁移的主流程。</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10233f" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#47739e"/>
+    </marker>
+    <style>
+      .bg{fill:#f7fafc}.card{fill:#fff;stroke:#b8c9d8;stroke-width:2}.accent{fill:#e7f2ff;stroke:#2674bd;stroke-width:2}.decision{fill:#fff8e7;stroke:#c58a23;stroke-width:2}.title{font:700 30px system-ui,"Noto Sans SC",sans-serif;fill:#12263a}.label{font:650 22px system-ui,"Noto Sans SC",sans-serif;fill:#17324d}.sub{font:400 17px system-ui,"Noto Sans SC",sans-serif;fill:#536779}.arrow{fill:none;stroke:#47739e;stroke-width:3;marker-end:url(#arrow)}.note{font:500 17px system-ui,"Noto Sans SC",sans-serif;fill:#8b5a12}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="720" rx="36"/>
+  <text class="title" x="72" y="76">HashMap.put：先定位，再处理冲突，最后判断扩容</text>
+
+  <g filter="url(#shadow)">
+    <rect class="accent" x="72" y="130" width="220" height="96" rx="18"/>
+    <text class="label" x="182" y="171" text-anchor="middle">① 计算 hash</text>
+    <text class="sub" x="182" y="202" text-anchor="middle">扰动高位与低位</text>
+
+    <rect class="card" x="354" y="130" width="220" height="96" rx="18"/>
+    <text class="label" x="464" y="171" text-anchor="middle">② 定位桶</text>
+    <text class="sub" x="464" y="202" text-anchor="middle">(n - 1) &amp; hash</text>
+
+    <path class="decision" d="M746 118L870 178L746 238L622 178Z"/>
+    <text class="label" x="746" y="173" text-anchor="middle">桶为空？</text>
+    <text class="sub" x="746" y="202" text-anchor="middle">先检查数组槽位</text>
+
+    <rect class="accent" x="930" y="130" width="198" height="96" rx="18"/>
+    <text class="label" x="1029" y="171" text-anchor="middle">直接写入</text>
+    <text class="sub" x="1029" y="202" text-anchor="middle">size + 1</text>
+  </g>
+
+  <path class="arrow" d="M292 178H342"/>
+  <path class="arrow" d="M574 178H612"/>
+  <path class="arrow" d="M870 178H920"/>
+  <text class="note" x="885" y="160">是</text>
+
+  <path class="arrow" d="M746 238V294"/>
+  <text class="note" x="766" y="270">否</text>
+
+  <g filter="url(#shadow)">
+    <path class="decision" d="M324 294L456 358L324 422L192 358Z"/>
+    <text class="label" x="324" y="353" text-anchor="middle">key 相同？</text>
+    <text class="sub" x="324" y="383" text-anchor="middle">hash + equals</text>
+
+    <rect class="accent" x="72" y="486" width="252" height="96" rx="18"/>
+    <text class="label" x="198" y="527" text-anchor="middle">覆盖旧 value</text>
+    <text class="sub" x="198" y="558" text-anchor="middle">size 不变</text>
+
+    <path class="decision" d="M650 294L790 358L650 422L510 358Z"/>
+    <text class="label" x="650" y="353" text-anchor="middle">树节点？</text>
+    <text class="sub" x="650" y="383" text-anchor="middle">否则遍历链表</text>
+
+    <rect class="card" x="470" y="486" width="360" height="96" rx="18"/>
+    <text class="label" x="650" y="527" text-anchor="middle">插入冲突节点</text>
+    <text class="sub" x="650" y="558" text-anchor="middle">链表过长且容量足够时树化</text>
+
+    <path class="decision" d="M1006 294L1134 358L1006 422L878 358Z"/>
+    <text class="label" x="1006" y="350" text-anchor="middle">size 超阈值？</text>
+    <text class="sub" x="1006" y="382" text-anchor="middle">capacity × loadFactor</text>
+
+    <rect class="accent" x="886" y="486" width="240" height="96" rx="18"/>
+    <text class="label" x="1006" y="527" text-anchor="middle">扩容并迁移</text>
+    <text class="sub" x="1006" y="558" text-anchor="middle">桶落在原位或 oldCap 偏移</text>
+  </g>
+
+  <path class="arrow" d="M622 358H466"/>
+  <path class="arrow" d="M324 422V476H198"/>
+  <text class="note" x="342" y="451">是</text>
+  <path class="arrow" d="M456 358H500"/>
+  <text class="note" x="474" y="340">否</text>
+  <path class="arrow" d="M650 422V476"/>
+  <path class="arrow" d="M830 534H876"/>
+  <path class="arrow" d="M1006 422V476"/>
+
+  <rect x="72" y="630" width="1056" height="1" fill="#c8d6e2"/>
+  <text class="sub" x="72" y="668">关键边界：HashMap 不保证并发写安全；树化同时受桶长度和数组容量约束。</text>
+</svg>

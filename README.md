@@ -2,10 +2,10 @@
 
 面向技术面试复习的多用户阅读工作台。现有 Markdown 内容保持不删减，运行时以本机 SQLite 为权威数据源；登录用户的进度、阅读位置、收藏、复习和批注可跨浏览器同步，访客保持只读。
 
-当前包含 14 个题库、801 道题：原有简历题 81 道、JavaScript 100 道，Git、Vue、React、
+当前包含 14 个题库、741 道题：原有简历题 81 道、JavaScript 100 道，Git、Vue、React、
 前端工程、后端、数据库缓存和网络部署共 320 道工程题，72 道 360 AI 应用前端一面专项题，
-以及 Java 基础 100 题、来自公开社区面经线索的前端 × AI 40 题、Java 后端 48 题和
-Java × AI 40 题。
+以及 Java 基础高频 50 题、来自公开社区面经线索的前端 × AI 40 题、Java 后端高频 48 题和
+Java × AI 应用高频 30 题。
 
 完整的架构、数据模型、API、部署方式、当前进度和跨电脑迁移步骤见
 [`docs/PROJECT_ARCHITECTURE_AND_HANDOFF.md`](docs/PROJECT_ARCHITECTURE_AND_HANDOFF.md)。
@@ -36,7 +36,7 @@ npm run build
 直接运行 `npm run content:export`。该快照不读取生产 SQLite，因此后台中仅存在于 SQLite 的
 编辑内容要先同步回题库源并重新部署，才会出现在 Vercel 备用站。
 
-当前内容基线为 14 个题库、801 题和 801 个唯一 ID；720 道结构化富题解均经过正文、
+当前内容基线为 14 个题库、741 题和 741 个唯一 ID；660 道结构化富题解均经过正文、
 段落标记和来源门禁；核心题包含站内 SVG 图解，正文会自动拆分过密段落；测试与生产构建
 全部通过。
 
@@ -61,7 +61,7 @@ JavaScript 与 7 个工程题库采用“原题清单 + 逐题 enrichment + 生�
 来源”阅读结构。修改源材料或逐题补充后运行 `npm run content:generate:360`，不要直接维护
 生成后的 `public/question-banks/360-ai-frontend.md`。
 
-三套社区真实面经题库及 Java 基础 100 题的数据源位于 `server/content/community-banks/`。
+三套社区真实面经题库及 Java 基础高频 50 题的数据源位于 `server/content/community-banks/`。
 社区页面只用于确认面试主题真实出现过，JavaGuide 与小林 Coding 用于筛选高频主题和安排
 复习顺序，题目与答案均重新撰写，并由官方文档独立校准。Java 后端、Java × AI 每题必须同时
 具备公开面经、高频题库参考和官方来源；Java 基础题不伪造社区出处，每题使用高频题库参考，
@@ -77,8 +77,8 @@ npm run db:check
 npm run build
 ```
 
-生成器会校验题号、标题、正文结构和来源，保持 801 个当前公开题目 ID 不变；已经发布后退休的
-内置题会保留原 ID 并安全归档，不会被替换成另一道题。生产启动只覆盖仍标记为
+生成器会校验题号、标题、正文结构和来源。非 Java 题目的 ID 保持稳定；2026-08-06 全量重建的
+三套 Java 题库使用独立 v2 ID，旧 Java 题会安全归档，不会把历史进度套到新题上。生产启动只覆盖仍标记为
 `seed` 的内置题；管理员已经编辑并转为 `editor` 来源的题目不会被自动正文覆盖。
 
 正式环境的应用、Cloudflare Tunnel 和备份任务均由 ECS 上的 systemd 管理；服务模板、

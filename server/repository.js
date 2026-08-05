@@ -107,7 +107,11 @@ export function listCatalog(db, { includeArchived = false, includePrivate = fals
 
 export function getStudyState(db, userId) {
   const progress = {}
-  for (const row of db.prepare('SELECT * FROM progress WHERE user_id = ?').all(userId)) {
+  for (const row of db.prepare(`
+    SELECT p.* FROM progress p
+    JOIN questions q ON q.id = p.question_id
+    WHERE p.user_id = ? AND q.archived_at IS NULL
+  `).all(userId)) {
     progress[row.question_id] = {
       status: row.status,
       favorite: Boolean(row.favorite),
@@ -120,7 +124,12 @@ export function getStudyState(db, userId) {
       spreadIndex: row.spread_index,
     }
   }
-  const annotations = db.prepare('SELECT * FROM annotations WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at')
+  const annotations = db.prepare(`
+    SELECT a.* FROM annotations a
+    JOIN questions q ON q.id = a.question_id
+    WHERE a.user_id = ? AND a.deleted_at IS NULL AND q.archived_at IS NULL
+    ORDER BY a.created_at
+  `)
     .all(userId).map((row) => ({
       id: row.id,
       questionId: row.question_id,
@@ -165,13 +174,23 @@ export function saveStudyState(db, userId, state) {
     ON CONFLICT(user_id, day) DO UPDATE SET amount=excluded.amount
   `)
   db.transaction(() => {
-    db.prepare('DELETE FROM progress WHERE user_id = ?').run(userId)
+    db.prepare(`
+      DELETE FROM progress
+      WHERE user_id = ? AND question_id IN (
+        SELECT id FROM questions WHERE archived_at IS NULL
+      )
+    `).run(userId)
     for (const [questionId, item] of Object.entries(state.progress)) {
       if (!validIds.has(questionId)) continue
       upsertProgress.run(userId, questionId, item.status, Number(item.favorite), item.note, item.readCount,
         item.seconds, item.lastOpenedAt ?? null, item.dueAt ?? null, item.scrollTop ?? 0, item.spreadIndex ?? 0, now)
     }
-    db.prepare('UPDATE annotations SET deleted_at = ? WHERE user_id = ? AND deleted_at IS NULL').run(now, userId)
+    db.prepare(`
+      UPDATE annotations SET deleted_at = ?
+      WHERE user_id = ? AND deleted_at IS NULL AND question_id IN (
+        SELECT id FROM questions WHERE archived_at IS NULL
+      )
+    `).run(now, userId)
     for (const item of state.annotations) {
       if (!validIds.has(item.questionId)) continue
       upsertAnnotation.run(item.id, userId, item.questionId, item.quote, item.note, item.color, item.createdAt, item.updatedAt)

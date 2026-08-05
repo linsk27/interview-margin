@@ -18,8 +18,8 @@ describe('community interview diagram mappings', () => {
     expect(entries.filter(({ bankId }) => bankId === 'java-foundations').map(({ visual }) => visual.src))
       .toEqual([
         '/content/diagrams/java-foundations/object-contract-v1.svg',
-        '/content/diagrams/java-foundations/stream-pipeline-v1.svg',
-        '/content/diagrams/java-foundations/nio-buffer-state-v1.svg',
+        '/content/diagrams/java-foundations/hashmap-put-resize-v2.svg',
+        '/content/diagrams/java-backend/thread-pool-admission-v1.svg',
         '/content/diagrams/java-foundations/thread-coordination-v1.svg',
         '/content/diagrams/java-foundations/jvm-memory-v1.svg',
       ])

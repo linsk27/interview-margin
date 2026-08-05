@@ -9,15 +9,25 @@ import { denseProseBlocks } from './content/readability.js'
 
 const COMMUNITY_BANK_COUNTS = {
   'frontend-ai-interviews': 40,
-  'java-foundations': 100,
+  'java-foundations': 50,
   'java-backend-interviews': 48,
-  'java-ai-applications': 40,
+  'java-ai-applications': 30,
 }
 
 const COMMUNITY_BANK_IDS = Object.keys(COMMUNITY_BANK_COUNTS)
 const JAVA_CURATED_GUIDE_BANK_IDS = new Set(['java-foundations', 'java-backend-interviews', 'java-ai-applications'])
 const INTERVIEW_SOURCE_BANK_IDS = new Set(['frontend-ai-interviews', 'java-backend-interviews', 'java-ai-applications'])
 const NON_TECHNICAL_TITLE = /(?:自我介绍|职业规划|为什么选择(?:我们|公司|岗位)|期望薪资|有什么要问|反问|能否实习|是否接受加班|手里.*offer)/i
+const COLD_JAVA_MAIN_TITLE = /(?:NMT|pmap|Shenandoah|ZGC.*(?:染色|指针)|JIT.*阈值|32\s*位寻址|超大文件分发|冷缓存发布|Nacos.*心跳细节)/i
+const DIRECT_QUESTION_TITLE = /(?:什么|哪些|怎样|怎么|为什么|如何|区别|关系|作用|是否|应该|能保证|经历)/
+
+function stableUuid(value) {
+  const bytes = Buffer.from(crypto.createHash('sha256').update(value).digest().subarray(0, 16))
+  bytes[6] = (bytes[6] & 0x0f) | 0x50
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = bytes.toString('hex')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
 
 function normalizedTitle(value) {
   return value
@@ -31,10 +41,10 @@ describe('question catalog seed quality', () => {
   beforeEach(() => { db = createDatabase({ filename: ':memory:', bootstrap: false }).db })
   afterEach(() => db.close())
 
-  it('contains fourteen banks and 801 unique questions', () => {
+  it('contains fourteen banks and 741 unique active questions', () => {
     expect(db.prepare('SELECT COUNT(*) count FROM question_banks').get().count).toBe(14)
-    expect(db.prepare('SELECT COUNT(*) count FROM questions').get().count).toBe(801)
-    expect(db.prepare('SELECT COUNT(DISTINCT id) count FROM questions').get().count).toBe(801)
+    expect(db.prepare('SELECT COUNT(*) count FROM questions WHERE archived_at IS NULL').get().count).toBe(741)
+    expect(db.prepare('SELECT COUNT(DISTINCT id) count FROM questions').get().count).toBe(741)
     expect(db.prepare("SELECT COUNT(*) count FROM questions WHERE id IN ('q-1','js-q-100')").get().count).toBe(2)
     const ids = db.prepare(`
       SELECT id FROM questions
@@ -47,28 +57,65 @@ describe('question catalog seed quality', () => {
       .toBeGreaterThanOrEqual(24)
   })
 
-  it('locks the Java foundation identity map and all five teaching diagrams', () => {
+  it('locks the Java foundation v2 identity map and its teaching diagrams', () => {
     const questions = db.prepare(`
       SELECT id, display_number, title, body_md
       FROM questions WHERE bank_id='java-foundations' ORDER BY sort_order
     `).all()
-    expect(questions).toHaveLength(100)
+    expect(questions).toHaveLength(50)
     const identityMap = questions
       .map((question) => [question.id, question.display_number, question.title].join('|'))
       .join('\n')
     expect(crypto.createHash('sha256').update(identityMap).digest('hex'))
-      .toBe('01e4cacc4a544da5c75c7697d1faf155672011b923f50bccf1638e5281db294a')
+      .toBe('b7f4862e5b7a6038645fc977272658795644b4a01deb54e48e6846f325c94613')
 
     const diagrams = questions.flatMap((question) => (
-      question.body_md.match(/\/content\/diagrams\/java-foundations\/[a-z0-9-]+\.svg/g) ?? []
+      question.body_md.match(/\/content\/diagrams\/[a-z0-9-]+\/[a-z0-9-]+\.svg/g) ?? []
     ))
     expect(diagrams).toEqual([
       '/content/diagrams/java-foundations/object-contract-v1.svg',
-      '/content/diagrams/java-foundations/stream-pipeline-v1.svg',
-      '/content/diagrams/java-foundations/nio-buffer-state-v1.svg',
+      '/content/diagrams/java-foundations/hashmap-put-resize-v2.svg',
       '/content/diagrams/java-foundations/thread-coordination-v1.svg',
+      '/content/diagrams/java-backend/thread-pool-admission-v1.svg',
       '/content/diagrams/java-foundations/jvm-memory-v1.svg',
     ])
+  })
+
+  it('uses fresh v2 ids for every rebuilt Java question', () => {
+    const banks = [
+      ['java-foundations', 'java-foundations-v2', 50, 'java-foundations', 100],
+      ['java-backend-interviews', 'java-backend-v2', 48, 'java-backend-interviews', 48],
+      ['java-ai-applications', 'java-ai-applications-v2', 30, 'java-ai-applications', 40],
+    ]
+
+    for (const [bankId, v2Prefix, count, oldPrefix, oldCount] of banks) {
+      const actual = db.prepare(`
+        SELECT id FROM questions
+        WHERE bank_id = ? AND archived_at IS NULL
+        ORDER BY sort_order
+      `).all(bankId).map((row) => row.id)
+      const expected = Array.from({ length: count }, (_, index) => stableUuid(`${v2Prefix}:${index + 1}`))
+      const retired = new Set(Array.from(
+        { length: oldCount },
+        (_, index) => stableUuid(`${oldPrefix}:${index + 1}`),
+      ))
+
+      expect(actual, bankId).toEqual(expected)
+      expect(actual.filter((id) => retired.has(id)), bankId).toEqual([])
+    }
+  })
+
+  it('keeps rebuilt Java banks concept-first and free of retired cold topics', () => {
+    const questions = db.prepare(`
+      SELECT title FROM questions
+      WHERE bank_id IN ('java-foundations', 'java-backend-interviews', 'java-ai-applications')
+        AND archived_at IS NULL
+    `).all()
+    const directQuestions = questions.filter((question) => DIRECT_QUESTION_TITLE.test(question.title))
+
+    expect(questions).toHaveLength(128)
+    expect(questions.filter((question) => COLD_JAVA_MAIN_TITLE.test(question.title))).toEqual([])
+    expect(directQuestions.length / questions.length).toBeGreaterThanOrEqual(0.85)
   })
 
   it('keeps every community interview bank technical, substantial and independently sourced', () => {
@@ -85,8 +132,9 @@ describe('question catalog seed quality', () => {
         expect(question.body_md).toContain('**递进追问：**')
         expect(question.body_md).toContain('**易错点：**')
         expect(question.body_md).toContain('**参考来源：**')
-        expect(question.body_md.length).toBeGreaterThanOrEqual(780)
-        expect(question.read_minutes).toBeGreaterThanOrEqual(2)
+        expect(question.body_md.length).toBeGreaterThanOrEqual(620)
+        expect(question.body_md.length).toBeLessThanOrEqual(2_600)
+        expect(question.read_minutes).toBeGreaterThanOrEqual(1)
 
         const kinds = db.prepare(
           'SELECT DISTINCT source_kind FROM source_refs WHERE question_id = ?',

@@ -55,7 +55,7 @@ const RULES = [
   },
   {
     bankId: 'java-foundations',
-    title: /契约为什么必须成对设计/,
+    title: /(?:双等号|==).*equals.*hashCode/,
     visual: {
       src: '/content/diagrams/java-foundations/object-contract-v1.svg',
       alt: 'Java 引用相等、equals 语义相等与 hashCode 散列契约关系图',
@@ -64,25 +64,25 @@ const RULES = [
   },
   {
     bankId: 'java-foundations',
-    title: /Stream 为什么是惰性的/,
+    title: /HashMap 的 put 和 get 流程/,
     visual: {
-      src: '/content/diagrams/java-foundations/stream-pipeline-v1.svg',
-      alt: 'Java Stream 从数据源、中间操作到终止操作的惰性流水线图',
-      caption: '中间操作只描述流水线，终止操作才触发拉取与融合执行；流消费后不能再次复用。',
+      src: '/content/diagrams/java-foundations/hashmap-put-resize-v2.svg',
+      alt: 'HashMap 从计算哈希、定位桶到链表树化和扩容的处理流程图',
+      caption: '先用扰动后的哈希定位桶，再区分空桶、同键更新与冲突插入；达到阈值后统一扩容迁移。',
     },
   },
   {
     bankId: 'java-foundations',
-    title: /ByteBuffer 的 position/,
+    title: /ThreadPoolExecutor 的核心参数和执行流程/,
     visual: {
-      src: '/content/diagrams/java-foundations/nio-buffer-state-v1.svg',
-      alt: 'ByteBuffer 的 capacity、position、limit 以及 flip clear compact 状态变化图',
-      caption: '读写切换本质是重设 position 与 limit；clear 不擦除数据，compact 才保留未读区间。',
+      src: '/content/diagrams/java-backend/thread-pool-admission-v1.svg',
+      alt: 'ThreadPoolExecutor 从核心线程、工作队列到拒绝策略的任务接纳流程图',
+      caption: '先补核心线程、再尝试入队，队满后扩到最大线程；仍无法接纳时执行明确的拒绝策略。',
     },
   },
   {
     bankId: 'java-foundations',
-    title: /wait 与 notify 为什么/,
+    title: /wait、sleep 和 join/,
     visual: {
       src: '/content/diagrams/java-foundations/thread-coordination-v1.svg',
       alt: 'Java 线程在监视器等待、通知、中断与 join 协作中的状态流转图',
@@ -91,7 +91,7 @@ const RULES = [
   },
   {
     bankId: 'java-foundations',
-    title: /Java 堆、Metaspace 与直接内存/,
+    title: /JVM 运行时数据区/,
     visual: {
       src: '/content/diagrams/java-foundations/jvm-memory-v1.svg',
       alt: 'Java 进程中堆、Metaspace、直接内存和线程栈的边界与限制图',
@@ -100,7 +100,7 @@ const RULES = [
   },
   {
     bankId: 'java-ai-applications',
-    title: /RAG.*全链路|全链路.*RAG/,
+    title: /什么是 RAG|RAG.*(?:完整流程|质量)/,
     visual: {
       src: '/content/diagrams/360-ai-frontend/rag-pipeline-v1.svg',
       alt: 'Java RAG 应用从知识摄取到检索、生成和引用校验的全链路图',
@@ -109,7 +109,7 @@ const RULES = [
   },
   {
     bankId: 'java-ai-applications',
-    title: /ReAct 循环/,
+    title: /ReAct/,
     visual: {
       src: '/content/diagrams/java-ai/agent-execution-guardrails-v1.svg',
       alt: 'Agent 规划、工具执行、结果观察与安全终止的受控循环图',

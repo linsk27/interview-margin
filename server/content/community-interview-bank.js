@@ -208,7 +208,7 @@ function renderQuestion(bank, question, number, verifiedAt) {
 
 export function generateCommunityInterviewBanks(banks, {
   outputRoot = projectRoot,
-  verifiedAt = '2026-08-05',
+  verifiedAt = '2026-08-06',
 } = {}) {
   const seenBankIds = new Set()
   const seenTitles = new Map()
@@ -274,7 +274,7 @@ function platformForUrl(value) {
   return hostname
 }
 
-export function renderCommunitySourceAudit(banks, { verifiedAt = '2026-08-05' } = {}) {
+export function renderCommunitySourceAudit(banks, { verifiedAt = '2026-08-06' } = {}) {
   const sources = uniqueCommunitySources(banks)
   const curatedGuides = uniqueSourcesByKind(banks, 'curated-guide')
   const lines = [

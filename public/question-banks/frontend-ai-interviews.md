@@ -39,7 +39,7 @@
 - [技术校准：MDN：使用 Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 - [技术校准：MDN：WebSocket API](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q2：Fetch 流式响应如何正确分帧、解码并处理中断？
 
@@ -77,7 +77,7 @@ response.body 是字节流，一个 UTF-8 字符或一条 data 事件可能跨�
 - [技术校准：MDN：TextDecoderStream](https://developer.mozilla.org/en-US/docs/Web/API/TextDecoderStream)
 - [技术校准：MDN：AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q3：用户查看历史消息时，新消息如何滚动而不抢位置？
 
@@ -114,7 +114,7 @@ response.body 是字节流，一个 UTF-8 字符或一条 data 事件可能跨�
 - [技术校准：MDN：Element.scrollIntoView()](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView)
 - [技术校准：React：useTransition](https://react.dev/reference/react/useTransition)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q4：流式 Markdown 未闭合时如何稳定渲染代码块？
 
@@ -152,7 +152,7 @@ const x = 时，界面把已闭合的上一段正常渲染，尾段以“生成�
 - [技术校准：CommonMark：规范与测试用例](https://github.com/commonmark/commonmark-spec)
 - [技术校准：OWASP：Cross Site Scripting Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q5：超长会话如何控制 DOM、内存与更新频率？
 
@@ -189,7 +189,7 @@ const x = 时，界面把已闭合的上一段正常渲染，尾段以“生成�
 - [技术校准：React：useTransition](https://react.dev/reference/react/useTransition)
 - [技术校准：MDN：URL.revokeObjectURL()](https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL_static)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 # 生成式 UI 与前端隔离
 
@@ -228,7 +228,7 @@ const x = 时，界面把已闭合的上一段正常渲染，尾段以“生成�
 - [技术校准：Apache ECharts：配置项手册](https://echarts.apache.org/en/option.html)
 - [技术校准：OpenAI Agents SDK：Guardrails](https://openai.github.io/openai-agents-js/guides/guardrails/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q7：长任务的计划、工具调用与错误怎样在 UI 中可解释？
 
@@ -265,7 +265,7 @@ const x = 时，界面把已闭合的上一段正常渲染，尾段以“生成�
 - [技术校准：LangGraph：Persistence](https://docs.langchain.com/oss/javascript/langgraph/persistence)
 - [技术校准：OpenAI Agents SDK：Human in the loop](https://openai.github.io/openai-agents-js/guides/human-in-the-loop/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q8：图片 Base64 与 Blob 预览下载如何管理内存和权限？
 
@@ -302,7 +302,7 @@ Base64 会增加体积并复制到 JSON、日志和 React 状态，长对话里�
 - [技术校准：MDN：Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob)
 - [技术校准：MDN：URL.revokeObjectURL()](https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL_static)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q9：高频解析或代码高亮何时迁入 Web Worker？
 
@@ -339,7 +339,7 @@ Base64 会增加体积并复制到 JSON、日志和 React 状态，长对话里�
 - [技术校准：MDN：Using Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers)
 - [技术校准：React：useTransition](https://react.dev/reference/react/useTransition)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q10：AI 预览为何使用 iframe 沙箱，postMessage 如何设边界？
 
@@ -376,7 +376,7 @@ DataAgent 生成一个可交互报表，预览部署在 preview.example.net，�
 - [技术校准：MDN：iframe 元素与 sandbox](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe)
 - [技术校准：MDN：Window.postMessage()](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 # RAG 检索链路与查询优化
 
@@ -416,7 +416,7 @@ DataAgent 生成一个可交互报表，预览部署在 preview.example.net，�
 - [真实面经线索（题目已改写）：牛客：字节跳动前端 RAG 二面复盘](https://www.nowcoder.com/feed/main/detail/8dbac3fee13b4c81a112d7a93398f350)
 - [技术校准：OpenAI：Retrieval 指南](https://platform.openai.com/docs/guides/retrieval)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q12：固定、语义、重叠与父子分块如何用数据选择？
 
@@ -452,7 +452,7 @@ API 文档以“端点—参数—示例”作父块，参数段作子块；用�
 - [真实面经线索（题目已改写）：牛客：快手 AI Agent 面试复盘](https://www.nowcoder.com/feed/main/detail/7ce89f19368b46da853c718f2ae2f53c)
 - [技术校准：OpenAI：Retrieval 指南](https://platform.openai.com/docs/guides/retrieval)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q13：BM25 与向量召回怎样融合，权重为什么不能拍脑袋？
 
@@ -488,7 +488,7 @@ BM25 擅长精确术语、编号与罕见词，向量检索擅长同义表达；
 - [真实面经线索（题目已改写）：牛客：字节跳动前端 RAG 二面复盘](https://www.nowcoder.com/feed/main/detail/8dbac3fee13b4c81a112d7a93398f350)
 - [技术校准：Elastic：Hybrid search](https://www.elastic.co/docs/solutions/search/hybrid-search)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q14：粗召回与 Rerank 如何分工，TopK 怎样确定？
 
@@ -524,7 +524,7 @@ BM25 擅长精确术语、编号与罕见词，向量检索擅长同义表达；
 - [真实面经线索（题目已改写）：牛客：字节跳动前端 RAG 二面复盘](https://www.nowcoder.com/feed/main/detail/8dbac3fee13b4c81a112d7a93398f350)
 - [技术校准：Elastic：Ranking and reranking](https://www.elastic.co/docs/solutions/search/ranking)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q15：口语化 Query 召回失败时如何改写而不改变意图？
 
@@ -560,7 +560,7 @@ Query 改写要补全省略、同义词和上下文实体，但必须保留原�
 - [真实面经线索（题目已改写）：牛客：小红书 AI 全栈面试复盘](https://www.nowcoder.com/feed/main/detail/ab913bd0d7c2434e895f4dfc54e96627)
 - [技术校准：Microsoft Learn：Semantic query rewrite](https://learn.microsoft.com/en-us/azure/search/semantic-how-to-query-rewrite)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 # RAG 数据、评估与治理
 
@@ -598,7 +598,7 @@ MySQL 保存文档元数据、租户、权限、版本、处理状态和可审�
 - [真实面经线索（题目已改写）：牛客：字节跳动前端 RAG 二面复盘](https://www.nowcoder.com/feed/main/detail/8dbac3fee13b4c81a112d7a93398f350)
 - [技术校准：Milvus：Schema explained](https://milvus.io/docs/schema-hands-on.md)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q17：Embedding 模型和维度如何完成选型与无损迁移？
 
@@ -635,7 +635,7 @@ MySQL 保存文档元数据、租户、权限、版本、处理状态和可审�
 - [技术校准：OpenAI：Embeddings 指南](https://platform.openai.com/docs/guides/embeddings)
 - [技术校准：Milvus：Schema explained](https://milvus.io/docs/schema-hands-on.md)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q18：召回率提升但精准率下降时如何定位和修复？
 
@@ -672,7 +672,7 @@ MySQL 保存文档元数据、租户、权限、版本、处理状态和可审�
 - [技术校准：Elastic：Ranking and reranking](https://www.elastic.co/docs/solutions/search/ranking)
 - [技术校准：OpenAI：Evals 指南](https://platform.openai.com/docs/guides/evals)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q19：RAG 上下文过长、过短或被无关片段污染怎么办？
 
@@ -708,7 +708,7 @@ MySQL 保存文档元数据、租户、权限、版本、处理状态和可审�
 - [真实面经线索（题目已改写）：牛客：快手 AI Agent 面试复盘](https://www.nowcoder.com/feed/main/detail/7ce89f19368b46da853c718f2ae2f53c)
 - [技术校准：OpenAI：Retrieval 指南](https://platform.openai.com/docs/guides/retrieval)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q20：RAG 如何同时落实权限过滤、来源引用和增量更新？
 
@@ -747,7 +747,7 @@ MySQL 保存文档元数据、租户、权限、版本、处理状态和可审�
 - [技术校准：OpenAI：File Search 与文件引用](https://platform.openai.com/docs/guides/tools-file-search)
 - [技术校准：Elastic：Index aliases](https://www.elastic.co/docs/manage-data/data-store/aliases)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 # Agent、MCP、Skill 与 Workflow
 
@@ -786,7 +786,7 @@ LLM 负责生成或判断，Workflow 用预定义路径保证可控，Agent 让�
 - [技术校准：LangGraph：Workflows and agents](https://docs.langchain.com/oss/javascript/langgraph/workflows-agents)
 - [技术校准：OpenAI Agents SDK：Agents](https://openai.github.io/openai-agents-js/guides/agents/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q22：传统 API、Function Calling 与 MCP 有何不同？
 
@@ -825,7 +825,7 @@ API 是服务能力的通信契约，Function Calling 是模型产出结构化�
 - [技术校准：Model Context Protocol：Architecture](https://modelcontextprotocol.io/docs/learn/architecture)
 - [技术校准：OpenAI：Function Calling 指南](https://platform.openai.com/docs/guides/function-calling)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q23：Skill 与 MCP 如何配合，为什么不能互相替代？
 
@@ -862,7 +862,7 @@ Skill 通常由说明、示例、脚本和检查清单组成，帮助 Agent 在�
 - [技术校准：Model Context Protocol：Architecture](https://modelcontextprotocol.io/docs/learn/architecture)
 - [技术校准：OpenAI Agents SDK：Agents](https://openai.github.io/openai-agents-js/guides/agents/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q24：什么时候拆 Sub-Agent，隔离机制要覆盖哪些层？
 
@@ -899,7 +899,7 @@ Skill 通常由说明、示例、脚本和检查清单组成，帮助 Agent 在�
 - [技术校准：OpenAI Agents SDK：Handoffs](https://openai.github.io/openai-agents-js/guides/handoffs/)
 - [技术校准：OpenAI Agents SDK：Agents](https://openai.github.io/openai-agents-js/guides/agents/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q25：工具链执行到一半失败，Agent 如何重试、回滚和交给人？
 
@@ -936,7 +936,7 @@ Agent 创建工单成功、发送通知超时。恢复时先按幂等键查询�
 - [技术校准：LangGraph：Persistence](https://docs.langchain.com/oss/javascript/langgraph/persistence)
 - [技术校准：Microsoft Azure Architecture：Retry storm antipattern](https://learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 # Context、Memory 与模型网关
 
@@ -974,7 +974,7 @@ Agent 创建工单成功、发送通知超时。恢复时先按幂等键查询�
 - [真实面经线索（题目已改写）：牛客：第四范式 Agent 实习面试复盘](https://www.nowcoder.com/feed/main/detail/77a81a03b55143c89d1caf76833676d9)
 - [技术校准：LangGraph：Add and manage memory](https://docs.langchain.com/oss/javascript/langgraph/add-memory)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q27：上下文何时压缩，如何证明没有丢失关键约束？
 
@@ -1011,7 +1011,7 @@ Agent 创建工单成功、发送通知超时。恢复时先按幂等键查询�
 - [技术校准：LangGraph：Add and manage memory](https://docs.langchain.com/oss/javascript/langgraph/add-memory)
 - [技术校准：OpenAI：Evals 指南](https://platform.openai.com/docs/guides/evals)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q28：如何防止旧记忆和工具日志污染后续决策？
 
@@ -1048,7 +1048,7 @@ Agent 创建工单成功、发送通知超时。恢复时先按幂等键查询�
 - [技术校准：LangGraph：Add and manage memory](https://docs.langchain.com/oss/javascript/langgraph/add-memory)
 - [技术校准：OWASP：LLM Prompt Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q29：多模型如何按照质量、时延和成本动态路由？
 
@@ -1085,7 +1085,7 @@ Agent 创建工单成功、发送通知超时。恢复时先按幂等键查询�
 - [技术校准：OpenAI：Evals 指南](https://platform.openai.com/docs/guides/evals)
 - [技术校准：OpenTelemetry：Generative AI attributes](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q30：模型超时、限流或卡死时怎样熔断与故障转移？
 
@@ -1122,7 +1122,7 @@ Agent 创建工单成功、发送通知超时。恢复时先按幂等键查询�
 - [技术校准：Microsoft Azure Architecture：Circuit Breaker](https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker)
 - [技术校准：Microsoft Azure Architecture：Retry storm antipattern](https://learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 # 安全、权限与可靠性
 
@@ -1162,7 +1162,7 @@ Prompt Injection 的输入可以来自用户、检索文档或工具结果，目
 - [技术校准：OWASP：Cross Site Scripting Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
 - [技术校准：OWASP：Cross-Site Request Forgery Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q32：AI 生成的 Markdown、HTML 与链接如何安全渲染？
 
@@ -1199,7 +1199,7 @@ Markdown parser 配置禁用 raw HTML，或在生成 HTML 后使用成熟 saniti
 - [技术校准：OWASP：Cross Site Scripting Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
 - [技术校准：CommonMark：规范与测试用例](https://github.com/commonmark/commonmark-spec)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q33：工具调用如何落实最小权限、Allowlist、确认与审计？
 
@@ -1236,7 +1236,7 @@ Agent 要发送邮件时只能提交 recipientId、templateId 与参数，执行
 - [技术校准：OWASP：MCP Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/MCP_Security_Cheat_Sheet.html)
 - [技术校准：OpenAI Agents SDK：Human in the loop](https://openai.github.io/openai-agents-js/guides/human-in-the-loop/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q34：Text-to-SQL 如何限制只读、表范围、租户与执行成本？
 
@@ -1273,7 +1273,7 @@ Agent 要发送邮件时只能提交 recipientId、templateId 与参数，执行
 - [技术校准：PostgreSQL：SET TRANSACTION](https://www.postgresql.org/docs/current/sql-set-transaction.html)
 - [技术校准：PostgreSQL：Row security policies](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q35：流式请求如何实现幂等重试、背压与并发控制？
 
@@ -1313,7 +1313,7 @@ Agent 要发送邮件时只能提交 recipientId、templateId 与参数，执行
 - [技术校准：IETF HTTPAPI：Idempotency-Key Header 草案](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header-07)
 - [技术校准：OpenAI：Rate limits](https://platform.openai.com/docs/guides/rate-limits)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 # 评估、产品价值与 AI Coding
 
@@ -1352,7 +1352,7 @@ Agent 要发送邮件时只能提交 recipientId、templateId 与参数，执行
 - [技术校准：OpenAI：Evals 指南](https://platform.openai.com/docs/guides/evals)
 - [技术校准：OpenTelemetry：Generative AI attributes](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q37：AI Coding 如何形成计划、实现、测试和 Review 闭环？
 
@@ -1389,7 +1389,7 @@ Agent 要发送邮件时只能提交 recipientId、templateId 与参数，执行
 - [技术校准：OpenAI：Evals 指南](https://platform.openai.com/docs/guides/evals)
 - [技术校准：OpenAI Agents SDK：Guardrails](https://openai.github.io/openai-agents-js/guides/guardrails/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q38：哪些开发环节必须人工介入，何时停止让 AI 继续 Patch？
 
@@ -1426,7 +1426,7 @@ AI 为解决登录失败先改 Cookie，再改 CORS，第三次准备关闭 CSRF
 - [技术校准：OpenAI Agents SDK：Human in the loop](https://openai.github.io/openai-agents-js/guides/human-in-the-loop/)
 - [技术校准：OpenAI Agents SDK：Guardrails](https://openai.github.io/openai-agents-js/guides/guardrails/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q39：AI 应用应监控哪些端到端质量、时延与成本指标？
 
@@ -1463,7 +1463,7 @@ AI 为解决登录失败先改 Cookie，再改 CORS，第三次准备关闭 CSRF
 - [技术校准：OpenTelemetry：Generative AI attributes](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
 - [技术校准：OWASP：Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
 
-校验日期：2026-08-05
+校验日期：2026-08-06
 
 ## Q40：如何用离线评测集、线上 A/B 与失败样本驱动迭代？
 
@@ -1500,4 +1500,4 @@ RAG 改分块前先跑 600 条证据标注集，Recall@20 提升但引用正确�
 - [技术校准：OpenAI：Evals 指南](https://platform.openai.com/docs/guides/evals)
 - [技术校准：OpenTelemetry：Generative AI attributes](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
 
-校验日期：2026-08-05
+校验日期：2026-08-06

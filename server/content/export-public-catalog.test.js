@@ -40,8 +40,8 @@ describe('public catalog exporter', () => {
     const questions = catalog.sections.flatMap((section) => section.questions)
 
     expect(catalog.banks).toHaveLength(14)
-    expect(questions).toHaveLength(801)
-    expect(new Set(questions.map((question) => question.id)).size).toBe(801)
+    expect(questions).toHaveLength(741)
+    expect(new Set(questions.map((question) => question.id)).size).toBe(741)
     expect(catalog.banks.map((bank) => bank.id)).toEqual([
       'interview', 'javascript', 'git-engineering', 'vue-core', 'react-core',
       'frontend-engineering', 'backend-fullstack', 'database-cache', 'network-deployment',
@@ -68,8 +68,8 @@ describe('public catalog exporter', () => {
     const firstResult = exportPublicCatalog({ outputPath: first })
     const secondResult = exportPublicCatalog({ outputPath: second })
 
-    expect(firstResult).toMatchObject({ banks: 14, questions: 801, outputPath: first })
-    expect(secondResult).toMatchObject({ banks: 14, questions: 801, outputPath: second })
+    expect(firstResult).toMatchObject({ banks: 14, questions: 741, outputPath: first })
+    expect(secondResult).toMatchObject({ banks: 14, questions: 741, outputPath: second })
     expect(fs.readFileSync(first, 'utf8')).toBe(fs.readFileSync(second, 'utf8'))
     expect(JSON.parse(fs.readFileSync(first, 'utf8'))).toEqual(buildPublicCatalog())
   }, 60_000)
