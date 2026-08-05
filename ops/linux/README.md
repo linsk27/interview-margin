@@ -125,6 +125,10 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now cloudflared-interview-margin.service
 ```
 
+The unit pins the tunnel transport to HTTP/2 over TCP. This avoids the
+simultaneous QUIC idle timeouts observed on the ECS outbound UDP path while
+retaining all four Cloudflare high-availability connections.
+
 Cloudflare Universal SSL provides and renews the public certificate for the
 proxied hostname. The tunnel connects outbound from the ECS, so the application
 and port 4173 remain private.
