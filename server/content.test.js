@@ -4,6 +4,7 @@ import crypto from 'node:crypto'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createDatabase } from './database.js'
+import { COMMUNITY_INTERVIEW_BANKS } from './content/community-banks/index.js'
 import { denseProseBlocks } from './content/readability.js'
 
 const COMMUNITY_BANK_COUNTS = {
@@ -14,7 +15,8 @@ const COMMUNITY_BANK_COUNTS = {
 }
 
 const COMMUNITY_BANK_IDS = Object.keys(COMMUNITY_BANK_COUNTS)
-const OFFICIAL_ONLY_BANK_IDS = new Set(['java-foundations'])
+const JAVA_CURATED_GUIDE_BANK_IDS = new Set(['java-foundations', 'java-backend-interviews', 'java-ai-applications'])
+const INTERVIEW_SOURCE_BANK_IDS = new Set(['frontend-ai-interviews', 'java-backend-interviews', 'java-ai-applications'])
 const NON_TECHNICAL_TITLE = /(?:自我介绍|职业规划|为什么选择(?:我们|公司|岗位)|期望薪资|有什么要问|反问|能否实习|是否接受加班|手里.*offer)/i
 
 function normalizedTitle(value) {
@@ -55,7 +57,7 @@ describe('question catalog seed quality', () => {
       .map((question) => [question.id, question.display_number, question.title].join('|'))
       .join('\n')
     expect(crypto.createHash('sha256').update(identityMap).digest('hex'))
-      .toBe('450222c4b40bb83189dbcb6031d4e673faee3a0e1f8736ba1e27a7cfd8928be6')
+      .toBe('01e4cacc4a544da5c75c7697d1faf155672011b923f50bccf1638e5281db294a')
 
     const diagrams = questions.flatMap((question) => (
       question.body_md.match(/\/content\/diagrams\/java-foundations\/[a-z0-9-]+\.svg/g) ?? []
@@ -90,7 +92,10 @@ describe('question catalog seed quality', () => {
           'SELECT DISTINCT source_kind FROM source_refs WHERE question_id = ?',
         ).all(question.id).map((source) => source.source_kind)
         expect(kinds, `${bankId}: ${question.title}`).toContain('official')
-        if (!OFFICIAL_ONLY_BANK_IDS.has(bankId)) {
+        if (JAVA_CURATED_GUIDE_BANK_IDS.has(bankId)) {
+          expect(kinds, `${bankId}: ${question.title}`).toContain('curated-guide')
+        }
+        if (INTERVIEW_SOURCE_BANK_IDS.has(bankId)) {
           expect(kinds, `${bankId}: ${question.title}`).toContain('community-interview')
         }
       }
@@ -105,6 +110,29 @@ describe('question catalog seed quality', () => {
       else seen.set(key, question.id)
     }
     expect(duplicates).toEqual([])
+  })
+
+  it('keeps generated community Markdown sources identical to their reviewed source objects', () => {
+    for (const bank of COMMUNITY_INTERVIEW_BANKS) {
+      const expectedQuestions = bank.sections.flatMap((section) => section.questions)
+      const actualQuestions = db.prepare(
+        'SELECT id, title FROM questions WHERE bank_id = ? AND archived_at IS NULL ORDER BY sort_order',
+      ).all(bank.id)
+      expect(actualQuestions, bank.id).toHaveLength(expectedQuestions.length)
+
+      expectedQuestions.forEach((expectedQuestion, index) => {
+        const expectedTitle = expectedQuestion.title.replace(/`([^`]*)`/g, '$1')
+        expect(actualQuestions[index].title).toBe(`Q${index + 1}：${expectedTitle}`)
+        const expectedSources = expectedQuestion.sources
+          .map((source) => `${source.kind}|${source.url}`)
+          .sort()
+        const actualSources = db.prepare(
+          'SELECT source_kind, url FROM source_refs WHERE question_id = ? ORDER BY source_kind, url',
+        ).all(actualQuestions[index].id)
+          .map((source) => `${source.source_kind}|${source.url}`)
+        expect(actualSources, `${bank.id} Q${index + 1}`).toEqual(expectedSources)
+      })
+    }
   })
 
   it('gives every added question complete interview sections and official sources', () => {

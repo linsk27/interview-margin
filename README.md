@@ -62,10 +62,10 @@ JavaScript 与 7 个工程题库采用“原题清单 + 逐题 enrichment + 生�
 生成后的 `public/question-banks/360-ai-frontend.md`。
 
 三套社区真实面经题库及 Java 基础 100 题的数据源位于 `server/content/community-banks/`。
-社区页面只用于确认
-面试主题真实出现过，答案由官方文档独立校准；每题必须同时具备至少一个公开面经来源和一个
-官方来源。Java 基础题库不伪造社区出处，每题直接以 Java 21 API、JLS、JVMS 或 OpenJDK
-文档校准。`npm run content:generate:community` 会生成四份 Markdown 与
+社区页面只用于确认面试主题真实出现过，JavaGuide 与小林 Coding 用于筛选高频主题和安排
+复习顺序，题目与答案均重新撰写，并由官方文档独立校准。Java 后端、Java × AI 每题必须同时
+具备公开面经、高频题库参考和官方来源；Java 基础题不伪造社区出处，每题使用高频题库参考，
+再以 Java 21 API、JLS、JVMS 或 OpenJDK 文档校准。`npm run content:generate:community` 会生成四份 Markdown 与
 `docs/COMMUNITY_INTERVIEW_SOURCE_AUDIT.md`，无法公开核验正文的登录墙页面不会进入来源表。
 
 修改题库源后执行：

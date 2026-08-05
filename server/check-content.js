@@ -47,6 +47,9 @@ try {
   const foundationOfficialSourcedCount = db.prepare(`SELECT COUNT(*) AS count FROM questions q
     WHERE q.bank_id='java-foundations'
       AND EXISTS (SELECT 1 FROM source_refs s WHERE s.question_id=q.id AND s.source_kind='official')`).get().count
+  const javaCuratedGuideSourcedCount = db.prepare(`SELECT COUNT(*) AS count FROM questions q
+    WHERE q.bank_id IN ('java-foundations','java-backend-interviews','java-ai-applications')
+      AND EXISTS (SELECT 1 FROM source_refs s WHERE s.question_id=q.id AND s.source_kind='curated-guide')`).get().count
   const ai360QuestionCount = db.prepare(`SELECT COUNT(*) AS count FROM questions
     WHERE bank_id='360-ai-frontend'`).get().count
   const ai360SourcedCount = db.prepare(`SELECT COUNT(DISTINCT q.id) AS count FROM questions q
@@ -132,6 +135,7 @@ try {
     communityQuestionsWithInterviewAndOfficialSources: communityDualSourcedCount,
     javaFoundationQuestions: foundationQuestionCount,
     javaFoundationQuestionsWithOfficialSources: foundationOfficialSourcedCount,
+    javaQuestionsWithCuratedGuideSources: javaCuratedGuideSourcedCount,
     ai360Questions: ai360QuestionCount,
     ai360QuestionsWithSources: ai360SourcedCount,
     incomplete,
@@ -153,6 +157,7 @@ try {
     || sourcedCount !== 320 || ai360QuestionCount !== 72 || ai360SourcedCount !== 72
     || communityQuestionCount !== 128 || communityDualSourcedCount !== 128
     || foundationQuestionCount !== 100 || foundationOfficialSourcedCount !== 100
+    || javaCuratedGuideSourcedCount !== 188
     || incomplete.length || missingSections.length || missingMarkers.length
     || thinEnrichedQuestions.length || thinCommunityQuestions.length || thinFoundationQuestions.length
     || ai360MissingMarkers.length || thinAi360Questions.length

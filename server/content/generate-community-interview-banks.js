@@ -10,7 +10,7 @@ import {
 
 const currentFile = fileURLToPath(import.meta.url)
 const projectRoot = path.resolve(path.dirname(currentFile), '../..')
-const VERIFIED_AT = '2026-08-04'
+const VERIFIED_AT = '2026-08-05'
 
 export function generateCommunityBanks(outputRoot = projectRoot) {
   const banks = generateCommunityInterviewBanks(COMMUNITY_INTERVIEW_BANKS, {

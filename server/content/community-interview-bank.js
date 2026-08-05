@@ -10,8 +10,50 @@ const currentFile = fileURLToPath(import.meta.url)
 const projectRoot = path.resolve(path.dirname(currentFile), '../..')
 
 const NON_TECHNICAL_TITLE = /(?:自我介绍|职业规划|为什么选择(?:我们|公司|岗位)|期望薪资|有什么要问|反问|能否实习|是否接受加班|手里.*offer)/i
-const OFFICIAL_ONLY_BANK_IDS = new Set(['java-foundations'])
+const SOURCE_POLICIES = new Map([
+  ['java-foundations', 'curated-guide'],
+  ['java-backend-interviews', 'community-guide-official'],
+  ['java-ai-applications', 'community-guide-official'],
+])
+const ALLOWED_SOURCE_KINDS = new Set(['community-interview', 'curated-guide', 'official'])
 const JAVA_FOUNDATION_SOURCE_HOSTS = new Set(['docs.oracle.com', 'openjdk.org'])
+const CURATED_GUIDE_SOURCE_HOSTS = new Set(['javaguide.cn', 'xiaolincoding.com', 'xiaolinnote.com'])
+const JAVA_SPECIALIST_OFFICIAL_SOURCE_HOSTS = new Set([
+  'cheatsheetseries.owasp.org',
+  'datatracker.ietf.org',
+  'dev.mysql.com',
+  'developer.mozilla.org',
+  'docs.langchain.com',
+  'docs.langchain4j.dev',
+  'docs.oracle.com',
+  'docs.spring.io',
+  'docs.temporal.io',
+  'echarts.apache.org',
+  'genai.owasp.org',
+  'github.com',
+  'html.spec.whatwg.org',
+  'java2ai.com',
+  'kafka.apache.org',
+  'learn.microsoft.com',
+  'milvus.io',
+  'modelcontextprotocol.io',
+  'openai.github.io',
+  'openjdk.org',
+  'opentelemetry.io',
+  'platform.openai.com',
+  'projectreactor.io',
+  'react.dev',
+  'redis.io',
+  'rocketmq.apache.org',
+  'www.elastic.co',
+  'www.envoyproxy.io',
+  'www.postgresql.org',
+  'www.rfc-editor.org',
+])
+const JAVA_SPECIALIST_GITHUB_PATHS = [
+  '/openjdk/jdk8u',
+  '/pgvector/pgvector',
+]
 
 function questionList(bank) {
   return bank.sections.flatMap((section) => section.questions)
@@ -21,8 +63,43 @@ function prefixedSource(source) {
   const kind = source.kind ?? sourceKindForUrl(source.url)
   const prefix = kind === 'community-interview'
     ? '真实面经线索（题目已改写）'
-    : '技术校准'
+    : kind === 'curated-guide'
+      ? '高频题库参考（内容已重写）'
+      : '技术校准'
   return { ...source, kind, label: `${prefix}：${source.label}` }
+}
+
+function hasAllowedHostname(value, allowedHosts) {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase()
+    return [...allowedHosts].some((host) => hostname === host || hostname.endsWith(`.${host}`))
+  } catch {
+    return false
+  }
+}
+
+function isValidHttpsUrl(value) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && Boolean(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+function isAllowedJavaSpecialistOfficialSource(value) {
+  try {
+    const url = new URL(value)
+    const hostname = url.hostname.toLowerCase()
+    if (!hasAllowedHostname(value, JAVA_SPECIALIST_OFFICIAL_SOURCE_HOSTS)) return false
+    if (hostname.endsWith('.github.com')) return false
+    if (hostname !== 'github.com') return true
+    return JAVA_SPECIALIST_GITHUB_PATHS.some((prefix) => (
+      url.pathname === prefix || url.pathname.startsWith(`${prefix}/`)
+    ))
+  } catch {
+    return false
+  }
 }
 
 function assertText(value, minimum, message) {
@@ -36,8 +113,12 @@ export function assertCommunityInterviewBank(bank, { minimumQuestions = 24 } = {
   if (!/^public\/question-banks\/[a-z0-9-]+\.md$/.test(bank.source)) {
     throw new Error(`${bank.id}: source 必须位于 public/question-banks`)
   }
-  if (bank.sourcePolicy === 'official-only' && !OFFICIAL_ONLY_BANK_IDS.has(bank.id)) {
-    throw new Error(`${bank.id}: 未获准使用 official-only 来源策略`)
+  const expectedPolicy = SOURCE_POLICIES.get(bank.id)
+  if (expectedPolicy && bank.sourcePolicy !== expectedPolicy) {
+    throw new Error(`${bank.id}: 来源策略必须为 ${expectedPolicy}`)
+  }
+  if (bank.sourcePolicy && bank.sourcePolicy !== expectedPolicy) {
+    throw new Error(`${bank.id}: 未获准使用 ${bank.sourcePolicy} 来源策略`)
   }
   const questions = questionList(bank)
   if (questions.length < minimumQuestions) {
@@ -63,24 +144,50 @@ export function assertCommunityInterviewBank(bank, { minimumQuestions = 24 } = {
       || question.pitfalls.some((item) => enrichmentTextLength(item) < 12)) {
       throw new Error(`${label}: 至少需要两个具体易错点`)
     }
-    const minimumSources = bank.sourcePolicy === 'official-only' ? 1 : 2
+    const minimumSources = bank.sourcePolicy === 'community-guide-official' ? 3 : 2
     if (!Array.isArray(question.sources) || question.sources.length < minimumSources
-      || question.sources.some((source) => !source?.label || !/^https:\/\//.test(source.url))) {
+      || question.sources.some((source) => !source?.label || !isValidHttpsUrl(source.url))) {
       throw new Error(`${label}: 来源不完整`)
     }
+    const invalidKind = question.sources.find((source) => (
+      !ALLOWED_SOURCE_KINDS.has(source.kind ?? sourceKindForUrl(source.url))
+    ))
+    if (invalidKind) throw new Error(`${label}: 来源类型无效`)
+    const mismatchedSource = question.sources.find((source) => (
+      source.kind && source.kind !== sourceKindForUrl(source.url)
+    ))
+    if (mismatchedSource) throw new Error(`${label}: 来源类型与域名不匹配`)
     const sourceKinds = new Set(question.sources.map((source) => source.kind ?? sourceKindForUrl(source.url)))
     if (!sourceKinds.has('official')) {
       throw new Error(`${label}: 必须包含官方技术来源`)
     }
-    if (bank.sourcePolicy === 'official-only') {
+    if (bank.sourcePolicy === 'curated-guide') {
       const invalidSource = question.sources.find((source) => {
-        if (source.kind !== 'official') return true
-        return !JAVA_FOUNDATION_SOURCE_HOSTS.has(new URL(source.url).hostname.toLowerCase())
+        const kind = source.kind ?? sourceKindForUrl(source.url)
+        if (kind === 'official') return !hasAllowedHostname(source.url, JAVA_FOUNDATION_SOURCE_HOSTS)
+        if (kind === 'curated-guide') return !hasAllowedHostname(source.url, CURATED_GUIDE_SOURCE_HOSTS)
+        return true
       })
-      if (invalidSource) throw new Error(`${label}: Java 基础题只允许白名单官方来源`)
+      if (invalidSource) throw new Error(`${label}: Java 基础题只允许白名单教程与官方来源`)
+      if (!sourceKinds.has('curated-guide')) throw new Error(`${label}: Java 基础题必须包含高频题库参考`)
     } else if (!sourceKinds.has('community-interview')) {
       throw new Error(`${label}: 面经题库必须同时包含真实面经线索和官方技术来源`)
     }
+    if (bank.sourcePolicy === 'community-guide-official' && !sourceKinds.has('curated-guide')) {
+      throw new Error(`${label}: Java 专项面经必须包含高频题库参考`)
+    }
+    if (bank.sourcePolicy === 'community-guide-official') {
+      const invalidOfficial = question.sources.find((source) => {
+        const kind = source.kind ?? sourceKindForUrl(source.url)
+        return kind === 'official' && !isAllowedJavaSpecialistOfficialSource(source.url)
+      })
+      if (invalidOfficial) throw new Error(`${label}: Java 专项官方来源不在白名单域名`)
+    }
+    const invalidGuide = question.sources.find((source) => {
+      const kind = source.kind ?? sourceKindForUrl(source.url)
+      return kind === 'curated-guide' && !hasAllowedHostname(source.url, CURATED_GUIDE_SOURCE_HOSTS)
+    })
+    if (invalidGuide) throw new Error(`${label}: 高频题库参考不在白名单域名`)
   })
   return bank
 }
@@ -101,7 +208,7 @@ function renderQuestion(bank, question, number, verifiedAt) {
 
 export function generateCommunityInterviewBanks(banks, {
   outputRoot = projectRoot,
-  verifiedAt = '2026-08-04',
+  verifiedAt = '2026-08-05',
 } = {}) {
   const seenBankIds = new Set()
   const seenTitles = new Map()
@@ -136,12 +243,12 @@ export function generateCommunityInterviewBanks(banks, {
   return results
 }
 
-export function uniqueCommunitySources(banks) {
+function uniqueSourcesByKind(banks, expectedKind) {
   const sources = new Map()
   for (const bank of banks) {
     for (const question of questionList(bank)) {
       for (const source of question.sources) {
-        if ((source.kind ?? sourceKindForUrl(source.url)) !== 'community-interview') continue
+        if ((source.kind ?? sourceKindForUrl(source.url)) !== expectedKind) continue
         const item = sources.get(source.url) ?? { label: source.label, url: source.url, banks: new Set(), uses: 0 }
         item.banks.add(bank.id)
         item.uses += 1
@@ -155,6 +262,10 @@ export function uniqueCommunitySources(banks) {
   })).sort((a, b) => a.url.localeCompare(b.url))
 }
 
+export function uniqueCommunitySources(banks) {
+  return uniqueSourcesByKind(banks, 'community-interview')
+}
+
 function platformForUrl(value) {
   const hostname = new URL(value).hostname.replace(/^www\./, '')
   if (hostname.endsWith('nowcoder.com')) return '牛客'
@@ -163,8 +274,9 @@ function platformForUrl(value) {
   return hostname
 }
 
-export function renderCommunitySourceAudit(banks, { verifiedAt = '2026-08-04' } = {}) {
+export function renderCommunitySourceAudit(banks, { verifiedAt = '2026-08-05' } = {}) {
   const sources = uniqueCommunitySources(banks)
+  const curatedGuides = uniqueSourcesByKind(banks, 'curated-guide')
   const lines = [
     '# 社区真实面经来源审计',
     '',
@@ -182,10 +294,17 @@ export function renderCommunitySourceAudit(banks, { verifiedAt = '2026-08-04' } 
   for (const source of sources) {
     lines.push(`| ${platformForUrl(source.url)} | [${source.label.replace(/\|/g, '\\|')}](${source.url}) | ${source.banks.join('、')} | ${source.uses} |`)
   }
+  lines.push('', '## Java 高频题库参考', '',
+    '> JavaGuide 与小林 Coding 只用于筛选高频主题和组织复习顺序；题目与答案均重新撰写，技术结论继续由官方规范或项目文档校准。', '',
+    '| 参考站点 | 使用题库 | 关联题数 |',
+    '| --- | --- | ---: |')
+  for (const source of curatedGuides) {
+    lines.push(`| [${source.label.replace(/\|/g, '\\|')}](${source.url}) | ${source.banks.join('、')} | ${source.uses} |`)
+  }
   lines.push('', '## 质量规则', '',
     '- 过滤自我介绍、职业规划、薪资、反问等非技术内容。',
     '- 同一问题只保留一个中性、可验证的版本，避免把公司隐私或作者项目数据照搬进题库。',
-    '- 本审计表覆盖的社区面经题每题至少包含一个面经来源和一个官方技术来源；Java 基础题另行只接受白名单官方域名。',
+    '- 本审计表覆盖的社区面经题每题至少包含一个面经来源和一个官方技术来源；三个 Java 专项题库还要求 JavaGuide 或小林 Coding 高频参考，Java 基础题同时限制官方校准域名。',
     '- 社区作者给出的答案不视为标准答案；涉及版本差异时以题目中标注的官方文档为准。',
     '')
   return lines.join('\n')

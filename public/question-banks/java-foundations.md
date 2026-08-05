@@ -1,6 +1,6 @@
 # Java 基础 100 题
 
-# Java 语法、类型与参数语义
+# Java 高频基础与语言机制
 
 ## Q1：Java 的基本类型、引用类型与变量默认值应怎样区分？
 
@@ -33,45 +33,48 @@ Java 的类型先分基本类型与引用类型；默认值只由字段和数组
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 4：类型、值与变量](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html)
 - [技术校准：JLS 14：语句与控制流](https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html)
 
 校验日期：2026-08-05
 
-## Q2：整数提升、窄化转换与溢出为什么容易制造隐藏错误？
+## Q2：JDK、JRE、JVM 和字节码是什么关系，Java 为什么能跨平台？
 
 **短回答：**
 
-byte、short 与 char 参与多数算术运算时先提升为 int；窄化可能丢高位，整数溢出按固定宽度回绕而不会自动抛异常。
+JDK 用来开发并包含运行工具，JRE 是传统意义上的运行环境，JVM 负责执行字节码；Java 先编译为面向 JVM 的 `.class`，再由各平台上的 JVM 实现解释或编译为本机代码，因此实现“一份字节码、多平台运行”。
 
 **原理：**
 
-一元和二元数值提升决定表达式的计算类型：byte、short、char 通常先提升为 int，再与另一操作数共同转换，因此 `byte + byte` 的结果类型是 int。普通赋值不允许把 int 隐式窄化给 byte，但编译期可表示的整型常量存在受限的常量窄化规则；复合赋值则隐含一次转换，所以 `b += 1` 可编译而 `b = b + 1` 不行。整数运算只保留目标类型位宽，溢出不会产生语言级异常；除零会抛 ArithmeticException，但 `Integer.MIN_VALUE / -1` 是规范明确的特殊回绕结果。需要检测溢出时应使用 Math.addExact、multiplyExact 等方法。
+源文件由 `javac` 编译为符合 Class File 规范的字节码。类加载器把字节码装入 JVM，验证、链接并初始化后，执行引擎可解释执行，也可把热点代码交给 JIT 编译为机器码。跨平台并不是 JVM 自己没有平台差异，而是 Windows、Linux 等平台各自提供兼容规范的 JVM，把同一套字节码映射到不同指令集。JDK 还包含编译、诊断和打包工具；从模块化 JDK 开始，生产运行时可以按模块裁剪，不应再死背“JRE 一定是 JDK 目录里的固定子目录”。面试回答要区分语言规范、JVM 规范和某个 HotSpot 实现，避免把实现细节说成所有 JVM 的保证。
 
 **代码 / 场景：**
 
-例如 `byte b = 127; b += 1;` 结果是 -128；而 `byte c = 127; c = c + 1;` 因右侧为 int 无法编译。计费系统若用 `int total = price * quantity`，大数可能静默变负，应先提升到 long，并在仍需严格边界时使用 `Math.multiplyExact((long) price, quantity)`。
+排查“本机能跑、服务器不能跑”时，先确认编译目标版本与生产 JVM 版本：用 Java 21 编译出的高版本 Class 文件不能直接交给 Java 8 JVM。构建中可使用 `--release` 固定目标平台，再用同版本容器镜像做集成测试；JNI、本地字体、默认字符集和文件路径等平台资源仍可能破坏应用层的跨平台性。
 
 **递进追问：**
 
-1. **为什么 `short s = 1` 可以，而变量 int 赋给 short 不行？**
+1. **Java 是编译型还是解释型语言？**
 
-   前者是编译期可证明落在 short 范围内的常量表达式窄化；变量值运行时才确定，编译器不能无条件保证不丢失信息。
+   更准确的回答是编译与运行时执行并存：源码先编译为字节码，JVM 实现可以解释字节码，也可以通过 JIT 或 AOT 转成本机代码。
 
-2. **无符号数据在 Java 中应该怎样处理？**
+2. **JDK 21 还需要单独安装 JRE 吗？**
 
-   Java 的 byte、short、int、long 是有符号整数，必要时可用 Integer、Long 的无符号比较和转换 API，或提升后配合位掩码。
+   通常不需要。现代 JDK 已包含运行所需模块，也可用 jlink 制作定制运行时；部署时更应关注实际运行镜像和模块依赖。
 
 **易错点：**
 
-- 认为 Java 整数溢出必然抛异常，导致金额、计数或容量计算静默产生错误值。
-- 只记住强制转换语法，却忽略复合赋值已经隐式执行了可能丢信息的窄化。
+- 把跨平台理解成任何 Java 程序都不依赖操作系统资源。
+- 只检查 `java -version`，不检查 Class 文件版本、构建目标和第三方本地依赖。
 
 **参考来源：**
 
-- [技术校准：JLS 4：类型、值与变量](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html)
-- [技术校准：JLS 5：转换与上下文](https://docs.oracle.com/javase/specs/jls/se21/html/jls-5.html)
-- [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
+- [技术校准：JVMS 4：Class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
+- [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
 
 校验日期：2026-08-05
 
@@ -106,6 +109,8 @@ Java 浮点运算遵循 IEEE 754 语义，有限位的符号、指数和有效�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 4：类型、值与变量](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html)
 - [技术校准：Java 21 BigDecimal API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigDecimal.html)
 
@@ -142,6 +147,8 @@ Java 浮点运算遵循 IEEE 754 语义，有限位的符号、指数和有效�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 5：转换与上下文](https://docs.oracle.com/javase/specs/jls/se21/html/jls-5.html)
 - [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
 
@@ -178,6 +185,8 @@ Java 方法调用始终复制实参的值；对象参数复制的是引用值，
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
 - [技术校准：JLS 10：数组](https://docs.oracle.com/javase/specs/jls/se21/html/jls-10.html)
 
@@ -214,6 +223,8 @@ final 可修饰变量、方法和类：变量只能完成一次赋值，但 fina
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 - [技术校准：JLS 14：语句与控制流](https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html)
 - [技术校准：Java 21 Object API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html)
@@ -252,44 +263,48 @@ Java 数组是具体化且协变的，错误写入通过运行时检查阻止；
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 10：数组](https://docs.oracle.com/javase/specs/jls/se21/html/jls-10.html)
 - [技术校准：JLS 4：类型、值与变量](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html)
 
 校验日期：2026-08-05
 
-## Q8：表达式求值顺序与短路规则怎样决定副作用发生时机？
+## Q8：Java 为什么说是“编译与解释并存”，JIT 在什么时候发挥作用？
 
 **短回答：**
 
-Java 明确采用从左到右的操作数求值顺序，`&&`、`||` 和条件运算符只执行必要分支，但复杂副作用仍会严重损害可读性。
+源码先由 `javac` 编译为字节码；运行时 JVM 可以先解释执行，并把频繁执行的热点方法编译为优化后的机器码。两条执行路径共同兼顾启动速度、可移植性和长期运行性能。
 
 **原理：**
 
-方法调用时先求目标引用，再从左到右求各实参，最后进入方法；二元运算通常先完整求左操作数，再求右操作数。`&&` 在左侧为 false 时不求右侧，`||` 在左侧为 true 时不求右侧，条件运算符也只选择一个分支。普通 `&` 和 `|` 用于 boolean 时两侧都会求值。自增表达式同时包含旧值或新值结果与变量写回，和数组下标、方法调用混在一起虽然有确定结果，却容易形成难以审查的代码。异常发生后，尚未开始的右侧或后续实参不会执行。
+字节码是稳定的中间表示，不等于逐行源码解释。以 HotSpot 为例，方法最初可能由解释器执行，同时收集调用次数、分支概率和类型分布；达到阈值后进入分层编译，JIT 可做内联、逃逸分析和无用检查消除。优化依赖运行时假设，如果之后加载的新类型使假设失效，JVM 可以去优化并回到较保守的执行路径。规范并不要求所有 JVM 采用完全相同的解释器和编译器，所以回答时应把“HotSpot 常见实现”与“Java/JVM 规范承诺”分开。预热、代码形状和真实负载会影响基准，不能用一次冷启动耗时证明 Java 的稳态性能。
 
 **代码 / 场景：**
 
-例如 `user != null && user.active()` 可以借短路避免空指针；换成单个 `&` 会继续调用右侧。`log(loadA(), loadB())` 保证先完整执行 loadA 再执行 loadB；若 loadA 抛异常，loadB 不执行。像 `a[i++] = i` 虽有规范结果，也应拆成独立语句明确索引与写入时机。
+接口服务刚启动时延迟偏高，可能同时受到类加载、连接池建立和 JIT 预热影响。应通过 JFR、编译日志和分阶段压测定位，而不是盲目循环调用接口“暖机”。微基准应使用 JMH 避免死代码消除和错误预热；短命 CLI 程序则更关注启动时间，未必能获得热点编译的长期收益。
 
 **递进追问：**
 
-1. **`&` 与 `&&` 在 boolean 上除了短路还有什么差异？**
+1. **JIT 编译后的代码是否永久不变？**
 
-   两者都能做逻辑与，但 `&` 必定求值两侧，因此右侧副作用或异常一定有机会发生；`&&` 则按左值决定是否跳过。
+   不是。JVM 可能基于运行时画像重新编译，也可能在假设失效时去优化，恢复解释执行或进入另一层编译。
 
-2. **多线程中确定的求值顺序是否等于线程安全？**
+2. **为什么生产压测需要预热阶段？**
 
-   不等于。求值顺序只约束当前线程内动作，跨线程的可见性和排序还需要同步动作以及 happens-before 关系。
+   预热可让类加载、缓存和热点编译进入较稳定状态，从而把冷启动成本与稳态吞吐、延迟分开观察。
 
 **易错点：**
 
-- 借助自增、赋值和方法副作用写成一条复杂表达式，虽确定却难以维护。
-- 把短路条件仅当性能优化，忽略它经常承担空值和边界保护职责。
+- 把字节码说成 CPU 可以直接执行的机器码。
+- 用手写循环做微基准，忽略 JIT 的死代码消除、内联和预热效应。
 
 **参考来源：**
 
-- [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
-- [技术校准：JLS 14：语句与控制流](https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
+- [技术校准：JVMS 4：Class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
+- [技术校准：JDK 21 HotSpot 性能增强](https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html)
 
 校验日期：2026-08-05
 
@@ -324,48 +339,52 @@ Java 明确采用从左到右的操作数求值顺序，`&&`、`||` 和条件运
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 5：转换与上下文](https://docs.oracle.com/javase/specs/jls/se21/html/jls-5.html)
 - [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
 
 校验日期：2026-08-05
 
-## Q10：enum 为什么是受控实例类，怎样携带状态与行为？
+## Q10：Java 为什么不支持类的多继承，却允许实现多个接口？
 
 **短回答：**
 
-Java enum 不是整数常量集合，而是由声明预先创建有限实例的特殊类；每个枚举常量都能携带字段、实现行为并安全参与类型检查。
+类的多继承会让状态布局、构造顺序和同名实现的选择变复杂；Java 让类只继承一个直接父类，同时允许实现多个接口来组合能力契约。接口默认方法发生冲突时，编译器要求按明确规则消解。
 
 **原理：**
 
-枚举类隐式继承 `java.lang.Enum<E>`，不能再继承其他类，但可以实现接口。常量是在枚举类初始化期间创建的 public static final 实例，构造器不能对外开放，因此普通业务代码无法随意 new 出额外实例；这使 `==` 可以可靠比较同一枚举常量。枚举可声明实例字段、构造器和方法，也可让常量提供专属类体重写行为，从而把稳定且封闭的策略放回类型内部。编译器还提供 values 与 valueOf 等成员。name 是声明标识，ordinal 只是当前声明次序，重排或插入常量就会变化，因此持久化和跨系统协议应使用明确且稳定的业务 code，而非 ordinal。
+继承不仅复用方法，还继承可见状态、初始化过程与可重写行为。若一个类同时继承两个带状态父类，菱形结构中同一祖先状态该保留几份、先调用哪个构造器、同名方法选谁都会增加模型复杂度。接口主要描述类型能力，可多实现；Java 8 之后接口虽可提供 default 方法，但不拥有普通实例字段。冲突规则是：类方法优先于接口默认方法，更具体的子接口优先；两个无继承关系接口提供同签名默认实现时，实现类必须显式重写，并可用 `InterfaceName.super.method()` 选择。工程上也不应把“允许多接口”理解成鼓励巨型接口，仍需按职责拆分。
 
 **代码 / 场景：**
 
-例如 `enum Level { NORMAL(1) { int fee(){ return 0; } }, VIP(2) { int fee(){ return 10; } }; final int code; Level(int code){ this.code=code; } abstract int fee(); }` 把有限策略与实例绑定。数据库应保存显式 code 并做受控映射；若保存 ordinal，今后在常量中间插入新等级会把历史数据解释成错误值。
+一个 `CachedUserRepository` 可以继承单一抽象基类获得模板流程，同时实现 `UserRepository`、`HealthChecked` 和 `Closeable` 等小接口。若 `A` 与 `B` 都定义 `default String name()`，实现类必须自己决定组合规则。业务能力复用优先考虑组合对象，而不是继续加深继承树。
 
 **递进追问：**
 
-1. **为什么枚举比较推荐使用 `==`？**
+1. **接口能有状态吗？**
 
-   每个枚举常量在对应类加载器中只有声明创建的规范实例，引用身份就是常量身份；同时 `==` 不会因左侧为 null 而调用方法。
+   接口字段隐式为 `public static final`，属于类型常量而非每个实例的可变状态；实例状态仍由实现类或组合对象持有。
 
-2. **枚举常量中的可变字段是否线程安全？**
+2. **两个接口声明相同抽象方法会冲突吗？**
 
-   不是自动安全。常量虽然是单例式受控实例，但其中可变状态仍被所有调用者共享，应优先保持不可变或使用明确的并发同步策略。
+   若方法签名与返回类型兼容，它们可归并为同一个实现契约；真正需要显式消解的常见情况是互不相关接口提供冲突的默认实现。
 
 **易错点：**
 
-- 把 ordinal 持久化为业务编码，枚举重排后历史数据语义随之漂移。
-- 在枚举单例中保存无保护的请求级可变状态，制造跨线程数据污染。
+- 把接口 default 方法等同于带实例状态的第二父类。
+- 为复用几行代码建立脆弱继承层级，忽略组合与委托更容易演进。
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
-- [技术校准：JLS 12：执行、加载与初始化](https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html)
+- [技术校准：JLS 9：接口](https://docs.oracle.com/javase/specs/jls/se21/html/jls-9.html)
 
 校验日期：2026-08-05
 
-# 面向对象与 Object 契约
+# 面向对象、String 与 Object 契约
 
 ## Q11：封装、继承与多态应如何协作，而不是只背三个定义？
 
@@ -398,6 +417,8 @@ Java enum 不是整数常量集合，而是由声明预先创建有限实例的�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 - [技术校准：JLS 9：接口](https://docs.oracle.com/javase/specs/jls/se21/html/jls-9.html)
 
@@ -434,6 +455,8 @@ Java enum 不是整数常量集合，而是由声明预先创建有限实例的�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 - [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
 
@@ -470,6 +493,8 @@ Java enum 不是整数常量集合，而是由声明预先创建有限实例的�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 9：接口](https://docs.oracle.com/javase/specs/jls/se21/html/jls-9.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 
@@ -506,6 +531,8 @@ Java enum 不是整数常量集合，而是由声明预先创建有限实例的�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 12：执行、加载与初始化](https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 
@@ -542,6 +569,8 @@ public 对可读该模块导出包的代码开放，private 只在声明它的�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 - [技术校准：Java 21 模块系统 API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/module/package-summary.html)
 
@@ -580,6 +609,8 @@ Object.equals 默认是引用身份相等，值对象通常按参与身份的字
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 Object API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html)
 - [技术校准：Java 21 Map API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
 - [技术校准：Java 21 Set API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Set.html)
@@ -617,6 +648,8 @@ Order 含 `List<OrderLine>` 时，`new ArrayList<>(old.lines)` 只复制列表�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 Object API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html)
 - [技术校准：Java 对象序列化规范](https://docs.oracle.com/en/java/javase/21/docs/specs/serialization/)
 
@@ -653,44 +686,47 @@ Money 可用 final amount、currency，在构造时校验非负并把 BigDecimal
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 - [技术校准：Java 21 Collections Framework](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/doc-files/coll-overview.html)
 
 校验日期：2026-08-05
 
-## Q19：静态嵌套类、内部类与局部类分别会捕获什么上下文？
+## Q19：`String`、`StringBuilder` 与 `StringBuffer` 有什么区别，拼接时怎样选择？
 
 **短回答：**
 
-静态嵌套类不隐含外部实例，非静态内部类绑定一个外部类对象；局部类和 lambda 只能捕获 final 或有效 final 的局部变量。
+`String` 不可变，适合值语义、共享和作为键；`StringBuilder` 是可变字符序列，单线程大量拼接通常优先；`StringBuffer` 的主要方法带同步，适合极少数必须共享同一缓冲区的场景，但并不保证一串复合操作天然原子。
 
 **原理：**
 
-成员静态嵌套类在语义上接近普通类，只是名字和访问控制嵌套在外部类中，不需要外部实例即可创建。非静态成员内部类实例包含对直接外部实例的关联，可通过 `Outer.this` 访问外部成员，因此长生命周期内部对象可能意外延长外部对象存活。方法内局部类、匿名类和 lambda 可以捕获局部变量，但变量必须是 final 或赋值后从未改变的有效 final；原因是捕获保存的是值而非共享可变栈槽。lambda 的 this 指向词法外围对象，而匿名类拥有自己的 this，这会影响成员解析和生命周期。
+每次对 String 做运行期拼接都会产生新的结果值，编译器可把同一表达式中的简单 `+` 优化为拼接配方，但循环内反复扩展仍可能形成多次分配和复制。StringBuilder 内部维护可增长缓冲区，`append` 后最后一次 `toString`，能把意图和生命周期表达得更清楚。StringBuffer 提供同步方法，却只保护单次方法调用；“检查长度后再追加”仍需外部同步。不可变 String 可以安全共享，但其中的敏感内容无法主动擦除；密码等场景可考虑受控的字符数组。面试不要只回答“线程安全不同”，还要说明可变性、分配成本和共享边界。
 
 **代码 / 场景：**
 
-Builder 若不需要访问外部对象，应声明为 `static class Builder`，避免每个 Builder 都携带外围实例。GUI 注册 `outer.new Listener()` 到全局事件总线后，即使页面关闭，监听器仍可能通过隐含引用阻止页面回收；应注销监听或改用不持有页面的静态嵌套实现。
+拼接 SQL 展示文本或生成报表行时，可在方法内部创建 `StringBuilder` 并预估容量；几项固定字段拼接直接使用 `+` 可读性更好，交给编译器处理。多个线程各自构建结果时应使用各自的 builder，而不是因为并发就共享一个 StringBuffer；最后再安全合并结果。
 
 **递进追问：**
 
-1. **为什么 lambda 捕获的局部变量不能之后再自增？**
+1. **`StringBuilder` 一定比 `+` 快吗？**
 
-   局部变量生命周期与 lambda 可能不同，捕获的是其值；要求有效 final 可避免同名局部槽与捕获副本出现令人误解的可变共享语义。
+   不一定。常量表达式和单个短表达式常被编译器优化；真正需要关注的是循环、未知次数拼接和热点路径，应以生成字节码及基准为依据。
 
-2. **内部类能声明静态成员吗？**
+2. **`StringBuffer` 能保证“判断后追加”安全吗？**
 
-   现代 Java 允许内部类声明静态成员；但它仍然是绑定外围实例的非静态嵌套类，是否需要外部上下文才是选型关键。
+   不能保证整个复合操作。它只同步自己的单次方法，跨多次调用的不变量仍需同一外部锁或改成线程封闭设计。
 
 **易错点：**
 
-- 默认使用非静态内部类，意外持有体积很大或生命周期更短的外部对象。
-- 把 lambda 与匿名类的 this 语义视为相同，导致成员访问和解绑逻辑出错。
+- 见到字符串拼接就机械改成 StringBuilder，牺牲简单表达式可读性。
+- 在线程池任务间共享同一可变缓冲区，依赖单方法同步维持跨调用业务不变量。
 
 **参考来源：**
 
-- [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
-- [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
+- [技术校准：Java 21 String API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html)
 
 校验日期：2026-08-05
 
@@ -725,12 +761,14 @@ Builder 若不需要访问外部对象，应声明为 `static class Builder`，�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（上）](https://javaguide.cn/java/basis/java-basic-questions-01.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 - [技术校准：JLS 9：接口](https://docs.oracle.com/javase/specs/jls/se21/html/jls-9.html)
 
 校验日期：2026-08-05
 
-# String、异常、泛型、反射与注解
+# 异常、泛型、反射与注解
 
 ## Q21：String 为什么不可变，这一设计带来了哪些能力与代价？
 
@@ -763,6 +801,9 @@ String 类是 final，公开 API 不提供修改内部字符序列的操作。�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（中）](https://javaguide.cn/java/basis/java-basic-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（下）](https://javaguide.cn/java/basis/java-basic-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 String API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 
@@ -799,6 +840,9 @@ String 类是 final，公开 API 不提供修改内部字符序列的操作。�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（中）](https://javaguide.cn/java/basis/java-basic-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（下）](https://javaguide.cn/java/basis/java-basic-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 String API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html)
 - [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
 
@@ -835,6 +879,9 @@ String 类是 final，公开 API 不提供修改内部字符序列的操作。�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（中）](https://javaguide.cn/java/basis/java-basic-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（下）](https://javaguide.cn/java/basis/java-basic-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
 - [技术校准：Java 21 String API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html)
 
@@ -871,6 +918,9 @@ Throwable 下 Error 通常表示运行环境或系统级严重问题，应用一
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（中）](https://javaguide.cn/java/basis/java-basic-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（下）](https://javaguide.cn/java/basis/java-basic-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 11：异常](https://docs.oracle.com/javase/specs/jls/se21/html/jls-11.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 
@@ -907,6 +957,9 @@ try-with-resources 会按声明逆序自动关闭资源；业务异常优先传�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（中）](https://javaguide.cn/java/basis/java-basic-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（下）](https://javaguide.cn/java/basis/java-basic-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 AutoCloseable API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/AutoCloseable.html)
 - [技术校准：JLS 14：语句与控制流](https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html)
 - [技术校准：JLS 11：异常](https://docs.oracle.com/javase/specs/jls/se21/html/jls-11.html)
@@ -944,6 +997,9 @@ Java 泛型主要在编译期检查，类型实参通常在字节码中擦除为
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（中）](https://javaguide.cn/java/basis/java-basic-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（下）](https://javaguide.cn/java/basis/java-basic-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 4：类型、值与变量](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html)
 - [技术校准：JLS 18：类型推断](https://docs.oracle.com/javase/specs/jls/se21/html/jls-18.html)
 - [技术校准：JVMS 4：Class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
@@ -981,44 +1037,50 @@ Java 泛型主要在编译期检查，类型实参通常在字节码中擦除为
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（中）](https://javaguide.cn/java/basis/java-basic-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（下）](https://javaguide.cn/java/basis/java-basic-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：JLS 4：类型、值与变量](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html)
 - [技术校准：JLS 18：类型推断](https://docs.oracle.com/javase/specs/jls/se21/html/jls-18.html)
 
 校验日期：2026-08-05
 
-## Q28：原始类型、泛型可变参数与堆污染是怎样发生的？
+## Q28：JDK 动态代理如何工作，它和基于子类的代理有什么边界？
 
 **短回答：**
 
-堆污染指参数化变量引用了不符合其承诺的对象，常由原始类型、未检查转换或泛型可变参数与数组协变交叉造成。
+JDK 动态代理在运行时为一组接口生成代理类，把方法调用转交给 `InvocationHandler`；基于子类的代理通过继承目标类并重写可覆盖方法，因此不能代理 final 类或 final/private 方法。选择依据是类型边界和拦截需求，不是简单比较谁更快。
 
 **原理：**
 
-原始类型为兼容旧代码而绕过部分泛型检查，例如把 List<String> 赋给原始 List 后可加入 Integer，错误通常延迟到读取处的编译器插入转换。可变参数在运行时以数组承载，但参数化类型通常不可具体化；`T...` 或 `List<String>...` 会产生未检查警告。若方法把该数组暴露、写入不相容参数化对象或交给不可信代码，就可能形成堆污染。`@SafeVarargs` 不是消除风险的开关，只能用于满足声明限制且实现确实不对泛型可变参数执行不安全操作的方法；调用方仍需审查方法体。应优先用 `List<T>` 参数或受控集合工厂。
+调用 `Proxy.newProxyInstance` 时要提供合适的类加载器、接口数组和 InvocationHandler。代理对象接到接口调用后进入 `invoke(proxy, method, args)`，处理器可在调用目标前后加入鉴权、事务、重试或观测逻辑。必须特别处理 `equals`、`hashCode`、`toString` 等 Object 方法，并避免在处理器里再次通过 proxy 调用同一方法造成递归。子类代理能覆盖没有接口的类，但构造器、可见性、final 限制和自调用都可能让拦截失效。框架代理还受到模块开放、桥接方法和默认接口方法等因素影响；业务代码应面向稳定接口，少依赖代理实现类身份。
 
 **代码 / 场景：**
 
-危险方法可把 `List<String>... lists` 先视作 Object[]，再写入 `List<Integer>`，随后读取 String 时抛 ClassCastException。旧接口返回原始 List 时，应在边界逐项校验并复制到类型化集合，而不是直接强转。仅遍历参数且不保存、不写数组的 final/static 方法才可能合理标 SafeVarargs。
+为 `PaymentService` 增加耗时统计时，可以让代理实现该接口，Handler 记录开始时间后反射调用真实对象，并在 `finally` 上报结果。若 Spring 中同一个对象的方法 A 直接调用自身方法 B，调用没有经过外部代理，B 上的事务或切面可能不生效；这不是注解失效，而是调用路径绕过代理。
 
 **递进追问：**
 
-1. **为什么错误常在读取处而不是污染发生处爆发？**
+1. **为什么 JDK 动态代理通常要求接口？**
 
-   原始写入或未检查转换绕过了编译器约束，运行时集合不检查泛型实参；直到读取处插入的具体类型转换才发现不匹配。
+   生成的代理类通过实现给定接口获得可调用的方法集合；没有接口的普通类不能仅靠 JDK Proxy 直接生成其子类。
 
-2. **SuppressWarnings 能否证明转换安全？**
+2. **代理为何容易出现自调用失效？**
 
-   不能。它只隐藏编译器警告，开发者必须在最小作用域内用外部不变量证明类型确实匹配，并最好在边界做显式验证。
+   拦截发生在经过代理对象的调用边界；目标对象内部用 `this` 调用另一个方法时没有重新进入代理。
 
 **易错点：**
 
-- 为消除告警大范围添加 SuppressWarnings，掩盖真正的堆污染入口。
-- 给任意泛型可变参数方法加 SafeVarargs，却仍保存或改写底层数组。
+- 在 InvocationHandler 中调用 `method.invoke(proxy, args)`，导致无限递归。
+- 把代理对象强转为目标实现类，忽略 JDK 代理只保证实现接口。
 
 **参考来源：**
 
-- [技术校准：JLS 4：类型、值与变量](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html)
-- [技术校准：JLS 10：数组](https://docs.oracle.com/javase/specs/jls/se21/html/jls-10.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（中）](https://javaguide.cn/java/basis/java-basic-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（下）](https://javaguide.cn/java/basis/java-basic-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
+- [技术校准：Java 21 Reflection API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/package-summary.html)
+- [技术校准：Java 21 模块系统 API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/module/package-summary.html)
 
 校验日期：2026-08-05
 
@@ -1053,6 +1115,9 @@ JSON 框架可在启动时扫描 DTO 构造器和访问器，校验一次后缓�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（中）](https://javaguide.cn/java/basis/java-basic-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（下）](https://javaguide.cn/java/basis/java-basic-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 Reflection API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/package-summary.html)
 - [技术校准：Java 21 模块系统 API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/module/package-summary.html)
 - [技术校准：JLS 12：执行、加载与初始化](https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html)
@@ -1090,13 +1155,16 @@ JSON 框架可在启动时扫描 DTO 构造器和访问器，校验一次后缓�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（中）](https://javaguide.cn/java/basis/java-basic-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 基础常见面试题（下）](https://javaguide.cn/java/basis/java-basic-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 Annotation API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/annotation/package-summary.html)
 - [技术校准：Java 21 Reflection API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/package-summary.html)
 - [技术校准：JLS 9：接口](https://docs.oracle.com/javase/specs/jls/se21/html/jls-9.html)
 
 校验日期：2026-08-05
 
-# Collections 基础与选型
+# 集合源码高频：List、HashMap 与并发容器
 
 ## Q31：List、Set、Queue 与 Map 分别承诺什么语义，选型时先看什么？
 
@@ -1129,120 +1197,129 @@ Collection 是元素容器的根接口，List 进一步承诺按位置访问并�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 Collections Framework](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/doc-files/coll-overview.html)
 - [技术校准：Java 21 Collection API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Collection.html)
 - [技术校准：Java 21 Map API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
 
 校验日期：2026-08-05
 
-## Q32：List<Integer>.remove(1) 为什么删除索引而不是数值 1？
+## Q32：`ArrayList` 和 `LinkedList` 有什么区别，为什么多数场景优先 ArrayList？
 
 **短回答：**
 
-因为 List 同时重载了 `remove(int index)` 与 `remove(Object value)`；整数字面量 1 精确匹配基本类型参数，所以调用的是按索引删除，而不是按相等性删除元素。
+ArrayList 基于连续引用数组，随机访问快、内存和缓存局部性通常更好；LinkedList 是双向链表，头尾操作方便，但按下标访问必须遍历且每个节点有额外对象开销。只有已经定位节点或频繁操作两端时，链表的插删优势才成立。
 
 **原理：**
 
-List 声明两个同名方法：`E remove(int index)` 删除指定位置并返回旧元素，`boolean remove(Object o)` 删除首次出现的相等元素。编译器在编译期依据实参静态类型执行重载解析；字面量 1 的类型是 int，与 remove(int) 无需装箱即可适用，而 remove(Object) 需要先把 int 装箱为 Integer 再做引用扩宽，因此前者更具体。泛型擦除不会消除这个区别，因为两个方法擦除后的参数仍分别是 int 与 Object。若实参变量静态类型为 Integer，remove(int) 不能通过拆箱与 remove(Object) 同时随意猜测，重载规则会选择可用且最具体的方法；把返回值当作删除是否成功也会因所选重载不同而产生误判。
+ArrayList 的 `get` 根据索引直接访问底层数组，复杂度 O(1)；中间插入删除要移动后续引用，通常 O(n)，尾部追加在容量足够时为摊销 O(1)。LinkedList 的 `get` 会从较近的一端遍历到目标位置，复杂度 O(n)；插入删除节点本身是 O(1)，但通过索引定位节点仍是 O(n)。现代 CPU 对连续数组的预取和缓存命中较友好，而链表节点分散、需要额外保存前后指针并增加 GC 压力。因此不能只背“链表增删快”，必须把定位成本、数据规模和访问模式一起回答。两者都不是线程安全集合。
 
 **代码 / 场景：**
 
-`List<Integer> nums = new ArrayList<>(List.of(1, 1, 2)); nums.remove(1);` 删除索引 1 的第二个元素，结果是 `[1, 2]`。如果列表为 `[9, 1, 2]`，同一句会删掉数值 1 只是巧合。明确按值删除应写 `nums.remove(Integer.valueOf(1))`，或使用 `nums.removeIf(n -> n == 1)` 表达删除全部匹配值；按索引删除则先检查边界并保留 int 参数。
+订单明细经常按下标读取、遍历和在尾部追加，优先 `ArrayList` 并在已知规模时预设容量。任务队列若只在两端进出，使用 `ArrayDeque` 通常比 LinkedList 更直接；只有确实需要链表迭代器在当前位置插删且节点操作占主导时，再评估 LinkedList。最终用代表性数据做基准，不根据复杂度口诀替代测量。
 
 **递进追问：**
 
-1. **把 1 赋给 Integer 变量再调用 remove 会怎样？**
+1. **LinkedList 在中间插入一定是 O(1) 吗？**
 
-   实参的静态类型成为 Integer，`remove(Object)` 可直接接收该引用，调用表达的是按相等性删除首次出现的数值 1。
+   只有已经持有目标位置的迭代器或节点语境时，链接节点是 O(1)；若先通过索引查找位置，总成本仍是 O(n)。
 
-2. **为什么不能根据返回值类型反推要调用哪个 remove？**
+2. **为什么 ArrayList 尾部追加称为摊销 O(1)？**
 
-   Java 的重载解析主要由方法名与实参类型决定，不能仅凭期望接收 boolean 或 Integer 来选择这两个重载。
+   大部分追加只写一个槽位；偶尔扩容需复制全部元素，把多次操作的总成本平均后为常数级。
 
 **易错点：**
 
-- 看到集合元素类型是 Integer，就忽略 int 重载仍然存在。
-- 测试数据中索引和值恰好相同，导致按索引删除的缺陷未被发现。
+- 只背“查询用 ArrayList、增删用 LinkedList”，忽略定位和缓存成本。
+- 把 LinkedList 当默认队列，未比较语义更清晰且通常更紧凑的 ArrayDeque。
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 List API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html)
-- [技术校准：JLS 5：转换与上下文](https://docs.oracle.com/javase/specs/jls/se21/html/jls-5.html)
-- [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
-
-校验日期：2026-08-05
-
-## Q33：不可修改视图与真正的不可变集合有什么区别？
-
-**短回答：**
-
-`Collections.unmodifiableXxx` 通常只是阻止通过当前引用修改底层集合的视图，而 `List.of`、`Set.of`、`Map.of` 创建的是自身不可修改的值集合，两者对别名变化的可见性不同。
-
-**原理：**
-
-不可修改包装器把读取委托给传入集合，并让自身的结构修改方法抛出 UnsupportedOperationException；如果调用方仍持有原集合引用，原集合变化会立即反映到包装视图。工厂方法 List.of、Set.of 和 Map.of 创建的集合不允许增加、删除或替换元素，也拒绝 null；Set.of 还拒绝重复元素，Map.of 拒绝重复键。不可修改只约束集合结构，不会深拷贝元素：元素本身若可变，其字段仍可变化。复制时可使用 copyOf 获得不随原可变容器变化的集合快照，但同样不是元素的深复制。
-
-**代码 / 场景：**
-
-配置中心可以执行 `var snapshot = Map.copyOf(mutableConfig)` 后再发布给读线程，之后修改 mutableConfig 不会改变 snapshot。若改成 `Collections.unmodifiableMap(mutableConfig)`，维护线程更新原 Map 时，读者看到的视图也随之变化。即便使用 Map.copyOf，若 value 是可变的 `ConfigItem`，修改该对象字段仍会被快照中的引用观察到。
-
-**递进追问：**
-
-1. **不可修改集合是否天然线程安全？**
-
-   不等价。真正不可变且元素也安全发布时适合并发读取；包装视图若背后仍被并发修改，仍可能产生竞态或可见性问题。
-
-2. **List.copyOf 一定会创建新的底层数组吗？**
-
-   API 只承诺返回不可修改且包含相同元素的列表，不承诺对象身份或具体复制策略，调用方不应依赖内部是否复用。
-
-**易错点：**
-
-- 把 unmodifiable 包装器误当成与原集合隔离的快照。
-- 误以为集合不可修改就代表其中每个元素都不可变。
-
-**参考来源：**
-
 - [技术校准：Java 21 Collections Framework](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/doc-files/coll-overview.html)
-- [技术校准：Java 21 List API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html)
-- [技术校准：Java 21 Map API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
 
 校验日期：2026-08-05
 
-## Q34：TreeSet 或有序 Map 的比较器为什么要与 equals 一致？
+## Q33：`ArrayList` 如何扩容，为什么它不是线程安全的？
 
 **短回答：**
 
-基于排序的集合通常把比较结果为零视为“同一个键”；若 comparator 与 equals 对相等性的判断不一致，集合虽然可能符合自身排序契约，却会违背使用者对 Set 或 Map 的直觉。
+ArrayList 维护元素数组和逻辑大小，容量不足时创建更大的数组并复制旧元素；并发写入没有同步保护，可能出现覆盖、丢失更新、越界或读到不一致状态。已知规模时预设容量能减少扩容和复制。
 
 **原理：**
 
-Comparator.compare 返回负数、零或正数决定全序关系，并应满足反对称、传递等约束。TreeSet 与 TreeMap 依据自然顺序或 Comparator 导航树结构，比较结果为零时不会再保留一个独立集合键。因此两个 equals 不同但 compare 为零的对象，在 TreeSet 中可能只留下一个；反过来 equals 相同而 compare 非零，会破坏 Set 以 equals 理解唯一性的常规约定。比较器链应把真正用于区分键的字段补齐，并正确处理 null。不能用两个整数相减代替比较，因为溢出可能反转结果。
+调用 `add` 时先确保容量，再把元素写入 `size` 对应位置并递增 size。具体增长比例属于 JDK 实现细节，常见 OpenJDK 实现按约 1.5 倍增长，但业务代码不应依赖精确公式。扩容是 O(n) 复制，所以一次 append 不是永远 O(1)，只是摊销 O(1)。并发场景中两个线程可能读取同一个 size、写入同一槽位，结构修改与迭代也可能触发 fail-fast，但 ConcurrentModificationException 只是尽力检测错误，不是线程安全机制。可根据读写模式选择线程封闭、外部锁、不可变快照、`CopyOnWriteArrayList` 或其他并发结构。
 
 **代码 / 场景：**
 
-若员工比较器只写 `Comparator.comparing(Employee::department)`，同部门的 Alice 与 Bob 比较为零，放入 TreeSet 后会丢掉一个。可按业务身份继续写 `.thenComparing(Employee::id)`。比较年龄时使用 `Comparator.comparingInt(Employee::age)` 或 `Integer.compare(a.age(), b.age())`，不要写 `a.age() - b.age()`。
+批量载入预计十万条记录时使用 `new ArrayList<>(100_000)`，避免从很小容量反复扩展。读多写少且快照一致性可接受的监听器列表可评估 CopyOnWriteArrayList；高频写入则不要用写时复制。若多个任务各自产生列表，优先让线程独占局部列表，结束后归并，而不是所有线程同时写一个 synchronizedList。
 
 **递进追问：**
 
-1. **Comparator 返回零是否表示两个引用完全相同？**
+1. **`ensureCapacity` 会改变 size 吗？**
 
-   不表示，它仅说明在该比较关系下处于同一排序位置；对象身份和 equals 结果都可能不同。
+   不会，它只确保底层容量至少达到目标；逻辑元素数量仍由实际 add/remove 操作决定。
 
-2. **排序稳定性能修复错误的比较器吗？**
+2. **`Collections.synchronizedList` 后迭代还要加锁吗？**
 
-   不能。稳定排序只保留比较为零元素的原相对次序，不会补足传递性，也不会改变有序集合对零结果的键判定。
+   通常需要按其文档在同一包装对象上显式同步整个迭代过程，否则单次方法同步无法保护复合遍历。
 
 **易错点：**
 
-- 比较器只覆盖展示字段，却拿它充当集合键的唯一规则。
-- 用整数相减实现比较，忽略溢出和比较契约被破坏。
+- 把常见 1.5 倍增长说成 List 接口或所有 JDK 永恒不变的规范。
+- 把 fail-fast 异常当作并发控制，认为没抛异常就没有数据竞争。
 
 **参考来源：**
 
-- [技术校准：Java 21 Comparator API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Comparator.html)
-- [技术校准：Java 21 Set API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Set.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
+- [技术校准：Java 21 List API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html)
+- [技术校准：Java 21 Collections Framework](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/doc-files/coll-overview.html)
+
+校验日期：2026-08-05
+
+## Q34：`HashMap` 的底层结构是什么，链表什么时候会树化？
+
+**短回答：**
+
+JDK 8+ 常见 HashMap 由桶数组、链表和红黑树组成。哈希冲突先落在同一桶内；当单桶节点数达到树化阈值且表容量足够大时才转为红黑树，否则优先扩容，避免小表过早承担树结构成本。
+
+**原理：**
+
+HashMap 先对 key 的 hashCode 做扰动，再用数组长度掩码定位桶。桶为空可直接放入节点；发生冲突时比较哈希值，并按引用相同或 equals 相等判断是否已有键，否则沿链表或树查找。OpenJDK 常见实现中，链表节点达到 8 且数组容量至少 64 才树化；容量较小时先扩容，因为扩大桶数往往能自然分散冲突。树节点减少恶劣冲突下的查找退化，但节点更大、旋转和比较成本更高。阈值属于实现细节，面试可说明当前主流实现，同时强调 Map 契约不承诺内部结构。好 key 还应拥有稳定的 equals/hashCode。
+
+**代码 / 场景：**
+
+自定义 `UserKey` 作为键时，应使用不可变身份字段实现 equals/hashCode。若所有对象错误返回同一个 hash，数据会集中到单桶，性能明显下降；树化只能缓解，不能修复错误的键设计。不要在放入 Map 后修改参与 hashCode 的字段，否则同一个对象可能再也无法按新状态找到。
+
+**递进追问：**
+
+1. **为什么容量小于 64 时通常先扩容而不是树化？**
+
+   小表的冲突更可能由桶数量不足造成，扩容可让节点重新分布；树节点的额外内存和维护成本此时不划算。
+
+2. **红黑树能否把 HashMap 所有操作都保证为 O(log n)？**
+
+   不能这样概括。只有树桶内的相关查找接近对数复杂度，扩容、哈希质量和其他桶仍影响整体行为。
+
+**易错点：**
+
+- 只背“数组+链表+红黑树”，说不清冲突、树化与扩容的决策顺序。
+- 把具体阈值当成 Map 接口保证，或忽略可变 key 破坏定位。
+
+**参考来源：**
+
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 Map API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
+- [技术校准：Java 21 Collections Framework](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/doc-files/coll-overview.html)
 
 校验日期：2026-08-05
 
@@ -1277,264 +1354,287 @@ LinkedHashMap 在散列映射之外维护条目的双向顺序关系。默认 in
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 Map API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
 - [技术校准：Java 21 Collections Framework](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/doc-files/coll-overview.html)
 
 校验日期：2026-08-05
 
-## Q36：为什么实现栈和双端队列通常优先使用 Deque？
+## Q36：`HashMap` 的 `put` 与 `get` 流程怎样走，`equals` 在何时参与？
 
 **短回答：**
 
-Deque 同时定义队首与队尾操作，可直接表达栈和队列；ArrayDeque 通常是内存中的通用选择，但它不接受 null，也没有容量限制和并发保证。
+`put` 先计算哈希和桶位置，再在桶内寻找同键：命中则替换值，未命中则新增并可能触发树化或扩容；`get` 走相同定位路径。hashCode 用来缩小候选范围，equals 用来确认业务上的同一个键。
 
 **原理：**
 
-Deque 为两端操作分别提供抛异常版本 addFirst、removeFirst、getFirst，以及用特殊值表示失败的 offerFirst、pollFirst、peekFirst；栈语义则可用 push、pop、peek。ArrayDeque 基于可增长数组维护环形逻辑位置，两端操作通常为摊销常数时间，不需要为每个元素建立链式节点。null 被禁止，是因为 poll、peek 的 null 需要表示队列为空。选择方法族时要让“容量满或为空”成为显式控制流：有界队列通常偏向 offer/poll，编程错误或必须成功的场景才适合 add/remove。
+定位过程可分三层：先处理 null 等特殊键语义，再计算扰动后的哈希并用 `(n - 1) & hash` 定位桶，最后在首节点、链表或红黑树中比较。两个键只有哈希相同才需要进一步 equals；哈希不同即使碰巧 equals 返回 true，也已经违反了“相等对象必须有相同 hashCode”的契约。put 命中旧键时返回旧值并保留键映射，新增节点后更新 size，超过阈值才扩容。get 返回 null 既可能是键不存在，也可能是该键显式映射到 null，应使用 containsKey 区分。平均 O(1) 依赖散列分布与负载控制，不是无条件承诺。
 
 **代码 / 场景：**
 
-解析括号可写 `Deque<Character> stack = new ArrayDeque<>();`，遇到左括号 `push`，遇到右括号 `pop` 并核对类型。广度优先搜索则用 `offerLast(node)` 与 `pollFirst()`。不要再用继承 Vector 的 Stack 作为默认答案，也不要向 ArrayDeque 放 null 充当结束标记；结束状态应使用单独信号或封装类型。
+实现缓存键时可用不可变 record，例如 `record QueryKey(long tenantId, String keyword) {}`，由稳定字段生成 equals/hashCode。读取 `map.get(key)` 得到 null 时，如果 null 是合法缓存值，要再检查 `containsKey` 或改用不允许 null 的约定。性能问题应观察键分布与扩容，而不是把 equals 写成只比较 hashCode。
 
 **递进追问：**
 
-1. **offer 与 add 的核心区别是什么？**
+1. **hashCode 相同是否代表两个 key 相等？**
 
-   在受容量限制的队列中，offer 用返回 false 表示无法加入，而 add 按 Collection 契约通常抛出 IllegalStateException。
+   不代表，哈希碰撞允许存在；还必须由引用相同或 equals 返回 true 才视为同一个键。
 
-2. **ArrayDeque 可以在多个线程间无锁共享吗？**
+2. **为什么 get 的平均复杂度是 O(1) 而不是永远 O(1)？**
 
-   不可以，它没有并发安全保证；生产者消费者场景应选择 BlockingQueue 等并发容器或提供明确同步。
+   良好分布下候选桶很小；严重冲突、恶意哈希或扩容等情况会增加成本，树化也只是限制部分最坏退化。
 
 **易错点：**
 
-- 用 null 作为空队列或结束标记，混淆特殊值方法的语义。
-- 只因为方法名像栈就默认选 Stack，忽略更合适的 Deque 接口。
+- 用 hashCode 是否相同直接替代 equals，碰撞时误判业务对象。
+- 允许 null value 却只用 get(null 结果) 判断键是否存在。
 
 **参考来源：**
 
-- [技术校准：Java 21 Deque API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html)
-- [技术校准：Java 21 Collection API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
+- [技术校准：Java 21 Map API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
+- [技术校准：Java 21 Object API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html)
 
 校验日期：2026-08-05
 
-## Q37：PriorityQueue 为什么不能当成“随时完全有序的 List”？
+## Q37：`HashMap` 为什么使用 2 的幂容量，负载因子和扩容如何配合？
 
 **短回答：**
 
-PriorityQueue 只保证队首是当前最小或最高优先级元素，内部迭代顺序没有排序承诺；若需要完整有序输出，必须逐个移除或复制后排序。
+2 的幂容量让桶下标可用位掩码高效计算，并使扩容翻倍时节点只需留在原位置或移动旧容量的偏移量。负载因子控制空间与冲突的平衡，`size > capacity × loadFactor` 时通常触发扩容。
 
 **原理：**
 
-PriorityQueue 按自然顺序或 Comparator 维护堆不变量：父位置不劣于子位置，因此 peek 和 poll 能取得队首，而其余元素只需满足局部关系。offer 与 poll 通常为对数时间，peek 为常数时间；iterator 不承诺按优先级遍历。相同优先级元素的先后不确定，若业务需要稳定次序，比较键中必须加入序号等决胜字段。队列不允许 null，也不是线程安全的。更重要的是，入队后修改参与比较的字段不会触发自动重排，会破坏调用者对优先级的判断。
+当容量 n 为 2 的幂时，`n - 1` 的低位全为 1，`hash & (n - 1)` 可均匀利用哈希低位。容量翻倍后只多检查 hash 中原容量对应的那一位：为 0 留在原桶，为 1 移到 `oldIndex + oldCapacity`，无需重新做除法。默认负载因子 0.75 是通用折中，不代表所有业务的最优值。初始容量会规范化到合适的 2 次幂；如果预计元素数量，应把负载因子算入容量规划，而不是直接把预计数量作为容量。扩容要分配新数组并迁移桶，是明显的延迟和内存峰值来源。
 
 **代码 / 场景：**
 
-调度任务可比较 `priority`，再用递增 `sequence` 保证同优先级按进入次序执行：`comparingInt(Task::priority).thenComparingLong(Task::sequence)`。展示队列时不能直接遍历原 PriorityQueue 声称已经排序，可复制到列表后 sort；消费时则连续 poll。已经入队的任务若要改优先级，应先 remove，再修改并重新 offer。
+预计写入 1000 个条目、使用默认负载因子时，初始容量至少应覆盖 `ceil(1000 / 0.75)` 再向上取合适的 2 次幂，从而减少构建阶段扩容。长期缓存不能只把容量设得很大，还要考虑过期、上限和 key/value 内存；固定数据可构建完成后发布不可变 Map。
 
 **递进追问：**
 
-1. **PriorityQueue 的 iterator 为什么看起来有时像有序？**
+1. **负载因子越小是否一定越快？**
 
-   堆数组的局部结构可能让前几个元素呈现某种顺序，但 API 未承诺全序，任何依赖这种观察结果的代码都不可靠。
+   不一定。冲突可能减少，但空桶和内存占用增加，缓存局部性也可能变化；应结合键分布和内存预算衡量。
 
-2. **怎样保证同优先级任务先进先出？**
+2. **为什么扩容会出现延迟尖峰？**
 
-   把单调递增序号加入比较器作为第二排序键，并确保序号在任务入队后保持不变。
+   需要申请更大数组并重新组织已有桶，元素多时会产生复制、节点处理和额外内存峰值。
 
 **易错点：**
 
-- 直接遍历 PriorityQueue，并把输出当成完整排序结果。
-- 元素入队后修改比较字段，却期待堆结构自动重新定位。
+- 预估 1000 个元素就直接传 1000，忽略负载因子导致仍然扩容。
+- 为了避免扩容无限放大初始容量，制造长期空桶和内存浪费。
 
 **参考来源：**
 
-- [技术校准：Java 21 PriorityQueue API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/PriorityQueue.html)
-- [技术校准：Java 21 Comparator API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Comparator.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
+- [技术校准：Java 21 Map API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
+- [技术校准：Java 21 Collections Framework](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/doc-files/coll-overview.html)
 
 校验日期：2026-08-05
 
-## Q38：subList、keySet 与 entrySet 为什么既方便又容易埋坑？
+## Q38：`HashMap` 为什么线程不安全，多线程读写会出现什么问题？
 
 **短回答：**
 
-这些对象通常是原集合的受支持视图，而不是独立副本；通过视图进行允许的修改会作用于原容器，原容器发生不协调的结构变化也可能让视图操作失效。
+HashMap 没有为并发修改提供可见性、互斥和复合操作原子性。多线程同时 put、resize、remove 或遍历可能丢失更新、读到不一致结果或抛出异常；即使只有 `get`，也必须保证 Map 构建完成后的安全发布。
 
 **原理：**
 
-List.subList 返回指定区间的视图，视图中的 set、add、remove 会映射到原列表。若原列表通过视图之外的路径发生结构修改，之后使用该 subList 的语义可能变得未定义并常表现为并发修改异常。Map 的 keySet、values 和 entrySet 同样由 Map 支撑，通过迭代器 remove、集合 remove 或 entry.setValue 等受支持操作可以修改 Map，但是否支持增加取决于视图契约，通常不能凭一个键或值构造完整映射。视图适合原地批量操作；若需要生命周期隔离、跨层返回或长期缓存，应显式复制。
+单次 put 涉及读取桶、判断键、写节点、更新 size 和可能扩容，这些步骤不是一个原子事务。两个线程可能基于同一旧状态写入并覆盖结果；结构修改与迭代并发会触发 best-effort 的 ConcurrentModificationException，但未抛异常不代表正确。JDK 7 扩容环链是历史追问，不应拿它概括所有版本；JDK 8 的具体失效表现不同，但“无并发契约”始终成立。若数据构建后只读，仍需通过 final 字段、锁、volatile 引用或线程安全容器安全发布，不能把普通引用随意泄露。需要原子初始化时使用 ConcurrentHashMap 的 computeIfAbsent 等单键原子 API，并注意映射函数副作用。
 
 **代码 / 场景：**
 
-删除列表中间一段可以执行 `list.subList(from, to).clear()`，它会直接缩短原 list。若接口准备返回最近十条记录，不能把 `records.subList(0, 10)` 长期暴露出去，因为调用方修改它会影响 records，且 records 后续追加也会让旧视图不可靠；应返回 `List.copyOf(records.subList(0, 10))`。
+配置启动时在单线程构建普通 Map，然后用 `Map.copyOf` 形成不可修改快照并通过 final 字段发布，读线程可以无锁读取。若运行期持续更新，选择 ConcurrentHashMap；“如果不存在则 put”不要写成 containsKey + put，而用 `putIfAbsent` 或 `computeIfAbsent` 表达原子意图。
 
 **递进追问：**
 
-1. **从 map.keySet 删除一个键会怎样？**
+1. **只读 HashMap 是否永远线程安全？**
 
-   如果该操作受实现支持，对应的键值映射会从原 Map 删除，因为 keySet 是由该 Map 支撑的视图。
+   若后续绝不修改且对象被安全发布，并发读取可以工作；若构造未完成就泄露引用，其他线程仍可能看不到完整状态。
 
-2. **为什么长期保存很小的 subList 还可能占用较多内存？**
+2. **给 put 外面加锁，get 不加锁可以吗？**
 
-   API 不保证其内部表示完全独立；部分实现的视图会继续引用原列表结构，因此复制能明确生命周期和内存边界。
+   需要完整证明发布和可见性协议；普通 HashMap 不提供这种混合访问保证，工程上应统一同步或改用合适的并发/不可变结构。
 
 **易错点：**
 
-- 把集合视图当成已经与原数据隔离的普通副本。
-- 在保留 subList 时又从原列表路径做结构修改，随后继续使用旧视图。
+- 继续用 JDK 7 的“扩容死循环”解释所有现代 HashMap 并发问题。
+- 看到压测没报错就认定并发安全，忽略沉默的数据丢失和可见性问题。
 
 **参考来源：**
 
-- [技术校准：Java 21 List API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
+- [技术校准：Java 21 Map API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
+- [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
+
+校验日期：2026-08-05
+
+## Q39：`ConcurrentHashMap` 如何保证并发安全，为什么复合操作仍要用原子 API？
+
+**短回答：**
+
+JDK 8+ 的 ConcurrentHashMap 通过 volatile 可见性、CAS 和桶级同步协作，读操作通常不锁全表，冲突更新只锁定更小范围。它保证文档规定的单次和复合 API，但 `get` 后再 `put` 仍不是原子事务。
+
+**原理：**
+
+现代 ConcurrentHashMap 使用 Node 数组组织桶，空桶初始化可用 CAS，桶内冲突更新常在桶首监视器上同步，扩容时多个线程还可协助迁移。与 JDK 7 的 Segment 分段锁实现相比，锁粒度和数据结构不同；回答时应明确版本。get 依赖 volatile 字段和内存语义读取，无需像 Hashtable 那样锁住整张表。弱一致遍历允许与更新并发，不抛普通 HashMap 式 fail-fast，但不等于某一瞬间的全局快照。`putIfAbsent`、`compute`、`merge` 才能在单键范围表达原子复合更新；映射函数可能在内部同步范围执行，必须短小且避免递归更新同一 Map。
+
+**代码 / 场景：**
+
+统计用户计数可用 `map.computeIfAbsent(userId, k -> new LongAdder()).increment()`，避免 containsKey + put 的竞态。配置全量一致切换不适合逐键更新 ConcurrentHashMap，因为读者可能看到新旧混合版本；应构建不可变 Map 后一次替换 volatile/AtomicReference 中的引用。
+
+**递进追问：**
+
+1. **ConcurrentHashMap 的 size 是强一致快照吗？**
+
+   并发更新期间聚合结果可能是瞬时估计或弱一致观察，不应用它维护需要严格事务语义的业务不变量。
+
+2. **为什么 computeIfAbsent 的函数不应做慢 I/O？**
+
+   它可能处在实现的并发控制路径上，慢操作会放大桶竞争；函数还应避免递归修改同一键并处理失败重试语义。
+
+**易错点：**
+
+- 把 JDK 7 Segment 结构原样描述成 JDK 8+ 的实现。
+- 使用线程安全容器后仍写 get-check-put，并误以为多个调用会自动合成原子操作。
+
+**参考来源：**
+
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
+- [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
 - [技术校准：Java 21 Map API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
 
 校验日期：2026-08-05
 
-## Q39：Arrays.asList、List.of 与 Stream.toList 得到的列表有何不同？
+## Q40：`HashSet` 如何保证元素不重复，它与 `HashMap`、`equals`、`hashCode` 有什么关系？
 
 **短回答：**
 
-三者都可能让 add 或 remove 失败，但原因与其他能力不同：Arrays.asList 是定长数组视图，List.of 是拒绝 null 的不可修改集合，Stream.toList 返回不可修改列表且可包含 null。
+HashSet 通常以元素作为底层 HashMap 的 key，所有元素映射到同一个占位值。能否去重取决于元素的 hashCode 与 equals 契约；对象相等就必须有相同哈希，且放入集合后不能修改参与相等判断的字段。
 
 **原理：**
 
-Arrays.asList 返回由原数组支撑的固定大小 List，因此 set 会同步改动数组，但 add、remove 因改变大小而抛 UnsupportedOperationException；基本类型数组作为单个对象传入时，会得到只有一个数组元素的列表。List.of 创建不可修改列表，拒绝 null，并对 Set.of、Map.of 额外检查重复。Stream.toList 的契约是按遭遇顺序返回不可修改 List，没有声明拒绝 null；它与 `collect(Collectors.toList())` 不等价，后者并未在 API 契约中承诺具体类型、可修改性或线程安全。调用方必须依据公开契约，而不是某个 JDK 当前实现。
+add 元素本质上尝试向 Map 写入该 key：先按 hash 定位候选桶，再用 equals 确认是否已有等价元素。如果找到等价 key，新增失败并返回 false。HashSet 不承诺迭代顺序；需要插入顺序用 LinkedHashSet，需要排序语义用 TreeSet。若只重写 equals 不重写 hashCode，相等对象可能进入不同桶而同时存在；若 key 放入后身份字段改变，remove 和 contains 会按新 hash 去另一个桶查找，从而“集合里看得到却找不到”。这也是不可变值对象适合作为散列键的原因。
 
 **代码 / 场景：**
 
-`String[] a = {"A", "B"}; var fixed = Arrays.asList(a); fixed.set(0, "X")` 会让 `a[0]` 变为 X，但 `fixed.add("C")` 失败。需要可变副本时写 `new ArrayList<>(Arrays.asList(a))`；需要不可修改快照且确认没有 null 时用 `List.copyOf(source)`。对于 `int[]`，应使用 IntStream.boxed 或显式循环，不能期待 Arrays.asList 自动装箱每个元素。
+权限集合可把不可变枚举放入 EnumSet；业务实体若按 `tenantId + userId` 去重，可定义不可变 record 或在 equals/hashCode 中只使用不会变化的身份字段。不要直接用数据库实体全部可变字段生成 Lombok equals/hashCode，再在持久化前后改变 id。
 
 **递进追问：**
 
-1. **Collectors.toList 一定返回 ArrayList 吗？**
+1. **HashSet 可以存 null 吗？**
 
-   不一定，规范没有保证具体实现或可修改性；若结果能力重要，应改用明确的集合供应器或 toCollection。
+   常见 HashSet 实现允许一个 null，因为底层 HashMap 允许一个 null key；但接口层设计是否允许 null 应由业务契约明确。
 
-2. **Stream.toList 与 List.of 对 null 的约束相同吗？**
+2. **TreeSet 的去重也依赖 hashCode 吗？**
 
-   不同，List.of 明确拒绝 null，而 Stream.toList 的结果可以包含流中出现的 null 元素。
-
-**易错点：**
-
-- 看到 add 失败就把三种列表笼统称为同一种不可变集合。
-- 对基本类型数组调用 Arrays.asList，误以为会逐元素装箱。
-
-**参考来源：**
-
-- [技术校准：Java 21 List API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html)
-- [技术校准：Java 21 Stream API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html)
-- [技术校准：Java 21 Collectors API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Collectors.html)
-
-校验日期：2026-08-05
-
-## Q40：EnumSet 与 EnumMap 为什么适合枚举域，而不是普通集合的语法糖？
-
-**短回答：**
-
-当元素或键来自单一枚举类型时，EnumSet 与 EnumMap 能直接表达封闭值域，并按枚举声明顺序迭代，通常比通用散列结构更紧凑、更可预测。
-
-**原理：**
-
-枚举常量在一个 enum 类型中拥有稳定的声明次序和有限全集。EnumSet 只接受同一枚举类型的非 null 常量，可用位向量一类紧凑表示支持 allOf、noneOf、range、complementOf 等集合运算；EnumMap 也限定键为单一枚举类型，键不允许 null，并按枚举常量的自然声明顺序迭代。它们的优势来自受限键域，而不是改变 Set 或 Map 的业务契约。value 是否允许 null 仍应看 EnumMap 契约；并发修改、复合操作原子性也不会因为使用枚举专用实现而自动获得。
-
-**代码 / 场景：**
-
-权限开关可写 `EnumSet.of(READ, WRITE)`，要取“除 DELETE 外所有权限”可先 `EnumSet.complementOf(EnumSet.of(DELETE))`。状态对应处理器可写 `EnumMap<OrderState, Handler>`，评审时一眼能看出键域是 OrderState；若必须检查每个状态均已配置，再与 `EnumSet.allOf(OrderState.class)` 对照，而不是依赖 Map 大小口诀。
-
-**递进追问：**
-
-1. **EnumSet 的迭代顺序由什么决定？**
-
-   由枚举常量在类型中的声明顺序决定，不受元素加入顺序影响，因此可以稳定表达枚举域顺序。
-
-2. **枚举专用集合是否自动线程安全？**
-
-   不会。它们仍需遵守普通集合的并发使用规则，跨线程写入要外部同步或采用不可变快照。
+   通常不依赖，它按自然顺序或 Comparator 的比较结果是否为零判定同一排序键，因此比较器应与 equals 语义协调。
 
 **易错点：**
 
-- 键明明是封闭枚举域，却用字符串 Map 丢失类型检查。
-- 误把紧凑实现理解成并发安全或复合操作自动原子化。
+- 只重写 equals 不重写 hashCode，导致逻辑相等对象无法稳定去重。
+- 元素入 Set 后修改身份字段，随后 contains/remove 失效。
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 Set API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Set.html)
 - [技术校准：Java 21 Map API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
+- [技术校准：Java 21 Object API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html)
+
+校验日期：2026-08-05
+
+# 集合实战、Lambda 与 Stream
+
+## Q41：什么是 fail-fast，遍历集合时怎样安全删除元素？
+
+**短回答：**
+
+普通集合迭代器通常用修改计数尽力发现遍历期间的意外结构修改并抛 `ConcurrentModificationException`。安全删除应使用当前迭代器的 `remove`、集合的 `removeIf`，或先筛选生成新集合；不能在增强 for 中直接调用原集合 remove。
+
+**原理：**
+
+ArrayList 等集合维护结构修改计数，创建 Iterator 时记录 expectedModCount。迭代期间如果从迭代器之外增删元素，下一次检查发现计数不一致就快速失败，避免在不确定结构上继续运行。它是调试错误的机制，不是并发安全保证：检查并非强同步，跨线程竞态可能抛也可能不抛。`Iterator.remove` 会在删除后同步期望计数，并要求先成功 next 且每次 next 最多 remove 一次。只替换元素值是否算结构修改取决于操作契约。并发遍历应选择快照、显式锁或 ConcurrentHashMap 等弱一致迭代器，而不是捕获异常重试。
+
+**代码 / 场景：**
+
+删除过期会话可写 `sessions.removeIf(Session::expired)`；需要边遍历边执行更多逻辑时，用显式 Iterator，在命中后调用 `iterator.remove()`。若另一个线程同时更新列表，先明确需要快照还是强一致：快照可复制后遍历，强一致则在同一锁内保护迭代与修改。
+
+**递进追问：**
+
+1. **为什么增强 for 中删除容易失败？**
+
+   增强 for 对集合通常使用隐藏 Iterator；直接调用集合 remove 改了结构，却没有更新该 Iterator 的期望计数。
+
+2. **ConcurrentHashMap 迭代器为什么通常不抛该异常？**
+
+   它提供弱一致遍历，允许和并发更新共存并观察部分变化，但不承诺某一时刻的完整快照。
+
+**易错点：**
+
+- 把 ConcurrentModificationException 当成锁，认为没抛异常的数据就是一致的。
+- catch 异常后从头重试遍历，掩盖真正的结构修改协议错误。
+
+**参考来源：**
+
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
+- [技术校准：Java 21 Collection API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Collection.html)
 - [技术校准：Java 21 Collections Framework](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/doc-files/coll-overview.html)
 
 校验日期：2026-08-05
 
-# Lambda、Stream、Optional 与 java.time
-
-## Q41：Lambda 为什么只能捕获 final 或 effectively final 的局部变量？
+## Q42：`CopyOnWriteArrayList` 为什么适合读多写少，它的代价是什么？
 
 **短回答：**
 
-Lambda 可以读取没有再次赋值的局部变量，但不能修改它；这个限制让捕获值具有清晰稳定的语义，并避免把栈上局部变量误当成可共享可变存储。
+CopyOnWriteArrayList 每次结构写入都在锁内复制底层数组，再原子发布新数组；读取无需锁，迭代器看到创建时的稳定快照。代价是写放大、内存峰值和数据可见延迟，因此只适合列表较小、读远多于写且允许快照语义的场景。
 
 **原理：**
 
-Lambda 表达式在目标类型上下文中产生函数式接口实例。它可以引用实例字段、静态字段以及 final 或 effectively final 的局部变量；后者指变量初始化后从未被重新赋值，即使没有显式 final。局部变量的生命周期通常短于返回后的 Lambda，实现可捕获其值而不是暴露原栈槽，因此禁止后续重新赋值可避免两套状态含义。实例字段通过捕获 this 访问，不受 effectively final 规则限制，但这也意味着异步 Lambda 可能读取并修改共享对象状态，线程安全仍需另行保证。循环变量是否可捕获取决于它是否是每轮新声明且未再赋值。
+读线程获取当前数组引用并按索引访问，不会被正在构造的新副本破坏；写线程持锁复制、修改副本后再发布。迭代器固定持有当时数组，所以写入不会让它 fail-fast，也不会反映迭代开始后的新元素，迭代器本身不支持 remove。一次 add 是 O(n) 复制，连续批量写若逐条进行会产生大量临时数组和 GC 压力。它保证容器操作的并发语义，但元素对象仍可能可变，多个线程修改元素字段要另行同步。与 `Collections.synchronizedList` 相比，后者写成本低但读和遍历需要协调锁。
 
 **代码 / 场景：**
 
-`int limit = 10; Predicate<String> p = s -> s.length() > limit;` 合法；若随后执行 `limit++`，编译器会拒绝捕获。要统计流中元素，不能用单元素数组绕过限制并在并行流里递增；顺序代码可用 collect 得到结果，并发计数则根据语义选择 LongAdder、原子变量或无副作用归约。
+应用内监听器注册后很少变化、每次请求都要遍历通知时，可以使用 CopyOnWriteArrayList。十万条订单持续写入则不合适，应使用线程封闭批次、队列或锁保护的普通结构。需要批量更新时优先 `addAll` 等一次复制，而不是循环单条 add。
 
 **递进追问：**
 
-1. **为什么可以在 Lambda 中修改对象字段，却不能给局部变量重新赋值？**
+1. **它的迭代器能看到遍历期间新增元素吗？**
 
-   捕获的局部变量值本身必须稳定；对象引用稳定不代表对象不可变，字段属于共享堆对象，修改合法但需要调用方承担并发风险。
+   不能保证看到；迭代器基于创建时的数组快照，这正是它无需与写线程互相阻塞的原因。
 
-2. **Lambda 中的 this 指向 Lambda 对象吗？**
+2. **元素本身是否自动变成线程安全？**
 
-   不指向独立 Lambda 实例，它保留外围词法作用域的 this 语义，这一点与匿名内部类的 this 行为不同。
-
-**易错点：**
-
-- 用数组或可变容器绕过捕获限制，再把同一 Lambda 放进并行执行。
-- 看到 effectively final 就误以为所引用对象的内部状态也不可变。
-
-**参考来源：**
-
-- [技术校准：Java 21 函数式接口包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/package-summary.html)
-- [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
-
-校验日期：2026-08-05
-
-## Q42：函数式接口如何确定，为什么还需要基本类型专用接口？
-
-**短回答：**
-
-函数式接口只需有一个抽象方法契约，默认方法不计入；IntFunction、ToLongFunction 等专用接口则用于减少装箱拆箱并把输入输出意图表达得更清楚。
-
-**原理：**
-
-一个接口若其抽象成员可归并为一个函数描述符，就能作为 Lambda 或方法引用的目标类型，@FunctionalInterface 让编译器帮助维护该约束，但不是成为函数式接口的必要条件。继承自 Object 的公共方法不会简单计入多个函数描述符，default 与 static 方法也不属于抽象函数。java.util.function 提供 Function、Predicate、Consumer、Supplier 以及 Bi 系列；IntPredicate、LongConsumer、ToIntFunction 等基本类型专用形式避免在高频流水线中把原始值反复装箱成包装对象。UnaryOperator 和 BinaryOperator 则表达输入输出为同一类型的特殊 Function。
-
-**代码 / 场景：**
-
-校验订单可声明 `Predicate<Order>`，把订单映射为展示对象用 `Function<Order, View>`，只读取配置用 `Supplier<Config>`。对百万个 int 求值时优先 `IntUnaryOperator` 或 `IntStream`，避免 `Function<Integer, Integer>` 为每个值产生潜在装箱成本。自定义回调加上 @FunctionalInterface，可在未来误增第二个抽象方法时立即编译失败。
-
-**递进追问：**
-
-1. **函数式接口能不能包含多个 default 方法？**
-
-   可以，函数式接口的限制针对抽象函数描述符，default、static 以及可归并的方法不妨碍它作为 Lambda 目标。
-
-2. **什么时候不值得为装箱专门优化？**
-
-   低频控制流或对象操作中，应优先接口可读性；只有数据量、采样或性能测试表明装箱成为成本时再做针对性选择。
+   不会。复制的是元素引用数组，不是深拷贝元素；可变元素内部状态仍需不可变设计或同步。
 
 **易错点：**
 
-- 把“接口只能有一个方法”当作函数式接口的准确规则。
-- 所有数值流水线都使用包装类型 Function，忽略可观的装箱成本。
+- 只看到“线程安全”就把高频写列表替换成 CopyOnWriteArrayList。
+- 误认为快照迭代会实时反映新增项，或认为元素对象也被深复制。
 
 **参考来源：**
 
-- [技术校准：Java 21 函数式接口包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/package-summary.html)
-- [技术校准：JLS 9：接口](https://docs.oracle.com/javase/specs/jls/se21/html/jls-9.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
+- [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
+- [技术校准：Java 21 List API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html)
 
 校验日期：2026-08-05
 
@@ -1569,6 +1669,9 @@ Lambda 表达式在目标类型上下文中产生函数式接口实例。它可�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
 - [技术校准：Java 21 函数式接口包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/package-summary.html)
 
@@ -1607,6 +1710,9 @@ filter、map、sorted 等中间操作返回新流并延迟执行，count、colle
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 Stream API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html)
 - [技术校准：Java 21 Spliterator API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Spliterator.html)
 
@@ -1643,6 +1749,9 @@ Stream.map 接收 Function<T,R>，一个输入产生一个 R，因此把 `Stream
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 Stream API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html)
 - [技术校准：Java 21 Optional API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html)
 
@@ -1679,6 +1788,9 @@ reduce 的 identity 必须对运算保持单位元性质，accumulator 与 combi
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 Stream API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html)
 - [技术校准：Java 21 Collectors API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Collectors.html)
 
@@ -1715,6 +1827,9 @@ parallel 并不是免费加速：拆分、调度、合并和共享资源争用�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 Stream API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html)
 - [技术校准：Java 21 Spliterator API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Spliterator.html)
 - [技术校准：Java 21 Collectors API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Collectors.html)
@@ -1752,6 +1867,9 @@ Optional 是可能包含一个非 null 值的容器，empty 表示缺失。of �
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 Optional API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html)
 
 校验日期：2026-08-05
@@ -1787,6 +1905,9 @@ Instant 以 UTC 时间线上的秒和纳秒定位时刻，适合事件时间戳�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 日期时间 API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/time/package-summary.html)
 
 校验日期：2026-08-05
@@ -1822,11 +1943,14 @@ DateTimeFormatter 可复用并组合 pattern、Locale、DecimalStyle、ResolverS
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（上）](https://javaguide.cn/java/collection/java-collection-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合常见面试题（下）](https://javaguide.cn/java/collection/java-collection-questions-02.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 集合面试题](https://www.xiaolincoding.com/interview/collections.html)
 - [技术校准：Java 21 日期时间 API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/time/package-summary.html)
 
 校验日期：2026-08-05
 
-# IO、NIO、编码、文件与序列化
+# I/O、NIO 与序列化
 
 ## Q51：字节流与字符流怎样分层，Buffered 就一定更快吗？
 
@@ -1859,6 +1983,8 @@ InputStream、OutputStream 处理原始字节，Reader、Writer 通过字符集�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 知识体系与高频问题](https://javaguide.cn/java/)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 java.io 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/package-summary.html)
 - [技术校准：Java 21 Files API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/file/Files.html)
 
@@ -1895,80 +2021,87 @@ CharsetEncoder 把字符编码为字节，CharsetDecoder 把字节解码为字�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 知识体系与高频问题](https://javaguide.cn/java/)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 java.nio 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/package-summary.html)
 - [技术校准：Java 21 java.io 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/package-summary.html)
 
 校验日期：2026-08-05
 
-## Q53：InputStream.read 为什么返回 int，怎样正确处理 EOF 与无符号字节？
+## Q53：BIO、NIO、AIO 有什么区别，选型时应看哪些业务条件？
 
 **短回答：**
 
-单字节 `read()` 需要同时表达 0 到 255 的全部字节值和额外的 EOF 状态，因此返回 int：非负值是无符号字节，-1 才表示流结束。
+BIO 的读写调用通常阻塞当前线程；NIO 提供 Channel、Buffer 和 Selector，可用少量线程管理大量非阻塞连接；AIO 以完成回调或 Future 表达异步 I/O。选型取决于并发连接数、每连接流量、开发复杂度和运行平台，而不是“NIO 永远更快”。
 
 **原理：**
 
-Java 的 byte 取值范围是 -128 到 127，无法再腾出一个值同时无歧义表示 256 种字节模式与 EOF。`InputStream.read()` 因而返回 int：读取成功时结果限定在 0 到 255，流结束且没有更多字节时返回 -1。调用方必须先判断 -1，再转换或参与位运算；直接强转 byte 会把 128 到 255 表现为负数，并且把 -1 强转后得到的 `0xFF` 与真实字节 255 无法区分。批量 `read(byte[])` 返回本次字节数，EOF 返回 -1；数组长度为零时可返回 0，普通阻塞 InputStream 代码不能把“读到的内容恰好为 0”与返回值 0 混淆。读取固定长度数据还必须循环，因为一次批量 read 不承诺填满数组。
+阻塞/非阻塞描述一次调用在数据未就绪时是否等待，同步/异步描述完成通知与结果处理方式，两组概念不能混为一谈。传统 socket BIO 常采用一连接一线程或线程池，代码直接但大量空闲连接会占用线程资源。NIO 把连接注册到 Selector，事件循环只处理已就绪通道，适合连接多、单次数据量小的网络服务；业务处理仍需避免阻塞事件循环。AIO 把操作提交给系统或运行时，完成后通知处理器，但不同平台实现与生态成熟度有差异。文件顺序读取、连接数量有限时，缓冲 BIO 可能最清晰。
 
 **代码 / 场景：**
 
-正确单字节循环是 `for (int v; (v = in.read()) != -1;) { checksum.update(v); }`，此时 v 已是 0 到 255，无需再次 `& 0xff`。若已有一个 byte b，要恢复其无符号数值才写 `b & 0xff`。读取 16 字节头部时应累计 offset，直到收满、发生异常或 read 返回 -1；若中途 EOF，应报告截断，不能把数组剩余的默认零值当成文件内容。
+上传大文件的后台任务连接数有限，可使用缓冲流和线程池，重点控制内存与超时。聊天网关维护数万长连接时，可用 NIO/Netty 事件循环，但数据库调用和复杂业务应转交业务线程池，避免一个慢请求卡住整个事件循环。做技术选型前应测连接规模、消息大小、阻塞比例与故障恢复。
 
 **递进追问：**
 
-1. **为什么 `(byte) in.read() == -1` 不能可靠判断 EOF？**
+1. **NIO 是否等于异步 I/O？**
 
-   真实字节 255 和 EOF 的 int -1 强转为 byte 后都表现为 -1，转换前不判断会丢失区分它们所需的信息。
+   不等于。Java NIO 常见 Selector 模型是同步非阻塞：线程主动查询就绪事件，再由自己执行 read/write。
 
-2. **批量 read 返回的 n 应该怎样使用？**
+2. **为什么 NIO 事件循环不能直接做慢数据库查询？**
 
-   只处理缓冲区从零到 n 的本次有效区域并累计进度；不能假设数组每次被填满，也不能读取上次遗留的尾部。
+   事件循环线程负责推进许多连接，阻塞它会同时拖慢这一组连接，慢业务应卸载并设置背压。
 
 **易错点：**
 
-- 先把 read 返回值强转为 byte，再判断是否等于 -1。
-- 一次 read(byte[]) 后处理整个数组，忽略实际返回的有效字节数。
+- 把阻塞/非阻塞与同步/异步当作同一维度。
+- 为了“高性能”给低并发文件任务引入复杂事件循环，却没有背压、超时和监控。
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 知识体系与高频问题](https://javaguide.cn/java/)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 java.io 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/package-summary.html)
-- [技术校准：JLS 4：类型、值与变量](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html)
-- [技术校准：JLS 5：转换与上下文](https://docs.oracle.com/javase/specs/jls/se21/html/jls-5.html)
+- [技术校准：Java 21 java.nio 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/package-summary.html)
+- [技术校准：Java 21 NIO Channels](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/channels/package-summary.html)
 
 校验日期：2026-08-05
 
-## Q54：Path 与 Files 操作怎样避免相对路径、符号链接和非原子替换风险？
+## Q54：Java NIO 的 Channel、Buffer、Selector 分别负责什么？
 
 **短回答：**
 
-Path 是路径表达而不是文件本身；安全文件操作要明确基准目录、规范化与真实路径的差别，并对符号链接、竞态和原子移动能力做显式处理。
+Channel 是可读写的数据通道，Buffer 承载读写状态，Selector 让一个线程发现多个非阻塞通道的就绪事件。三者配合解决“数据在哪里、状态怎样切换、哪些连接现在可处理”三个问题。
 
 **原理：**
 
-Path.resolve 组合路径，normalize 只做语法层面的 `.`、`..` 消解，不访问文件系统；toRealPath 会解析真实存在路径及符号链接。上传文件若仅 normalize 后检查字符串前缀，攻击者仍可能借助符号链接或检查后替换制造逃逸。Files.move 的 ATOMIC_MOVE 只有文件系统支持时才提供原子移动，否则会抛 AtomicMoveNotSupportedException；指定它时其他复制选项会被忽略，目标已存在时究竟替换还是失败由具体实现决定。稳妥更新通常在同一文件系统写入并校验临时文件，再用版本文件、清单或明确的恢复协议完成切换，而不是假设 ATOMIC_MOVE 与 REPLACE_EXISTING 组合具有统一语义。
+Channel 的 read 把数据写入 Buffer，write 从 Buffer 取数据写出；两者都可能只完成一部分，必须根据返回值和剩余空间循环处理。Buffer 用 capacity、position、limit 描述当前区域：写完后 `flip` 把 limit 设为已写位置并把 position 归零，读取后 `clear` 为覆盖整个缓冲区做准备，`compact` 则保留未读数据。Selector 只报告 accept、connect、read、write 等就绪状态，不替你完成业务读写。非阻塞 write 经常返回 0，若始终注册 OP_WRITE 会形成忙循环，应仅在确有待发送数据时关注写就绪。
 
 **代码 / 场景：**
 
-配置发布可在目标目录用 `Files.createTempFile(dir, ".config-", ".tmp")` 写完并校验，再把它以唯一版本名执行 `Files.move(tmp, versioned, ATOMIC_MOVE)`；最后按应用约定切换清单并保留旧版本。若必须覆盖固定目标，应先确认文件系统提供者语义并测试失败恢复。用户文件名则使用服务端生成 ID，避免直接 resolve 不可信路径。
+协议解码器收到半包时，不应假设一次 read 得到完整消息：把数据写入 ByteBuffer，flip 后按长度字段解析；数据不足则 compact，等待下一次 read 继续。响应未写完时保留剩余 Buffer 并注册 OP_WRITE，写空后立即取消写关注。
 
 **递进追问：**
 
-1. **normalize 与 toRealPath 的本质差异是什么？**
+1. **`clear()` 会把旧字节真正清零吗？**
 
-   normalize 仅重写路径字符串，不要求目标存在；toRealPath 访问文件系统并解析实际路径及符号链接。
+   不会，它只重设 position 和 limit，让后续写入可覆盖旧内容；需要安全擦除时要显式覆盖。
 
-2. **ATOMIC_MOVE 失败后直接普通 move 可以吗？**
+2. **Selector 返回可读是否保证一次能读完整业务包？**
 
-   要看业务是否容忍中间状态；关键配置或索引需要备份、校验和恢复流程，不能无条件静默降级。
+   不保证，它只表示当前有数据或状态可处理；TCP 是字节流，仍需自己处理半包、粘包和连接关闭。
 
 **易错点：**
 
-- 只用字符串 startsWith 校验路径，忽略符号链接与检查后使用竞态。
-- 假设所有文件系统和容器挂载都支持同样的原子移动语义。
+- 忘记 flip，导致读取区间为空或位置错乱。
+- 把一次 Channel read/write 当成完整传输，未保存剩余状态。
 
 **参考来源：**
 
-- [技术校准：Java 21 Files API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/file/Files.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 知识体系与高频问题](https://javaguide.cn/java/)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
+- [技术校准：Java 21 java.nio 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/package-summary.html)
+- [技术校准：Java 21 NIO Channels](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/channels/package-summary.html)
 
 校验日期：2026-08-05
 
@@ -2003,6 +2136,8 @@ Files.lines 返回文本行的惰性 Stream，Files.list 和 Files.walk 也可�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 知识体系与高频问题](https://javaguide.cn/java/)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 Files API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/file/Files.html)
 - [技术校准：Java 21 Stream API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html)
 
@@ -2041,6 +2176,8 @@ capacity 是缓冲区固定容量，position 指向下一个读或写位置，li
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 知识体系与高频问题](https://javaguide.cn/java/)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 java.nio 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/package-summary.html)
 - [技术校准：Java 21 NIO Channels](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/channels/package-summary.html)
 
@@ -2077,44 +2214,48 @@ ReadableByteChannel.read 最多读取 buffer.remaining 个字节，可能读到�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 知识体系与高频问题](https://javaguide.cn/java/)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 21 NIO Channels](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/channels/package-summary.html)
 - [技术校准：Java 21 java.nio 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/package-summary.html)
 
 校验日期：2026-08-05
 
-## Q58：阻塞 IO、非阻塞 Channel 与 Selector 的边界是什么？
+## Q58：Java I/O 为什么大量使用装饰器模式，怎样避免包装层次混乱？
 
 **短回答：**
 
-非阻塞模式让线程在通道暂不可读写时立即返回，Selector 用就绪事件管理多个通道；它减少等待线程，不会自动简化协议状态机或让业务计算并行。
+InputStream/OutputStream 与 Reader/Writer 提供基础抽象，缓冲、数据类型转换、压缩等能力通过包装另一个流逐层组合。装饰器避免为每种能力组合建立子类，但要求正确选择字节/字符边界、包装顺序和关闭责任。
 
 **原理：**
 
-SelectableChannel 配置为非阻塞后可向 Selector 注册感兴趣的操作。select 返回的是“某操作现在可能不阻塞”的就绪提示，而不是保证下一次调用一定传输完整消息；处理期间条件可能变化，仍需接受 read/write 返回零。每个连接必须保存解码进度、半包、待发送缓冲等状态，处理完 selectedKeys 后正确移除已消费键，并按待写数据动态维护 OP_WRITE，长期无条件关注可写事件会造成空轮询。Selector 线程适合做轻量 I/O 状态推进，耗时计算应交给受控执行器再安全地把结果唤醒回事件循环。
+装饰器与被包装对象实现相同核心接口，并在转发前后增加行为。例如 BufferedInputStream 为任意输入流加缓冲，InputStreamReader 把字节按指定 Charset 解码为字符，BufferedReader 再提供字符缓冲和按行读取。包装顺序决定语义：压缩数据应先解压字节，再按字符集解码；反过来没有意义。最外层关闭通常会级联关闭内层资源，但是否要关闭调用方传入的底层流必须写进 API 契约。缓冲不是越多越快，重复缓冲会占内存且增加刷新时机的理解成本。
 
 **代码 / 场景：**
 
-聊天室可由一个 Selector 管理数千连接：OP_READ 到来后把字节追加到连接 ByteBuffer，解析出完整帧再提交业务；响应未写完就保留 buffer 并注册 OP_WRITE，写空后取消该兴趣。不要在 selector 线程里调用慢数据库，也不要每轮都保持 OP_WRITE，因为套接字通常持续可写，会让 select 频繁立即返回。
+读取 gzip 压缩 UTF-8 文本时，顺序可为 `FileInputStream -> GZIPInputStream -> InputStreamReader(UTF_8) -> BufferedReader`，并用 try-with-resources 管理最外层。若方法接收外部提供的 OutputStream，通常只 flush 而不擅自 close，所有权由调用者决定并在文档中说明。
 
 **递进追问：**
 
-1. **就绪事件是否表示已经收到一个完整业务请求？**
+1. **装饰器与适配器的关注点有什么不同？**
 
-   不是，它只说明底层 I/O 操作可能推进；完整请求仍需由应用协议处理拆包、粘包和解码状态。
+   装饰器保持同一抽象并叠加能力；适配器主要把一种接口转换为另一种接口，例如 InputStreamReader 连接字节流与字符流。
 
-2. **为什么 OP_WRITE 通常按需注册？**
+2. **为什么关闭最外层通常就够了？**
 
-   套接字在多数时间都可写，持续关注会不断产生就绪事件；只有存在未发送数据时注册才能避免空转。
+   标准包装流的 close 通常向内委托，从而释放整条链；但自定义流和资源所有权仍应核对契约。
 
 **易错点：**
 
-- 把 Selector 就绪误解为一次 read 就能得到完整消息。
-- 永久注册 OP_WRITE 或在事件线程执行慢业务，造成空转与全局延迟。
+- 先按字符解码再尝试解压，弄反字节变换与字符变换顺序。
+- 工具方法随意关闭调用者传入的流，破坏上层复用和响应写出。
 
 **参考来源：**
 
-- [技术校准：Java 21 NIO Channels](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/channels/package-summary.html)
-- [技术校准：Java 21 java.nio 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/package-summary.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 知识体系与高频问题](https://javaguide.cn/java/)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
+- [技术校准：Java 21 java.io 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/package-summary.html)
+- [技术校准：Java 21 AutoCloseable API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/AutoCloseable.html)
 
 校验日期：2026-08-05
 
@@ -2149,6 +2290,8 @@ serialVersionUID 用于反序列化版本兼容检查，transient 排除默认�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 知识体系与高频问题](https://javaguide.cn/java/)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 对象序列化规范](https://docs.oracle.com/en/java/javase/21/docs/specs/serialization/)
 - [技术校准：Java 21 java.io 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/package-summary.html)
 
@@ -2185,12 +2328,14 @@ ObjectInputStream 读取的类型信息与对象图可能触发 readObject、rea
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 知识体系与高频问题](https://javaguide.cn/java/)
+- [高频题库参考（内容已重写）：小林 Coding：Java 基础面试题](https://www.xiaolincoding.com/interview/java.html)
 - [技术校准：Java 对象序列化规范](https://docs.oracle.com/en/java/javase/21/docs/specs/serialization/)
 - [技术校准：Java 21 java.io 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/package-summary.html)
 
 校验日期：2026-08-05
 
-# 线程基础与异步任务
+# 线程基础、线程池与异步任务
 
 ## Q61：创建线程时，为什么通常提交 Runnable 或 Callable，而不是继承 Thread？
 
@@ -2223,6 +2368,9 @@ Thread 同时包含线程身份、优先级、名称、中断状态等执行上�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（上）](https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 线程池详解](https://javaguide.cn/java/concurrent/java-thread-pool-summary.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 Thread API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html)
 - [技术校准：Java 21 ExecutorService API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/ExecutorService.html)
 
@@ -2259,6 +2407,9 @@ NEW 表示尚未 start，TERMINATED 表示 run 已退出。RUNNABLE 不等于此
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（上）](https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 线程池详解](https://javaguide.cn/java/concurrent/java-thread-pool-summary.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 Thread API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html)
 
 校验日期：2026-08-05
@@ -2294,6 +2445,9 @@ interrupt 只是发出取消请求：它设置中断状态，或让部分阻塞�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（上）](https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 线程池详解](https://javaguide.cn/java/concurrent/java-thread-pool-summary.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 Thread API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html)
 - [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
 
@@ -2332,6 +2486,9 @@ wait/notify 不是消息队列，而是对象监视器上的条件等待协议�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（上）](https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 线程池详解](https://javaguide.cn/java/concurrent/java-thread-pool-summary.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 Object API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html)
 - [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
 
@@ -2368,115 +2525,128 @@ join 让当前线程等待目标线程终止，适合表达明确的生命周期
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（上）](https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 线程池详解](https://javaguide.cn/java/concurrent/java-thread-pool-summary.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 Thread API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html)
 
 校验日期：2026-08-05
 
-## Q66：sleep、wait 与 yield 都会“让出执行”吗？
+## Q66：`ThreadPoolExecutor` 的核心参数有哪些，任务提交后按什么顺序处理？
 
 **短回答：**
 
-三者语义完全不同：sleep 让当前线程定时暂停但不释放监视器；wait 在持锁条件下进入对象等待集并释放对应监视器；yield 只是向调度器提示当前线程愿意让出处理器，不提供时序保证。
+核心参数包括 corePoolSize、maximumPoolSize、keepAliveTime、时间单位、workQueue、threadFactory 和拒绝策略。execute 提交后通常按“核心线程未满就创建 → 否则入队 → 队列满且未到最大线程数再创建 → 仍无法接收则拒绝”处理。
 
 **原理：**
 
-Thread.sleep 依据指定时长让当前线程进入 TIMED_WAITING，到期后只是重新具备运行资格，实际恢复时间受调度影响；如果在 synchronized 中调用，它仍持有监视器。Object.wait 必须先持有目标对象监视器，调用后释放该监视器，并因通知、超时或中断醒来，再竞争锁并复查条件。Thread.yield 不阻塞到某个明确事件，也不保证其他线程立刻运行，调度器可以忽略它，因此不能用于正确性同步、限流或等待状态变化。需要等待条件时使用通知、锁条件、并发队列或 Future；需要控制频率时使用调度器、限速器或带截止时间的等待，而不是忙等加 yield。
+线程池复用工作线程并把并发度、排队和过载策略显式化。达到核心线程数后，新任务不是立刻创建非核心线程，而是先尝试进入 workQueue；只有队列无法接收时才向 maximumPoolSize 扩展。无界队列会让 maximumPoolSize 很难生效，并把过载转成内存和延迟问题；有界队列便于形成背压。非核心线程空闲超过 keepAliveTime 通常回收，核心线程也可配置超时。threadFactory 应提供可识别线程名和未捕获异常策略。参数不是孤立口诀：队列容量、任务耗时、到达速率和下游容量共同决定系统行为。
 
 **代码 / 场景：**
 
-订单轮询线程不能写成 while(!ready) Thread.yield()，因为它既浪费 CPU 又没有可见性和时序保证。若 ready 由另一个任务完成，可让完成方结束 CompletableFuture，等待方用带超时的 get；若是有界生产消费，则使用 BlockingQueue.take。只有模拟延迟或简单重试退避时才可能使用 sleep，并确保不在持有业务锁时睡眠。
+订单通知平均每秒 200 个、单任务平均 50ms，先估算并发需求和下游 QPS，再配置独立有界线程池、命名线程工厂和明确拒绝策略。压力测试要观察 activeCount、queueSize、完成量、拒绝量和任务等待时间；若队列持续增长，扩大线程数可能只会压垮数据库，应先限流或降级。
 
 **递进追问：**
 
-1. **在 synchronized 中 sleep 会释放锁吗？**
+1. **为什么使用无界队列时 maximumPoolSize 常常不起作用？**
 
-   不会。sleep 只改变当前线程的调度状态，不修改它持有的监视器；其他需要同一锁的线程仍会阻塞，所以持锁睡眠通常会无谓放大临界区。
+   核心线程满后任务仍能不断入队，队列不满就不会走创建非核心线程的分支，最终风险转为排队延迟和内存增长。
 
-2. **yield 能否保证优先让高优先级线程运行？**
+2. **核心线程会一直存活吗？**
 
-   不能。yield 只是调度提示，Java 规范没有承诺下一位执行者，也没有承诺当前线程不会马上再次运行；不能把它当作可移植的优先级或同步机制。
-
-**易错点：**
-
-- 在持有热点锁时 sleep，导致其他线程在整个暂停期间无法进入临界区。
-- 用 yield 或短 sleep 轮询条件，形成忙等、延迟抖动和难以复现的时序问题。
-
-**参考来源：**
-
-- [技术校准：Java 21 Thread API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html)
-- [技术校准：Java 21 Object API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html)
-
-校验日期：2026-08-05
-
-## Q67：ThreadLocal 解决什么问题，为什么在线程池中必须 remove？
-
-**短回答：**
-
-ThreadLocal 为每个线程保存独立值，适合传递明确生命周期内的线程上下文或复用非线程安全对象；它不是跨线程共享工具。线程池会复用工作线程，若任务结束不清理，旧值可能泄漏给后续请求并长期占用内存。
-
-**原理：**
-
-每个 Thread 维护与 ThreadLocal 键关联的局部值，同一个 ThreadLocal 在不同线程读取到各自副本。initialValue 或 withInitial 可延迟创建每线程值，set 覆盖当前线程条目，remove 删除当前线程值，下一次 get 会重新初始化。ThreadLocal 对象被回收不等于值立即释放，线程内部表的键具有弱引用语义，而值可能随长寿命线程继续存活。线程池工作线程跨任务复用，因此请求标识、用户信息或大对象若未在 finally 中 remove，会造成上下文串号和保留。异步任务换线程后也不会自动继承普通 ThreadLocal；InheritableThreadLocal 只在创建子线程时复制初值，不适合线程池中的请求传播。
-
-**代码 / 场景：**
-
-过滤器在请求入口把 traceId 放入 ThreadLocal，业务日志从当前线程读取。请求结束无论成功失败都在 finally 中调用 remove。提交异步任务时，不假设线程池线程能看到调用方值，而是在任务对象中显式携带不可变的 TraceContext，并在执行边界设置和清理；这样既避免串号，也能审计上下文从哪里传来。
-
-**递进追问：**
-
-1. **ThreadLocal 能让对象变成线程安全吗？**
-
-   它只能让每个线程操作自己的实例，从而避免共享；若局部值本身被发布给其他线程或引用共享可变对象，仍然存在并发问题，也要明确资源数量和清理成本。
-
-2. **为什么 InheritableThreadLocal 不适合在线程池传播请求上下文？**
-
-   它只在线程创建时从父线程复制值，而线程池线程通常早已存在并反复执行不同请求。结果可能拿不到新上下文或残留旧上下文，无法表达每次任务提交的边界。
+   默认通常会保留，但可通过 allowCoreThreadTimeOut 让核心线程也按空闲超时回收。
 
 **易错点：**
 
-- 在线程池任务中只 set 不 remove，造成用户上下文串用和长寿命对象滞留。
-- 假设普通 ThreadLocal 会跟随 CompletableFuture 或线程池任务自动传播。
+- 把七个参数逐个背完，却说错“先扩到最大线程再入队”的执行顺序。
+- 使用无界队列掩盖过载，直到延迟和堆内存不可控。
 
 **参考来源：**
 
-- [技术校准：Java 21 ThreadLocal API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ThreadLocal.html)
-- [技术校准：Java 21 Thread API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html)
-
-校验日期：2026-08-05
-
-## Q68：Future 的 get、cancel 与超时分别代表什么？
-
-**短回答：**
-
-Future 是一次异步计算的结果句柄：get 等待结果并转交失败，带超时的 get 限制等待时间；cancel 请求取消尚未完成的任务。超时只停止当前等待，不会自动终止后台任务，取消也不保证任务一定立即停止。
-
-**原理：**
-
-提交 Callable 后得到 Future。get 在任务成功时返回值，任务抛异常时以 ExecutionException 包装原始原因，等待线程被中断时抛 InterruptedException；get(timeout) 到期抛 TimeoutException，但任务仍可继续。cancel(false) 不会中断正在运行的任务，但仍可能把尚未完成的 Future 标记为已取消，此时底层计算可以继续到自然结束；cancel(true) 则还会向执行线程请求中断。取消成功后 isCancelled 为 true，之后 get 抛 CancellationException；isDone 对正常、异常和取消三种终态都为 true，不能据此判断计算是否真的停止或成功。正确做法是使用总 deadline、分类处理异常，并让任务协作响应中断或业务取消信号。
-
-**代码 / 场景：**
-
-聚合三个下游报价时设置 800 毫秒总预算，每个 Future.get 使用当前剩余时间。某一路超时后，策略若不再需要它就 cancel(true)，并记录 timeout；已完成结果通过 get 收集，ExecutionException 展开 cause 区分业务失败和系统失败。方法 finally 中取消所有不再需要的 Future，避免请求早已返回而后台仍消耗连接。
-
-**递进追问：**
-
-1. **isDone 为 true 是否说明任务成功？**
-
-   不说明。正常返回、抛异常和被取消都会进入完成状态；调用方需要 get 并分别处理 ExecutionException 与 CancellationException，或保存明确的结果状态。
-
-2. **get 超时后为什么任务还可能继续？**
-
-   超时约束的是调用线程等待 Future 的时长，不是任务本身的生命周期。若业务决定放弃结果，需要显式 cancel，并确保底层操作支持中断或自身具备超时。
-
-**易错点：**
-
-- 把 TimeoutException 当作任务已经取消，实际后台仍持续占用线程和连接。
-- 捕获 ExecutionException 后只打印包装异常，没有检查 cause 并按失败类型处理。
-
-**参考来源：**
-
-- [技术校准：Java 21 Future API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/Future.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（上）](https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 线程池详解](https://javaguide.cn/java/concurrent/java-thread-pool-summary.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 ExecutorService API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/ExecutorService.html)
+- [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
+
+校验日期：2026-08-05
+
+## Q67：线程池大小怎样估算，为什么不建议直接使用 `Executors` 默认工厂？
+
+**短回答：**
+
+线程数应根据 CPU 核数、任务等待/计算比例、下游容量和延迟目标通过压测确定。部分 Executors 工厂使用无界队列或可无限创建线程，容易把过载隐藏成 OOM、延迟雪崩或线程耗尽，因此生产更适合显式 ThreadPoolExecutor。
+
+**原理：**
+
+CPU 密集任务的有效并行度通常接近可用核心数；I/O 等待较多时可以增加线程以覆盖等待，但不能超过数据库连接、远端 QPS 和内存承载。公式只能给初值，因为任务耗时分布、上下文切换、锁竞争和突发流量会改变结果。`newFixedThreadPool` 常配无界 LinkedBlockingQueue，积压时内存持续增长；`newCachedThreadPool` 最大线程数很大且使用直接交接，慢任务可能快速创建大量线程；`newSingleThreadExecutor` 同样可能无限排队。显式构造让容量、拒绝、线程命名和监控都可审核，还应按业务隔离线程池，避免一个慢依赖占满公共资源。
+
+**代码 / 场景：**
+
+CPU 图像处理池可从 `Ncpu` 或 `Ncpu + 1` 附近开始压测；调用外部接口的池先受连接池和对方限流约束，再根据等待比例设置并发。支付、报表、通知应使用不同池和队列，避免报表突发拖死支付链路。容量调整以 p95/p99 等待时间、拒绝率和下游健康度为依据。
+
+**递进追问：**
+
+1. **I/O 密集任务线程数是否越多越好？**
+
+   不是。线程仍消耗栈和调度成本，更会争用连接池及下游容量；超过瓶颈后只会增加排队和超时。
+
+2. **虚拟线程出现后还需要限流吗？**
+
+   需要。虚拟线程降低线程成本，却不会增加数据库连接、CPU、内存和远端服务容量，稀缺资源仍要单独限制。
+
+**易错点：**
+
+- 套用固定公式后直接上线，不用真实耗时分布和下游容量验证。
+- 所有业务共用一个线程池，一个慢依赖造成全站饥饿。
+
+**参考来源：**
+
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（上）](https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 线程池详解](https://javaguide.cn/java/concurrent/java-thread-pool-summary.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
+- [技术校准：Java 21 ExecutorService API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/ExecutorService.html)
+- [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
+
+校验日期：2026-08-05
+
+## Q68：线程池的拒绝策略、`shutdown` 与 `shutdownNow` 应怎样设计？
+
+**短回答：**
+
+队列和最大线程均饱和时必须执行拒绝策略：抛异常、调用者执行、丢弃最旧或静默丢弃各有不同风险。`shutdown` 停止接收新任务并处理已提交任务，`shutdownNow` 尝试中断运行任务并返回未开始任务；二者都不是强制终止。
+
+**原理：**
+
+AbortPolicy 明确抛 RejectedExecutionException，便于上层降级；CallerRunsPolicy 让提交线程执行任务，可形成自然背压，但如果提交者是事件循环或持锁线程可能放大阻塞甚至死锁；Discard 与 DiscardOldest 会丢任务，只有业务明确允许并具备指标、补偿时才可用。关闭时应先 shutdown，再在预算内 awaitTermination，超时后才 shutdownNow 并再次等待。任务必须正确响应 interrupt，外部 I/O 还需设置自身超时，否则 shutdownNow 也无法及时停止。服务关闭顺序要先停止流量入口，再等待任务和下游资源，最后关闭依赖。
+
+**代码 / 场景：**
+
+消息异步落库不能使用静默丢弃，可让拒绝策略记录指标并把任务转入可靠消息或由调用方降级。应用退出时先从负载均衡摘除，停止接收请求，调用 shutdown，等待例如 30 秒；超时后 shutdownNow，并记录返回的未执行任务用于补偿。任务捕获 InterruptedException 后应恢复中断标记或结束，不要继续无限重试。
+
+**递进追问：**
+
+1. **CallerRunsPolicy 为什么能形成背压？**
+
+   提交线程被迫同步执行任务，提交速度会下降；但它会阻塞提交者，所以必须确认该线程允许承担业务执行。
+
+2. **`shutdownNow` 能保证正在运行的任务立刻停止吗？**
+
+   不能，它主要通过 interrupt 发出协作取消请求；忽略中断或阻塞在不可中断操作中的任务仍可能继续。
+
+**易错点：**
+
+- 使用 DiscardPolicy 却没有丢弃指标、业务幂等和补偿机制。
+- 服务退出直接 shutdownNow，未给正常任务清理和提交结果的时间。
+
+**参考来源：**
+
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（上）](https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 线程池详解](https://javaguide.cn/java/concurrent/java-thread-pool-summary.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
+- [技术校准：Java 21 ExecutorService API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/ExecutorService.html)
+- [技术校准：Java 21 Future API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/Future.html)
+- [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
 
 校验日期：2026-08-05
 
@@ -2511,6 +2681,9 @@ CompletableFuture 同时实现 Future 与 CompletionStage。若函数从 T 同�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（上）](https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 线程池详解](https://javaguide.cn/java/concurrent/java-thread-pool-summary.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 CompletableFuture API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/CompletableFuture.html)
 
 校验日期：2026-08-05
@@ -2546,114 +2719,129 @@ thenApply 等非 Async 方法的动作可由完成当前阶段的线程执行，
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（上）](https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 线程池详解](https://javaguide.cn/java/concurrent/java-thread-pool-summary.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 CompletableFuture API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/CompletableFuture.html)
 - [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
 
 校验日期：2026-08-05
 
-# 并发协作、容器与安全发布
+# JMM、锁、CAS 与并发安全
 
-## Q71：CountDownLatch、CyclicBarrier 与 Phaser 分别适合什么协作场景？
+## Q71：Java 内存模型解决什么问题，可见性、原子性、有序性如何区分？
 
 **短回答：**
 
-CountDownLatch 适合一个或多个线程等待若干一次性事件；CyclicBarrier 让固定数量的参与者在同一阶段会合并可重复使用；Phaser 支持多阶段推进以及参与者动态注册和退出。
+JMM 规定线程如何通过共享内存交互，并用 happens-before 判断一个操作的结果是否必须对另一个操作可见。可见性关注能否看到最新值，原子性关注操作是否不可分割，有序性关注允许重排序后仍需保持哪些观察结果。
 
 **原理：**
 
-CountDownLatch 以计数初始化，countDown 递减且不会阻塞，await 等待计数归零，归零后不能重置，常用于启动门或完成门。CyclicBarrier 的参与方调用 await，最后一个到达时可执行 barrier action，随后所有参与者进入下一轮；等待超时、中断或某方失败可能使屏障 broken，其他等待者也要处理异常。Phaser 把流程表示为 phase，支持 register、arrive、arriveAndAwaitAdvance 与 arriveAndDeregister，适合迭代阶段和动态成员。选择时先问参与方是否固定、是否多轮、谁需要等待，不能只因三个工具都能“等线程”就混用。所有等待都应有故障和超时策略。
+CPU 缓存、编译器优化和指令重排使源码顺序不能直接等同于跨线程观察顺序。JMM 不要求每次读写都直达所谓“主内存”，而是抽象规定同步动作和数据竞争下的合法行为。对同一监视器的 unlock happens-before 后续 lock；volatile 写 happens-before 后续读；线程 start 之前的动作对新线程可见，线程中的动作在线程成功终止并被 join 后对等待者可见；传递性可把这些边连接起来。单个 int 读写通常原子不代表 `count++` 原子，因为它包含读、计算、写。正确并发程序需要用锁、volatile、final 安全初始化、原子类或线程安全容器建立明确边界。
 
 **代码 / 场景：**
 
-服务启动时主线程用 CountDownLatch 等待配置、缓存和连接池三个一次性初始化完成；并行图像处理的四个固定工作线程每轮都要在“读取—处理—写出”边界会合，可用 CyclicBarrier；分片计算中工作分片会动态增加或提前退出，且要推进多个阶段，则 Phaser 更能表达注册、到达与退出。
+一个线程设置 `data = build(); ready = true;`，另一个线程循环读普通 ready 后访问 data，存在数据竞争；把 ready 声明为 volatile，并保证先写 data 后写 ready，volatile 写读边可发布之前的初始化。若多个线程同时执行 count++，即使 count 是 volatile 仍会丢失更新，应使用 AtomicInteger 或同一锁。
 
 **递进追问：**
 
-1. **CountDownLatch 的 countDown 调用多了会怎样？**
+1. **volatile 能否保证对象内部所有复合操作线程安全？**
 
-   计数降到零后继续 countDown 不会变成负数，也不会报错，但通常暴露调用协议不清。它不能恢复到初始计数，下一轮需要新建实例或改用可复用工具。
+   不能。它能通过引用或字段建立可见性与顺序边界，但多个步骤的不变量仍可能需要锁或原子结构。
 
-2. **CyclicBarrier 中一个参与者超时有什么影响？**
+2. **happens-before 是否等于实际时间上先发生？**
 
-   该屏障会进入 broken 状态，其他正在等待的参与者通常收到 BrokenBarrierException。调用方必须把这一轮视为整体失败并决定 reset、重建或终止，不能让其余线程继续假装会合成功。
+   它是内存可见性与顺序保证关系，不只是墙上时钟的先后；没有该关系的两个操作即使偶然按顺序执行也不能据此证明正确。
 
 **易错点：**
 
-- 用 CountDownLatch 承担多轮阶段同步，却忘记它归零后无法重置。
-- 屏障等待没有超时和失败传播，一个参与者退出后其余线程永久等待。
+- 用“线程工作内存一定就是某级 CPU 缓存”替代 JMM 的抽象语义。
+- 把可见性、原子性和有序性混成“加 volatile 就线程安全”。
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（中）](https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（下）](https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
+- [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
 - [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
 
 校验日期：2026-08-05
 
-## Q72：Semaphore 如何限制并发资源，许可数为什么不等于线程数？
+## Q72：`synchronized` 如何实现互斥和可见性，锁住的对象到底是谁？
 
 **短回答：**
 
-Semaphore 维护的是许可，不拥有线程也不自动创建资源。线程在使用稀缺资源前获取许可，结束后归还；许可数应对应可安全并行使用的资源容量，而不是简单照搬请求线程数量。
+synchronized 以对象监视器为同步边界：实例同步方法锁当前 `this`，静态同步方法锁对应 Class 对象，代码块锁括号中的那个对象。进入与退出同一监视器建立互斥和 happens-before，可保证临界区写入对后续持锁线程可见。
 
 **原理：**
 
-acquire 在无许可时等待并响应中断，tryAcquire 可立即失败或带超时等待，release 增加许可。信号量本身不追踪某个许可由谁获取，因此无条件 release、重复 release 或未成功获取就 release 都会把容量放大。正确模板是先记录 acquired，成功后再进入 try/finally，并仅在 finally 中归还一次。公平构造可以倾向先到先得，但可能降低吞吐，且 tryAcquire 的无参形式不承诺遵循公平顺序。Semaphore 只限制同时进入某段逻辑的数量，不保证被保护对象自身线程安全，也不替代连接池的借还、健康检查和销毁协议。容量要结合下游上限、延迟与压测调整。
+字节码层面，同步代码块通常对应 monitorenter/monitorexit，并由异常表确保异常路径也释放；同步方法通过方法访问标志表达。锁是可重入的，同一线程再次获得同一监视器会增加持有计数，退出相应次数才完全释放。JVM 可使用偏向、轻量、自旋、锁消除等实现优化，但不同 JDK 版本策略会演进，面试应先讲规范语义，再把“锁升级”作为 HotSpot 实现补充。锁对象身份必须稳定且私有：锁字符串常量可能与其他代码意外共享，锁可变字段可能在替换引用后变成两把锁。临界区内的慢 I/O 会拉长所有竞争线程等待。
 
 **代码 / 场景：**
 
-第三方 OCR 接口只允许同时 20 个请求，应用在调用前 tryAcquire(100, MILLISECONDS)。获取失败立即返回可重试的繁忙结果；获取成功后在 try 中调用带自身超时的客户端，finally 中 release。许可数固定为对方允许且本服务验证安全的并发量，而不是 Web 线程池的 200；指标同时记录等待时长、拒绝数和实际在途请求。
+账户转账要保护两个余额时，应建立稳定的全序锁定规则，例如按账户 id 排序后依次锁定，避免 A→B 与 B→A 形成死锁。单实例状态用 `synchronized(lock)` 保护私有 final lock；所有实例共享的静态注册表才考虑类级锁。锁内只完成必要状态检查与更新，远程调用放到临界区外并用事务/补偿保证一致性。
 
 **递进追问：**
 
-1. **为什么 release 不应写在没有条件的 finally 中？**
+1. **两个实例调用同一个 synchronized 实例方法会互斥吗？**
 
-   如果 acquire 因中断、超时或 tryAcquire 返回 false 而未拿到许可，无条件 release 会凭空增加许可，使并发限制逐渐失效。应只在成功获取后归还一次。
+   通常不会，因为分别锁各自的 this；只有它们实际使用同一个监视器对象时才互斥。
 
-2. **Semaphore 能替代数据库连接池吗？**
+2. **synchronized 是否一定是重量级操作？**
 
-   不能完全替代。它只管理数量，没有连接创建、健康校验、泄漏检测和关闭等生命周期；可以作为某段调用的额外并发门，但实际资源仍应由专用池管理。
+   不能这样概括。规范给出同步语义，JVM 会根据竞争情况优化；真正成本应通过目标 JDK 和负载测量。
 
 **易错点：**
 
-- 获取失败仍执行 release，运行一段时间后许可数超过真实资源容量。
-- 只有并发许可没有调用超时，持有许可的阻塞任务让全部请求一起停滞。
+- 把所有 synchronized 方法都说成锁 Class，混淆实例锁和类锁。
+- 锁住公开对象、字符串常量或会被替换的引用，导致意外竞争或保护失效。
 
 **参考来源：**
 
-- [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（中）](https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（下）](https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
+- [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
+- [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 
 校验日期：2026-08-05
 
-## Q73：BlockingQueue 为什么是生产者—消费者模型的首选基础工具？
+## Q73：`ThreadLocal` 的原理是什么，在线程池中为什么必须清理？
 
 **短回答：**
 
-BlockingQueue 把线程安全队列和等待协议封装在一起，生产者与消费者无需手写 wait/notify。选择有界容量并明确 put、offer、take、poll 的等待语义，可以同时表达背压、超时和关闭策略。
+ThreadLocal 把值存在线程自身的 ThreadLocalMap 中，key 对 ThreadLocal 是弱引用，value 仍是强引用。线程池线程生命周期很长，若任务结束不 remove，旧值可能泄漏、串到下一请求并长期占用内存。
 
 **原理：**
 
-put 在有界队列已满时等待，take 在空队列时等待，二者响应中断；offer 和 poll 有立即返回及带超时重载，便于把拥塞转成显式结果。ArrayBlockingQueue 容量固定且数组存储，LinkedBlockingQueue 可指定容量，若使用其很大的默认上限容易掩盖积压；PriorityBlockingQueue 按优先级取元素但本身通常无界，且相同优先级不保证 FIFO。队列解决传递与等待，不自动定义消费者如何优雅停止。常见方案是中断消费者、显式关闭外层组件，或使用不会与真实数据冲突的结束协议。任务进入队列前后都要保留总截止时间，避免排队后已失去业务价值。
+调用 `threadLocal.set(value)` 时，条目不是保存在 ThreadLocal 对象里，而是当前 Thread 的专用 Map。弱 key 能在外部不再持有 ThreadLocal 时被回收，但 value 不会因此立即消失；只有后续 Map 操作清理陈旧条目或线程结束，value 才有机会释放。线程池复用同一个工作线程处理多个请求，所以 ThreadLocal 不是请求级自动变量。它适合传递明确生命周期的线程上下文，但异步切换到另一个线程、CompletableFuture 默认池和虚拟线程时，值不会自动按业务期望传播。更可靠的设计是显式传参，确需使用时在边界统一 set/try/finally/remove。
 
 **代码 / 场景：**
 
-日志上传器使用容量 1000 的 ArrayBlockingQueue。低价值调试日志调用 offer 并在队满时计数丢弃，审计日志使用带短超时的 offer，超时则切换本地持久化；上传线程 take 批量发送，组件关闭时设置停止状态并 interrupt 消费者。监控队列深度、等待时长和丢弃率，使背压成为可观测策略而不是内存无限增长。
+Web 过滤器从请求读取 traceId 后执行 `TRACE.set(id); try { chain.doFilter(...); } finally { TRACE.remove(); }`。不能只在正常返回时清理，因为异常路径同样会把用户上下文留给下一个任务。异步任务应显式复制需要的不可变上下文，避免把大型请求对象整体放进 ThreadLocal。
 
 **递进追问：**
 
-1. **为什么生产服务通常偏向有界队列？**
+1. **key 是弱引用，为什么还会内存泄漏？**
 
-   有界容量把过载限制在已知范围，并迫使系统选择等待、拒绝、降级或落盘。无界积压会把流量峰值转成内存压力和无限延迟，最终常以更难恢复的方式失败。
+   key 被回收后，Entry 中的 value 仍由长寿命线程及其 Map 强引用；没有后续清理或线程结束时，value 可长期存活。
 
-2. **add、offer 与 put 在队满时有什么差异？**
+2. **InheritableThreadLocal 适合线程池传上下文吗？**
 
-   add 通常抛 IllegalStateException，offer 立即返回 false，put 则等待直到有空间或被中断；带超时 offer 在限定时间内等待。调用方应按业务可丢弃性选择。
+   通常不适合。它在线程创建时继承，而线程池线程早已存在且会复用，容易得到过期上下文。
 
 **易错点：**
 
-- 默认使用近似无界队列，把消费者变慢的问题推迟成高内存和超长延迟。
-- 没有关闭协议，应用停止时消费者永久阻塞在 take 或漏处理已入队数据。
+- 只调用 set 不在 finally 中 remove，在线程池里造成串号和内存滞留。
+- 把数据库连接、请求对象等大资源塞入 ThreadLocal，并期待弱引用自动释放。
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（中）](https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（下）](https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
+- [技术校准：Java 21 ThreadLocal API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ThreadLocal.html)
 - [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
 
 校验日期：2026-08-05
@@ -2689,6 +2877,9 @@ synchronized 绑定对象监视器，进入和退出由语言与 JVM 保证，�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（中）](https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（下）](https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 Locks API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/locks/package-summary.html)
 - [技术校准：Java 21 Object API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html)
 - [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
@@ -2726,6 +2917,9 @@ volatile 适合发布单个状态：写入对随后读取该字段的线程可�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（中）](https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（下）](https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
 
 校验日期：2026-08-05
@@ -2761,45 +2955,52 @@ volatile 适合发布单个状态：写入对随后读取该字段的线程可�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（中）](https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（下）](https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 Thread API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html)
 - [技术校准：JDK 21 jcmd 工具说明](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
 - [技术校准：Java 21 Locks API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/locks/package-summary.html)
 
 校验日期：2026-08-05
 
-## Q77：happens-before 解决什么问题，核心规则有哪些？
+## Q77：AQS 是什么，`ReentrantLock`、`Semaphore`、`CountDownLatch` 如何基于它协作？
 
 **短回答：**
 
-happens-before 是 Java 判断一个线程的写入是否保证对另一个线程可见、执行顺序是否受约束的核心关系。它不是墙上时间先后；没有这条关系的冲突访问可能形成数据竞争，结果不能按单线程直觉推断。
+AQS 用一个同步状态 `state`、原子更新和等待队列搭建锁与同步器骨架。子类定义共享或独占模式下获取/释放状态的规则，AQS 负责失败入队、阻塞、唤醒和取消等通用流程。
 
 **原理：**
 
-常用规则包括：同一线程内按程序顺序，前一个动作先于后一个动作；同一监视器的 unlock 先于随后成功的 lock；对 volatile 字段的写先于随后读到该字段的读取；调用 Thread.start 之前的动作先于新线程中的动作；线程中的全部动作先于其他线程从 join 成功返回或确认线程终止；关系还具有传递性。它描述规范保证，不要求硬件逐条物理执行，也不意味着“代码行看起来更早”就自动成立。若两个线程对同一变量有冲突访问且不存在合适关系，便存在数据竞争；应通过锁、volatile、线程启动/等待、并发容器等建立明确边界。单有原子读写也未必能保护跨变量不变量。
+独占模式同一时刻通常只有一个线程成功，例如 ReentrantLock；共享模式允许多个线程按状态同时通过，例如 Semaphore 许可和 CountDownLatch 计数归零后的放行。线程先尝试 `tryAcquire` 或 `tryAcquireShared`，失败后进入 CLH 风格同步队列并在合适条件下挂起；释放状态后唤醒后继重新竞争。AQS 使用 CAS 管理 state 和队列关系，但完整实现不等于“纯自旋”，等待线程会阻塞。ConditionObject 维护独立条件队列，await 会释放锁并进入条件等待，signal 后转移回同步队列，最终仍要重新获得锁。理解 AQS 应抓住状态、队列、独占/共享三条主线，不必死背每个源码分支。
 
 **代码 / 场景：**
 
-主线程先构造不可变配置并赋给普通变量，再调用 worker.start；工作线程读取该配置有 start 规则提供的可见性。工作线程写 result 后结束，主线程成功 join 再读取 result，也有终止等待规则。若两条已运行线程只通过普通 boolean ready 通知，写 data 后写 ready、另一线程轮询 ready 再读 data，则没有可靠边界，应把 ready 设为 volatile 或使用锁、Future。
+限流器可用 Semaphore 的许可表达同时访问下游的最大数量，务必在成功 acquire 后用 finally release。一次启动等待多个组件初始化可用 CountDownLatch；重复阶段协作则考虑 CyclicBarrier/Phaser。自定义同步器前优先组合现有 JUC 工具，只有状态模型确实特殊且具备充分测试时才继承 AQS。
 
 **递进追问：**
 
-1. **发生在真实时间更早，是否就一定 happens-before？**
+1. **AQS 的 state 具体表示什么？**
 
-   不一定。它是由程序顺序和规范定义的同步规则建立的关系，而不是根据日志时间戳推断。两个线程的普通读写即使肉眼看来先后执行，也可能没有该保证。
+   AQS 只提供整数状态容器与原子访问，语义由子类定义：可表示重入次数、剩余许可或未完成计数。
 
-2. **start 和 join 两条规则分别把可见性传向哪里？**
+2. **Condition.signal 后线程能立刻继续吗？**
 
-   start 把调用它之前的动作传给新线程开始后的动作；线程终止配合成功 join，则把该线程结束前的动作传给等待线程在 join 返回后的动作，方向不能颠倒。
+   不能保证。它先从条件队列转移到同步队列，还要重新竞争并获得关联锁后，await 才能返回。
 
 **易错点：**
 
-- 用日志时间或 sleep 推断跨线程可见性，没有建立规范定义的同步关系。
-- 只证明单字段读写有序，就进一步声称多个字段的业务操作整体原子。
+- 把 AQS 说成所有线程一直 CAS 自旋，忽略入队与阻塞。
+- 为普通业务直接手写 AQS 锁，未处理取消、中断、公平性和异常路径。
 
 **参考来源：**
 
-- [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
-- [技术校准：Java 21 Thread API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（中）](https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（下）](https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
+- [技术校准：Java 21 Locks API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/locks/package-summary.html)
+- [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
+- [技术校准：Java 21 原子变量包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/package-summary.html)
 
 校验日期：2026-08-05
 
@@ -2834,6 +3035,9 @@ happens-before 是 Java 判断一个线程的写入是否保证对另一个线�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（中）](https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（下）](https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
 - [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
 
@@ -2870,6 +3074,9 @@ Counter 的 synchronized increment 与 synchronized value 都锁同一个 Counte
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（中）](https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（下）](https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 
@@ -2906,12 +3113,15 @@ compareAndSet(expected, update) 原子比较当前值和 expected，相等才写
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（中）](https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发常见面试题（下）](https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 并发编程面试题](https://www.xiaolincoding.com/interview/juc.html)
 - [技术校准：Java 21 原子变量包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/package-summary.html)
 - [技术校准：Java 21 并发工具包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html)
 
 校验日期：2026-08-05
 
-# JVM 运行时、字节码与 GC 基础
+# JVM 内存、类加载与垃圾回收
 
 ## Q81：一段 Java 源码从 javac 编译到 JVM 执行会经过哪些阶段？
 
@@ -2944,43 +3154,52 @@ javac 的产物不是特定 CPU 的机器码，而是包含版本号、常量池
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：类加载过程详解](https://javaguide.cn/java/jvm/class-loading-process.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JVMS 4：Class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
 - [技术校准：JLS 12：执行、加载与初始化](https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html)
 
 校验日期：2026-08-05
 
-## Q82：Class 文件中的常量池、字段表和方法表分别保存什么？
+## Q82：Java 对象从 `new` 到可用会经历哪些步骤？
 
 **短回答：**
 
-Class 文件用结构化表描述一个类型：常量池集中保存字面量与符号引用，字段表和方法表描述成员，Code 等属性再承载方法字节码、异常表和调试信息。
+JVM 遇到 new 时先确保目标类已加载和初始化，再为对象分配内存、把实例字段置默认值、设置对象头，随后执行构造器链完成显式初始化，最终把引用交给调用方。分配位置和对象布局属于具体 JVM 实现。
 
 **原理：**
 
-常量池中的 Class、NameAndType、Fieldref、Methodref 等条目使用索引互相连接，使字节码能够先表达“哪个类的哪个成员”，再在链接或首次使用时解析为运行时结构。字段表记录访问标志、名称、描述符及属性，并不保存每个实例字段的实际值；方法表同样描述签名和属性，非抽象、非 native 方法通常带 Code 属性，其中包含 max_stack、max_locals、指令序列与异常处理表。泛型签名、注解、行号和局部变量名属于可选属性，可能因编译参数或混淆被移除。
+字节码 new 指令引用常量池中的类符号，解析后检查该类是否可实例化。以 HotSpot 常见路径为例，堆空间规整时可用指针碰撞分配，并通过线程本地分配缓冲 TLAB 降低竞争；空间不规整时需要空闲列表等策略。分配后的零值初始化保证构造器执行前字段有语言规定的默认值，随后对象头记录类型、同步和 GC 所需元数据，再依次执行父类构造器、实例字段初始化和当前构造器。JIT 通过逃逸分析可能做标量替换，使源码中的对象不一定真的出现在堆上，因此“所有对象必然在堆分配”不应作为绝对结论。构造期间泄露 this 会让其他线程看到未完成对象。
 
 **代码 / 场景：**
 
-面对桥接方法或泛型擦除疑问，可以运行 `javap -v -c Demo.class`，同时观察 descriptor、Signature、ACC_BRIDGE 和指令。不要从反编译出的近似源码倒推 Class 一定保存了完整 Java 源码，因为注释、局部格式和很多语法糖已经消失。
+不可变配置对象应在构造器中完成校验和字段赋值，构造器里不要注册监听器、启动线程或调用可重写方法，以免 this 提前泄露。分析大量短命对象时用 JFR/分配剖析确认热点，再决定减少分配或调整 GC；不要仅凭源码里的 new 数量推测堆压力。
 
 **递进追问：**
 
-1. **运行时常量池与 Class 文件常量池完全相同吗？**
+1. **对象的实例字段何时获得默认值？**
 
-   不是。Class 文件常量池是静态二进制表，类加载后 JVM 会为类型建立运行时表示，并可把符号引用解析为可直接使用的运行时结构。
+   JVM 分配并初始化对象存储时先设零值，之后构造器链和字段初始化表达式再写入业务值。
 
-2. **字段的默认值存放在字段表里吗？**
+2. **new 出来的对象一定分配在堆上吗？**
 
-   实例字段的实际值位于对象实例中；静态 final 编译期常量可通过 ConstantValue 属性表达，普通静态字段则在准备和初始化阶段处理。
+   语言语义把对象视为引用对象，但优化后的具体存储由 JVM 决定；逃逸分析可能消除分配或做标量替换。
 
 **易错点：**
 
-- 认为常量池只保存字符串和数字，忽略类、字段与方法的符号引用。
-- 把反编译源码当作原始源码的无损备份，忽略属性裁剪和语法糖还原。
+- 把 TLAB、对象头具体位布局说成 JVM 规范对所有实现的固定要求。
+- 在构造器中把 this 发布到其他线程，破坏安全初始化。
 
 **参考来源：**
 
-- [技术校准：JVMS 4：Class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：类加载过程详解](https://javaguide.cn/java/jvm/class-loading-process.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
+- [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
+- [技术校准：JLS 12：执行、加载与初始化](https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html)
 
 校验日期：2026-08-05
 
@@ -3015,44 +3234,52 @@ Class 文件用结构化表描述一个类型：常量池集中保存字面量�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：类加载过程详解](https://javaguide.cn/java/jvm/class-loading-process.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JLS 12：执行、加载与初始化](https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html)
 - [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
 
 校验日期：2026-08-05
 
-## Q84：Java 方法调用时栈帧中的局部变量表和操作数栈如何协作？
+## Q84：类加载器有哪些，双亲委派模型是什么，为什么需要它？
 
 **短回答：**
 
-每次方法调用都会创建栈帧，局部变量表按槽位保存参数和局部值，字节码再通过操作数栈完成取值、计算、调用与返回，帧还关联当前类的运行时常量池。
+Java 运行时常见有 Bootstrap、Platform、Application ClassLoader，也可自定义加载器。双亲委派指加载类时先委托父加载器，父级无法完成再由当前加载器查找，用于避免核心类被重复或恶意替换，并维持类型身份的一致边界。
 
 **原理：**
 
-Class 文件 Code 属性给出 max_locals 与 max_stack，JVM 据此为一次调用准备足够空间。实例方法的槽位 0 通常是 this，后续槽位依次容纳参数和局部变量；long、double 在 Class 文件局部变量表示中占两个槽位。诸如 iload、iadd、istore 会在局部变量表与操作数栈之间搬运或计算，invoke 指令按描述符从栈中取得接收者与参数并压入返回值。栈帧是抽象规范，具体 JVM 可以优化甚至消除对象或内联方法，不能据此假设固定物理布局。
+JVM 判断两个类是否相同，不只看全限定名，还要结合定义它们的 ClassLoader。同名 Class 被两个独立加载器定义，会成为两个不兼容类型。典型 `loadClass` 先检查是否已加载，再向父级委派，父级失败后调用自身 findClass；Bootstrap 由虚拟机实现，不一定表现为普通 Java 对象。委派不是不可突破的铁律：SPI 需要父层 API 发现子层实现，容器、模块系统和插件隔离也可能采用线程上下文加载器或受控的子优先策略。但自定义加载必须避免核心包覆盖、类泄漏和跨边界强转失败。
 
 **代码 / 场景：**
 
-阅读 `int c = a + b` 的字节码时，可以看到加载 a、加载 b、执行 iadd、保存 c 的栈式过程。若递归深度不受控，增长的是线程调用栈而不是 Java 堆；应通过终止条件、迭代改写或显式数据结构解决，单纯增大 `-Xss` 只会推迟风险。
+插件系统为每个插件创建受控 ClassLoader，可让插件依赖隔离；公共接口必须由共享父加载器加载，插件实现由子加载器加载，否则即使接口名相同也会出现 ClassCastException。卸载插件时要清理线程、ThreadLocal、JDBC 驱动和静态缓存，否则 ClassLoader 仍被引用，相关类与 Metaspace 无法回收。
 
 **递进追问：**
 
-1. **为什么局部变量不一定按源码声明顺序一直占用槽位？**
+1. **为什么相同全限定类名仍可能不能互相强转？**
 
-   编译器可依据变量生命周期复用槽位，且调试信息可能被移除；槽位分配服务于字节码执行，不是源码变量布局的永久映射。
+   类的运行时身份包含定义它的类加载器；不同加载器分别定义的同名类是不同类型。
 
-2. **方法内联后还会保留原来的物理栈帧吗？**
+2. **双亲委派可以被打破吗？**
 
-   规范描述的是可观察语义，JIT 可以把热点调用内联并消除实际调用开销；去优化时 JVM 仍需依据元数据恢复可解释状态。
+   可以在受控场景改写加载顺序或使用上下文加载器，但必须明确隔离、安全与类型共享边界。
 
 **易错点：**
 
-- 把 JVM 规范中的抽象栈帧结构当成所有实现固定不变的内存布局。
-- 误以为递归造成的 StackOverflowError 可以通过扩大 Java 堆解决。
+- 把 Bootstrap ClassLoader 描述成一定可直接获取的普通 Java 实例。
+- 插件接口和实现各自加载一份，导致同名类型无法转换。
 
 **参考来源：**
 
-- [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
-- [技术校准：JVMS 4：Class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：类加载过程详解](https://javaguide.cn/java/jvm/class-loading-process.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
+- [技术校准：JLS 12：执行、加载与初始化](https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html)
+- [技术校准：Java 21 模块系统 API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/module/package-summary.html)
 
 校验日期：2026-08-05
 
@@ -3089,81 +3316,94 @@ Java 堆主要承载对象实例，Metaspace 在 HotSpot 中承载类元数据�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：类加载过程详解](https://javaguide.cn/java/jvm/class-loading-process.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
 - [技术校准：JDK 21 Native Memory Tracking](https://docs.oracle.com/en/java/javase/21/vm/native-memory-tracking.html)
 - [技术校准：Java 21 java.nio 包](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/package-summary.html)
 
 校验日期：2026-08-05
 
-## Q86：对象分配为什么常见 TLAB 快路径，逃逸分析又能优化什么？
+## Q86：JVM 如何判断对象已经死亡，GC Roots 通常包括哪些引用？
 
 **短回答：**
 
-HotSpot 可让线程在自己的 TLAB 中通过移动指针快速分配小对象；JIT 的逃逸分析还可能做标量替换、锁消除等优化，但这些都不是 Java 语言层保证。
+主流 JVM 使用可达性分析：从一组 GC Roots 出发沿引用图遍历，不可达对象才有资格回收。常见 Roots 包括线程栈中的活动引用、类静态字段、JNI 句柄以及 JVM 内部保持的活跃对象。
 
 **原理：**
 
-以 JDK 21 HotSpot 为例，多线程共享堆顶会产生竞争，因此实现通常给线程划分 Thread Local Allocation Buffer，线程在本地缓冲区内分配时只需更新私有指针；对象过大、TLAB 不足或特定布局会走较慢路径。逃逸分析判断对象引用是否可能离开方法或线程，如果证明不逃逸，JIT 可以把对象字段拆成标量、消除实际分配，或移除只保护线程私有对象的锁。分析是保守且依赖编译层级的，代码稍作改变就可能失去优化，业务正确性不能依赖对象一定被栈上分配。
+引用计数无法处理循环引用，因此 Java GC 以对象图可达性为核心。一次不可达并不等于立即回收：软、弱、虚引用有各自处理语义，带终结机制的旧代码还可能延迟对象生命周期，但 finalize 已被弃用，不应依赖“复活”。类卸载还要求该类实例、Class 对象和定义类加载器等都不再可达。GC Roots 的精确集合随 JVM 实现与收集器变化，回答时重点说明线程活动栈、本地引用、静态引用和运行时内部根。内存泄漏的本质常是对象业务上无用却仍从 Root 可达，例如静态 Map、监听器、ThreadLocal 或未关闭资源链。
 
 **代码 / 场景：**
 
-基准测试短生命周期 DTO 时，不要只用循环创建对象却不消费结果，JIT 可能把整个分配消除。应使用 JMH 和 Blackhole，配合 GC profiler 查看 allocation rate；生产优化先减少无界分配与大对象，再考虑是否需要分析 TLAB refill 或逃逸失败。
+缓存条目过期却只标记状态、不从静态 Map 删除时，它仍从类静态字段可达，GC 无法回收。排查堆增长时获取 heap dump，用支配树和到 GC Roots 的引用链定位是谁保留对象，再修复生命周期；不能通过频繁 `System.gc()` 解决仍然可达的泄漏。
 
 **递进追问：**
 
-1. **启用逃逸分析是否意味着对象一定放到线程栈上？**
+1. **两个对象互相引用会不会永远无法回收？**
 
-   不能这样保证。常见结果是标量替换或分配消除，具体物理实现由 JVM 决定，规范并没有“所有不逃逸对象必须栈分配”的承诺。
+   不会。只要这组对象整体不再从任何 GC Root 可达，可达性分析仍会把它们判为可回收。
 
-2. **TLAB 是否让对象天然线程私有？**
+2. **不可达对象会立刻释放吗？**
 
-   TLAB 只优化分配过程；对象创建后仍可被发布到其他线程，后续可见性与同步仍必须遵守 Java 内存模型。
+   不保证。收集器何时运行及引用处理都有时机，Java 只保证在需要时按内存管理策略处理，并不提供确定析构时间。
 
 **易错点：**
 
-- 把 TLAB 误解成独立小堆，认为其中对象不能被其他线程访问。
-- 用未防止死代码消除的微基准证明对象分配已经完全没有成本。
+- 仍用引用计数解释 Java GC，错误认为循环引用一定泄漏。
+- 看到对象未回收就调用 System.gc，而不检查到 GC Roots 的保留链。
 
 **参考来源：**
 
-- [技术校准：JDK 21 HotSpot 性能增强](https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：类加载过程详解](https://javaguide.cn/java/jvm/class-loading-process.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
+- [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
+- [技术校准：Java 21 引用对象 API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ref/package-summary.html)
 - [技术校准：JDK 21 GC 调优指南](https://docs.oracle.com/en/java/javase/21/gctuning/)
 
 校验日期：2026-08-05
 
-## Q87：解释执行、分层编译和去优化怎样共同运行热点代码？
+## Q87：标记-清除、标记-复制、标记-整理算法有什么取舍？
 
 **短回答：**
 
-以 JDK 21 HotSpot 为例，运行时可先解释字节码并收集画像，再把热点方法分层编译为机器码；当内联或类型假设失效时，通过去优化回到安全执行层。
+标记-清除回收不可达对象但可能产生碎片；标记-复制把存活对象复制到另一片区域，分配快但需要额外空间；标记-整理把存活对象向一端移动，减少碎片却增加移动和停顿成本。收集器通常按区域和存活率组合使用。
 
 **原理：**
 
-HotSpot 解释器逐条执行字节码，启动快且便于收集调用次数、分支概率和接收者类型。分层编译会在不同优化级别间迁移热点代码，C1 偏向较快编译与画像，C2 利用画像执行更激进的内联、逃逸分析和循环优化。若已编译代码依赖“这里只有一种实现”等假设，而后续加载的新类打破假设，运行时会使相关机器码失效并在安全点重建解释状态。C1、C2 和具体分层策略是 HotSpot 实现术语，不是所有 JVM 必须采用的 Java SE 语义。
+三类算法首先都需要识别存活对象，差异在回收与布局方式。清除算法只把死亡空间放回空闲集合，速度直接但长期可能难以找到连续大块。复制算法成本与存活对象数量更相关，适合大部分对象很快死亡的区域；它还让新分配可继续指针碰撞。整理算法移动对象并修正引用，获得连续空间，适合存活率高但对停顿和并发更新要求更高的区域。现代区域化收集器不是简单把一种算法用于整个堆，而是选择回收收益高的 Region，并通过转移完成局部整理。任何算法都要考虑 STW、写屏障、并发标记和浮动垃圾等实际成本。
 
 **代码 / 场景：**
 
-压测服务时把前 30 秒与稳态混在一起，会把类加载和 JIT 编译开销误认为业务 P99。应分别记录启动、预热和稳定窗口，并用 JFR 或编译日志观察热点编译与去优化；不要通过手写“预热循环”替代真实请求路径。
+新生代大量短命请求对象适合复制式回收；长期运行服务若堆碎片导致大对象分配失败，需要观察收集器的整理与 Region 行为。选择算法不能只看吞吐，低延迟服务还要比较暂停分位数、CPU 余量和额外内存。
 
 **递进追问：**
 
-1. **JIT 编译后方法是否永远不再解释执行？**
+1. **复制算法是否一定浪费一半内存？**
 
-   不是。代码可能因依赖失效、代码缓存压力或其他运行时决策被去优化，随后回到解释或较低编译层，并有机会再次编译。
+   不一定。经典半区模型便于理解，现代分代和区域化收集器会按实际区域、存活率与晋升策略组织空间。
 
-2. **为什么动态分派仍可能被内联？**
+2. **为什么对象移动后引用仍然有效？**
 
-   JVM 可根据运行画像发现调用点只有一种或少数接收者类型，生成带守卫的推测内联；新类型出现时再触发去优化。
+   收集器在安全点或并发协议下更新相关引用，并通过转发表、屏障等机制维持一致性；具体方式取决于收集器。
 
 **易错点：**
 
-- 把 JVM 描述成只能解释或只能编译的二选一运行模式。
-- 只做单次短基准，不区分冷启动、编译活动和稳态性能。
+- 把算法名称与某个固定年代一一绑定，忽略现代收集器的区域化组合。
+- 只比较平均停顿，不观察 p99 暂停、CPU 和内存冗余。
 
 **参考来源：**
 
-- [技术校准：JDK 21 HotSpot 性能增强](https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html)
-- [技术校准：JDK 21 jcmd 工具说明](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：类加载过程详解](https://javaguide.cn/java/jvm/class-loading-process.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
+- [技术校准：JDK 21 GC 调优指南](https://docs.oracle.com/en/java/javase/21/gctuning/)
+- [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
 
 校验日期：2026-08-05
 
@@ -3198,44 +3438,52 @@ HotSpot 解释器逐条执行字节码，启动快且便于收集调用次数、
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：类加载过程详解](https://javaguide.cn/java/jvm/class-loading-process.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：Java 21 引用对象 API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ref/package-summary.html)
 - [技术校准：JDK 21 GC 调优指南](https://docs.oracle.com/en/java/javase/21/gctuning/)
 
 校验日期：2026-08-05
 
-## Q89：年轻代、老年代以及 Minor、Mixed、Full GC 应怎样准确表述？
+## Q89：Minor GC、Major GC、Full GC 怎样区分，G1、ZGC 该如何选？
 
 **短回答：**
 
-分代假设利用多数对象短命的事实，把新对象优先放在年轻区域并按存活晋升；但 Minor、Mixed、Full 等术语与具体收集器相关，不能跨 JVM 一概而论。
+Minor/Young GC 主要处理年轻代，Major 一词在不同工具中可能含义不一，Full GC 通常指覆盖整个堆并可能处理类元数据的重型回收。G1 追求可预测暂停与通用吞吐，ZGC 侧重超大堆和极低暂停；应按目标 JDK、延迟、吞吐和内存余量实测。
 
 **原理：**
 
-典型分代收集器让 Eden 分配快速进行，年轻代回收复制存活对象并更新年龄，达到阈值或空间压力时晋升。老年代保存较长寿命对象，跨代引用通过记忆集或卡表避免每次扫描整个老年代。G1 使用 Region，但仍维护年轻与老年代角色，Young GC 回收年轻 Region，Mixed GC 在并发标记后同时选择部分老年代 Region；Full GC 通常意味着更重的全堆处理，但触发与停顿行为取决于收集器和版本。不能仅凭一次日志标签断言所有阶段都 Stop-The-World。
+代际假设认为多数对象朝生夕死，因此年轻代更频繁回收，存活对象经复制和年龄增长后晋升。G1 把堆划为 Region，执行 Young 与 Mixed 回收，并依据暂停目标选择回收集合；Full GC 往往意味着并发周期来不及、分配或晋升失败等压力，成本较高。ZGC 将大量标记和转移工作并发化，使暂停通常与堆大小弱相关，但会付出 CPU、屏障和额外内存成本。CMS 是历史收集器，在现代 JDK 已移除，不应作为新项目默认候选。GC 日志里的名词和触发原因比口头“Major”更可靠，优化应先减少异常分配和内存保留。
 
 **代码 / 场景：**
 
-看到频繁 Young GC 时，先结合分配速率、停顿、晋升量与吞吐判断，而不是立即扩大年轻代。若老年代持续增长且并发周期来不及完成，再检查长期存活对象、Humongous 分配和晋升失败；用统一 GC 日志和业务延迟对齐时间线。
+在线交易服务先以 G1 的默认配置建立基线，观察分配速率、晋升、暂停分位数和并发周期。如果数百 GB 堆仍要求毫秒级暂停并有足够 CPU/内存，可在目标硬件上评估 ZGC。遇到频繁 Full GC，先查看触发原因和 heap dump，而不是只调大堆或缩短暂停目标。
 
 **递进追问：**
 
-1. **对象年龄达到阈值就一定晋升吗？**
+1. **G1 的 Mixed GC 回收什么？**
 
-   阈值只是策略输入之一，动态年龄判断、Survivor 空间和担保分配等因素也会影响晋升，具体取决于收集器实现。
+   它会在处理年轻代的同时选择部分垃圾收益较高的老年代 Region 回收，不等同于覆盖整个堆的 Full GC。
 
-2. **Full GC 是否等于整段过程完全停顿？**
+2. **为什么 Major GC 这个词要谨慎？**
 
-   术语没有跨实现的单一定义，应查看所用收集器和日志阶段；很多实现的 Full GC 很重，但不能仅凭名称推导每一步并发属性。
+   不同收集器、监控工具和文章对它的定义不完全一致，诊断时应看具体 GC 类型、覆盖区域和触发原因。
 
 **易错点：**
 
-- 背诵固定 Eden 与 Survivor 比例，却不说明收集器和版本差异。
-- 把所有 GC 名称都当作跨 JVM 规范定义的统一术语。
+- 仍把 CMS 当现代 JDK 的默认可选收集器，不说明版本背景。
+- 只凭“ZGC 低延迟”切换收集器，不测 CPU、吞吐、内存余量和目标延迟。
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：类加载过程详解](https://javaguide.cn/java/jvm/class-loading-process.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JDK 21 GC 调优指南](https://docs.oracle.com/en/java/javase/21/gctuning/)
-- [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
+- [技术校准：JDK 21 jcmd 工具说明](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
 
 校验日期：2026-08-05
 
@@ -3270,81 +3518,94 @@ Java heap space 常见于存活集超过堆容量或单次大分配失败；Meta
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：JavaGuide：类加载过程详解](https://javaguide.cn/java/jvm/class-loading-process.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
 - [技术校准：JDK 21 jcmd 工具说明](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
 
 校验日期：2026-08-05
 
-# 现代 Java 特性与版本演进
+# JVM 排查与现代 Java
 
-## Q91：接口的 default、static 与 private 方法分别解决什么问题？
+## Q91：内存泄漏和内存溢出有什么区别，Java 为什么有 GC 仍会泄漏？
 
 **短回答：**
 
-Java 8 引入接口 default 与 static 方法以支持 API 演进，Java 9 再允许 private 辅助方法复用内部实现；它们都没有改变接口字段只能是常量的规则。
+内存泄漏是已无业务价值的对象仍被引用、无法回收；内存溢出是进程无法再满足分配请求。泄漏会逐步导致 OOM，但 OOM 也可能只是容量不足、瞬时流量、大对象、线程过多或堆外内存耗尽。
 
 **原理：**
 
-default 方法可被实现类继承或重写，使已有实现类不必因接口新增方法立即修改。若类继承的方法与接口默认方法冲突，类方法优先；多个无关接口提供相同默认签名时，实现类必须显式消歧。接口 static 方法不被实现类继承，只能通过接口名调用。private 方法从 Java 9 起可供接口中的 default 或 static 方法复用，外部实现类不可见。默认方法主要服务 API 演进，不应把接口变成隐藏大量可变业务状态的基类。
+GC 只能回收从 GC Roots 不可达的对象，不理解“这条缓存业务上已经过期”。静态集合、无上限缓存、未注销监听器、ThreadLocal value、类加载器、未关闭资源以及错误的队列积压都会让对象继续可达。不同错误信息指向不同区域：`Java heap space` 关注堆，`Metaspace` 关注类元数据和类加载器，`Direct buffer memory` 关注直接缓冲区，`unable to create native thread` 还涉及线程栈和系统限制，StackOverflowError 常由递归或栈帧过深触发。定位要结合趋势、日志、dump 与业务流量，不能看到 OOM 就一律增大 Xmx。
 
 **代码 / 场景：**
 
-公共 SDK 给 `PaymentPlugin` 增加可选能力时，可提供无副作用的 default 实现保持二进制兼容；若新能力需要依赖数据库或配置，应优先新增协作对象或新接口，而不是在 default 方法中偷偷访问全局单例。
+若老年代使用量在每轮完整回收后仍持续抬升，可在可控时机保存 heap dump，对比支配树和到 GC Roots 的路径，定位静态 Map 或监听器链。若堆稳定但 RSS 上升，再检查直接内存、线程数量、native 库和 NMT。修复后用相同压测验证回收基线恢复，并设置容量与告警。
 
 **递进追问：**
 
-1. **两个接口有同名 default 方法时可以依赖导入顺序吗？**
+1. **OOM 一定说明存在内存泄漏吗？**
 
-   不可以。若没有更具体接口能够决定继承关系，实现类必须重写该方法，并可用 `InterfaceName.super.method()` 显式选择实现。
+   不一定。合理存活数据超过配置、突发分配、堆外耗尽或线程数过多都可能 OOM，需要按内存区域和对象保留链判断。
 
-2. **接口 static 方法能被实现类对象调用吗？**
+2. **为什么加大堆可能只是延后故障？**
 
-   不能按继承成员那样调用。它属于声明接口，应使用接口名限定；这也避免 static 工具行为与实例多态混淆。
+   若对象被错误长期持有，增长趋势不变，更大堆只延长填满时间，还可能增加回收成本和 dump 体积。
 
 **易错点：**
 
-- 认为 default 方法会让接口拥有实例字段或构造器。
-- 把接口 static 方法当作会被实现类继承和动态分派的实例方法。
+- 遇到任何 OOM 都只增加 Xmx，不区分堆、元空间、直接内存和线程。
+- 只看一次内存快照下结论，不结合 GC 后基线、流量和多次 dump 对比。
 
 **参考来源：**
 
-- [技术校准：JLS 9：接口](https://docs.oracle.com/javase/specs/jls/se21/html/jls-9.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
+- [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
+- [技术校准：JDK 21 Native Memory Tracking](https://docs.oracle.com/en/java/javase/21/vm/native-memory-tracking.html)
+- [技术校准：JDK 21 jcmd 工具说明](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
 
 校验日期：2026-08-05
 
-## Q92：局部变量类型推断 var 能推断什么，又刻意不允许什么？
+## Q92：线上 CPU 飙高、死锁、频繁 GC 和内存增长分别怎样用 JVM 工具排查？
 
 **短回答：**
 
-Java 10 的 `var` 只让编译器从局部初始化表达式推断静态类型，并不引入动态类型；它不能用于字段、方法参数、返回类型或没有初始化器的局部变量。
+先保留现场再分类：CPU 高看线程与热点栈，死锁看线程转储，GC 异常看 GC 日志与堆趋势，内存增长看 heap dump、类直方图和 Native Memory Tracking。`jcmd`、JFR、线程 dump 与 heap dump 要结合指标时间线使用。
 
 **原理：**
 
-`var` 是保留类型名而非普通关键字，仅出现在允许的局部变量声明、增强 for 变量和部分 try-with-resources 声明中。推断结果仍是确定的编译期类型，后续赋值必须兼容；不会因为运行时值变化而改变。初始化器不能是裸 null，也不能缺少足够目标类型的数组初始化器或 lambda。匿名类和交叉类型等推断结果可能难以阅读，因此能写不等于应该写，变量名称和右侧表达式必须让类型与意图清楚。
+CPU 飙高时先定位进程和高 CPU 线程，把操作系统线程 id 与 Java dump 中的线程对应，连续采样确认持续热点；JFR 能同时观察执行采样、锁、分配和 GC。怀疑死锁可用 `jcmd <pid> Thread.print -l` 或等价工具查看监视器等待环。频繁 GC 要区分分配速率过高、堆容量、晋升失败、并发周期来不及和真实泄漏，解析统一 GC 日志而不是只看次数。堆增长可先用类直方图低成本观察，再在磁盘与停顿预算允许时 dump；进程 RSS 大于堆则用 NMT、直接内存、线程栈和 native 库继续拆分。诊断命令可能有停顿和 I/O 成本，生产执行前必须评估。
 
 **代码 / 场景：**
 
-`var users = repository.findActiveUsers()` 在方法名与变量名清楚时可减少重复；`var x = service.call()` 若返回类型关系到资源关闭或精度，则显式类型更安全。代码评审应关注可读性和 API 边界，而不是强制全用或全禁。
+告警发生后记录请求量、CPU、堆/非堆、GC 暂停、线程池和版本信息。CPU 问题先抓 3 次间隔线程 dump 判断热点是否稳定；内存问题在 GC 后基线持续上升时采样直方图并保留 dump。修复后重放相同负载，比较分配率、保留集与 p99 暂停，而不是仅凭“服务不再 OOM”验收。
 
 **递进追问：**
 
-1. **`var number = 1` 以后能赋值为 `1L` 吗？**
+1. **为什么线程 dump 要连续抓多次？**
 
-   不能，整数文字 1 使静态类型推断为 int，后续 long 值不能无条件窄化赋给它；运行期也不会重新推断类型。
+   一次快照可能只是线程偶然经过某段代码；多次采样能区分持续热点、锁等待和瞬时状态。
 
-2. **为什么 `var f = x -> x + 1` 不能直接编译？**
+2. **heap dump 为什么不能随时直接抓？**
 
-   lambda 是需要目标函数式接口的多态表达式，单独使用 var 没有提供目标类型；应显式声明 Function 等接口或从方法参数上下文获得目标类型。
+   大堆转储可能触发明显停顿、占用大量磁盘并包含敏感数据，需要提前评估空间、合规和业务窗口。
 
 **易错点：**
 
-- 把 var 解释为类似 JavaScript 的动态变量，认为类型可随赋值改变。
-- 在返回值语义不清的长调用链上滥用 var，降低资源和精度审查能力。
+- 线上故障先重启且不保留任何日志、dump 和版本现场。
+- 把进程 RSS 全部归因于 Java 堆，忽略直接内存、线程栈和 native 组件。
 
 **参考来源：**
 
-- [技术校准：JLS 14：语句与控制流](https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html)
-- [技术校准：JLS 18：类型推断](https://docs.oracle.com/javase/specs/jls/se21/html/jls-18.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
+- [技术校准：JDK 21 jcmd 工具说明](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
+- [技术校准：JDK 21 Native Memory Tracking](https://docs.oracle.com/en/java/javase/21/vm/native-memory-tracking.html)
+- [技术校准：JDK 21 GC 调优指南](https://docs.oracle.com/en/java/javase/21/gctuning/)
 
 校验日期：2026-08-05
 
@@ -3379,6 +3640,9 @@ record 隐式继承 java.lang.Record，不能再继承其他类，但可以实�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JLS 8.10：Record 类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html#jls-8.10)
 - [技术校准：Java 21 Object API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html)
 
@@ -3415,6 +3679,9 @@ sealed 声明可以显式列出 permitted direct subclasses，也可在满足同
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JLS 8.1.6：密封类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html#jls-8.1.6)
 - [技术校准：JLS 8：类](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html)
 
@@ -3451,6 +3718,9 @@ Java 14 正式提供 switch 表达式：箭头分支默认不穿透，多语句�
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JLS 15.28：switch 表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html#jls-15.28)
 - [技术校准：JLS 14：语句与控制流](https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html)
 
@@ -3487,6 +3757,9 @@ instanceof 类型模式在 Java 16 正式提供，switch 模式匹配在 Java 21
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JLS 14.30：模式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html#jls-14.30)
 - [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
 
@@ -3523,6 +3796,9 @@ Java 15 正式提供文本块，用三引号表达多行字符串并统一处理
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：Java 21 String API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html)
 - [技术校准：JLS 15：表达式](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html)
 
@@ -3559,6 +3835,9 @@ module-info.java 为 named module 描述可读性与可访问性。一个 public
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：Java 21 模块系统 API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/module/package-summary.html)
 - [技术校准：Java 21 Reflection API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/package-summary.html)
 
@@ -3595,6 +3874,9 @@ Java 21 正式提供虚拟线程；它是 JVM 调度的轻量 Thread，能让大
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JEP 444：Virtual Threads](https://openjdk.org/jeps/444)
 - [技术校准：Java 21 Thread API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html)
 
@@ -3631,6 +3913,9 @@ Java 21 正式提供虚拟线程；它是 JVM 调度的轻量 Thread，能让大
 
 **参考来源：**
 
+- [高频题库参考（内容已重写）：JavaGuide：Java 内存区域详解](https://javaguide.cn/java/jvm/memory-area.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 垃圾回收详解](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)
+- [高频题库参考（内容已重写）：小林 Coding：Java 虚拟机面试题](https://www.xiaolincoding.com/interview/jvm.html)
 - [技术校准：JLS 13：二进制兼容性](https://docs.oracle.com/javase/specs/jls/se21/html/jls-13.html)
 - [技术校准：JVMS 4：Class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
 

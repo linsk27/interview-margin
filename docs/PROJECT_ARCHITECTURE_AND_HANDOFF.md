@@ -56,7 +56,7 @@ Cloudflare Tunnel token 或个人批注内容。
 - 两个 Windows 计划任务已安装，分别负责公网服务监督和每天 03:00 的数据库备份。
 - Vercel 游客备用站独立发布前端和公开题库快照；账户服务失败不会阻塞公开题库渲染。
 - `npm run build` 会先导出公开、未归档的内置题为 `public/catalog.json`，供静态部署回退。
-- 当前回归基线：构建通过，801 题数据检查通过；40 个测试文件、219/219 项测试通过。
+- 当前回归基线：构建通过，801 题数据检查通过；40 个测试文件、221/221 项测试通过。
 
 最近几个关键提交：
 
@@ -216,9 +216,10 @@ Cookie 当前会话用户完全一致；缺失或不一致时返回 `409 USER_SE
   `npm run content:generate` 生成 `public/question-banks/*.md`，禁止只手改生成产物。
 - JavaScript 100 题保留原选择题与答案，由两个 enrichment 文件幂等补齐深度内容。
 - `server/content/community-banks/` 保存三套公开社区面经题库以及 Java 基础 100 题的数据；
-  社区帖子只证明题目主题确实被报告过，答案由官方规范和项目文档独立校准。面经题每题至少
-  包含一个公开面经来源和一个官方来源；Java 基础题只采用 Java 21 API、JLS、JVMS 或
-  OpenJDK 官方资料，不伪造社区出处。所有题都过滤自我介绍、薪资、职业规划等非技术内容。
+  社区帖子只证明题目主题确实被报告过，JavaGuide 与小林 Coding 只用于筛选高频主题和组织
+  复习顺序，答案由官方规范和项目文档独立校准。Java 后端与 Java × AI 每题同时包含公开面经、
+  高频题库参考和官方来源；Java 基础题不伪造社区出处，使用高频题库参考并以 Java 21 API、
+  JLS、JVMS 或 OpenJDK 官方资料校准。所有题都过滤自我介绍、薪资、职业规划等非技术内容。
   来源清单由
   `npm run content:generate:community` 写入 `docs/COMMUNITY_INTERVIEW_SOURCE_AUDIT.md`。
 - `public/content/diagrams/` 保存受控同源 SVG；Markdown 不允许远程图、Base64、
@@ -462,7 +463,7 @@ npm run build
 
 验收信号：
 
-- 40 个测试文件、219/219 项测试通过。
+- 40 个测试文件、221/221 项测试通过。
 - `db:check` 返回 14 个题库、801 题、801 个唯一 ID；720 道结构化题解无缺段、无薄弱
   正文、无旧通用模板，核心题使用受控 SVG 图解。
 - `dist/` 构建成功。

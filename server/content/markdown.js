@@ -45,17 +45,17 @@ function inferTags(title, plainText, baseTags = []) {
 }
 
 function extractSources(markdown) {
+  const tree = unified().use(remarkParse).parse(markdown)
   const sources = []
-  const pattern = /\[([^\]]+)]\((https?:\/\/[^)]+)\)/g
-  let match
-  while ((match = pattern.exec(markdown))) {
-    const title = match[1].trim()
-    const url = match[2].trim()
-    const kind = /^真实面经线索(?:（[^）]+）)?[：:]/.test(title)
-      ? 'community-interview'
-      : sourceKindForUrl(url)
-    sources.push({ title, url, kind })
+  function walk(node) {
+    if (node.type === 'link' && /^https?:\/\//.test(node.url)) {
+      const title = toString(node).trim()
+      const url = node.url.trim()
+      sources.push({ title, url, kind: sourceKindForUrl(url) })
+    }
+    if (Array.isArray(node.children)) node.children.forEach(walk)
   }
+  walk(tree)
   return sources.filter((source, index) => sources.findIndex((item) => item.url === source.url) === index)
 }
 
@@ -65,14 +65,24 @@ const COMMUNITY_SOURCE_HOSTS = [
   'xiaohongshu.com',
 ]
 
+const CURATED_GUIDE_SOURCE_HOSTS = [
+  'javaguide.cn',
+  'xiaolincoding.com',
+  'xiaolinnote.com',
+]
+
+function matchesSourceHost(hostname, hosts) {
+  return hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`))
+}
+
 export function sourceKindForUrl(value) {
   try {
     const hostname = new URL(value).hostname.toLowerCase()
-    return COMMUNITY_SOURCE_HOSTS.some((host) => hostname === host || hostname.endsWith(`.${host}`))
-      ? 'community-interview'
-      : 'official'
-  } catch {
+    if (matchesSourceHost(hostname, COMMUNITY_SOURCE_HOSTS)) return 'community-interview'
+    if (matchesSourceHost(hostname, CURATED_GUIDE_SOURCE_HOSTS)) return 'curated-guide'
     return 'official'
+  } catch {
+    return 'invalid'
   }
 }
 

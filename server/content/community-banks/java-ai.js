@@ -56,6 +56,64 @@ const COMMUNITY = {
   },
 }
 
+const CURATED_GUIDES = {
+  javaGuideOverview: {
+    label: 'JavaGuide：AI 应用开发面试指南',
+    url: 'https://javaguide.cn/ai/interview-questions/ai-interview-guide.html',
+    kind: 'curated-guide',
+  },
+  javaGuideLlm: {
+    label: 'JavaGuide：大模型基础面试题总结',
+    url: 'https://javaguide.cn/ai/interview-questions/llm-interview-questions.html',
+    kind: 'curated-guide',
+  },
+  javaGuideRag: {
+    label: 'JavaGuide：RAG 面试题总结',
+    url: 'https://javaguide.cn/ai/interview-questions/rag-interview-questions.html',
+    kind: 'curated-guide',
+  },
+  javaGuideAgent: {
+    label: 'JavaGuide：AI Agent 面试题总结',
+    url: 'https://javaguide.cn/ai/interview-questions/agent-interview-questions.html',
+    kind: 'curated-guide',
+  },
+  javaGuideSystem: {
+    label: 'JavaGuide：AI 系统设计面试题总结',
+    url: 'https://javaguide.cn/ai/interview-questions/ai-system-design-interview-questions.html',
+    kind: 'curated-guide',
+  },
+  javaGuideJavaProject: {
+    label: 'JavaGuide：Spring AI 面试平台与 RAG 知识库项目',
+    url: 'https://javaguide.cn/zhuanlan/interview-guide.html',
+    kind: 'curated-guide',
+  },
+  xiaolinOverview: {
+    label: '小林 Coding：Agent、RAG 与 LLM 面试题目录',
+    url: 'https://www.xiaolincoding.com/project/xiaolinnote.html',
+    kind: 'curated-guide',
+  },
+  xiaolinRag: {
+    label: '小林面试笔记：RAG 面试题介绍',
+    url: 'https://xiaolinnote.com/ai/rag/rag_info.html',
+    kind: 'curated-guide',
+  },
+  xiaolinTools: {
+    label: '小林面试笔记：LLM 工具调用面试题介绍',
+    url: 'https://xiaolinnote.com/ai/tools/tools_info.html',
+    kind: 'curated-guide',
+  },
+  xiaolinLlm: {
+    label: '小林面试笔记：大模型工程面试题介绍',
+    url: 'https://xiaolinnote.com/ai/llm/llm_info.html',
+    kind: 'curated-guide',
+  },
+  xiaolinOnCall: {
+    label: '小林 Coding：智能 OnCall Agent 项目路线',
+    url: 'https://xiaolincoding.com/project/aioncallagent.html',
+    kind: 'curated-guide',
+  },
+}
+
 const OFFICIAL = {
   springAi: {
     label: 'Spring AI Reference',
@@ -254,7 +312,7 @@ const OFFICIAL = {
   },
 }
 
-export const javaAiInterviewBank = {
+const javaAiInterviewBankBase = {
   id: 'java-ai-applications',
   title: 'Java × AI 应用真实面经',
   shortTitle: 'Java × AI',
@@ -263,6 +321,7 @@ export const javaAiInterviewBank = {
   description: '依据公开真实面经整理的 Java AI 应用工程题库，覆盖框架选型、RAG、Agent、流式交互、可靠性、安全、LLMOps 与后端工程支撑。',
   baseTags: ['Java', 'AI 应用', 'Spring AI', 'LangChain4j', 'RAG', 'Agent'],
   tone: 'green',
+  sourcePolicy: 'community-guide-official',
   source: 'public/question-banks/java-ai-applications.md',
   sections: [
     {
@@ -1146,4 +1205,219 @@ export const javaAiInterviewBank = {
       ],
     },
   ],
+}
+
+const HIGH_FREQUENCY_OVERRIDES = new Map([
+  [4, {
+    title: 'Token、上下文窗口、Temperature 与 Top-P 会怎样影响 Java AI 应用？',
+    summary: 'Token 决定上下文容量、计费和一部分延迟；上下文窗口限制一次请求能容纳的消息与输出；Temperature、Top-P 调整采样分布而不是模型智力。生产系统应按任务类型配置参数、预留输出预算并记录真实 usage，不能用字符数估算成本，也不能认为 Temperature 为 0 就绝对可复现。',
+    mechanism: '请求进入模型前，Java 服务先用供应商对应的 tokenizer 或 usage 估算器计算系统指令、历史消息、RAG 证据、工具 schema 与预期输出的总预算。超过窗口时，优先删除重复证据和无关历史，再采用滑动窗口、结构化摘要或重新检索，不能粗暴截掉 system message 与工具结果。Temperature 会重分配候选 token 的概率，Top-P 只保留累计概率质量以内的候选；不同供应商实现与参数范围可能不同，通常不要同时大幅调两个参数。抽取、分类、工具参数等确定性任务使用低随机性并结合 schema 校验；创意生成可适度提高随机性，但仍需质量评测。即使低温度，模型版本、服务端推理实现和并行计算也可能带来差异，因此可复现依赖固定模型版本、Prompt、参数、输入快照和评测集。',
+    example: '合同字段抽取接口把 128k 窗口全部塞满后，经常没有足够空间输出完整 JSON。改造后先给 system、工具 schema 和最大输出保留预算，再按“当前条款、相关定义、最近对话”排序上下文；抽取任务使用低随机性并做 Bean Validation。服务同时记录 inputTokens、outputTokens、truncatedReason 和 promptVersion，既降低了解析失败，也能按租户核算成本。',
+    followUps: [
+      {
+        question: '上下文窗口很大时，为什么仍然不能把全部历史和文档都塞进去？',
+        answer: '更长输入会增加费用、首 token 延迟与噪声，并可能让关键信息被无关内容淹没。应基于任务选择证据、控制重复、保留位置结构，并用评测证明增加上下文确实带来收益。',
+      },
+      {
+        question: 'Temperature 设为 0 是否就能保证每次输出完全一致？',
+        answer: '不能作绝对保证。它通常降低随机性，但模型版本、供应商后端、并行计算和相同概率候选的处理仍可能变化；关键结果必须依靠结构化校验、业务规则和回归测试。',
+      },
+    ],
+    pitfalls: [
+      '把中文字符数直接当成 Token 数，直到线上超出上下文窗口才截断。',
+      '为了“更聪明”同时调高 Temperature 与 Top-P，却没有固定评测集比较稳定性和成本。',
+    ],
+    sources: [COMMUNITY.kuaishou, COMMUNITY.interviewer, OFFICIAL.springChatClient, OFFICIAL.openAiLatency],
+  }],
+  [5, {
+    title: '大模型为什么会产生幻觉，Java 应用如何分层缓解？',
+    summary: '模型生成的是高概率续写，不是事实数据库；知识缺失、上下文冲突、检索错误和问题超出能力都会产生貌似合理的错误答案。工程上要把幻觉拆成“证据没找到、证据选错、模型没遵循证据、业务结果未校验”，分别用 RAG、工具调用、引用、拒答、结构化校验与评测闭环治理。',
+    mechanism: '先定义业务允许回答的边界和可验证事实源。时效性知识通过检索或只读工具获取，金额、库存、权限等确定性数据必须调用业务 API，而不是让模型猜。Prompt 明确要求仅基于给定证据回答并输出引用，但 Prompt 只能降低概率，不能成为安全边界。Java 服务在生成前检查检索分数、证据权限和时间版本，生成后验证引用是否真的支持结论、结构化字段是否合法；低置信度、证据冲突或高风险动作转为拒答或人工复核。离线按“无证据、错误证据、无忠实度、错误工具结果”标注失败，线上采集纠错与引用点击，持续补充 Golden Set。',
+    example: '客服询问“这张订单能否退款”时，知识库只负责召回退款规则，订单状态和可退金额由受权订单工具查询。模型生成解释后，Java 服务校验 orderId 属于当前用户、引用条款仍有效、退款金额不超过工具返回值；任一校验失败都不执行退款，而是返回缺少依据或进入人工审核。',
+    followUps: [
+      {
+        question: '用了 RAG 是否就不会幻觉？',
+        answer: '不会。RAG 可能检索不到、召回错误或提供互相冲突的证据，模型也可能忽略证据。必须分别评测检索质量和生成忠实度，并保留拒答与引用校验。',
+      },
+      {
+        question: '为什么要求模型“不要编造”仍然不够？',
+        answer: '自然语言指令只是概率性约束，无法替代权限、数据真实性和业务不变量。关键事实应来自受控检索或工具，执行前仍由 Java 代码做确定性校验。',
+      },
+    ],
+    pitfalls: [
+      '把所有错误都归因于 Prompt，没有区分召回失败、证据冲突和生成不忠实。',
+      '让模型直接给出余额、价格或权限结论，却没有访问实时业务事实源。',
+    ],
+    sources: [COMMUNITY.jdAgent, COMMUNITY.interviewer, OFFICIAL.springRag, OFFICIAL.openAiEvals],
+  }],
+  [10, {
+    title: 'RAG、长上下文与微调分别解决什么问题，应该怎样选？',
+    summary: 'RAG 适合需要更新、引用和权限控制的外部知识；长上下文适合少量材料的一次性分析；微调主要改变模型的行为、风格或特定任务能力，不适合频繁写入事实。三者可以组合，但选型要围绕知识更新频率、可追溯性、延迟、成本与数据规模，而不是把微调当成“知识库存储”。',
+    mechanism: '先判断问题来自“模型不知道事实”还是“模型不会按要求完成任务”。事实经常变化且需要出处时，RAG 将知识放在模型外部，允许按租户过滤、增量更新和返回引用；资料很少且单次任务需要跨全文推理时，可以直接放入长上下文，但要控制 token、噪声与中间信息遗失；输出格式、语气、分类边界或领域表达长期稳定时，再用提示词、few-shot 与微调逐级验证。微调后的知识难以逐条删除和审计，仍可能过时或幻觉。评估时固定问题集，分别比较任务成功率、引用正确率、更新生效时间、P95、token 成本与维护复杂度，最后选择最小可行组合。',
+    example: '企业制度助手每天有文档更新且要求回答带出处，因此采用 RAG；用户临时上传一份 20 页合同做风险摘要，直接使用长上下文更简单；客服回复要长期保持固定语气和标签格式，在 Prompt 与结构化输出稳定后，才评估是否通过微调减少示例长度。三类需求没有被塞进同一种方案。',
+    followUps: [
+      {
+        question: '微调能不能替代需要实时更新的企业知识库？',
+        answer: '通常不能。微调数据进入模型参数后难以快速更新、删除、做细粒度权限和返回出处；实时事实仍应由 RAG 或业务工具提供，微调更适合稳定行为与任务模式。',
+      },
+      {
+        question: '长上下文什么时候比 RAG 更合适？',
+        answer: '文档数量少、单次提供、需要跨全文综合且不要求长期索引时，长上下文可减少摄取与检索复杂度；仍要评测 token 成本、首 token 延迟和关键信息定位能力。',
+      },
+    ],
+    pitfalls: [
+      '把最新产品价格等动态事实微调进模型，导致更新慢且无法可靠追溯。',
+      '看到窗口足够大就塞入全部资料，不评估噪声、成本和长上下文中的信息遗漏。',
+    ],
+    sources: [COMMUNITY.meitu, COMMUNITY.narwal, OFFICIAL.springRag, OFFICIAL.openAiEvals],
+  }],
+  [13, {
+    title: 'RAG 召回率低时，怎样判断是切分、Embedding、查询还是排序的问题？',
+    summary: '先用带相关文档标注的查询集分层定位：目标内容是否成功入库、相关 chunk 是否完整、向量或关键词通道是否召回、过滤条件是否误杀、Reranker 是否把正确候选降下去。不要一上来改 Prompt，因为生成模型无法使用根本没进入上下文的证据。',
+    mechanism: '为每个问题记录 documentId、chunkId 与应命中证据，按摄取、候选召回、过滤、融合、重排和上下文组装逐段计算 Recall@k。目标 chunk 不存在时检查解析、表格处理和切分；存在但向量分数低时检查 Embedding 模型、查询语言、归一化与领域词；关键词能命中而向量不能命中时采用混合召回；所有通道都无命中时再尝试语义安全的 Query Rewrite。候选中已有正确证据却未进前 k，检查权重、去重和 Reranker；进入上下文后仍答错，则转到忠实度、冲突证据和 Prompt 排查。每次只改变一个变量，保存原查询、改写查询、各路候选与最终引用，才能证明优化来自哪里。',
+    example: '“年假能跨年吗”在 Golden Set 中应命中制度第 4.2 条。排查发现原 PDF 表格被按列打散，目标句从未形成完整 chunk；改 Prompt 和加 Multi-Query 都没有用。修复表格解析并按标题边界切分后，向量与 BM25 均能召回，Recall@10 从 0.64 提升到 0.88，随后才评估 Reranker。',
+    followUps: [
+      {
+        question: '为什么召回率低时不能只看相似度分数？',
+        answer: '不同模型和索引的分数不可直接横比，而且目标证据可能根本未入库或被 ACL 过滤。应先用标注证据计算 Recall@k，再结合各阶段日志定位。',
+      },
+      {
+        question: 'Query Rewrite 在什么情况下可能让结果更差？',
+        answer: '模型可能删除专有名词、编号或否定条件，也可能把上一轮猜测写成事实。应始终保留原查询一路，记录改写结果并只对已验证题型启用。',
+      },
+    ],
+    pitfalls: [
+      '没有标注应命中的文档，只凭最终答案感觉判断检索好坏。',
+      '同时更换切分、Embedding、topK 和 Reranker，导致无法归因也无法安全回滚。',
+    ],
+    sources: [COMMUNITY.narwal, COMMUNITY.aixuexi, OFFICIAL.springRag, OFFICIAL.elasticHybrid],
+  }],
+  [18, {
+    title: 'Agent 的短期记忆、长期记忆与完整会话历史应该怎样设计？',
+    summary: '完整会话历史用于审计和界面展示，短期记忆是本次模型调用真正需要的最近轮次与任务状态，长期记忆是经过筛选后可跨会话复用的稳定事实。三者不能混为一张消息表全量回灌；Java 服务应按 conversationId、用户与租户隔离，并用窗口、摘要、检索和删除策略控制上下文。',
+    mechanism: 'LLM 本身是无状态的，每次调用看到什么由应用重新组装。消息库保存不可变会话事件与工具轨迹，便于审计和恢复；短期记忆按完整 turn 保留最近消息，并把目标、已完成步骤、关键工具结果压缩成结构化状态，避免从 assistant/tool 消息中间截断；长期记忆只提取用户偏好、稳定实体和经过确认的事实，带来源、置信度、有效期与可删除标识，检索后还要做权限校验。Spring AI 的 ChatMemory 负责提供模型需要的上下文，不等于完整 Chat History；使用 Memory Advisor 时每次调用应显式传 conversationId。记忆写入需要去重和用户纠错，敏感信息按最小化原则保存，不能把模型猜测自动固化为事实。',
+    example: '旅行 Agent 的消息表保存全部聊天和工具事件；短期记忆只保留最近 6 个完整 turn、当前目的地、日期与待确认项；长期记忆仅在用户确认后记录“偏好无障碍酒店”，并带用户 ID、来源消息和过期策略。下次会话检索到偏好后，仍由用户确认是否应用，模型临时猜测的预算不会写入长期记忆。',
+    followUps: [
+      {
+        question: '为什么 Chat Memory 不等于 Chat History？',
+        answer: 'History 是完整事实记录，服务审计和展示；Memory 是为当前模型调用筛选出的有限上下文，会被窗口、摘要和检索改变。把二者混用会导致丢历史或无限增长。',
+      },
+      {
+        question: '长任务上下文快满时应该怎样压缩？',
+        answer: '先保留 system、当前目标、未完成步骤和关键工具事实，再对旧对话生成可校验的结构化摘要；摘要保留来源指针，重要事实可重新检索，不能只留下自由文本结论。',
+      },
+    ],
+    pitfalls: [
+      '每轮把完整历史全部发送给模型，造成成本持续增长、噪声增加和隐私暴露。',
+      '把模型推测自动写成长时记忆，没有来源、用户确认、有效期和删除能力。',
+    ],
+    sources: [COMMUNITY.jdAgent, COMMUNITY.agentRoundup, OFFICIAL.springMemory, OFFICIAL.springChatClient],
+  }],
+  [24, {
+    title: 'Java 流式对话的 SSE 事件协议应该怎样设计？',
+    summary: '不要把供应商原始 token 分片直接透传给浏览器。服务端应归一为少量稳定事件，例如 start、text_delta、tool_start、tool_result、usage、error 与 done，并为每个 run 携带 eventId、序号和可恢复信息；前端按事件类型更新状态，最终由 done 或 error 收口。',
+    mechanism: '网络 chunk、模型 token 和业务事件不是一一对应关系。Java 适配层先解析供应商流，再输出自己的版本化 SSE 契约：start 建立 run 元数据，text_delta 只承载增量文本，tool_* 展示工具阶段但默认隐藏敏感参数，usage 记录最终计费，error 给出可重试分类，done 携带 finish reason 与最终消息 ID。每个事件包含 runId、seq、type 和 schemaVersion，用 seq 去重与检测缺口；心跳保持中间代理连接，服务端在断开或取消时传播 cancellation。浏览器只负责增量显示，完整 Markdown、引用和结构化结果在结束后用服务端最终快照校正，避免半截代码块和中间草稿被当成最终事实。',
+    example: '知识助手先发送 start，再连续发送 text_delta；需要查订单时发 tool_start，工具完成后发经过脱敏的 tool_result，随后继续文本。最后 usage 与 done 返回最终 messageId。用户刷新页面后，客户端不拼接一堆不确定分片，而是用 runId 获取已落库的最终快照；重复 seq 会被忽略。',
+    followUps: [
+      {
+        question: '为什么不能把一次 HTTP 数据块当成一个完整 token 或 JSON？',
+        answer: '传输层可以任意切分或合并字节，代理也可能缓冲；供应商增量格式还会变化。必须先按上游协议解析成完整事件，再转为自己的稳定 SSE 契约。',
+      },
+      {
+        question: '流式过程中已经展示的文本需要立即写数据库吗？',
+        answer: '可按批次写临时 checkpoint 以支持恢复，但最终消息应在 done 后以服务端聚合结果提交。每个 delta 单独事务会放大写入并暴露不完整状态。',
+      },
+    ],
+    pitfalls: [
+      '直接透传供应商 JSON，导致切换模型时前端协议和状态机全部重写。',
+      '只有 message 文本事件，没有 error、usage、done 和序号，断线后无法判断是否完整。',
+    ],
+    sources: [COMMUNITY.kuaishou, COMMUNITY.jdAgent, OFFICIAL.webflux, OFFICIAL.sse],
+  }],
+  [37, {
+    title: 'Prompt Engineering 与 Context Engineering 有什么区别，Java 服务如何组织上下文？',
+    summary: 'Prompt Engineering 主要设计任务指令、角色、约束和输出格式；Context Engineering 决定模型这一次实际看到哪些规则、历史、检索证据、工具结果与任务状态。单轮问答可以先优化 Prompt，进入 RAG、Agent 和长任务后，更关键的是稳定、可追溯地组装上下文。',
+    mechanism: 'Java 服务把上下文组装设计成显式管线，而不是在 Controller 中拼字符串：先加载不可由用户覆盖的系统规则，再加入当前任务与结构化状态；按权限检索 RAG 证据和必要的短期记忆；只注册本轮允许使用的工具及精简 schema；最后放入用户输入并预留输出 token。每段上下文都携带来源、版本、优先级、时间和敏感级别，冲突时由确定性规则决定保留谁。窗口不足时先去重与删除低价值内容，再摘要旧轮次或重新检索，不能让模型自行决定绕过权限。Spring AI 可用 Advisor 封装 memory、RAG、日志与安全检查，但 Advisor 顺序也是契约，需要测试最终 Prompt 快照和 token 预算。',
+    example: '故障排查 Agent 的 system 只定义职责与安全规则；context 由当前告警、最近指标、受权日志片段、已执行步骤和工具结果组成。Java 管线按 tenantId 过滤日志，给每段证据加时间戳与 traceId，并在调用前输出脱敏的 context manifest。这样同一 Prompt 模板可用于不同事故，而问题定位能追到“哪条上下文缺失或污染”，不必盲目改措辞。',
+    followUps: [
+      {
+        question: '为什么把更多上下文塞给模型可能降低质量？',
+        answer: '无关、重复或冲突信息会稀释关键证据，也增加成本与延迟。上下文应围绕任务选择、排序和标注来源，并通过固定评测集验证每类信息的增益。',
+      },
+      {
+        question: 'Advisor 越多是否能力就越强？',
+        answer: '不是。多个 Advisor 可能重复追加历史、改变查询或打乱指令优先级。需要定义顺序、共享状态和 token 预算，并对最终请求快照做契约测试。',
+      },
+    ],
+    pitfalls: [
+      '把 Prompt 模板、历史、RAG 证据和工具结果混成一段无法追踪来源的字符串。',
+      '上下文超长时直接从头截断，误删系统规则、任务目标或关键工具结果。',
+    ],
+    sources: [COMMUNITY.jdAgent, COMMUNITY.agentRoundup, OFFICIAL.springChatClient, OFFICIAL.springMemory, OFFICIAL.springRag],
+  }],
+  [40, {
+    title: '怎样估算 Java AI 服务的容量、Token 成本与模型网关配额？',
+    summary: 'AI 容量不能只看 QPS，还要同时估算输入/输出 Token、并发中的长请求、首 token 与总耗时、供应商 RPM/TPM 配额和每个成功任务成本。模型网关按租户与任务设置 token 预算、并发、deadline、路由和成本归因，用真实长度分布压测并为峰值与降级预留余量。',
+    mechanism: '先从线上或样本集得到请求到达率、输入与输出 token 的 P50/P95、流式持续时间和任务成功率。并发近似受“到达率 × 请求驻留时间”影响，长输出会持续占用连接、模型配额和下游线程；供应商同时按请求数和 token 吞吐限流，因此只配 QPS 会在长上下文场景失效。网关在请求前计算 prompt、RAG 证据、工具 schema 和最大输出预算，按 tenantId、taskType、model 进行令牌桶或并发舱壁；响应后记录实际 usage、缓存命中、重试与 servedModel。容量测试复刻长度分布和流式连接，报告 TTFT、总时延、tokens/s、429、取消率和每成功任务成本。超过预算时优先减少无关上下文、选择经评测的低成本模型或排队，而不是无界重试。',
+    example: '客服系统峰值 20 RPS，平均驻留 8 秒，意味着约 160 个在途请求；P95 输入 9k、输出 1.2k token，供应商 TPM 比 HTTP QPS 更早触顶。网关按租户限制并发和 token/minute，对摘要任务路由小模型，对高风险订单解释保持主模型；429 使用 Retry-After 与抖动退避，超出 deadline 直接失败。上线后按“每个被用户接受的答案成本”而不是总 token 展示预算。',
+    followUps: [
+      {
+        question: '为什么平均 Token 数不能直接用于容量规划？',
+        answer: '长尾请求会占用更久连接和更多 TPM，并在高峰形成排队。至少要按任务类型观察 P50/P95 和最大输出上限，用真实分布做并发压测。',
+      },
+      {
+        question: '模型响应变慢时，增加 Java 实例为什么可能无效？',
+        answer: '瓶颈可能在供应商配额、模型队列或 token 吞吐。增加入口实例只会制造更多在途请求；应通过端到端 trace、舱壁、排队和模型路由定位并控制压力。',
+      },
+    ],
+    pitfalls: [
+      '只按 HTTP QPS 限流，不统计 TPM、并发连接与最大输出，长请求一来就触发 429。',
+      '自动重试所有模型失败，既放大费用和排队，也可能让有副作用的工具重复执行。',
+    ],
+    sources: [COMMUNITY.narwal, COMMUNITY.agentRoundup, OFFICIAL.openAiLatency, OFFICIAL.openAiCaching, OFFICIAL.openAiProduction],
+  }],
+])
+
+const SECTION_TITLES = [
+  '大模型基础与 Java 接入',
+  'RAG 基础与知识入库',
+  'RAG 检索优化与评测',
+  'Agent、记忆与工具调用',
+  '流式对话与前后端契约',
+  '生产治理、评测与安全',
+  'Java AI 工程底座',
+  '项目讲解与系统设计',
+]
+
+const GUIDES_BY_SECTION = [
+  [CURATED_GUIDES.javaGuideLlm, CURATED_GUIDES.xiaolinLlm],
+  [CURATED_GUIDES.javaGuideRag, CURATED_GUIDES.xiaolinRag],
+  [CURATED_GUIDES.xiaolinRag, CURATED_GUIDES.javaGuideRag],
+  [CURATED_GUIDES.javaGuideAgent, CURATED_GUIDES.xiaolinTools],
+  [CURATED_GUIDES.xiaolinOnCall, CURATED_GUIDES.xiaolinTools],
+  [CURATED_GUIDES.javaGuideSystem, CURATED_GUIDES.javaGuideOverview],
+  [CURATED_GUIDES.javaGuideJavaProject, CURATED_GUIDES.javaGuideSystem],
+  [CURATED_GUIDES.javaGuideOverview, CURATED_GUIDES.xiaolinOverview],
+]
+
+export const javaAiInterviewBank = {
+  ...javaAiInterviewBankBase,
+  title: 'Java × AI 应用开发高频题',
+  category: 'AI 应用开发',
+  description: '面向 Java 后端转 AI 应用开发与 Agent 工程岗位的 40 道高频题，按大模型基础、RAG、Agent、流式交互、生产治理与系统设计递进，优先保留能解释真实工程取舍的内容。',
+  verifiedAt: '2026-08-05',
+  sections: javaAiInterviewBankBase.sections.map((section, sectionIndex) => ({
+    ...section,
+    title: SECTION_TITLES[sectionIndex],
+    questions: section.questions.map((question, questionIndex) => {
+      const number = sectionIndex * 5 + questionIndex + 1
+      const selected = HIGH_FREQUENCY_OVERRIDES.get(number) ?? question
+      const guide = GUIDES_BY_SECTION[sectionIndex][questionIndex % GUIDES_BY_SECTION[sectionIndex].length]
+      return {
+        ...selected,
+        sources: [...selected.sources.filter((source) => source.url !== COMMUNITY.csdnReview.url), guide]
+          .filter((source, index, sources) => sources.findIndex((item) => item.url === source.url) === index),
+      }
+    }),
+  })),
 }

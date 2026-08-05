@@ -58,3 +58,98 @@ export const OFFICIAL = {
   modules: { label: 'Java 21 模块系统 API', url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/module/package-summary.html', kind: 'official' },
   virtualThreads: { label: 'JEP 444：Virtual Threads', url: 'https://openjdk.org/jeps/444', kind: 'official' },
 }
+
+// Curated interview guides are used to decide topic frequency and question wording.
+// Technical claims are still cross-checked against the Oracle/OpenJDK references above.
+export const CURATED = {
+  javaGuideIndex: {
+    label: 'JavaGuide：Java 知识体系与高频问题',
+    url: 'https://javaguide.cn/java/',
+    kind: 'curated-guide',
+  },
+  javaGuideBasics01: {
+    label: 'JavaGuide：Java 基础常见面试题（上）',
+    url: 'https://javaguide.cn/java/basis/java-basic-questions-01.html',
+    kind: 'curated-guide',
+  },
+  javaGuideBasics02: {
+    label: 'JavaGuide：Java 基础常见面试题（中）',
+    url: 'https://javaguide.cn/java/basis/java-basic-questions-02.html',
+    kind: 'curated-guide',
+  },
+  javaGuideBasics03: {
+    label: 'JavaGuide：Java 基础常见面试题（下）',
+    url: 'https://javaguide.cn/java/basis/java-basic-questions-03.html',
+    kind: 'curated-guide',
+  },
+  javaGuideCollections01: {
+    label: 'JavaGuide：Java 集合常见面试题（上）',
+    url: 'https://javaguide.cn/java/collection/java-collection-questions-01.html',
+    kind: 'curated-guide',
+  },
+  javaGuideCollections02: {
+    label: 'JavaGuide：Java 集合常见面试题（下）',
+    url: 'https://javaguide.cn/java/collection/java-collection-questions-02.html',
+    kind: 'curated-guide',
+  },
+  javaGuideConcurrent01: {
+    label: 'JavaGuide：Java 并发常见面试题（上）',
+    url: 'https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html',
+    kind: 'curated-guide',
+  },
+  javaGuideConcurrent02: {
+    label: 'JavaGuide：Java 并发常见面试题（中）',
+    url: 'https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html',
+    kind: 'curated-guide',
+  },
+  javaGuideConcurrent03: {
+    label: 'JavaGuide：Java 并发常见面试题（下）',
+    url: 'https://javaguide.cn/java/concurrent/java-concurrent-questions-03.html',
+    kind: 'curated-guide',
+  },
+  javaGuideThreadPool: {
+    label: 'JavaGuide：Java 线程池详解',
+    url: 'https://javaguide.cn/java/concurrent/java-thread-pool-summary.html',
+    kind: 'curated-guide',
+  },
+  javaGuideMemory: {
+    label: 'JavaGuide：Java 内存区域详解',
+    url: 'https://javaguide.cn/java/jvm/memory-area.html',
+    kind: 'curated-guide',
+  },
+  javaGuideGc: {
+    label: 'JavaGuide：JVM 垃圾回收详解',
+    url: 'https://javaguide.cn/java/jvm/jvm-garbage-collection.html',
+    kind: 'curated-guide',
+  },
+  javaGuideClassLoading: {
+    label: 'JavaGuide：类加载过程详解',
+    url: 'https://javaguide.cn/java/jvm/class-loading-process.html',
+    kind: 'curated-guide',
+  },
+  javaGuideClassLoader: {
+    label: 'JavaGuide：类加载器与双亲委派',
+    url: 'https://javaguide.cn/java/jvm/classloader.html',
+    kind: 'curated-guide',
+  },
+  xiaolinJava: {
+    label: '小林 Coding：Java 基础面试题',
+    url: 'https://www.xiaolincoding.com/interview/java.html',
+    kind: 'curated-guide',
+  },
+  xiaolinCollections: {
+    label: '小林 Coding：Java 集合面试题',
+    url: 'https://www.xiaolincoding.com/interview/collections.html',
+    kind: 'curated-guide',
+  },
+  xiaolinJuc: {
+    label: '小林 Coding：Java 并发编程面试题',
+    url: 'https://www.xiaolincoding.com/interview/juc.html',
+    kind: 'curated-guide',
+  },
+  xiaolinJvm: {
+    label: '小林 Coding：Java 虚拟机面试题',
+    url: 'https://www.xiaolincoding.com/interview/jvm.html',
+    kind: 'curated-guide',
+  },
+}

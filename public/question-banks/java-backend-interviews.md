@@ -34,9 +34,10 @@
 **参考来源：**
 
 - [真实面经线索（题目已改写）：京东达达 Java 后端一面（牛客，2025-04-03）](https://www.nowcoder.com/discuss/737329814587117568)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合专题](https://javaguide.cn/java/collection/)
 - [技术校准：OpenJDK 8 HashMap 源码](https://github.com/openjdk/jdk8u/blob/master/jdk/src/share/classes/java/util/HashMap.java)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q2：ConcurrentHashMap 在高并发更新时如何避免整表锁？
 
@@ -70,9 +71,10 @@
 **参考来源：**
 
 - [真实面经线索（题目已改写）：科大讯飞 Java 后端一面（牛客，2025）](https://www.nowcoder.com/discuss/747230985057468416)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合专题](https://javaguide.cn/java/collection/)
 - [技术校准：Java 21 ConcurrentHashMap API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/ConcurrentHashMap.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q3：遍历集合时怎样安全地新增或删除元素？
 
@@ -106,9 +108,10 @@ ArrayList 的迭代器记录创建时的 modCount 期望值，每次 next 或 re
 **参考来源：**
 
 - [真实面经线索（题目已改写）：携程 Java 后端一面（牛客，2025-03-20）](https://www.nowcoder.com/discuss/729706507876487168)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合专题](https://javaguide.cn/java/collection/)
 - [技术校准：Java 21 Collections Framework](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/doc-files/coll-overview.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q4：业务代码该怎样在 ArrayList、LinkedList 与队列之间选型？
 
@@ -142,45 +145,47 @@ ArrayList 使用连续引用数组，随机访问 O(1)，尾部追加摊销 O(1)
 **参考来源：**
 
 - [真实面经线索（题目已改写）：携程 Java 后端一面（牛客，2025-03-20）](https://www.nowcoder.com/discuss/729706507876487168)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合专题](https://javaguide.cn/java/collection/)
 - [技术校准：Java 21 ArrayList API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayList.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q5：StringBuilder 与 StringBuffer 的线程安全差异应如何落到场景？
+## Q5：equals 与 hashCode 写错会怎样破坏 HashMap 和 HashSet？
 
 **短回答：**
 
-结论：两者都维护可变字符序列，StringBuffer 的公开方法带同步语义；线程封闭的字符串拼接优先 StringBuilder，共享可变实例才需要额外并发设计。
+结论：相等对象必须拥有相同 hashCode；否则逻辑上相同的键可能落入不同桶，导致查不到、删不掉或 Set 重复。放入哈希容器后的键也不应再修改参与相等判断的字段。
 
 **原理：**
 
-不可变 String 每次拼接可能产生中间对象，编译器可对简单表达式做优化，但循环和动态拼接常使用可变缓冲。StringBuffer 通过方法同步保护单次调用，代价是竞争与内存屏障；它并不保证跨多个调用的业务操作原子，例如先 length 再 append 仍可能被其他线程插入。StringBuilder 无同步成本，适合局部变量或明确线程封闭的构建过程。共享日志内容更适合每请求独立构建后一次提交。
+哈希容器先用 hashCode 缩小到桶，再用 equals 判断是否同一个键。只重写 equals 不重写 hashCode 会破坏“相等对象同哈希”的契约；只比较 hashCode 又会把碰撞误判为相等。若 key 入表后关键字段变化，查询会按新哈希定位，而对象仍留在旧桶，形成业务层的幽灵数据。
 
 **代码 / 场景：**
 
-生成一条审计日志时，在请求线程内创建 StringBuilder，完成字段转义后一次写出；不要把一个全局 StringBuffer 当成日志队列。验证应包含多线程内容完整性测试，并观察锁竞争，而非只比较单线程耗时。
+订单去重键可由不可变的业务编号构成，并同时重写 equals/hashCode；不要把会变化的订单状态纳入键。测试要覆盖两个独立实例表示同一业务键、哈希碰撞以及入表后字段变化。
 
 **递进追问：**
 
-1. **使用 StringBuffer 后组合操作一定安全吗？**
+1. **hashCode 相同就代表 equals 为 true 吗？**
 
-   不一定。多个同步方法之间仍可被其他线程穿插，组合不变量需要外部锁或重构为单次操作。
+   不代表。不同对象允许哈希碰撞，仍要继续执行 equals 判断。
 
-2. **字符串常量相加为什么可能没有运行时开销？**
+2. **record 适合做 Map key 吗？**
 
-   编译期可确定的常量表达式会被折叠；运行时循环拼接仍需关注中间对象和容量扩展。
+   字段语义稳定且组成值对象时通常合适，但字段引用的对象仍应避免在入表后发生影响相等性的变化。
 
 **易错点：**
 
-- 把“方法 synchronized”误说成任意业务序列都具备原子性。
-- 为了所谓安全把线程局部 StringBuilder 全部替换成 StringBuffer。
+- 只背“重写 equals 就要重写 hashCode”，说不出桶定位与二次比较。
+- 使用可变对象作为 key，修改字段后再尝试查询或删除。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：科大讯飞 Java 后端一面（牛客，2025）](https://www.nowcoder.com/discuss/747230985057468416)
-- [技术校准：Java 21 StringBuffer API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/StringBuffer.html)
+- [高频题库参考（内容已重写）：JavaGuide：Java 集合专题](https://javaguide.cn/java/collection/)
+- [技术校准：Java 21 HashMap API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/HashMap.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q6：双亲委派如何工作，什么时候才有理由打破它？
 
@@ -214,11 +219,12 @@ ArrayList 使用连续引用数组，随机访问 O(1)，尾部追加摊销 O(1)
 **参考来源：**
 
 - [真实面经线索（题目已改写）：科大讯飞 Java 后端一面（牛客，2025）](https://www.nowcoder.com/discuss/747230985057468416)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 专题](https://javaguide.cn/java/jvm/)
 - [技术校准：JLS 12：执行与类加载](https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html)
 - [技术校准：Java 21 ClassLoader.loadClass API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html#loadClass(java.lang.String,boolean))
 - [技术校准：Java 21 ServiceLoader API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ServiceLoader.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 # MySQL 索引、事务与日志
 
@@ -256,9 +262,10 @@ InnoDB 以固定大小页组织索引。非叶子节点主要保存键与子页�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：淘天业务技术后端面经（牛客，2024-04-21）](https://www.nowcoder.com/discuss/611696355077103616)
+- [高频题库参考（内容已重写）：小林 Coding：为什么 MySQL 采用 B+ 树](https://xiaolincoding.com/mysql/index/why_index_chose_bpuls_tree.html)
 - [技术校准：MySQL 8.4 InnoDB 索引类型](https://dev.mysql.com/doc/refman/8.4/en/innodb-index-types.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q8：聚簇、二级与覆盖索引如何决定是否回表？
 
@@ -292,23 +299,24 @@ InnoDB 以固定大小页组织索引。非叶子节点主要保存键与子页�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：淘天业务技术后端面经（牛客，2024-04-21）](https://www.nowcoder.com/discuss/611696355077103616)
+- [高频题库参考（内容已重写）：JavaGuide：MySQL 专题](https://javaguide.cn/database/mysql/)
 - [技术校准：MySQL 8.4 InnoDB 索引类型](https://dev.mysql.com/doc/refman/8.4/en/innodb-index-types.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q9：联合索引在数据倾斜时仍会遵守最左匹配吗？
+## Q9：联合索引怎样设计，哪些写法最容易导致索引失效？
 
 **短回答：**
 
-结论：索引键顺序不会因某列取值都相同就自动跳过最左列；优化器是否选择索引取决于可用访问路径和成本，不能用数据内容替代索引前缀规则。
+结论：先根据高频过滤、排序和覆盖需求确定联合索引顺序，再用执行计划验证；函数计算、隐式类型转换、左模糊匹配和缺失前导列都可能让索引无法高效定位。
 
 **原理：**
 
-联合 B+Tree 先按第一列排序，再在相同第一列范围内按第二列排序。缺少最左列条件时，第二列在全树上不是一个连续全局区间，常无法直接做普通范围定位；某些版本和场景可能使用 skip scan 等优化，但这是成本选择，不是索引定义改变。范围条件后的后续列通常不能继续缩小定位区间，却可能用于索引条件下推过滤。统计信息失真时，优化器还可能选错路径。
+联合 B+Tree 按列顺序逐层有序，等值条件通常放在前面，范围或排序列靠后；范围后的列可能只参与过滤或覆盖，不能继续缩小连续查找区间。是否真正使用索引由成本优化器决定，`possible_keys` 只是候选，要结合 `key`、`type`、`rows`、`filtered`、`Extra` 和 EXPLAIN ANALYZE 的实际行数判断。
 
 **代码 / 场景：**
 
-索引 `(tenant_id,status,created_at)` 若所有历史数据 tenant_id 暂时相同，仍应在 SQL 明确租户条件；否则未来多租户后计划会恶化。用不同数据分布执行 EXPLAIN ANALYZE，验证实际行数与估算差异。
+订单查询 `tenant_id=? AND status=? ORDER BY created_at DESC LIMIT 20` 可评估 `(tenant_id,status,created_at)`，并只选择列表所需列形成覆盖。若线上变慢，先检查参数类型、统计信息和实际扫描行，而不是直接 FORCE INDEX。
 
 **递进追问：**
 
@@ -318,37 +326,38 @@ InnoDB 以固定大小页组织索引。非叶子节点主要保存键与子页�
 
 2. **为什么同一 SQL 有时突然不走索引？**
 
-   数据分布、统计信息、参数值和缓存成本变化都可能让优化器判断全表扫描更便宜。
+   数据分布、统计信息、参数值和缓存状态变化都可能让优化器判断全表扫描更便宜。
 
 **易错点：**
 
-- 把偶然常量列当作优化器自动改写索引顺序的依据。
+- 为每个字段各建一个单列索引，忽略真实组合访问路径。
 - 只看 possible_keys，不核对最终 key 和实际扫描行。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：字节豆包后端三轮面经（牛客，2025-03-19）](https://www.nowcoder.com/discuss/731895855627759616)
+- [高频题库参考（内容已重写）：JavaGuide：MySQL 专题](https://javaguide.cn/database/mysql/)
 - [技术校准：MySQL 8.4 索引优化](https://dev.mysql.com/doc/refman/8.4/en/optimization-indexes.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q10：MySQL 与 Elasticsearch 深分页分别怎样改写？
+## Q10：MySQL 深分页和慢 SQL 应怎样用执行计划逐步优化？
 
 **短回答：**
 
-结论：大 offset 会读取并丢弃前面大量结果；连续翻页优先使用稳定排序键做 seek/search_after，必须跳页时才接受更高成本或改产品交互。
+结论：不要看到慢 SQL 就先加索引；先确认慢在扫描、回表、排序还是锁等待。大 offset 连续翻页优先改为基于唯一排序键的游标分页。
 
 **原理：**
 
-MySQL `LIMIT offset,size` 需要找到并跳过 offset 条，二级索引查询还可能为大量候选回表；可先在窄覆盖索引中定位主键再关联，或用上一页 `(sort_key,id)` 作为下一页边界。Elasticsearch 每个分片都要准备 `from + size` 候选并在协调节点归并，深页会放大堆与 CPU；search_after 配合 point in time 能保持分页视图。所有方案都需要唯一稳定的二级排序键，防止并列值漏项或重复。
+`LIMIT offset,size` 仍需找到并丢弃 offset 条，二级索引还可能对大量候选回表。可先用覆盖索引定位主键再回表，或以 `(sort_key,id)` 作为下一页边界。排查时对照慢日志与 EXPLAIN ANALYZE，关注估算/实际行数、扫描方式、临时表、filesort 和执行时间，并核对是否受锁等待、连接池或磁盘抖动影响。
 
 **代码 / 场景：**
 
-订单列表按 `created_at DESC,id DESC` 返回游标，下一页条件写成“小于上页末尾二元组”；ES 同样以这两个 sort 值 search_after。用百万级数据验证第 1 页与第 10000 页延迟、重复率和写入并发下的一致性。
+订单列表按 `created_at DESC,id DESC` 返回游标，下一页条件为“小于上一页末尾二元组”，索引与排序顺序一致。用百万级数据比较首屏和深页的扫描行、回表次数与 p95，而不是只比较一条开发库 SQL。
 
 **递进追问：**
 
-1. **seek 分页为什么难以直接跳到任意页？**
+1. **游标分页为什么难以直接跳到任意页？**
 
    它依赖上一页末尾边界，没有中间游标就不知道目标页起点，这是用交互能力换稳定性能。
 
@@ -364,9 +373,10 @@ MySQL `LIMIT offset,size` 需要找到并跳过 offset 条，二级索引查询�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：京东达达 Java 后端一面（牛客，2025-04-03）](https://www.nowcoder.com/discuss/737329814587117568)
+- [高频题库参考（内容已重写）：小林 Coding：图解 MySQL](https://xiaolincoding.com/mysql/)
 - [技术校准：MySQL 8.4 EXPLAIN](https://dev.mysql.com/doc/refman/8.4/en/explain.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q11：MVCC 如何让可重复读看到稳定快照？
 
@@ -400,23 +410,24 @@ MySQL `LIMIT offset,size` 需要找到并跳过 offset 条，二级索引查询�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：数字马力 Java 后端秋招面经（牛客，2025-12-04）](https://www.nowcoder.com/discuss/826171566831517696)
+- [高频题库参考（内容已重写）：小林 Coding：事务隔离与 MVCC](https://xiaolincoding.com/mysql/transaction/mvcc.html)
 - [技术校准：MySQL 8.4 InnoDB MVCC](https://dev.mysql.com/doc/refman/8.4/en/innodb-multi-versioning.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q12：Next-Key Lock、redo、undo 与 binlog 各解决什么？
+## Q12：一条 UPDATE 怎样经过行锁、undo、redo、binlog 与提交？
 
 **短回答：**
 
-结论：Next-Key Lock 保护索引记录及相邻间隙的并发范围，redo 保证崩溃恢复，undo 支持回滚和旧版本，binlog 服务逻辑复制与审计；四者职责不能互换。
+结论：更新先按索引访问路径锁定记录，写 undo 保存旧版本，在 Buffer Pool 修改页并记录 redo，提交时协调 redo 与 binlog；锁、三类日志分别负责并发、回滚/MVCC、崩溃恢复和复制恢复。
 
 **原理：**
 
-InnoDB 当前读按实际索引访问路径加记录锁、间隙锁或二者组合的 Next-Key Lock，精确唯一索引等值命中时可能缩小范围。redo 是存储引擎物理恢复日志，事务提交按刷盘策略获得持久性；undo 保存反向操作/旧版本信息；binlog 位于服务器层，记录逻辑变更供复制与恢复。提交需协调存储引擎与 binlog，避免一边成功另一边缺失。锁范围则要通过索引和隔离级别具体分析。
+InnoDB 当前读按实际扫描范围加记录锁、间隙锁或 Next-Key Lock；索引不合适会扩大扫描与锁范围。undo 保存旧版本，redo 以 WAL 方式保证已提交修改可在崩溃后重做，binlog 位于 Server 层用于复制与时间点恢复。提交阶段用内部协调保证 redo 和 binlog 不出现一个可见、一个缺失的分裂结果，脏页可稍后刷盘。
 
 **代码 / 场景：**
 
-库存表按非唯一 status 范围更新时，锁可能覆盖多个记录和间隙，阻塞新插入；补充更精确索引可缩小扫描与锁范围。故障测试应在提交阶段杀进程，恢复后核对数据、redo 与 binlog 位点一致。
+库存更新必须命中商品唯一索引并在事务内检查受影响行数。压测时观察锁等待和死锁，故障演练在提交阶段杀进程，恢复后核对主库数据、binlog 位点和从库结果。
 
 **递进追问：**
 
@@ -436,12 +447,13 @@ InnoDB 当前读按实际索引访问路径加记录锁、间隙锁或二者组�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：数字马力 Java 后端秋招面经（牛客，2025-12-04）](https://www.nowcoder.com/discuss/826171566831517696)
+- [高频题库参考（内容已重写）：小林 Coding：undo、redo 与 binlog](https://xiaolincoding.com/mysql/log/how_update.html)
 - [技术校准：MySQL 8.4 InnoDB 锁](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking.html)
 - [技术校准：MySQL 8.4 InnoDB Redo Log](https://dev.mysql.com/doc/refman/8.4/en/innodb-redo-log.html)
 - [技术校准：MySQL 8.4 InnoDB Undo Logs](https://dev.mysql.com/doc/refman/8.4/en/innodb-undo-logs.html)
 - [技术校准：MySQL 8.4 Binary Log](https://dev.mysql.com/doc/refman/8.4/en/binary-log.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 # Redis、缓存与分布式锁
 
@@ -477,10 +489,11 @@ Redis 通过事件循环监听大量连接，就绪后读取请求并执行命�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：百度 Java 后端提前批二面（牛客，2025-09-23）](https://www.nowcoder.com/discuss/799949823049756672)
+- [高频题库参考（内容已重写）：小林 Coding：图解 Redis](https://xiaolincoding.com/redis/)
 - [技术校准：Redis 延迟诊断与事件循环说明](https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/latency/)
 - [技术校准：Redis 官方持久化文档](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q14：Redis 数据结构怎样按访问模式选，ZSet 为何使用跳表？
 
@@ -514,23 +527,24 @@ String 适合计数、位图和简单值，Hash 适合对象字段，List 适合
 **参考来源：**
 
 - [真实面经线索（题目已改写）：淘天业务技术后端面经（牛客，2024-04-21）](https://www.nowcoder.com/discuss/611696355077103616)
+- [高频题库参考（内容已重写）：JavaGuide：Redis 专题](https://javaguide.cn/database/redis/)
 - [技术校准：Redis 官方数据类型](https://redis.io/docs/latest/develop/data-types/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q15：RDB、AOF 与淘汰策略怎样组合成可恢复缓存？
+## Q15：RDB、AOF 与混合持久化应该怎样选择？
 
 **短回答：**
 
-结论：RDB 提供紧凑快照，AOF 记录写命令并可配置刷盘；淘汰策略只处理达到内存上限后的 key 选择。三者需按允许丢失量与缓存角色共同配置。
+结论：RDB 适合紧凑快照和快速恢复，AOF 以写命令和刷盘策略缩小丢失窗口，混合持久化兼顾恢复速度与增量完整性；选择依据是 Redis 的数据角色、RPO 和 RTO。
 
 **原理：**
 
-RDB 在时间点生成数据快照，恢复快但两次快照间变更可能丢失；AOF 追加写操作，按 always/everysec/no 等策略权衡持久性与延迟，并需重写控制体积。达到 maxmemory 后，noeviction 会拒绝写，LRU/LFU/TTL/随机策略则在全部 key 或带过期 key 范围选择淘汰。持久化不是高可用，副本也可能复制错误删除；权威数据仍需有明确事实来源。
+RDB 保存时间点快照，两次快照间变更可能丢失；AOF 在命令执行后追加日志，以 always/everysec/no 权衡可靠性与延迟，并通过后台重写压缩历史。Redis 7 的多部分 AOF 将基础文件和增量文件由 manifest 管理。持久化不等于高可用或备份，副本可能同步误删，缓存事实仍应能从权威存储重建。
 
 **代码 / 场景：**
 
-会话若必须跨 Redis 故障保留，不应只依赖缓存淘汰策略，可使用 AOF everysec 加副本并在数据库保留关键状态。故障演练杀主节点，记录已确认写的丢失窗口、恢复时间与被淘汰 key 类型。
+纯商品缓存可以接受故障后回源重建；若 Redis 保存短期任务状态，则要明确允许丢失窗口，配置 AOF、备份和恢复演练。验证要实际杀进程并测恢复时间、确认写丢失量和 fork/重写期间延迟。
 
 **递进追问：**
 
@@ -538,22 +552,22 @@ RDB 在时间点生成数据快照，恢复快但两次快照间变更可能丢�
 
    不能，故障窗口内仍可能丢失尚未刷盘的数据，只是将常见窗口控制在约秒级。
 
-2. **allkeys-lru 是精确全局 LRU 吗？**
+2. **AOF 重写是简单复制旧日志吗？**
 
-   Redis 使用近似采样策略控制成本，不能把淘汰顺序当作严格全局排序。
+   不是，它根据当前数据状态生成等价且更紧凑的基础内容，并在切换时衔接重写期间的增量写。
 
 **易错点：**
 
 - 把副本、持久化和备份当作同一层保障。
-- 未设置 maxmemory 就讨论淘汰策略，导致实例最终受系统 OOM 控制。
+- 只背配置名，不用故障演练验证真实 RPO/RTO。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：美团 Java 后端一面（牛客，2025-04-08）](https://www.nowcoder.com/discuss/737336813836111872)
+- [高频题库参考（内容已重写）：小林 Coding：AOF 持久化](https://xiaolincoding.com/redis/storage/aof.html)
 - [技术校准：Redis 官方持久化文档](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
-- [技术校准：Redis 官方淘汰策略](https://redis.io/docs/latest/develop/reference/eviction/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q16：缓存穿透、击穿和雪崩如何按失败形态分别治理？
 
@@ -587,45 +601,47 @@ RDB 在时间点生成数据快照，恢复快但两次快照间变更可能丢�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：美团 Java 后端一面（牛客，2025-04-08）](https://www.nowcoder.com/discuss/737336813836111872)
+- [高频题库参考（内容已重写）：小林 Coding：Redis 常见面试题](https://xiaolincoding.com/redis/base/redis_interview.html)
 - [技术校准：Redis 官方数据类型](https://redis.io/docs/latest/develop/data-types/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q17：Redisson 风格的续期锁怎样处理误删与进程崩溃？
+## Q17：数据库与 Redis 缓存怎样尽量保持一致？
 
 **短回答：**
 
-结论：锁值必须标识持有者，释放用原子比较删除；续期只能延长仍由自己持有的锁，进程崩溃后则靠租约最终过期，不能无限续命。
+结论：常见读多写少业务采用 Cache Aside：写数据库成功后删除缓存，并依靠过期时间兜底；它通常追求最终一致，强一致场景应缩短缓存链路或改用事实存储读取。
 
 **原理：**
 
-客户端以唯一 token 获取带 TTL 的 key，成功后定时检查持有关系并延长租约。解锁必须在一个 Lua 脚本中比较 token 后删除，避免旧持有者超时后误删新持有者的锁。续期线程随进程死亡而停止，TTL 到期允许其他实例恢复。网络暂停、主从切换和 GC 停顿可能让锁实际过期但旧任务继续执行，因此仅有 Redis 锁不能阻止迟到写；关键资源需要 fencing token 或存储层版本检查。
+先更新数据库再删除缓存，可避免先删缓存后并发旧值回填的常见窗口；但删除失败仍会留下旧缓存，因此需要重试、消息表或订阅 binlog 做补偿。读路径未命中时回源并回填，需配合热点互斥和双重检查。延迟双删不是万能公式，延迟难覆盖所有并发时序，还会增加操作复杂度。
 
 **代码 / 场景：**
 
-账单生成任务获取锁时同时获得递增 fencing 版本，数据库只接受不小于当前版本的写入。故障注入暂停旧进程超过 TTL，再让新进程接管，恢复旧进程后确认其写入被版本条件拒绝。
+商品价格更新在数据库事务提交后发送可靠失效事件，消费者按商品 ID 幂等删除缓存，TTL 作为最后兜底；高价值支付余额不把 Redis 当最终事实。压测并发读写并注入删缓存失败，量化不一致窗口。
 
 **递进追问：**
 
-1. **为什么不能直接 DEL 锁 key？**
+1. **为什么不优先“更新数据库后更新缓存”？**
 
-   旧持有者的租约可能已过期且新持有者已加锁，直接删除会误删别人的有效锁。
+   并发写可能让较早的事务最后覆盖缓存，且双写失败需要更复杂的原子协调；删除通常更容易收敛。
 
-2. **Watchdog 能解决所有超时问题吗？**
+2. **删除缓存失败怎么处理？**
 
-   不能，长暂停或网络分区仍可能失去租约，外部资源需要 fencing 或幂等约束。
+   记录可重试事件或本地消息，持续幂等删除，并用监控和 TTL 控制最坏不一致时间。
 
 **易错点：**
 
-- 只设置过期时间，不校验锁拥有者就删除。
-- 把续期锁当作跨系统强一致事务，遗漏迟到写。
+- 宣称 Cache Aside 可以提供跨库强一致。
+- 只写“延迟双删”，不说明并发时序、失败补偿与监控。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：快手 Java 后端一面（牛客，2025-03-19）](https://www.nowcoder.com/discuss/731843046232395776)
-- [技术校准：Redis 官方分布式锁模式](https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/)
+- [高频题库参考（内容已重写）：JavaGuide：Redis 专题](https://javaguide.cn/database/redis/)
+- [技术校准：Redis 官方事务文档](https://redis.io/docs/latest/develop/interact/transactions/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q18：Redis 主从切换期间怎样理解复制顺序与可用性？
 
@@ -659,9 +675,10 @@ RDB 在时间点生成数据快照，恢复快但两次快照间变更可能丢�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：小红书 Java 后端二面（牛客，2025-11-02）](https://www.nowcoder.com/discuss/814455404334776320)
+- [高频题库参考（内容已重写）：小林 Coding：图解 Redis](https://xiaolincoding.com/redis/)
 - [技术校准：Redis Cluster 扩展文档](https://redis.io/docs/latest/operate/oss_and_stack/management/scaling/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 # JVM、GC 与生产诊断
 
@@ -697,9 +714,10 @@ RDB 在时间点生成数据快照，恢复快但两次快照间变更可能丢�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：数字马力 Java 后端秋招面经（牛客，2025-12-04）](https://www.nowcoder.com/discuss/826171566831517696)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 专题](https://javaguide.cn/java/jvm/)
 - [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q20：可达性分析怎样处理循环引用并决定对象生死？
 
@@ -733,9 +751,10 @@ GC Roots 可包括活动线程栈中的引用、类静态字段、JNI 引用等�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：携程 Java 后端一面（牛客，2025-03-20）](https://www.nowcoder.com/discuss/729706507876487168)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 专题](https://javaguide.cn/java/jvm/)
 - [技术校准：JDK 21 Garbage Collection Tuning Guide](https://docs.oracle.com/en/java/javase/21/gctuning/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q21：CMS、G1 与低停顿收集器的选择依据是什么？
 
@@ -769,9 +788,10 @@ CMS 以老年代并发标记清除降低停顿，但会产生碎片，并存在�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：小红书后端开发一面（牛客，2025-09-01）](https://www.nowcoder.com/discuss/792145962431946752)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 专题](https://javaguide.cn/java/jvm/)
 - [技术校准：JDK 21 Garbage Collection Tuning Guide](https://docs.oracle.com/en/java/javase/21/gctuning/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q22：线上内存泄漏如何证明是存活集增长而非正常缓存？
 
@@ -805,86 +825,89 @@ CMS 以老年代并发标记清除降低停顿，但会产生碎片，并存在�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：百度 Java 后端提前批二面（牛客，2025-09-23）](https://www.nowcoder.com/discuss/799949823049756672)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 专题](https://javaguide.cn/java/jvm/)
 - [技术校准：JDK 21 jcmd 工具说明](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q23：发版重启导致本地缓存丢失时如何避免流量击穿？
+## Q23：Java 服务 CPU 突然 100% 应怎样定位到代码行？
 
 **短回答：**
 
-结论：本地缓存应被视为可丢失加速层，重启恢复要靠分批发布、预热、请求合并、限流和下游容量保护，不能把内存内容当唯一事实来源。
+结论：先确认是单实例、单核还是整体资源饱和，再把操作系统热点线程与 JVM 线程栈对应；多次采样找到持续 RUNNABLE 的热点栈，最后用火焰图或 JFR 验证，而不是凭一张线程快照下结论。
 
 **原理：**
 
-进程重启后冷缓存会把命中流量瞬间转移到数据库或远端服务，多实例同时发布会形成同步冲击。发布系统应限制并发下线数，健康检查不仅看端口，还应在关键缓存达到最低可服务状态后接流量。热点可从持久来源异步预热；未命中时使用 single-flight 合并同键加载，并设置超时、负缓存与最大并发。回滚同样是一次冷启动，必须进入容量模型。
+先排除流量上涨、宿主机抢占和 GC，再用 top/pidstat 找高 CPU 线程，将十进制线程 ID 转成十六进制，对照 jcmd Thread.print 或线程 dump 的 nid。连续采样能区分死循环、频繁序列化、锁自旋与瞬时任务；若 CPU 主要耗在 GC，则继续检查分配速率、堆占用和 GC 日志。生产采样要控制开销并保留时间线。
 
 **代码 / 场景：**
 
-商品详情服务发布前导出热点 key 清单，新实例启动后限速预热前一万条；达到命中率阈值再加入负载均衡。压测同时重启一个批次，确认数据库 QPS、连接池等待和错误率不越界，并演练预热失败后的降级页面。
+某接口发布后单核打满，连续三次线程 dump 都指向 JSON 转换循环，再用 JFR 确认该方法占据主要 CPU；回滚并补充输入上限。若热点线程是 GC worker，则转向分析对象分配和存活集，而不是优化业务循环。
 
 **递进追问：**
 
-1. **把缓存序列化到本地磁盘就足够了吗？**
+1. **为什么要连续抓多次线程栈？**
 
-   不够，磁盘快照可能过期、损坏或与新版本结构不兼容，只能作加速且需版本校验。
+   单次快照可能正好撞上瞬时任务；持续出现的相同热点栈才更能说明 CPU 长时间消耗位置。
 
-2. **为什么发布批次也要进入缓存设计？**
+2. **线程很多 BLOCKED 会导致 CPU 100% 吗？**
 
-   因为同时失去多少缓存实例直接决定回源峰值，是系统容量而非单纯运维问题。
+   阻塞线程本身通常不消耗大量 CPU，应继续寻找 RUNNABLE、自旋、频繁唤醒或 GC 线程。
 
 **易错点：**
 
-- 把本地缓存当权威数据，重启后无法从事实来源恢复。
-- 所有实例同时滚动且同时预热，把预热本身变成攻击流量。
+- 只看 Java 进程总 CPU，不定位到线程并建立时间线。
+- 拿一次 jstack 就宣布根因，未用复现、指标或采样工具验证。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：京东达达 Java 后端一面（牛客，2025-04-03）](https://www.nowcoder.com/discuss/737329814587117568)
-- [技术校准：JDK 21 Garbage Collection Tuning Guide](https://docs.oracle.com/en/java/javase/21/gctuning/)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 专题](https://javaguide.cn/java/jvm/)
+- [技术校准：JDK 21 jcmd 工具说明](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
+- [技术校准：Java 21 ThreadMXBean API](https://docs.oracle.com/en/java/javase/21/docs/api/java.management/java/lang/management/ThreadMXBean.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q24：4GB 物理内存的机器申请 8GB 时系统会怎样处理？
+## Q24：Java 常见 OOM 与频繁 Full GC 应怎样区分和排查？
 
 **短回答：**
 
-结论：申请的是虚拟地址空间，不等于立即占用同量物理内存；结果取决于进程位数、提交策略、页实际触达、交换空间、容器限制和内核过量承诺。
+结论：先按错误类型区分 Java heap space、Metaspace、Direct buffer memory、unable to create native thread 与容器 OOMKill，再结合 GC 日志、堆转储和进程内存判断是泄漏、瞬时膨胀还是堆外/系统限制。
 
 **原理：**
 
-虚拟内存把进程地址映射到物理页或后备存储，匿名映射常在首次触达页面时按需分配。64 位进程通常有足够地址空间保留 8GB，但实际写满时可能频繁换页、触发内存回收或被 OOM killer 终止；32 位进程往往先受用户地址空间上限限制。Linux overcommit 还可能让申请先成功、后续缺页时失败。容器 cgroup 限额可能比宿主机物理内存更早成为边界。
+频繁 Full GC 只是现象：老年代持续高占用可能来自存活集增长，也可能是堆太小或晋升压力。堆 OOM 要看支配树和引用链；Metaspace 关注类加载器是否泄漏；直接内存关注 NIO 缓冲；线程创建失败要核对线程数、栈大小和系统限制。容器被杀可能来不及抛 Java OOM，应结合 cgroup 和内核事件。
 
 **代码 / 场景：**
 
-Java 服务把 `-Xmx8g` 部署到 4GB 限额容器，即使启动成功，堆提交和堆外内存叠加后仍可能被杀。验证需同时看进程虚拟/常驻内存、page fault、swap、cgroup memory.events 与内核日志，而不是只看 malloc 返回值。
+开启滚动 GC 日志和 `HeapDumpOnOutOfMemoryError`，同时采集 RSS、堆、非堆与线程数。若堆稳定但 RSS 上升，优先查 direct buffer、native 库和线程栈；若 Full GC 后基线持续上升，再分析 dump 的大对象与 GC Roots。
 
 **递进追问：**
 
-1. **虚拟内存很大是否代表可以放心使用？**
+1. **Full GC 后堆占用下降很多说明什么？**
 
-   不代表，地址保留不等于物理容量，实际触达仍受 RAM、swap、限额和延迟目标约束。
+   更像短期分配压力或容量问题；若回收后基线仍持续抬升，才更值得怀疑泄漏或无界缓存。
 
-2. **32 位与 64 位差异只有指针大小吗？**
+2. **为什么容器 OOMKill 可能没有 heap dump？**
 
-   不是，最关键还包括可寻址空间上限，此外对象布局、ABI 与页表开销也会变化。
+   进程可能被内核直接终止，没有机会由 JVM 抛出堆 OOM 并执行转储。
 
 **易错点：**
 
-- 把申请成功误认为 8GB 物理页已经全部分配。
-- 只讨论宿主机内存，忽略容器 cgroup 与 JVM 堆外占用。
+- 看到 Full GC 就盲目增大堆，掩盖无界增长。
+- 只看堆内存，忽略 Metaspace、直接内存、线程栈与容器限制。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：百度 Java 后端提前批二面（牛客，2025-09-23）](https://www.nowcoder.com/discuss/799949823049756672)
-- [技术校准：Linux mmap(2)](https://man7.org/linux/man-pages/man2/mmap.2.html)
-- [技术校准：Linux 内核 Overcommit Accounting](https://docs.kernel.org/mm/overcommit-accounting.html)
-- [技术校准：Linux 内核 OOM 处理](https://docs.kernel.org/mm/oom.html)
-- [技术校准：Linux 内核 cgroup v2 内存控制](https://docs.kernel.org/admin-guide/cgroup-v2.html)
+- [高频题库参考（内容已重写）：JavaGuide：JVM 专题](https://javaguide.cn/java/jvm/)
+- [技术校准：JDK 21 Garbage Collection Tuning Guide](https://docs.oracle.com/en/java/javase/21/gctuning/)
+- [技术校准：JDK 21 jcmd 工具说明](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
+- [技术校准：JVMS 2：运行时数据区](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-2.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-# Spring、RPC 与服务治理
+# Spring 与 Spring Boot 核心
 
 ## Q25：Spring Bean 从定义到可调用代理经历哪些阶段？
 
@@ -918,9 +941,10 @@ BeanDefinition 保存类、作用域、构造参数和生命周期元数据。�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：Spring Bean 生命周期面试题（牛客，2025）](https://www.nowcoder.com/discuss/782649298138820608)
+- [高频题库参考（内容已重写）：JavaGuide：Spring 与 Spring Boot 专题](https://javaguide.cn/system-design/framework/spring/)
 - [技术校准：Spring Bean 生命周期回调](https://docs.spring.io/spring-framework/reference/core/beans/factory-nature.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q26：Spring AOP 何时使用 JDK 代理，何时使用类代理？
 
@@ -954,9 +978,10 @@ BeanDefinition 保存类、作用域、构造参数和生命周期元数据。�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：科大讯飞 Java 后端一面（牛客，2025）](https://www.nowcoder.com/discuss/747230985057468416)
+- [高频题库参考（内容已重写）：JavaGuide：Spring 与 Spring Boot 专题](https://javaguide.cn/system-design/framework/spring/)
 - [技术校准：Spring AOP 代理机制](https://docs.spring.io/spring-framework/reference/core/aop/proxying.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q27：Spring 单例循环依赖为什么有时能解、有时不能？
 
@@ -990,9 +1015,10 @@ BeanDefinition 保存类、作用域、构造参数和生命周期元数据。�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：科大讯飞 Java 后端一面（牛客，2025）](https://www.nowcoder.com/discuss/747230985057468416)
+- [高频题库参考（内容已重写）：JavaGuide：Spring 与 Spring Boot 专题](https://javaguide.cn/system-design/framework/spring/)
 - [技术校准：Spring 依赖注入文档](https://docs.spring.io/spring-framework/reference/core/beans/dependencies/factory-collaborators.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q28：Spring 事务传播与常见失效路径怎样一起解释？
 
@@ -1026,82 +1052,84 @@ BeanDefinition 保存类、作用域、构造参数和生命周期元数据。�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：快手 Java 后端一面（牛客，2025-03-19）](https://www.nowcoder.com/discuss/731843046232395776)
+- [高频题库参考（内容已重写）：JavaGuide：Spring 与 Spring Boot 专题](https://javaguide.cn/system-design/framework/spring/)
 - [技术校准：Spring 声明式事务注解](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q29：一次 Dubbo 调用从代理到 Provider 经历什么？
+## Q29：Spring Boot 自动装配为什么能做到“引入 Starter 即可用”？
 
 **短回答：**
 
-结论：消费者调用本地代理后，框架把方法与参数封装为调用，经过过滤器、目录、路由、负载均衡和集群容错选出 Invoker，再通过协议与网络客户端发送到 Provider。
+结论：Starter 主要聚合依赖，自动配置模块声明候选配置类；Spring Boot 根据类路径、已有 Bean、配置属性等条件按需注册组件，应用显式配置通常可以覆盖默认值。
 
 **原理：**
 
-Provider 启动时导出服务并向注册中心登记可发现信息；Consumer 订阅地址和配置，创建引用代理。调用进入代理后形成 Invocation，Filter 链可处理上下文、超时和监控，Directory 提供候选 Invoker，Router 过滤，LoadBalance 选择节点，Cluster 策略决定失败重试或快速失败。网络层完成序列化、请求 ID 关联和响应解码。重试只适合幂等操作，超时也不表示服务端一定未执行。
+`@SpringBootApplication` 组合了配置、扫描和自动配置入口。现代 Spring Boot 从 `AutoConfiguration.imports` 发现候选自动配置，再用 `@ConditionalOnClass`、`@ConditionalOnMissingBean`、`@ConditionalOnProperty` 等条件筛选。配置属性负责把外部配置绑定成类型化对象；条件评估报告可解释某项配置为何生效或未生效。Starter 不等于自动配置代码本身。
 
 **代码 / 场景：**
 
-查询接口可配置一次受控重试，支付扣款则使用幂等键并避免框架盲重试。压测时注入 Provider 超时和断连，核对 Consumer 重试次数、请求 ID、服务端实际执行次数及追踪链路。
+自定义短信 Starter 将 API 依赖和自动配置分层，只有类路径存在客户端且用户未定义 SmsClient 时才创建默认 Bean。集成测试分别覆盖缺配置、用户覆盖和条件满足三条路径，并用条件报告排查线上装配差异。
 
 **递进追问：**
 
-1. **注册中心短暂不可用，已有调用一定失败吗？**
+1. **Starter 与 AutoConfiguration 有什么区别？**
 
-   不一定，消费者通常保留已获取的地址列表；但新实例发现和配置变更会受影响。
+   Starter 主要做依赖聚合；AutoConfiguration 提供按条件注册 Bean 的配置实现，两者可在不同模块。
 
-2. **RPC 超时后为何仍要考虑幂等？**
+2. **如何判断某个自动配置为什么没生效？**
 
-   客户端没收到响应不等于服务端没执行，重试可能让同一业务动作发生多次。
+   查看条件评估报告，逐项核对类路径、属性、已有 Bean 和排除配置。
 
 **易错点：**
 
-- 把 Dubbo 简化成“类似 HTTP 的远程调用”，遗漏治理链路。
-- 对非幂等写操作开启无条件自动重试。
+- 仍把所有版本都说成只读取 spring.factories 的 EnableAutoConfiguration。
+- 把 Starter、自动配置和组件扫描混为一谈。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：快手 Java 后端一面（牛客，2025-03-19）](https://www.nowcoder.com/discuss/731843046232395776)
-- [技术校准：Apache Dubbo 官方概览](https://dubbo.apache.org/en/overview/what/overview/)
+- [高频题库参考（内容已重写）：JavaGuide：Spring Boot 自动装配原理](https://javaguide.cn/system-design/framework/spring/spring-boot-auto-assembly-principles.html)
+- [技术校准：Spring Boot 自动配置官方文档](https://docs.spring.io/spring-boot/reference/using/auto-configuration.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q30：注册中心故障和网络分区时服务发现如何降级？
+## Q30：一个 Spring MVC 请求从 DispatcherServlet 到响应经历什么？
 
 **短回答：**
 
-结论：注册中心应集群部署，但调用面不能把每次请求绑定到注册中心；客户端缓存地址、健康探测、变更版本和保护阈值共同决定分区期间是否继续服务。
+结论：DispatcherServlet 是前端控制器，先寻找处理器和拦截器，再由适配器调用 Controller，随后通过返回值处理、消息转换或视图解析生成响应；异常则进入统一异常解析链。
 
 **原理：**
 
-服务实例注册并维持租约或心跳，消费者订阅变更并维护本地地址快照。网络分区时，若立即删除所有不可续约实例，可能把短暂控制面故障放大为业务全断；若永久保留，又会持续请求真实故障节点。因此需要过期规则、最后可用快照、最小保护比例和连接级被动探测。跨机房还要明确数据一致性、故障域与恢复后的版本收敛，不能只说“上三个节点”。
+请求先经过 Servlet Filter，再进入 DispatcherServlet。HandlerMapping 根据路由找到 HandlerExecutionChain，HandlerAdapter 负责参数解析、数据绑定和调用方法；返回值由 HandlerMethodReturnValueHandler 处理，`@ResponseBody` 通常交给 HttpMessageConverter。异常由 HandlerExceptionResolver 链解析。Interceptor 位于 MVC 调用链，Filter 位于 Servlet 容器层，适用边界不同。
 
 **代码 / 场景：**
 
-A 机房与注册中心断连时，消费者先使用带版本号的最后地址集，并由请求失败快速熔断异常 Provider；超过保护窗口再进入降级。演练隔离注册中心、隔离单个 Provider 和时钟漂移三种故障，分别验证可用性与脏地址淘汰。
+统一 traceId 和安全头可放 Filter，登录态与接口耗时可放 Interceptor，业务异常由 `@ControllerAdvice` 映射统一错误码。测试覆盖参数校验失败、业务异常和序列化失败，确保都经过一致的响应契约。
 
 **递进追问：**
 
-1. **为什么不能每次 RPC 都实时查询注册中心？**
+1. **Filter 与 Interceptor 的主要区别是什么？**
 
-   会把控制面延迟和故障放进数据面热路径，增加开销并形成单点依赖。
+   Filter 属于 Servlet 规范，覆盖更底层的请求响应；Interceptor 属于 Spring MVC，能感知选中的 Handler。
 
-2. **缓存地址会带来什么恢复风险？**
+2. **参数校验异常在哪里统一处理？**
 
-   实例已下线但旧地址仍被调用，需要版本、租约、主动/被动健康检查共同收敛。
+   通常通过 ControllerAdvice/HandlerExceptionResolver 映射为稳定错误响应，同时保留可观测日志。
 
 **易错点：**
 
-- 只回答“集群部署”，不讨论客户端快照与数据面降级。
-- 网络分区时全量删除地址或永久保留地址，两端都缺少边界。
+- 只背 DispatcherServlet，不说明 HandlerMapping、Adapter 与消息转换职责。
+- 在 Controller 到处分散 try/catch，破坏统一错误契约。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：阿里 Java 后端面经（脉脉，2025-08-26）](https://maimai.cn/article/detail?efid=Ba1fhcvc38EuxMgVAWmZDg&fid=1885619951)
-- [技术校准：Nacos 服务发现概览](https://nacos.io/en/docs/latest/manual/user/naming/overview/)
-- [技术校准：Nacos 订阅、推送与故障恢复](https://nacos.io/en/docs/latest/manual/user/naming/subscription-and-ops/)
+- [高频题库参考（内容已重写）：JavaGuide：Spring 与 Spring Boot 专题](https://javaguide.cn/system-design/framework/spring/)
+- [技术校准：Spring MVC DispatcherServlet 官方文档](https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-servlet.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 # JMM、线程池与锁
 
@@ -1137,9 +1165,10 @@ A 机房与注册中心断连时，消费者先使用带版本号的最后地址
 **参考来源：**
 
 - [真实面经线索（题目已改写）：小红书后端开发一面（牛客，2025-09-01）](https://www.nowcoder.com/discuss/792145962431946752)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发编程专题](https://javaguide.cn/java/concurrent/)
 - [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q32：volatile 为什么不能让 i++ 变成原子操作？
 
@@ -1173,9 +1202,10 @@ A 机房与注册中心断连时，消费者先使用带版本号的最后地址
 **参考来源：**
 
 - [真实面经线索（题目已改写）：字节生活服务 Java 后端面经（牛客，2025-09-12）](https://www.nowcoder.com/discuss/796138629310455808)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发编程专题](https://javaguide.cn/java/concurrent/)
 - [技术校准：JLS 17：线程与内存模型](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q33：CAS、AQS 与公平锁之间是什么关系？
 
@@ -1209,9 +1239,10 @@ CAS 比较内存当前值与期望值，相等才写入新值，失败方可重�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：字节生活服务 Java 后端面经（牛客，2025-09-12）](https://www.nowcoder.com/discuss/796138629310455808)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发编程专题](https://javaguide.cn/java/concurrent/)
 - [技术校准：Java 21 AbstractQueuedSynchronizer API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/locks/AbstractQueuedSynchronizer.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q34：synchronized 与 ReentrantLock 的取舍怎样结合锁升级说明？
 
@@ -1245,9 +1276,10 @@ CAS 比较内存当前值与期望值，相等才写入新值，失败方可重�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：美团 Java 后端一面（牛客，2025-04-08）](https://www.nowcoder.com/discuss/737336813836111872)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发编程专题](https://javaguide.cn/java/concurrent/)
 - [技术校准：Java 21 Lock API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/locks/Lock.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q35：ThreadPoolExecutor 的参数如何映射到真实负载？
 
@@ -1283,9 +1315,10 @@ CAS 比较内存当前值与期望值，相等才写入新值，失败方可重�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：字节豆包后端三轮面经（牛客，2025-03-19）](https://www.nowcoder.com/discuss/731895855627759616)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发编程专题](https://javaguide.cn/java/concurrent/)
 - [技术校准：Java 21 ThreadPoolExecutor API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/ThreadPoolExecutor.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q36：线上死锁怎样从现象定位到具体锁顺序？
 
@@ -1319,9 +1352,10 @@ CAS 比较内存当前值与期望值，相等才写入新值，失败方可重�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：携程 Java 后端一面（牛客，2025-03-20）](https://www.nowcoder.com/discuss/729706507876487168)
+- [高频题库参考（内容已重写）：JavaGuide：Java 并发编程专题](https://javaguide.cn/java/concurrent/)
 - [技术校准：Java 21 ThreadMXBean API](https://docs.oracle.com/en/java/javase/21/docs/api/java.management/java/lang/management/ThreadMXBean.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 # 消息队列与分布式一致性
 
@@ -1357,9 +1391,10 @@ CAS 比较内存当前值与期望值，相等才写入新值，失败方可重�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：淘天业务技术后端面经（牛客，2024-04-21）](https://www.nowcoder.com/discuss/611696355077103616)
+- [高频题库参考（内容已重写）：JavaGuide：消息队列专题](https://javaguide.cn/high-performance/message-queue/)
 - [技术校准：Apache Kafka 设计文档](https://kafka.apache.org/documentation/#design)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q38：Kafka 重试后怎样避免消息与业务结果重复？
 
@@ -1393,9 +1428,10 @@ CAS 比较内存当前值与期望值，相等才写入新值，失败方可重�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：淘天业务技术后端面经（牛客，2024-04-21）](https://www.nowcoder.com/discuss/611696355077103616)
+- [高频题库参考（内容已重写）：JavaGuide：消息队列专题](https://javaguide.cn/high-performance/message-queue/)
 - [技术校准：Apache Kafka 消息语义](https://kafka.apache.org/documentation/#semantics)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q39：RocketMQ 顺序消息与事务消息分别解决什么问题？
 
@@ -1429,338 +1465,351 @@ CAS 比较内存当前值与期望值，相等才写入新值，失败方可重�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：阿里 Java 后端面经（脉脉，2025-08-26）](https://maimai.cn/article/detail?efid=Ba1fhcvc38EuxMgVAWmZDg&fid=1885619951)
+- [高频题库参考（内容已重写）：JavaGuide：消息队列专题](https://javaguide.cn/high-performance/message-queue/)
 - [技术校准：RocketMQ 顺序消息](https://rocketmq.apache.org/docs/featureBehavior/03fifomessage/)
 - [技术校准：RocketMQ 事务消息](https://rocketmq.apache.org/docs/featureBehavior/04transactionmessage/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q40：秒杀中 Redis 扣减与数据库落库怎样避免超卖和丢单？
+## Q40：消息积压时应怎样止损、定位和恢复消费？
 
 **短回答：**
 
-结论：Redis 可承担入口原子预扣与削峰，但库存事实、订单幂等和失败补偿必须落到可审计存储；不能把异步落库描述成天然最终一致。
+结论：先阻止积压继续扩大并保护下游，再区分生产突增、消费变慢、分区不均、故障重平衡或毒消息；恢复时提升有效并行度并验证幂等，不能只盲目加消费者。
 
 **原理：**
 
-请求先校验活动与幂等键，再用 Lua 在 Redis 原子检查库存并扣减，同时生成待处理事件；消费者以业务唯一键创建订单，并用数据库条件更新或唯一约束兜底。消息发送失败可通过 outbox、可靠队列或待处理集合重放；数据库失败要明确重试、补偿返还或人工对账。Redis 主从切换可能丢失刚确认的预扣，因此容量超售容忍度决定是否仍需数据库强约束。
+用 lag、生产/消费速率和最老消息年龄判断规模，按 topic/partition/consumer 实例定位瓶颈。消费者数量超过分区数不会继续提升 Kafka 并行度；慢 SQL、远程超时、频繁 GC 和单条毒消息都会拖慢处理。可临时限流生产者、旁路非核心事件、扩分区或扩容消费者，但扩分区可能改变按 key 顺序，重放也会放大重复处理。
 
 **代码 / 场景：**
 
-用户每场活动只抢一次，以 `(activity_id,user_id)` 建唯一索引。压测同时提交重复请求、杀消费者、切 Redis 主节点，再核对 Redis 余量、成功订单、待补偿事件三者守恒，而不是只看接口返回成功数。
+订单事件 lag 激增时先暂停非核心补数，定位某分区被一个大商户热点占满；拆分路由键并扩容前，先确认消费者以 eventId 幂等。恢复期间监控 lag 下降斜率、数据库连接池和失败重试队列，避免二次击穿。
 
 **递进追问：**
 
-1. **什么时候写数据库最合适？**
+1. **消费者加倍为什么吞吐可能不变？**
 
-   入口同步写可获得更强确认但吞吐受限；异步写需可靠事件、幂等和补偿，必须按 SLO 取舍。
+   分区数可能已限制并行度，或真正瓶颈在数据库、远程依赖和单条消息处理时间。
 
-2. **Lua 扣减成功就一定不会超卖吗？**
+2. **直接跳过失败消息可以吗？**
 
-   只能保证该 Redis 实例上的原子预扣，故障切换、重复消费和数据库写入仍需独立约束。
+   要按业务定义隔离到死信/重试队列并告警，保留可追溯上下文，不能静默丢弃。
 
 **易错点：**
 
-- 只设计扣减，不设计消息丢失、落库失败和库存返还。
-- 把接口成功数当成订单事实，不做跨存储对账。
+- 只看总 lag，不定位到分区和消费阶段。
+- 无限重试毒消息，阻塞同分区后续正常消息。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：京东 Java 后端实习一面（牛客，2025-03-27）](https://www.nowcoder.com/discuss/734872934639996928)
-- [技术校准：Redis 官方事务文档](https://redis.io/docs/latest/develop/interact/transactions/)
+- [高频题库参考（内容已重写）：JavaGuide：消息队列专题](https://javaguide.cn/high-performance/message-queue/)
+- [技术校准：Apache Kafka Consumer 配置](https://kafka.apache.org/documentation/#consumerconfigs)
+
+校验日期：2026-08-05
+
+## Q41：Kafka、RocketMQ 与 RabbitMQ 应怎样按业务选型？
+
+**短回答：**
+
+结论：不要只比峰值吞吐；日志流和可重放分析常偏 Kafka，订单交易与事务/延时能力常偏 RocketMQ，复杂路由和轻量业务集成常偏 RabbitMQ，最终还要服从团队运维经验。
+
+**原理：**
+
+比较维度包括消息模型、顺序范围、投递语义、事务与延时能力、路由、消息保留/重放、扩容方式、生态和可观测性。Kafka 以分区日志提供高吞吐和回放；RocketMQ 强调业务消息、事务与延时；RabbitMQ 的 Exchange 路由灵活。所有 MQ 都会引入丢失、重复、乱序、积压和运维复杂度。
+
+**代码 / 场景：**
+
+埋点流进入 Kafka 供多下游回放，订单状态事件使用团队已有 RocketMQ 事务消息，邮件通知可用 RabbitMQ 路由。选型文档必须写清 SLA、峰值、保留期、顺序键、灾备和团队值班能力，再用压测验证。
+
+**递进追问：**
+
+1. **为什么不应为了异步而上 MQ？**
+
+   若流量小、链路简单且同步即可满足 SLA，MQ 的一致性和运维成本可能高于收益。
+
+2. **选型时“支持顺序消息”够吗？**
+
+   不够，要说明顺序范围、分区/队列键、失败重试后是否仍有序以及吞吐代价。
+
+**易错点：**
+
+- 只拿厂商公布 TPS 做结论，不考虑消息语义与运维能力。
+- 把 MQ 当成无成本解耦，遗漏重复、积压和故障恢复。
+
+**参考来源：**
+
+- [真实面经线索（题目已改写）：小红书 Java 后端二面（牛客，2025-11-02）](https://www.nowcoder.com/discuss/814455404334776320)
+- [高频题库参考（内容已重写）：JavaGuide：消息队列专题](https://javaguide.cn/high-performance/message-queue/)
+- [技术校准：Apache Kafka 设计文档](https://kafka.apache.org/documentation/#design)
+- [技术校准：RocketMQ 事务消息](https://rocketmq.apache.org/docs/featureBehavior/04transactionmessage/)
+
+校验日期：2026-08-05
+
+## Q42：本地事务与消息发送怎样实现可靠最终一致？
+
+**短回答：**
+
+结论：数据库提交与普通 MQ 发送不是同一个原子操作；可使用事务消息或本地消息表/Outbox，把业务事实与待发送事件放入同一事务，再由可靠投递、幂等消费和对账收敛。
+
+**原理：**
+
+本地消息表方案在同一数据库事务写业务表和事件表，后台按状态重试发送，Broker 确认后标记完成；事务消息通过半消息与事务回查协调本地事务。两者都可能重复投递，消费者必须以事件 ID 或业务唯一键去重，失败进入重试/死信并保留人工补偿。它们提供最终一致，不等于跨服务强事务。
+
+**代码 / 场景：**
+
+订单创建与 `OrderCreated` outbox 同事务提交，投递器至少一次发送，库存服务以 eventId 建唯一记录后扣减。演练数据库提交后进程崩溃、Broker 超时和消费者重复执行，最终用订单—事件—库存三方对账验证收敛。
+
+**递进追问：**
+
+1. **为什么消费者仍必须幂等？**
+
+   发送确认丢失、消费超时和故障恢复都可能触发重投，至少一次语义天然允许重复。
+
+2. **事务消息能替代业务对账吗？**
+
+   不能，跨系统仍可能有长期失败和数据损坏，需要状态监控、补偿与周期对账。
+
+**易错点：**
+
+- 先提交数据库再裸发消息，发送失败后没有可恢复记录。
+- 只保证生产端不丢，不设计消费幂等、死信与对账。
+
+**参考来源：**
+
+- [真实面经线索（题目已改写）：小红书 Java 后端二面（牛客，2025-11-02）](https://www.nowcoder.com/discuss/814455404334776320)
+- [高频题库参考（内容已重写）：JavaGuide：消息队列专题](https://javaguide.cn/high-performance/message-queue/)
+- [技术校准：RocketMQ 事务消息](https://rocketmq.apache.org/docs/featureBehavior/04transactionmessage/)
 - [技术校准：MySQL 8.4 InnoDB 锁](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q41：万台机器文件分发的控制面怎样扛住状态洪峰？
+# 分布式场景与生产排障
 
-**短回答：**
-
-结论：文件数据面应就近并行下载并校验内容，控制面负责版本、调度和汇总；节点状态要批量、幂等、可重放，不能让每个心跳同步写主库。
-
-**原理：**
-
-原文件先生成内容哈希和不可变版本，分发可借助对象存储/CDN、分层中继或节点互传降低源站带宽。控制面把任务切分，节点以 `(task,node,attempt,seq)` 上报状态，经 Kafka 等缓冲后批量聚合；乱序与重复用序列号和状态机处理。Kafka 故障时节点保留本地 WAL、指数退避，恢复后重放。任务完成条件必须同时满足目标节点集合、正确哈希和超时/豁免策略。控制面元数据跨机房复制并有明确主写切换协议。
-
-**代码 / 场景：**
-
-发布 10GB 模型到一万节点时，节点下载后校验 SHA-256，仅上报阶段变化和周期摘要。压测模拟一万节点同时完成、Kafka 中断半小时、A 机房切 B 机房，核对最终完成数、重复事件和错误文件隔离。
-
-**递进追问：**
-
-1. **为什么不能只统计“收到完成消息”的数量？**
-
-   消息可能重复、伪成功或对应旧 attempt，必须校验节点身份、版本、序列和文件哈希。
-
-2. **Kafka 恢复后如何避免旧状态覆盖新状态？**
-
-   聚合端按 attempt 与单调序列比较，只接受更新版本，旧事件保留审计但不回退状态。
-
-**易错点：**
-
-- 让所有节点直接高频更新同一任务行，制造数据库热点。
-- 只保证传完，不验证内容哈希和目标节点集合是否完整。
-
-**参考来源：**
-
-- [真实面经线索（题目已改写）：小红书 Java 后端二面（牛客，2025-11-02）](https://www.nowcoder.com/discuss/814455404334776320)
-- [技术校准：Apache Kafka 设计文档](https://kafka.apache.org/documentation/#design)
-
-校验日期：2026-08-04
-
-## Q42：错误率驱动的自适应限流器如何避免阈值振荡？
+## Q43：接口幂等怎样覆盖重复点击、超时重试与 MQ 重投？
 
 **短回答：**
 
-结论：限流需要线程安全地发放许可，并用平滑错误率和迟滞调整阈值；采样不足、下游超时和恢复探测必须进入状态机，不能见错就砍半、见好就放开。
+结论：幂等不是“前端按钮置灰”，而是同一业务请求重复到达时服务端只产生一次有效结果；优先用业务唯一键和数据库约束兜底，再配合幂等记录、状态机与结果复用。
 
 **原理：**
 
-许可路径可用原子计数、Semaphore 或令牌桶限制并发/速率；反馈路径在固定或滑动窗口统计请求数、错误数与延迟。只有样本达到下限才调整，连续恶化时乘性降低，稳定恢复时加性增加，并设置上下界、冷却时间和迟滞区间。被本地拒绝的请求不能计为下游错误，否则会形成自激反馈。半开阶段只放少量探测请求，配置变更要原子发布。
+客户端生成 requestId 只能辅助识别，真正边界应由订单号、支付流水号等业务键定义。服务端先查幂等记录或依靠唯一索引竞争，成功后保存结果供重复请求返回；处理中状态要避免并发请求都执行。MQ 消费使用 eventId 或业务版本去重。幂等记录需设合理生命周期，不能过早过期让迟到重试再次生效。
 
 **代码 / 场景：**
 
-支付依赖正常并发上限 200，窗口内至少 100 次请求才评估；错误率持续两窗超过 5% 时降为 70%，稳定五窗后每次增加 10。并发压测注入 30% 超时后恢复，验证阈值单调收敛、无大幅摆动。
+创建订单以 `(tenant_id, client_order_no)` 建唯一约束，请求重复时查询并返回原订单；支付回调按平台流水号和状态机执行，已成功状态不再扣款。故障测试覆盖响应丢失后重试、并发重复和 MQ 重投。
 
 **递进追问：**
 
-1. **为什么要设最小样本数？**
+1. **查询接口天然幂等吗？**
 
-   少量请求中一次失败会产生极端比例，直接调节会让低流量时阈值剧烈波动。
+   语义上通常应无副作用，但若查询顺便写浏览次数或触发任务，仍要单独处理这些副作用。
 
-2. **限流与熔断有何区别？**
+2. **Redis SETNX 能替代数据库唯一约束吗？**
 
-   限流控制进入系统的速率或并发，熔断依据失败状态暂时阻止调用并安排恢复探测。
-
-**易错点：**
-
-- 把本地拒绝也统计为下游失败，形成错误率正反馈。
-- 没有冷却和迟滞，阈值在边界附近频繁升降。
-
-**参考来源：**
-
-- [真实面经线索（题目已改写）：小红书 Java 后端二面（牛客，2025-11-02）](https://www.nowcoder.com/discuss/814455404334776320)
-- [技术校准：Envoy Adaptive Concurrency Filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/adaptive_concurrency_filter)
-
-校验日期：2026-08-04
-
-# 网络、操作系统与系统设计
-
-## Q43：TCP 第三次握手丢失后双方状态如何收敛？
-
-**短回答：**
-
-结论：客户端发送最终 ACK 后可进入 ESTABLISHED，服务端仍停留在 SYN-RECEIVED 并重传 SYN-ACK；客户端收到重传后再次 ACK，最终建立或由服务端超时放弃。
-
-**原理：**
-
-第一次 SYN 携带客户端初始序列号，服务端回复 SYN-ACK 确认并给出自己的序列号，第三次 ACK 确认服务端序列空间。ACK 本身通常不单独重传，但服务端未收到会重传 SYN-ACK，这会触发客户端再次确认。若客户端随后发送数据，其 ACK 信息也可能让服务端完成确认；若持续不可达，重试耗尽后半连接被清理。三次握手同时验证双向通信并同步序列号，不只是“连接三次”。
-
-**代码 / 场景：**
-
-用网络故障注入丢弃客户端第三个包，抓包观察 SYN-ACK 重传、客户端重复 ACK 和连接状态；同时监控 SYN backlog，验证攻击或丢包情况下半连接不会无限占用。
-
-**递进追问：**
-
-1. **第二次握手后双方分别是什么状态？**
-
-   服务端通常为 SYN-RECEIVED，客户端收到有效 SYN-ACK 后发送 ACK 并进入 ESTABLISHED。
-
-2. **为什么两次握手不足？**
-
-   服务端无法确认客户端已收到自己的序列号和应答，旧延迟 SYN 也更难被可靠区分。
+   不能完全替代，Redis 故障、过期与跨存储失败都可能突破边界，关键事实仍需持久层约束。
 
 **易错点：**
 
-- 机械背状态名，却说不清丢包后的重传触发者。
-- 把 TCP 可靠性等同于应用业务只执行一次。
+- 只在网关缓存 requestId，没有业务唯一键和数据库兜底。
+- 把异常重试写成无上限循环，扩大重复与雪崩。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：腾讯 Java 后端一面（牛客，2025-03-14）](https://www.nowcoder.com/discuss/730082976414846976)
-- [技术校准：RFC 9293：TCP](https://www.rfc-editor.org/rfc/rfc9293)
+- [高频题库参考（内容已重写）：JavaGuide：分布式系统专题](https://javaguide.cn/distributed-system/)
+- [技术校准：RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
+- [技术校准：MySQL 8.4 InnoDB 索引类型](https://dev.mysql.com/doc/refman/8.4/en/innodb-index-types.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q44：HTTP 长连接与 WebSocket 在服务端架构上怎样选择？
+## Q44：超时、重试、熔断和限流怎样协同避免服务雪崩？
 
 **短回答：**
 
-结论：HTTP keep-alive 复用传输连接但仍按请求响应交互，WebSocket 握手后提供双向消息通道；是否需要服务端主动推送、连接规模和中间设施支持决定选型。
+结论：超时限制单次等待，重试应有次数、退避和幂等边界，熔断隔离持续故障依赖，限流控制入口负载；四者必须围绕统一延迟预算设计，否则各层重试会指数放大流量。
 
 **原理：**
 
-HTTP 持久连接减少重复建连成本，HTTP/2 还能在单连接多路复用请求，但应用语义仍是客户端发起。WebSocket 通过 HTTP Upgrade 建立后使用独立帧协议，双方均可主动发送；服务端需管理长连接、心跳、背压、重连、会话路由和滚动发布。代理空闲超时、连接迁移和消息顺序都需显式处理。若只是单向事件流，也可评估 SSE，避免引入双向协议复杂度。
+上游超时应大于下游单次预算但小于用户总预算，并为连接、读取分别设置边界。只对瞬时且幂等失败重试，使用指数退避和抖动；熔断在失败率达到阈值后快速失败，半开阶段少量探测；限流和舱壁隔离保护线程池、连接池。调用链各层都重试会形成乘法放大，应指定唯一重试层。
 
 **代码 / 场景：**
 
-IM 在线消息使用 WebSocket，网关按用户路由连接，离线消息仍落持久存储；普通订单查询继续用 HTTP。演练网关重启和代理空闲超时，确认客户端带游标重连后能补齐消息且不会重复展示。
+订单查询总预算 800ms，下游库存单次 200ms，最多一次带抖动重试；库存持续超时时打开熔断并返回降级信息，独立线程池防止拖死支付。故障演练注入超时，检查实际调用次数、线程池队列和恢复过程。
 
 **递进追问：**
 
-1. **keep-alive 是否代表服务端可随时推送业务消息？**
+1. **为什么重试必须配合幂等？**
 
-   不代表，它主要复用底层连接，普通 HTTP 语义仍由请求触发响应。
+   超时只代表调用方没收到结果，服务端可能已执行；重试会重复产生副作用。
 
-2. **WebSocket 连接断开后如何保证消息不丢？**
+2. **熔断和限流有什么区别？**
 
-   协议本身不保存业务历史，需要服务端持久化序号、客户端确认与断线补拉机制。
+   熔断依据依赖失败状态暂时停止调用，限流按容量控制允许进入系统的请求量。
 
 **易错点：**
 
-- 把 TCP 长连接、HTTP keep-alive 和 WebSocket 当成同一概念。
-- 只实现心跳，不设计消息持久化、背压和断线补偿。
+- 每一层都默认重试三次，形成调用风暴。
+- 只设置客户端超时，不限制线程池队列和并发。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：百度 Java 后端提前批二面（牛客，2025-09-23）](https://www.nowcoder.com/discuss/799949823049756672)
-- [技术校准：RFC 6455：WebSocket](https://www.rfc-editor.org/rfc/rfc6455)
+- [高频题库参考（内容已重写）：JavaGuide：分布式系统专题](https://javaguide.cn/distributed-system/)
+- [技术校准：Envoy Adaptive Concurrency Filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/adaptive_concurrency_filter)
 - [技术校准：RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q45：从输入 URL 到 CDN 回源应怎样画完整链路？
+## Q45：分布式 ID 怎样在唯一性、趋势递增与可用性之间取舍？
 
 **短回答：**
 
-结论：先解析 URI 与缓存策略，再经 DNS 获得边缘地址，建立 TCP/TLS 并发送 HTTP；CDN 命中直接响应，未命中才按回源规则访问源站并缓存合格内容。
+结论：数据库自增简单但集中，UUID 去中心化但较长且随机写不友好，号段模式减少数据库访问，Snowflake 类方案高吞吐但依赖机器号和时钟治理；应按主键、业务单号和安全性分别选。
 
 **原理：**
 
-浏览器先检查 URL、HSTS 和本地缓存，再通过系统/递归解析器查询 DNS；权威 DNS 或调度系统返回适合的边缘节点。客户端建连并完成 TLS，HTTP 请求携带 Host 等信息。CDN 根据 cache key、过期与校验头判断命中，miss 时向源站或上级缓存请求。动态鉴权内容若错误共享 cache key 会泄露数据，Cookie、Authorization、Vary 与查询参数都影响缓存边界。DNS TTL 与 CDN TTL 是两个不同层次。
+全局唯一只是底线，还要考虑是否有序、生成延迟、容量、故障域、信息泄露和数据库索引局部性。Snowflake 通过时间、节点与序列组合 ID，必须防节点号重复和时钟回拨；号段模式批量租用区间，服务重启可能浪费但通常不影响唯一。外部订单号不应直接暴露可枚举的数据库主键。
 
 **代码 / 场景：**
 
-公开题库静态资源使用带内容哈希 URL 和长缓存，HTML 使用短缓存或协商验证；登录用户 API 明确不进入公共缓存。用 dig、curl 响应头和 CDN 日志验证解析、Age、Cache-Status 与回源率。
+内部订单表主键使用趋势递增 ID 改善 B+Tree 写入，面向用户的订单号再加入随机或校验维度。压测节点扩缩容、时钟回拨和号段服务故障，验证不重复、生成延迟和降级策略。
 
 **递进追问：**
 
-1. **DNS 命中缓存后是否不再访问 CDN？**
+1. **UUID 为什么不一定适合作为聚簇主键？**
 
-   不是，DNS 缓存只省去名字解析，HTTP 请求仍会发送到解析得到的 CDN 节点。
+   随机且较宽的键会增加二级索引体积、页分裂和缓存局部性压力，需结合具体 UUID 版本与存储形式判断。
 
-2. **CDN 为什么可能缓存错用户内容？**
+2. **时钟回拨怎么处理？**
 
-   cache key 未包含必要鉴权维度或忽略响应缓存指令时，不同用户可能共享同一对象。
+   可短时等待、切换逻辑时钟或拒绝生成并告警，关键是节点号与时间状态持久化且不允许静默重复。
 
 **易错点：**
 
-- 把 DNS 缓存和 HTTP/CDN 内容缓存混为一层。
-- 动态私有响应未设置缓存边界，造成跨用户数据泄漏。
+- 只回答 Snowflake 位数分配，不讨论时钟和节点号冲突。
+- 把内部递增主键直接暴露给外部，造成枚举风险。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：百度 Java 后端提前批二面（牛客，2025-09-23）](https://www.nowcoder.com/discuss/799949823049756672)
-- [技术校准：RFC 1034：DNS 概念与设施](https://www.rfc-editor.org/rfc/rfc1034)
-- [技术校准：RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
+- [高频题库参考（内容已重写）：JavaGuide：分布式系统专题](https://javaguide.cn/distributed-system/)
+- [技术校准：Java 21 UUID API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/UUID.html)
+- [技术校准：MySQL 8.4 InnoDB 索引类型](https://dev.mysql.com/doc/refman/8.4/en/innodb-index-types.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q46：进程、线程与上下文切换怎样对应 Java 服务开销？
+## Q46：Redis 分布式锁怎样避免误删、续期失效与迟到写？
 
 **短回答：**
 
-结论：进程提供独立地址空间与资源边界，线程共享进程资源但拥有执行上下文；切换需保存调度状态并可能破坏缓存局部性，线程越多不等于吞吐越高。
+结论：加锁要用唯一持有者 token 和租约，释放必须原子比较后删除；续期只能降低任务超时概率，网络分区或长暂停后旧持有者仍可能迟到写，关键资源要增加 fencing token 或存储层版本检查。
 
 **原理：**
 
-同一进程线程通常共享代码、堆和打开文件，每个线程有寄存器、栈、调度状态与线程局部数据。调度器切走任务时保存必要 CPU 上下文，恢复另一个任务；跨进程还可能切换地址空间映射并影响 TLB。阻塞 I/O、锁竞争和过多可运行线程都会增加调度与缓存抖动。Java 线程与操作系统线程的具体映射由实现决定，现代常规 HotSpot 平台通常采用一对一；虚拟线程则把大量 Java 任务调度到较少载体线程。
+使用 `SET key token NX PX ttl` 获取锁，Lua 脚本比较 token 后删除，避免旧持有者误删新锁。Watchdog 只在确认仍持有时续期，进程崩溃后依赖 TTL 释放。主从异步复制和故障切换仍可能损失刚写入的锁；锁本身也不保证被保护数据库的事务原子性，因此必须明确可接受的一致性级别。
 
 **代码 / 场景：**
 
-把接口线程池从 200 扩到 2000 后若吞吐不升、上下文切换和 p99 激增，应回查下游瓶颈和阻塞点。用负载测试同时记录 runnable 线程、锁等待、cswch、CPU 与连接池，而非只看线程数。
+结算任务获得锁时同时取得单调 fencing 版本，数据库只接受不小于当前版本的写。故障注入暂停旧实例超过 TTL，新实例接管后再恢复旧实例，确认旧写被版本条件拒绝且解锁不会删掉新锁。
 
 **递进追问：**
 
-1. **线程切换一定比进程切换便宜吗？**
+1. **为什么释放锁不能直接 DEL？**
 
-   通常地址空间共享减少部分成本，但具体仍取决于缓存、内核路径和工作集，不能当绝对常数。
+   自己的租约可能已经过期且新持有者已成功加锁，直接 DEL 会删掉别人的有效锁。
 
-2. **虚拟线程能消除下游容量限制吗？**
+2. **有自动续期就不需要业务幂等吗？**
 
-   不能，它降低大量阻塞任务的线程管理成本，数据库连接和远端吞吐仍需限流。
+   仍需要，续期线程也可能暂停或失联，旧任务恢复后仍可能重复执行。
 
 **易错点：**
 
-- 把线程共享资源误说成共享调用栈和寄存器。
-- 用无限线程掩盖慢下游，最终增加调度与内存压力。
+- 只会背 SETNX，不设置租约、不校验持有者。
+- 把 Redis 锁说成跨数据库和外部系统的强一致事务。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：快手 Java 后端一面（牛客，2025-03-19）](https://www.nowcoder.com/discuss/731843046232395776)
-- [技术校准：Linux pthreads(7)](https://man7.org/linux/man-pages/man7/pthreads.7.html)
+- [高频题库参考（内容已重写）：JavaGuide：分布式系统专题](https://javaguide.cn/distributed-system/)
+- [技术校准：Redis 官方分布式锁模式](https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q47：后端鉴权如何同时防越权、重放与 XSS 影响？
+## Q47：高并发接口怎样从入口到数据库逐层做容量保护？
 
 **短回答：**
 
-结论：认证只确认主体，授权必须在服务端逐资源校验；敏感操作还需短期凭据、重放防护和输出编码，不能依赖前端隐藏按钮或只验 JWT 签名。
+结论：先用容量模型确定系统能承受多少流量，再按网关限流、应用舱壁、缓存削峰、MQ 异步和数据库约束逐层保护；任何降级都要保住核心数据正确性。
 
 **原理：**
 
-登录建立主体后，每个请求验证令牌签名、issuer、audience、有效期和撤销策略，再按主体与资源关系做对象级授权。高风险写操作可加入 nonce、时间窗、幂等键和二次确认。XSS 通过不可信内容在浏览器执行，服务端应按输出上下文编码并设置安全响应策略；HttpOnly 可降低脚本直接读取 Cookie 的风险，却不能阻止脚本以用户身份发请求。日志不得记录完整令牌与敏感字段。
+入口按租户/用户/接口限速并防突发，应用线程池和连接池必须有界，热点读用缓存但要防击穿，非核心写可异步削峰。数据库通过索引、短事务和条件更新守住事实。排队只转移压力，队列过长会把超时变成内存和延迟问题；限流阈值要以压测拐点、下游容量和 p99 SLO 为依据。
 
 **代码 / 场景：**
 
-用户访问 `/orders/123` 时，后端必须查询订单归属或权限关系，不能因 URL 可猜就返回。支付回调校验签名、时间戳和唯一事件 ID。安全测试用另一个普通账号枚举 ID、重放相同请求并注入脚本，确认均被正确处理。
+秒杀入口先校验资格并限流，Redis 原子预扣后发送订单事件，数据库唯一键和条件更新兜底；系统过载时关闭推荐与统计但不突破库存。压测逐级提升 QPS，记录每层饱和点和降级后的数据守恒。
 
 **递进追问：**
 
-1. **JWT 验签成功为什么仍可能越权？**
+1. **为什么线程池队列不能无限大？**
 
-   签名只证明令牌未被篡改及其声明来源，访问具体对象仍需服务端授权判断。
+   它会把过载隐藏为不断增长的排队时间和内存占用，最终请求全部超时。
 
-2. **HttpOnly 能完全防住 XSS 吗？**
+2. **削峰后数据库仍可能被打满吗？**
 
-   不能，脚本虽难读取 Cookie，仍可能发起带 Cookie 的操作或读取页面中的敏感数据。
+   会，消费者吞吐和重试仍要按数据库容量限制，并保留积压监控和暂停能力。
 
 **易错点：**
 
-- 把按钮隐藏和路由守卫当作服务端授权。
-- 只验签名，不校验过期、受众、签发者和重放边界。
+- 只回答“加 Redis、加 MQ”，不说明每层容量和失败边界。
+- 过载时继续无限排队，直到线程、连接和内存一起耗尽。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：百度 Java 后端提前批二面（牛客，2025-09-23）](https://www.nowcoder.com/discuss/799949823049756672)
-- [技术校准：OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
+- [高频题库参考（内容已重写）：JavaGuide：高性能系统专题](https://javaguide.cn/high-performance/)
+- [技术校准：Envoy Adaptive Concurrency Filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/adaptive_concurrency_filter)
+- [技术校准：Redis 官方事务文档](https://redis.io/docs/latest/develop/interact/transactions/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q48：高并发短链服务如何处理碰撞、热点与过期？
+## Q48：线上接口突然变慢应怎样沿调用链定位根因？
 
 **短回答：**
 
-结论：短码必须可唯一解析并处理碰撞，读路径可缓存映射但事实仍在持久层；设计还要覆盖恶意枚举、热点短链、失效时间和重定向语义。
+结论：先用时间线确认影响范围和变更，再把总延迟拆到网关、应用、缓存、数据库、MQ 与外部依赖；依靠指标、追踪、日志和剖析相互验证，不能只凭一条慢日志猜测。
 
 **原理：**
 
-生成可用全局 ID 做 Base62 编码，或对原 URL 哈希后检测冲突并加盐；前者易保证唯一，后者利于相同 URL 去重但需要碰撞协议。映射表对 shortCode 建唯一索引，保存目标、租户、创建者、过期和状态。访问先做格式/风控校验，再读缓存和数据库，返回 301 或 302 取决于目标是否稳定及缓存期望。热点可多级缓存，过期和删除要防旧缓存复活。统计点击事件应异步，不能阻塞跳转。
+先比较错误率、吞吐和 p50/p95/p99，按实例、机房、接口和版本切片；分布式追踪定位最长 span，再检查线程池/连接池等待、GC、CPU、锁、Redis 延迟、SQL 执行计划和下游超时。指标告诉“哪里异常”，追踪连接请求路径，结构化日志补业务上下文。建立假设后用回滚、限流或故障复现实验验证。
 
 **代码 / 场景：**
 
-营销短链使用随机化 Base62 ID，数据库唯一约束兜底；缓存 TTL 不超过业务过期，禁用时发布失效事件并在回源再次核对状态。压测单热点百万 QPS、随机枚举和过期边界，确认源库与跳转延迟。
+发布后订单 p99 从 200ms 升到 2s，追踪显示数据库 span 未变但获取连接耗时激增；继续发现新代码事务内调用远程服务长期占连接。先回滚止损，再拆短事务并补连接池等待告警和回归压测。
 
 **递进追问：**
 
-1. **301 与 302 如何选择？**
+1. **平均耗时正常为什么用户仍觉得慢？**
 
-   永久稳定映射可考虑 301，但浏览器和中间缓存更难撤回；需可修改或统计控制时常用 302。
+   平均值会掩盖长尾，应按分位数、用户/机房和具体路径切片观察。
 
-2. **只用 URL 哈希截断为什么有风险？**
+2. **没有完整链路追踪怎么办？**
 
-   有限短码空间必然可能碰撞，必须检查唯一约束并定义重试、加盐或冲突链。
+   先用统一 requestId 关联网关与服务日志，再结合阶段耗时、线程池和数据库指标缩小范围。
 
 **易错点：**
 
-- 假设哈希截断绝不碰撞，没有数据库唯一约束。
-- 缓存时间超过业务过期时间，禁用后仍继续跳转。
+- 只盯应用 CPU，忽略排队、连接池和外部依赖。
+- 同时修改多个参数“试试看”，导致无法验证真正根因。
 
 **参考来源：**
 
 - [真实面经线索（题目已改写）：腾讯视频 Java 后端短链面经（牛客，2025-04-01）](https://www.nowcoder.com/discuss/742152164449017856)
-- [技术校准：RFC 3986：URI 通用语法](https://www.rfc-editor.org/rfc/rfc3986)
-- [技术校准：RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
-- [技术校准：MySQL 8.4 InnoDB 索引类型](https://dev.mysql.com/doc/refman/8.4/en/innodb-index-types.html)
+- [高频题库参考（内容已重写）：JavaGuide：高性能系统专题](https://javaguide.cn/high-performance/)
+- [技术校准：Spring Boot 可观测性官方文档](https://docs.spring.io/spring-boot/reference/actuator/observability.html)
+- [技术校准：MySQL 8.4 EXPLAIN](https://dev.mysql.com/doc/refman/8.4/en/explain.html)
+- [技术校准：Redis 延迟诊断与事件循环说明](https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/latency/)
 
-校验日期：2026-08-04
+校验日期：2026-08-05

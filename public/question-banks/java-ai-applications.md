@@ -1,6 +1,6 @@
-# Java × AI 应用真实面经
+# Java × AI 应用开发高频题
 
-# Java AI 框架与模型接入
+# 大模型基础与 Java 接入
 
 ## Q1：Spring AI、Spring AI Alibaba 与 LangChain4j 应该怎样选型？
 
@@ -38,8 +38,9 @@
 - [技术校准：Spring AI Reference](https://docs.spring.io/spring-ai/reference/)
 - [技术校准：Spring AI Alibaba 官方概览](https://java2ai.com/docs/overview/)
 - [技术校准：LangChain4j 官方文档](https://docs.langchain4j.dev/)
+- [高频题库参考（内容已重写）：JavaGuide：大模型基础面试题总结](https://javaguide.cn/ai/interview-questions/llm-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q2：怎样设计可切换供应商的 Java 模型接入层？
 
@@ -73,11 +74,11 @@
 **参考来源：**
 
 - [真实面经线索（题目已改写）：牛客：云鲸智能平台开发面经](https://www.nowcoder.com/discuss/904837245251637248)
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [技术校准：Spring AI：Chat Client API](https://docs.spring.io/spring-ai/reference/api/chatclient.html)
 - [技术校准：OpenAI：Production best practices](https://platform.openai.com/docs/guides/production-best-practices)
+- [高频题库参考（内容已重写）：小林面试笔记：大模型工程面试题介绍](https://xiaolinnote.com/ai/llm/llm_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q3：模型结构化输出在 Java 中为什么仍要做校验与修复？
 
@@ -111,89 +112,91 @@ Schema 约束能提高格式稳定性，却不能证明字段语义正确。Java
 **参考来源：**
 
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [技术校准：Spring AI：Structured Output](https://docs.spring.io/spring-ai/reference/api/structured-output-converter.html)
 - [技术校准：OpenAI：Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)
+- [高频题库参考（内容已重写）：JavaGuide：大模型基础面试题总结](https://javaguide.cn/ai/interview-questions/llm-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q4：Java 与 Python 在 AI 应用系统中应该怎样划分边界？
-
-**短回答：**
-
-按能力和运行约束拆分，而不是按语言偏好拆分。Java 适合承载鉴权、事务、并发接口、治理和既有业务集成；Python 适合快速实验、数据处理及模型训练/推理生态。边界应通过稳定协议、版本化 schema 和可观测链路连接。
-
-**原理：**
-
-先判断能力是否需要 Python 独有库、GPU 运行时或快速实验，再决定独立服务；普通模型 API、RAG 和工具编排并不天然要求跨语言。跨语言会增加序列化、网络、部署、调试与一致性成本，因此只在收益明确时拆分。Java 服务负责用户上下文、权限、限流、工作流状态与持久化；Python 服务保持尽量无状态，负责模型或算法能力。双方约定 deadline、幂等键、错误分类、schema 版本和 trace context，并用契约测试验证。
-
-**代码 / 场景：**
-
-推荐解释系统由 Java 网关完成登录、额度与订单数据授权，调用 Python 排序服务取得候选及特征，再由 Java 组合 RAG 上下文并流式返回。若 Python 超时，Java 使用缓存候选或降级模板；traceId 贯穿两端，避免出现“模型慢”却无法定位是哪一段。
-
-**递进追问：**
-
-1. **什么情况下纯 Java 更合适？**
-
-   仅调用托管模型、使用成熟向量库、团队以 Spring 为主且对事务与治理要求高时，纯 Java 能减少跨语言部署和排障成本，迭代速度未必更慢。
-
-2. **跨语言调用为什么必须传递 deadline 而不只是 timeout？**
-
-   deadline 表示整条请求剩余预算，下游可以避免在上游已放弃后继续昂贵推理；逐层独立 timeout 容易让总时延累加并产生无效工作。
-
-**易错点：**
-
-- 为了“AI 就该用 Python”拆出大量微服务，却没有独有能力或规模收益。
-- 只定义成功响应，没有 schema 版本、错误分类、取消传播和跨语言链路追踪。
-
-**参考来源：**
-
-- [真实面经线索（题目已改写）：牛客：智能体与大模型应用工程实习一面](https://www.nowcoder.com/discuss/894720138258173952?sourceSSR=enterprise)
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
-- [技术校准：Spring AI Reference](https://docs.spring.io/spring-ai/reference/)
-- [技术校准：OpenAI：Production best practices](https://platform.openai.com/docs/guides/production-best-practices)
-
-校验日期：2026-08-04
-
-## Q5：多模型路由与降级怎样避免把质量问题藏起来？
+## Q4：Token、上下文窗口、Temperature 与 Top-P 会怎样影响 Java AI 应用？
 
 **短回答：**
 
-路由必须以任务等级、能力门槛和实时健康度为输入，降级只在预先声明的范围内发生。每次响应记录请求模型、实际模型、路由原因、质量代理指标与成本；高风险任务宁可失败，也不能静默切换到不满足约束的模型。
+Token 决定上下文容量、计费和一部分延迟；上下文窗口限制一次请求能容纳的消息与输出；Temperature、Top-P 调整采样分布而不是模型智力。生产系统应按任务类型配置参数、预留输出预算并记录真实 usage，不能用字符数估算成本，也不能认为 Temperature 为 0 就绝对可复现。
 
 **原理：**
 
-先建立模型能力矩阵：上下文、工具调用、结构化输出、语言、时延、单价和数据地域。离线用固定任务集得到质量基线，在线用错误率、首 token、总时延和限流状态更新健康度。路由规则应可版本化并支持影子比较；熔断后采用指数退避探测恢复。降级顺序是同能力备用模型、缩短非关键上下文、关闭非必要步骤，最后才是明确告知用户的低质量兜底。监控必须按 servedModel 分组，否则聚合成功率会掩盖替换后的质量回退。
+请求进入模型前，Java 服务先用供应商对应的 tokenizer 或 usage 估算器计算系统指令、历史消息、RAG 证据、工具 schema 与预期输出的总预算。超过窗口时，优先删除重复证据和无关历史，再采用滑动窗口、结构化摘要或重新检索，不能粗暴截掉 system message 与工具结果。Temperature 会重分配候选 token 的概率，Top-P 只保留累计概率质量以内的候选；不同供应商实现与参数范围可能不同，通常不要同时大幅调两个参数。抽取、分类、工具参数等确定性任务使用低随机性并结合 schema 校验；创意生成可适度提高随机性，但仍需质量评测。即使低温度，模型版本、服务端推理实现和并行计算也可能带来差异，因此可复现依赖固定模型版本、Prompt、参数、输入快照和评测集。
 
 **代码 / 场景：**
 
-合同风险抽取要求严格 schema 和中文长上下文，只允许在两款通过同一评测阈值的模型间切换；闲聊摘要可降到便宜模型。路由变更先影子运行 5%，比较字段有效率、人工接受率、P95 与每成功任务成本，达标后再灰度。
+合同字段抽取接口把 128k 窗口全部塞满后，经常没有足够空间输出完整 JSON。改造后先给 system、工具 schema 和最大输出保留预算，再按“当前条款、相关定义、最近对话”排序上下文；抽取任务使用低随机性并做 Bean Validation。服务同时记录 inputTokens、outputTokens、truncatedReason 和 promptVersion，既降低了解析失败，也能按租户核算成本。
 
 **递进追问：**
 
-1. **为什么不能仅按最低 token 单价路由？**
+1. **上下文窗口很大时，为什么仍然不能把全部历史和文档都塞进去？**
 
-   便宜模型若导致更多修复、重试或人工处理，每个成功任务的总成本反而更高；还可能不满足工具、上下文与合规约束，应以质量门槛后的综合成本决策。
+   更长输入会增加费用、首 token 延迟与噪声，并可能让关键信息被无关内容淹没。应基于任务选择证据、控制重复、保留位置结构，并用评测证明增加上下文确实带来收益。
 
-2. **模型恢复后如何退出熔断状态？**
+2. **Temperature 设为 0 是否就能保证每次输出完全一致？**
 
-   半开状态只放少量探测流量，连续满足错误率和时延门槛后逐步恢复；同时比较质量代理指标，不能只因 HTTP 恢复就瞬间放全量。
+   不能作绝对保证。它通常降低随机性，但模型版本、供应商后端、并行计算和相同概率候选的处理仍可能变化；关键结果必须依靠结构化校验、业务规则和回归测试。
 
 **易错点：**
 
-- 备用模型未经同一评测集验证，故障时虽然返回成功，却产生不可见的质量事故。
-- 监控只记配置模型而不记实际服务模型，导致成本、时延与回归分析全部失真。
+- 把中文字符数直接当成 Token 数，直到线上超出上下文窗口才截断。
+- 为了“更聪明”同时调高 Temperature 与 Top-P，却没有固定评测集比较稳定性和成本。
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：牛客：Java 后端与 Agent 应用多场面试复盘](https://www.nowcoder.com/discuss/869231276035760128)
+- [真实面经线索（题目已改写）：牛客：快手 AI 应用服务端开发二面](https://www.nowcoder.com/discuss/872512773710696448)
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：Spring AI：Chat Client API](https://docs.spring.io/spring-ai/reference/api/chatclient.html)
-- [技术校准：OpenAI：Production best practices](https://platform.openai.com/docs/guides/production-best-practices)
+- [技术校准：OpenAI：Latency optimization](https://platform.openai.com/docs/guides/latency-optimization)
+- [高频题库参考（内容已重写）：小林面试笔记：大模型工程面试题介绍](https://xiaolinnote.com/ai/llm/llm_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-# RAG 数据摄取与知识治理
+## Q5：大模型为什么会产生幻觉，Java 应用如何分层缓解？
+
+**短回答：**
+
+模型生成的是高概率续写，不是事实数据库；知识缺失、上下文冲突、检索错误和问题超出能力都会产生貌似合理的错误答案。工程上要把幻觉拆成“证据没找到、证据选错、模型没遵循证据、业务结果未校验”，分别用 RAG、工具调用、引用、拒答、结构化校验与评测闭环治理。
+
+**原理：**
+
+先定义业务允许回答的边界和可验证事实源。时效性知识通过检索或只读工具获取，金额、库存、权限等确定性数据必须调用业务 API，而不是让模型猜。Prompt 明确要求仅基于给定证据回答并输出引用，但 Prompt 只能降低概率，不能成为安全边界。Java 服务在生成前检查检索分数、证据权限和时间版本，生成后验证引用是否真的支持结论、结构化字段是否合法；低置信度、证据冲突或高风险动作转为拒答或人工复核。离线按“无证据、错误证据、无忠实度、错误工具结果”标注失败，线上采集纠错与引用点击，持续补充 Golden Set。
+
+**代码 / 场景：**
+
+客服询问“这张订单能否退款”时，知识库只负责召回退款规则，订单状态和可退金额由受权订单工具查询。模型生成解释后，Java 服务校验 orderId 属于当前用户、引用条款仍有效、退款金额不超过工具返回值；任一校验失败都不执行退款，而是返回缺少依据或进入人工审核。
+
+**递进追问：**
+
+1. **用了 RAG 是否就不会幻觉？**
+
+   不会。RAG 可能检索不到、召回错误或提供互相冲突的证据，模型也可能忽略证据。必须分别评测检索质量和生成忠实度，并保留拒答与引用校验。
+
+2. **为什么要求模型“不要编造”仍然不够？**
+
+   自然语言指令只是概率性约束，无法替代权限、数据真实性和业务不变量。关键事实应来自受控检索或工具，执行前仍由 Java 代码做确定性校验。
+
+**易错点：**
+
+- 把所有错误都归因于 Prompt，没有区分召回失败、证据冲突和生成不忠实。
+- 让模型直接给出余额、价格或权限结论，却没有访问实时业务事实源。
+
+**参考来源：**
+
+- [真实面经线索（题目已改写）：牛客：京东 Agent 二面](https://www.nowcoder.com/feed/main/detail/b51047e32faa44678b3e0fffb798c17d)
+- [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
+- [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
+- [技术校准：OpenAI：Evals](https://platform.openai.com/docs/guides/evals)
+- [高频题库参考（内容已重写）：JavaGuide：大模型基础面试题总结](https://javaguide.cn/ai/interview-questions/llm-interview-questions.html)
+
+校验日期：2026-08-05
+
+# RAG 基础与知识入库
 
 ## Q6：怎样把 RAG 全链路拆成可定位的质量阶段？
 
@@ -232,8 +235,9 @@ Schema 约束能提高格式稳定性，却不能证明字段语义正确。Java
 - [真实面经线索（题目已改写）：牛客：Java 后端与 Agent 应用多场面试复盘](https://www.nowcoder.com/discuss/869231276035760128)
 - [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
 - [技术校准：LangChain4j：RAG](https://docs.langchain4j.dev/tutorials/rag/)
+- [高频题库参考（内容已重写）：JavaGuide：RAG 面试题总结](https://javaguide.cn/ai/interview-questions/rag-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q7：PDF、表格和图片文档怎样解析才不会污染知识库？
 
@@ -267,11 +271,11 @@ Schema 约束能提高格式稳定性，却不能证明字段语义正确。Java
 **参考来源：**
 
 - [真实面经线索（题目已改写）：牛客：京东健康后端开发实习一面](https://www.nowcoder.com/discuss/861995389170298880?sourceSSR=enterprise)
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
 - [技术校准：LangChain4j：RAG](https://docs.langchain4j.dev/tutorials/rag/)
+- [高频题库参考（内容已重写）：小林面试笔记：RAG 面试题介绍](https://xiaolinnote.com/ai/rag/rag_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q8：固定长度、递归与语义切分应该如何验证？
 
@@ -305,11 +309,11 @@ chunk 太小会丢失定义与限定条件，太大则降低向量区分度并�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：牛客：Java 后端与 Agent 应用多场面试复盘](https://www.nowcoder.com/discuss/869231276035760128)
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
 - [技术校准：LangChain4j：RAG](https://docs.langchain4j.dev/tutorials/rag/)
+- [高频题库参考（内容已重写）：JavaGuide：RAG 面试题总结](https://javaguide.cn/ai/interview-questions/rag-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q9：知识库增量更新怎样保证幂等、可见性与可回滚？
 
@@ -346,48 +350,50 @@ chunk 太小会丢失定义与限定条件，太大则降低向量区分度并�
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：Spring AI：Vector Databases](https://docs.spring.io/spring-ai/reference/api/vectordbs.html)
 - [技术校准：Apache Kafka 官方设计文档](https://kafka.apache.org/documentation/#design)
+- [高频题库参考（内容已重写）：小林面试笔记：RAG 面试题介绍](https://xiaolinnote.com/ai/rag/rag_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q10：更换 Embedding 模型时如何迁移维度与索引？
+## Q10：RAG、长上下文与微调分别解决什么问题，应该怎样选？
 
 **短回答：**
 
-Embedding 模型、维度、归一化与距离函数共同定义向量空间，不能把新旧向量混在同一索引里比较。迁移应双建索引、离线评测、影子查询和灰度切流，并保留回滚窗口。
+RAG 适合需要更新、引用和权限控制的外部知识；长上下文适合少量材料的一次性分析；微调主要改变模型的行为、风格或特定任务能力，不适合频繁写入事实。三者可以组合，但选型要围绕知识更新频率、可追溯性、延迟、成本与数据规模，而不是把微调当成“知识库存储”。
 
 **原理：**
 
-先冻结基线评测集与旧索引快照，记录模型版本、维度、最大输入、归一化和距离度量。新模型为全部有效 chunk 生成独立命名空间；同时验证截断率、吞吐、成本、Recall@k、MRR 和租户过滤。查询端双路执行但只返回旧结果，记录候选重合率及相关性差异。新索引达标后按租户或流量灰度，观察线上无结果率、引用接受率和 P95。迁移完成前保留旧查询路径，不能只因新模型“参数更大”就直接覆盖。
+先判断问题来自“模型不知道事实”还是“模型不会按要求完成任务”。事实经常变化且需要出处时，RAG 将知识放在模型外部，允许按租户过滤、增量更新和返回引用；资料很少且单次任务需要跨全文推理时，可以直接放入长上下文，但要控制 token、噪声与中间信息遗失；输出格式、语气、分类边界或领域表达长期稳定时，再用提示词、few-shot 与微调逐级验证。微调后的知识难以逐条删除和审计，仍可能过时或幻觉。评估时固定问题集，分别比较任务成功率、引用正确率、更新生效时间、P95、token 成本与维护复杂度，最后选择最小可行组合。
 
 **代码 / 场景：**
 
-从 1536 维模型迁到另一款 1024 维模型时，新建 embedding_v2 表与 HNSW 索引。对 500 个已标注问题做双检索，发现技术缩写召回下降，补充领域同义词后再灰度 10%；一周稳定后才停止 v1 写入。
+企业制度助手每天有文档更新且要求回答带出处，因此采用 RAG；用户临时上传一份 20 页合同做风险摘要，直接使用长上下文更简单；客服回复要长期保持固定语气和标签格式，在 Prompt 与结构化输出稳定后，才评估是否通过微调减少示例长度。三类需求没有被塞进同一种方案。
 
 **递进追问：**
 
-1. **为什么只抽样重新生成向量不够？**
+1. **微调能不能替代需要实时更新的企业知识库？**
 
-   不同模型的向量不可直接比较，混合空间中的相似度没有一致含义。抽样适合评测，正式切换必须为可查询语料建立完整的新空间。
+   通常不能。微调数据进入模型参数后难以快速更新、删除、做细粒度权限和返回出处；实时事实仍应由 RAG 或业务工具提供，微调更适合稳定行为与任务模式。
 
-2. **维度越高检索一定越准吗？**
+2. **长上下文什么时候比 RAG 更合适？**
 
-   不一定。质量取决于训练数据、任务匹配、截断和检索配置；维度还增加存储、内存和计算，应以目标评测与每查询成本判断。
+   文档数量少、单次提供、需要跨全文综合且不要求长期索引时，长上下文可减少摄取与检索复杂度；仍要评测 token 成本、首 token 延迟和关键信息定位能力。
 
 **易错点：**
 
-- 直接在旧列写入新模型向量，忽略维度、归一化和距离函数不兼容。
-- 迁移只比较平均相似度，没有标注相关结果、业务质量和高分位时延。
+- 把最新产品价格等动态事实微调进模型，导致更新慢且无法可靠追溯。
+- 看到窗口足够大就塞入全部资料，不评估噪声、成本和长上下文中的信息遗漏。
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
-- [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
-- [技术校准：Spring AI：Embeddings Model API](https://docs.spring.io/spring-ai/reference/api/embeddings.html)
-- [技术校准：OpenAI：Embeddings](https://platform.openai.com/docs/guides/embeddings)
+- [真实面经线索（题目已改写）：牛客：美图 Java 开发实习生面经](https://www.nowcoder.com/discuss/832743544543531008?sourceSSR=enterprise)
+- [真实面经线索（题目已改写）：牛客：云鲸智能平台开发面经](https://www.nowcoder.com/discuss/904837245251637248)
+- [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
+- [技术校准：OpenAI：Evals](https://platform.openai.com/docs/guides/evals)
+- [高频题库参考（内容已重写）：JavaGuide：RAG 面试题总结](https://javaguide.cn/ai/interview-questions/rag-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-# 检索、排序与质量评测
+# RAG 检索优化与评测
 
 ## Q11：pgvector、Milvus 与 Elasticsearch 向量检索怎样选？
 
@@ -421,12 +427,12 @@ SaaS 知识库只有 300 万块，核心数据已经在 PostgreSQL，且每次�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：牛客：爱学习后端开发一面](https://www.nowcoder.com/discuss/904411742510379008?sourceSSR=home)
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [技术校准：pgvector 官方项目文档](https://github.com/pgvector/pgvector)
 - [技术校准：Milvus 官方文档](https://milvus.io/docs)
 - [技术校准：Elastic：kNN vector search](https://www.elastic.co/docs/solutions/search/vector/knn)
+- [高频题库参考（内容已重写）：小林面试笔记：RAG 面试题介绍](https://xiaolinnote.com/ai/rag/rag_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q12：BM25、向量召回与 RRF 为什么常被组合使用？
 
@@ -463,46 +469,48 @@ BM25 利用词频、逆文档频率与长度归一化，对产品型号、错误
 - [真实面经线索（题目已改写）：牛客：Java 后端与 Agent 应用多场面试复盘](https://www.nowcoder.com/discuss/869231276035760128)
 - [技术校准：Elastic：Hybrid search](https://www.elastic.co/docs/solutions/search/hybrid-search)
 - [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
+- [高频题库参考（内容已重写）：JavaGuide：RAG 面试题总结](https://javaguide.cn/ai/interview-questions/rag-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q13：Query Rewrite、Multi-Query 与 HyDE 各自解决什么失败？
+## Q13：RAG 召回率低时，怎样判断是切分、Embedding、查询还是排序的问题？
 
 **短回答：**
 
-Query Rewrite 补全上下文并去掉口语噪声，Multi-Query 用多个表达扩大召回，HyDE 先生成假想答案再做语义检索。三者都会增加时延和错误传播，应由低召回题型触发，并保留原查询作为一路。
+先用带相关文档标注的查询集分层定位：目标内容是否成功入库、相关 chunk 是否完整、向量或关键词通道是否召回、过滤条件是否误杀、Reranker 是否把正确候选降下去。不要一上来改 Prompt，因为生成模型无法使用根本没进入上下文的证据。
 
 **原理：**
 
-多轮对话中的“它支持吗”必须结合历史改写为独立查询，但不能把模型猜测写成事实。Multi-Query 适合同义词和多个意图，每个子查询做配额、去重和并发上限。HyDE 在原查询与文档语言差异大时可能有效，但假想答案的错误会把检索带偏。工程上记录 originalQuery、rewrittenQuery、触发原因和每路命中，设置总候选与 deadline；用“原查询基线、增加策略后的增益、额外成本”三列评测，收益不足则关闭。
+为每个问题记录 documentId、chunkId 与应命中证据，按摄取、候选召回、过滤、融合、重排和上下文组装逐段计算 Recall@k。目标 chunk 不存在时检查解析、表格处理和切分；存在但向量分数低时检查 Embedding 模型、查询语言、归一化与领域词；关键词能命中而向量不能命中时采用混合召回；所有通道都无命中时再尝试语义安全的 Query Rewrite。候选中已有正确证据却未进前 k，检查权重、去重和 Reranker；进入上下文后仍答错，则转到忠实度、冲突证据和 Prompt 排查。每次只改变一个变量，保存原查询、改写查询、各路候选与最终引用，才能证明优化来自哪里。
 
 **代码 / 场景：**
 
-用户追问“它在内网能跑吗”，改写器依据上一轮只补成“产品 X 是否支持离线内网部署”，并保留原问。专有产品名走 BM25，改写文本走向量召回；如果改写模型超时，立即退回原查询，而不是让整个问答失败。
+“年假能跨年吗”在 Golden Set 中应命中制度第 4.2 条。排查发现原 PDF 表格被按列打散，目标句从未形成完整 chunk；改 Prompt 和加 Multi-Query 都没有用。修复表格解析并按标题边界切分后，向量与 BM25 均能召回，Recall@10 从 0.64 提升到 0.88，随后才评估 Reranker。
 
 **递进追问：**
 
-1. **如何防止改写引入用户没有说过的约束？**
+1. **为什么召回率低时不能只看相似度分数？**
 
-   Prompt 只允许消解指代和保留显式条件，输出结构化的 addedContext 与 evidenceTurn；服务校验引用轮次，并在评测集中专门加入否定、时间和主体歧义。
+   不同模型和索引的分数不可直接横比，而且目标证据可能根本未入库或被 ACL 过滤。应先用标注证据计算 Recall@k，再结合各阶段日志定位。
 
-2. **HyDE 为什么可能伤害精确检索？**
+2. **Query Rewrite 在什么情况下可能让结果更差？**
 
-   假想答案会加入模型臆测的术语，使向量靠近错误主题，尤其对编号和事实查询不利；应保留原查询通道，并按题型门控。
+   模型可能删除专有名词、编号或否定条件，也可能把上一轮猜测写成事实。应始终保留原查询一路，记录改写结果并只对已验证题型启用。
 
 **易错点：**
 
-- 所有查询都串行执行三种增强，显著增加 P95 和 token 成本却没有增益评测。
-- 只保存改写后的查询，无法复盘模型是否丢失否定、时间或权限条件。
+- 没有标注应命中的文档，只凭最终答案感觉判断检索好坏。
+- 同时更换切分、Embedding、topK 和 Reranker，导致无法归因也无法安全回滚。
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：牛客：京东健康后端开发实习一面](https://www.nowcoder.com/discuss/861995389170298880?sourceSSR=enterprise)
-- [真实面经线索（题目已改写）：牛客：Java 后端与 Agent 应用多场面试复盘](https://www.nowcoder.com/discuss/869231276035760128)
+- [真实面经线索（题目已改写）：牛客：云鲸智能平台开发面经](https://www.nowcoder.com/discuss/904837245251637248)
+- [真实面经线索（题目已改写）：牛客：爱学习后端开发一面](https://www.nowcoder.com/discuss/904411742510379008?sourceSSR=home)
 - [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
-- [技术校准：LangChain4j：RAG](https://docs.langchain4j.dev/tutorials/rag/)
+- [技术校准：Elastic：Hybrid search](https://www.elastic.co/docs/solutions/search/hybrid-search)
+- [高频题库参考（内容已重写）：小林面试笔记：RAG 面试题介绍](https://xiaolinnote.com/ai/rag/rag_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q14：Reranker 应该放在哪里，如何证明它值得这次时延？
 
@@ -539,8 +547,9 @@ Reranker 位于多路召回之后、上下文拼装之前，用更精细的 quer
 - [真实面经线索（题目已改写）：牛客：Java 后端与 Agent 应用多场面试复盘](https://www.nowcoder.com/discuss/869231276035760128)
 - [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
 - [技术校准：Elastic：Hybrid search](https://www.elastic.co/docs/solutions/search/hybrid-search)
+- [高频题库参考（内容已重写）：JavaGuide：RAG 面试题总结](https://javaguide.cn/ai/interview-questions/rag-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q15：RAG 离线评测怎样同时覆盖检索、忠实度与拒答？
 
@@ -577,10 +586,11 @@ Reranker 位于多路召回之后、上下文拼装之前，用更精细的 quer
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：OpenAI：Evals](https://platform.openai.com/docs/guides/evals)
 - [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
+- [高频题库参考（内容已重写）：小林面试笔记：RAG 面试题介绍](https://xiaolinnote.com/ai/rag/rag_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-# Agent、工作流与工具协议
+# Agent、记忆与工具调用
 
 ## Q16：Agent 与确定性 Workflow 的边界怎样判断？
 
@@ -617,8 +627,9 @@ Workflow 的控制流由代码或状态机定义，便于测试、审批、补�
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：Spring AI：Tool Calling](https://docs.spring.io/spring-ai/reference/api/tools.html)
 - [技术校准：LangChain4j：Tools](https://docs.langchain4j.dev/tutorials/tools/)
+- [高频题库参考（内容已重写）：JavaGuide：AI Agent 面试题总结](https://javaguide.cn/ai/interview-questions/agent-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q17：ReAct 循环如何终止，并防止 Agent 原地打转？
 
@@ -654,49 +665,50 @@ ReAct 交替产生动作与观察，风险是同参重复调用、在无新信�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：牛客：Java 后端与 Agent 应用多场面试复盘](https://www.nowcoder.com/discuss/869231276035760128)
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [技术校准：Spring AI：Tool Calling](https://docs.spring.io/spring-ai/reference/api/tools.html)
 - [技术校准：LangChain4j：Tools](https://docs.langchain4j.dev/tutorials/tools/)
+- [高频题库参考（内容已重写）：小林面试笔记：LLM 工具调用面试题介绍](https://xiaolinnote.com/ai/tools/tools_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q18：什么时候需要图式 DAG，以及多 Agent 怎样处理共享状态？
+## Q18：Agent 的短期记忆、长期记忆与完整会话历史应该怎样设计？
 
 **短回答：**
 
-存在并行分支、条件汇合、检查点和人工节点时，图式编排比自由循环更可控。多 Agent 只在角色确实需要独立上下文或并行能力时使用；共享状态采用版本号、单写者或事务资源管理，不能让多个 Agent 任意覆盖数据库和文件。
+完整会话历史用于审计和界面展示，短期记忆是本次模型调用真正需要的最近轮次与任务状态，长期记忆是经过筛选后可跨会话复用的稳定事实。三者不能混为一张消息表全量回灌；Java 服务应按 conversationId、用户与租户隔离，并用窗口、摘要、检索和删除策略控制上下文。
 
 **原理：**
 
-DAG/状态图把节点输入、输出、转移条件和失败补偿显式化，适合长任务恢复与审计；但循环需要有界状态图而非纯 DAG。多 Agent 会引入消息协议、上下文重复、冲突与额外 token，应先比较单 Agent + 多工具基线。共享状态由 orchestrator 维护版本，每个节点输出 patch；合并使用 optimistic lock 或单写队列。并行工具调用必须标注读写集合，写冲突串行化。指标包括任务成功率、冲突重试、平均步骤、并行收益与总成本。
+LLM 本身是无状态的，每次调用看到什么由应用重新组装。消息库保存不可变会话事件与工具轨迹，便于审计和恢复；短期记忆按完整 turn 保留最近消息，并把目标、已完成步骤、关键工具结果压缩成结构化状态，避免从 assistant/tool 消息中间截断；长期记忆只提取用户偏好、稳定实体和经过确认的事实，带来源、置信度、有效期与可删除标识，检索后还要做权限校验。Spring AI 的 ChatMemory 负责提供模型需要的上下文，不等于完整 Chat History；使用 Memory Advisor 时每次调用应显式传 conversationId。记忆写入需要去重和用户纠错，敏感信息按最小化原则保存，不能把模型猜测自动固化为事实。
 
 **代码 / 场景：**
 
-尽调任务把网页检索、财务表抽取和法规核验并行执行，汇合后由验证节点检查证据。三个 worker 只写各自命名空间，orchestrator 以 stateVersion 合并；最终报告发布需人工审批。若财务抽取失败，只重跑该节点而非整个任务。
+旅行 Agent 的消息表保存全部聊天和工具事件；短期记忆只保留最近 6 个完整 turn、当前目的地、日期与待确认项；长期记忆仅在用户确认后记录“偏好无障碍酒店”，并带用户 ID、来源消息和过期策略。下次会话检索到偏好后，仍由用户确认是否应用，模型临时猜测的预算不会写入长期记忆。
 
 **递进追问：**
 
-1. **为什么多个角色 Prompt 不一定需要多个 Agent？**
+1. **为什么 Chat Memory 不等于 Chat History？**
 
-   若角色共享同一状态且顺序固定，一个执行器切换指令即可。多 Agent 只有在独立上下文、权限或并行收益明确时才值得额外复杂度。
+   History 是完整事实记录，服务审计和展示；Memory 是为当前模型调用筛选出的有限上下文，会被窗口、摘要和检索改变。把二者混用会导致丢历史或无限增长。
 
-2. **循环任务为什么不能直接用无环 DAG 表示？**
+2. **长任务上下文快满时应该怎样压缩？**
 
-   DAG 本身无环；需要返工时应使用带条件边和步数限制的状态图，或把有限循环封装在节点内，并明确终止与检查点。
+   先保留 system、当前目标、未完成步骤和关键工具事实，再对旧对话生成可校验的结构化摘要；摘要保留来源指针，重要事实可重新检索，不能只留下自由文本结论。
 
 **易错点：**
 
-- 为每个职责名称创建一个 Agent，导致上下文复制、协调时延和故障面膨胀。
-- 并行 Agent 共享可写对象却没有版本控制、幂等键或冲突合并策略。
+- 每轮把完整历史全部发送给模型，造成成本持续增长、噪声增加和隐私暴露。
+- 把模型推测自动写成长时记忆，没有来源、用户确认、有效期和删除能力。
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：牛客：快手 AI 应用服务端开发二面](https://www.nowcoder.com/discuss/872512773710696448)
+- [真实面经线索（题目已改写）：牛客：京东 Agent 二面](https://www.nowcoder.com/feed/main/detail/b51047e32faa44678b3e0fffb798c17d)
 - [真实面经线索（题目已改写）：牛客：阿里、蚂蚁、字节 Agent 开发面经总结](https://www.nowcoder.com/discuss/877151327091027968)
-- [技术校准：Spring AI：Tool Calling](https://docs.spring.io/spring-ai/reference/api/tools.html)
-- [技术校准：LangChain4j 官方文档](https://docs.langchain4j.dev/)
+- [技术校准：Spring AI：Chat Memory](https://docs.spring.io/spring-ai/reference/api/chat-memory.html)
+- [技术校准：Spring AI：Chat Client API](https://docs.spring.io/spring-ai/reference/api/chatclient.html)
+- [高频题库参考（内容已重写）：JavaGuide：AI Agent 面试题总结](https://javaguide.cn/ai/interview-questions/agent-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q19：Function Calling、MCP 与业务工具层各自负责什么？
 
@@ -729,12 +741,12 @@ Function Calling 是模型输出结构化工具意图的能力；MCP 规范客�
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：OpenAI：Function Calling](https://platform.openai.com/docs/guides/function-calling)
 - [技术校准：Model Context Protocol 规范](https://modelcontextprotocol.io/specification/latest)
+- [高频题库参考（内容已重写）：小林面试笔记：LLM 工具调用面试题介绍](https://xiaolinnote.com/ai/tools/tools_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q20：有副作用的 Agent 工具怎样实现幂等与人工确认？
 
@@ -773,10 +785,11 @@ Agent 建议取消订单时先调用 previewCancellation，返回费用和不可
 - [技术校准：OpenAI：Function Calling](https://platform.openai.com/docs/guides/function-calling)
 - [技术校准：IETF HTTPAPI：Idempotency-Key Header 草案](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header-07)
 - [技术校准：OWASP Transaction Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Transaction_Authorization_Cheat_Sheet.html)
+- [高频题库参考（内容已重写）：JavaGuide：AI Agent 面试题总结](https://javaguide.cn/ai/interview-questions/agent-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-# 流式响应与客户端契约
+# 流式对话与前后端契约
 
 ## Q21：AI 对话为什么常用 SSE，什么时候才需要 WebSocket？
 
@@ -815,8 +828,9 @@ Agent 建议取消订单时先调用 previewCancellation，返回费用和不可
 - [真实面经线索（题目已改写）：牛客：阿里、蚂蚁、字节 Agent 开发面经总结](https://www.nowcoder.com/discuss/877151327091027968)
 - [技术校准：WHATWG：Server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html)
 - [技术校准：Spring Framework：WebFlux Reactive Core](https://docs.spring.io/spring-framework/reference/web/webflux/reactive-spring.html)
+- [高频题库参考（内容已重写）：小林 Coding：智能 OnCall Agent 项目路线](https://xiaolincoding.com/project/aioncallagent.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q22：声称 TTFT 降低 60% 时，怎样给出可信测量？
 
@@ -853,8 +867,9 @@ Agent 建议取消订单时先调用 previewCancellation，返回费用和不可
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：OpenAI：Latency optimization](https://platform.openai.com/docs/guides/latency-optimization)
 - [技术校准：Spring AI：Observability](https://docs.spring.io/spring-ai/reference/observability/)
+- [高频题库参考（内容已重写）：小林面试笔记：LLM 工具调用面试题介绍](https://xiaolinnote.com/ai/tools/tools_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q23：WebFlux 流式链路怎样处理背压与慢客户端？
 
@@ -891,46 +906,50 @@ WebFlux 使用 Flux 表达异步序列，下游 demand 能约束本地操作符�
 - [真实面经线索（题目已改写）：牛客：京东健康后端开发实习一面](https://www.nowcoder.com/discuss/861995389170298880?sourceSSR=enterprise)
 - [技术校准：Project Reactor Reference](https://projectreactor.io/docs/core/release/reference/)
 - [技术校准：Spring Framework：WebFlux Reactive Core](https://docs.spring.io/spring-framework/reference/web/webflux/reactive-spring.html)
+- [高频题库参考（内容已重写）：小林 Coding：智能 OnCall Agent 项目路线](https://xiaolincoding.com/project/aioncallagent.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q24：流式分片乱序、半个 UTF-8 字符与不完整 Markdown 怎么处理？
+## Q24：Java 流式对话的 SSE 事件协议应该怎样设计？
 
 **短回答：**
 
-传输层按连接保证字节顺序，但并行来源、异步转发和错误聚合仍会造成业务事件乱序。协议给每个 run/choice 分配递增序号，客户端按 UTF-8 解码器增量解码并按事件聚合；Markdown 只做容错增量渲染，done 后再最终解析。
+不要把供应商原始 token 分片直接透传给浏览器。服务端应归一为少量稳定事件，例如 start、text_delta、tool_start、tool_result、usage、error 与 done，并为每个 run 携带 eventId、序号和可恢复信息；前端按事件类型更新状态，最终由 done 或 error 收口。
 
 **原理：**
 
-不要假设一次网络 chunk 对应一个 token、JSON 或 Unicode 字符。服务端先解析供应商协议，再输出自己的完整 SSE event；每个事件包含 runId、streamId、seq、type 和 payload。并行工具事件与文本流使用独立 streamId，汇合处定义顺序。客户端利用 TextDecoder 的 stream 模式保存不完整字节，SSE 解析以空行作为事件边界，按 seq 去重与检测缺口。Markdown 渲染对未闭合代码块和列表使用临时状态，最终 done 触发完整文档重算。
+网络 chunk、模型 token 和业务事件不是一一对应关系。Java 适配层先解析供应商流，再输出自己的版本化 SSE 契约：start 建立 run 元数据，text_delta 只承载增量文本，tool_* 展示工具阶段但默认隐藏敏感参数，usage 记录最终计费，error 给出可重试分类，done 携带 finish reason 与最终消息 ID。每个事件包含 runId、seq、type 和 schemaVersion，用 seq 去重与检测缺口；心跳保持中间代理连接，服务端在断开或取消时传播 cancellation。浏览器只负责增量显示，完整 Markdown、引用和结构化结果在结束后用服务端最终快照校正，避免半截代码块和中间草稿被当成最终事实。
+
+![Java 服务端模型流到 SSE 客户端增量渲染的端到端链路图](/content/diagrams/frontend-ai/streaming-answer-pipeline-v1.svg "服务端要传递取消、超时和完成状态，客户端再负责协议分帧、合并与节流渲染。")
 
 **代码 / 场景：**
 
-模型输出中文代码块时，网络恰在一个汉字的三个字节中间断开。客户端增量解码器保留尾部字节，不显示替换字符；收到 seq 42 后发现 41 缺失则暂停最终提交并请求从 lastEventId=40 续传。done 后重新高亮完整代码块。
+知识助手先发送 start，再连续发送 text_delta；需要查订单时发 tool_start，工具完成后发经过脱敏的 tool_result，随后继续文本。最后 usage 与 done 返回最终 messageId。用户刷新页面后，客户端不拼接一堆不确定分片，而是用 runId 获取已落库的最终快照；重复 seq 会被忽略。
 
 **递进追问：**
 
-1. **HTTP/2 是否会让同一响应内的 SSE 事件乱序？**
+1. **为什么不能把一次 HTTP 数据块当成一个完整 token 或 JSON？**
 
-   同一字节流仍按序交付；常见乱序来自应用并发合并、多模型选择或消息代理。业务 seq 用于识别这些上层问题和重放去重。
+   传输层可以任意切分或合并字节，代理也可能缓冲；供应商增量格式还会变化。必须先按上游协议解析成完整事件，再转为自己的稳定 SSE 契约。
 
-2. **为什么不能对每个 delta 直接 JSON.parse？**
+2. **流式过程中已经展示的文本需要立即写数据库吗？**
 
-   网络分片不保证 JSON 边界，供应商增量也可能只是一段内容。应先按协议帧组装完整事件，再解析 JSON payload。
+   可按批次写临时 checkpoint 以支持恢复，但最终消息应在 done 后以服务端聚合结果提交。每个 delta 单独事务会放大写入并暴露不完整状态。
 
 **易错点：**
 
-- 把 TCP chunk、SSE event、模型 token 与一个 Unicode 字符当成同一边界。
-- 每个字符都重新解析整篇 Markdown，造成主线程抖动、滚动跳跃和代码块闪烁。
+- 直接透传供应商 JSON，导致切换模型时前端协议和状态机全部重写。
+- 只有 message 文本事件，没有 error、usage、done 和序号，断线后无法判断是否完整。
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：牛客：云鲸智能平台开发面经](https://www.nowcoder.com/discuss/904837245251637248)
-- [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
+- [真实面经线索（题目已改写）：牛客：快手 AI 应用服务端开发二面](https://www.nowcoder.com/discuss/872512773710696448)
+- [真实面经线索（题目已改写）：牛客：京东 Agent 二面](https://www.nowcoder.com/feed/main/detail/b51047e32faa44678b3e0fffb798c17d)
+- [技术校准：Spring Framework：WebFlux Reactive Core](https://docs.spring.io/spring-framework/reference/web/webflux/reactive-spring.html)
 - [技术校准：WHATWG：Server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html)
-- [技术校准：Project Reactor Reference](https://projectreactor.io/docs/core/release/reference/)
+- [高频题库参考（内容已重写）：小林面试笔记：LLM 工具调用面试题介绍](https://xiaolinnote.com/ai/tools/tools_info.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q25：断线重连、用户取消与最终落库如何保持一致？
 
@@ -970,10 +989,11 @@ run 状态至少含 CREATED、RUNNING、CANCELLING、COMPLETED、FAILED、CANCEL
 - [技术校准：Temporal：Durable Workflow Execution](https://docs.temporal.io/workflow-execution)
 - [技术校准：OpenAI：Background mode](https://platform.openai.com/docs/guides/background)
 - [技术校准：IETF HTTPAPI：Idempotency-Key Header 草案](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header-07)
+- [高频题库参考（内容已重写）：小林 Coding：智能 OnCall Agent 项目路线](https://xiaolincoding.com/project/aioncallagent.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-# 可靠性、安全与 LLMOps
+# 生产治理、评测与安全
 
 ## Q26：模型调用的超时、重试、熔断与降级应该如何协同？
 
@@ -1010,8 +1030,9 @@ run 状态至少含 CREATED、RUNNING、CANCELLING、COMPLETED、FAILED、CANCEL
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：OpenAI：Production best practices](https://platform.openai.com/docs/guides/production-best-practices)
 - [技术校准：Spring AI：Chat Client API](https://docs.spring.io/spring-ai/reference/api/chatclient.html)
+- [高频题库参考（内容已重写）：JavaGuide：AI 系统设计面试题总结](https://javaguide.cn/ai/interview-questions/ai-system-design-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q27：Prompt、语义结果与上下文缓存分别该怎样失效？
 
@@ -1045,11 +1066,11 @@ Prompt 缓存复用稳定前缀以降低模型计算，语义结果缓存复用�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [技术校准：OpenAI：Prompt Caching](https://platform.openai.com/docs/guides/prompt-caching)
 - [技术校准：Redis 官方文档](https://redis.io/docs/latest/)
+- [高频题库参考（内容已重写）：JavaGuide：AI 应用开发面试指南](https://javaguide.cn/ai/interview-questions/ai-interview-guide.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q28：一条 AI 请求需要记录哪些 Trace、质量与成本信号？
 
@@ -1086,8 +1107,9 @@ Prompt 缓存复用稳定前缀以降低模型计算，语义结果缓存复用�
 - [真实面经线索（题目已改写）：牛客：云鲸智能平台开发面经](https://www.nowcoder.com/discuss/904837245251637248)
 - [技术校准：Spring AI：Observability](https://docs.spring.io/spring-ai/reference/observability/)
 - [技术校准：OpenTelemetry：Generative AI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
+- [高频题库参考（内容已重写）：JavaGuide：AI 系统设计面试题总结](https://javaguide.cn/ai/interview-questions/ai-system-design-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q29：怎样防御 Prompt Injection、越权检索与工具数据外泄？
 
@@ -1121,11 +1143,11 @@ Prompt 缓存复用稳定前缀以降低模型计算，语义结果缓存复用�
 **参考来源：**
 
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [技术校准：OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/)
 - [技术校准：Model Context Protocol 规范](https://modelcontextprotocol.io/specification/latest)
+- [高频题库参考（内容已重写）：JavaGuide：AI 应用开发面试指南](https://javaguide.cn/ai/interview-questions/ai-interview-guide.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q30：Prompt 与模型版本发布怎样建立可回放的质量门禁？
 
@@ -1162,10 +1184,11 @@ Prompt、模型参数、工具 schema、检索配置和评测集都要版本化�
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：OpenAI：Evals](https://platform.openai.com/docs/guides/evals)
 - [技术校准：Spring AI：Observability](https://docs.spring.io/spring-ai/reference/observability/)
+- [高频题库参考（内容已重写）：JavaGuide：AI 系统设计面试题总结](https://javaguide.cn/ai/interview-questions/ai-system-design-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-# Java 后端工程支撑
+# Java AI 工程底座
 
 ## Q31：AI 服务该用平台线程、虚拟线程还是 WebFlux？
 
@@ -1203,8 +1226,9 @@ Prompt、模型参数、工具 schema、检索配置和评测集都要版本化�
 - [技术校准：OpenJDK JEP 444：Virtual Threads](https://openjdk.org/jeps/444)
 - [技术校准：OpenJDK JEP 491：Synchronize Virtual Threads without Pinning](https://openjdk.org/jeps/491)
 - [技术校准：Spring Framework：WebFlux Reactive Core](https://docs.spring.io/spring-framework/reference/web/webflux/reactive-spring.html)
+- [高频题库参考（内容已重写）：JavaGuide：Spring AI 面试平台与 RAG 知识库项目](https://javaguide.cn/zhuanlan/interview-guide.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q32：Redis 如何支撑 AI 会话、配额和限流而不成为事实源？
 
@@ -1241,8 +1265,9 @@ Redis 适合保存短期会话、幂等状态、分布式额度计数与热点�
 - [真实面经线索（题目已改写）：牛客：爱学习后端开发一面](https://www.nowcoder.com/discuss/904411742510379008?sourceSSR=home)
 - [技术校准：Redis 官方文档](https://redis.io/docs/latest/)
 - [技术校准：Spring AI：Chat Memory](https://docs.spring.io/spring-ai/reference/api/chat-memory.html)
+- [高频题库参考（内容已重写）：JavaGuide：AI 系统设计面试题总结](https://javaguide.cn/ai/interview-questions/ai-system-design-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q33：MySQL 中怎样建模 AI Run、消息与工具动作的一致性？
 
@@ -1279,8 +1304,9 @@ conversation 是长期容器，run 表示一次生成，message 按 conversation
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：Apache Kafka 官方设计文档](https://kafka.apache.org/documentation/#design)
 - [技术校准：OpenAI：Production best practices](https://platform.openai.com/docs/guides/production-best-practices)
+- [高频题库参考（内容已重写）：JavaGuide：Spring AI 面试平台与 RAG 知识库项目](https://javaguide.cn/zhuanlan/interview-guide.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q34：消息队列怎样让文档摄取可重试又不重复索引？
 
@@ -1317,8 +1343,9 @@ Embedding 批次写成功但消费者在 ack 前崩溃。重启后同 eventId �
 - [真实面经线索（题目已改写）：牛客：京东健康后端开发实习一面](https://www.nowcoder.com/discuss/861995389170298880?sourceSSR=enterprise)
 - [技术校准：Apache Kafka 官方设计文档](https://kafka.apache.org/documentation/#design)
 - [技术校准：Spring AI：Embeddings Model API](https://docs.spring.io/spring-ai/reference/api/embeddings.html)
+- [高频题库参考（内容已重写）：JavaGuide：AI 系统设计面试题总结](https://javaguide.cn/ai/interview-questions/ai-system-design-interview-questions.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q35：多租户向量检索怎样同时保证权限、召回与扩容？
 
@@ -1355,10 +1382,11 @@ Embedding 批次写成功但消费者在 ack 前崩溃。重启后同 eventId �
 - [真实面经线索（题目已改写）：牛客：爱学习后端开发一面](https://www.nowcoder.com/discuss/904411742510379008?sourceSSR=home)
 - [技术校准：pgvector 官方项目文档](https://github.com/pgvector/pgvector)
 - [技术校准：Milvus 官方文档](https://milvus.io/docs)
+- [高频题库参考（内容已重写）：JavaGuide：Spring AI 面试平台与 RAG 知识库项目](https://javaguide.cn/zhuanlan/interview-guide.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-# 项目答辩与系统设计
+# 项目讲解与系统设计
 
 ## Q36：怎样用三分钟讲清一个 Java AI 项目的架构与取舍？
 
@@ -1395,46 +1423,49 @@ Embedding 批次写成功但消费者在 ack 前崩溃。重启后同 eventId �
 - [真实面经线索（题目已改写）：牛客：京东健康后端开发实习一面](https://www.nowcoder.com/discuss/861995389170298880?sourceSSR=enterprise)
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：Spring AI Reference](https://docs.spring.io/spring-ai/reference/)
+- [高频题库参考（内容已重写）：JavaGuide：AI 应用开发面试指南](https://javaguide.cn/ai/interview-questions/ai-interview-guide.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q37：“准确率 99%”和“TTFT 降 60%”如何经得住项目追问？
+## Q37：Prompt Engineering 与 Context Engineering 有什么区别，Java 服务如何组织上下文？
 
 **短回答：**
 
-任何数字都要带指标定义、基线、样本来源、时间窗口、分位数/置信范围和质量护栏。无法重现的漂亮百分比不如诚实报告样本限制、失败切片和下一步实验。
+Prompt Engineering 主要设计任务指令、角色、约束和输出格式；Context Engineering 决定模型这一次实际看到哪些规则、历史、检索证据、工具结果与任务状态。单轮问答可以先优化 Prompt，进入 RAG、Agent 和长任务后，更关键的是稳定、可追溯地组装上下文。
 
 **原理：**
 
-“准确率”要说明是检索 Recall、字段 exact match、人工接受率还是模型裁判分；“TTFT”要明确开始和结束事件。实验固定模型、Prompt、知识快照与硬件，在同一查询分布下做前后对照；报告样本量、P50/P95、错误率与成本。上线指标受流量混合和缓存影响，应按任务、版本、供应商切片。相关性不等于因果，若同时改三项，应做消融或逐步发布。保留评测脚本、trace 和失败案例，面试时可以解释一条数字从哪里来。
+Java 服务把上下文组装设计成显式管线，而不是在 Controller 中拼字符串：先加载不可由用户覆盖的系统规则，再加入当前任务与结构化状态；按权限检索 RAG 证据和必要的短期记忆；只注册本轮允许使用的工具及精简 schema；最后放入用户输入并预留输出 token。每段上下文都携带来源、版本、优先级、时间和敏感级别，冲突时由确定性规则决定保留谁。窗口不足时先去重与删除低价值内容，再摘要旧轮次或重新检索，不能让模型自行决定绕过权限。Spring AI 可用 Advisor 封装 memory、RAG、日志与安全检查，但 Advisor 顺序也是契约，需要测试最终 Prompt 快照和 token 预算。
 
 **代码 / 场景：**
 
-与其说“RAG 准确率 99%”，更可信的表达是：“在 420 个有权威证据的问题上，Recall@10 从 82.4% 提到 90.7%，人审引用正确率从 86% 到 91%；表格题仍只有 78%，所以没有宣称整体 99%。”
+故障排查 Agent 的 system 只定义职责与安全规则；context 由当前告警、最近指标、受权日志片段、已执行步骤和工具结果组成。Java 管线按 tenantId 过滤日志，给每段证据加时间戳与 traceId，并在调用前输出脱敏的 context manifest。这样同一 Prompt 模板可用于不同事故，而问题定位能追到“哪条上下文缺失或污染”，不必盲目改措辞。
 
 **递进追问：**
 
-1. **没有线上大流量还能报告什么？**
+1. **为什么把更多上下文塞给模型可能降低质量？**
 
-   可以报告固定离线集、并发压测和小规模用户测试，但明确外推限制；同时展示如何收集线上反馈和设发布门禁。
+   无关、重复或冲突信息会稀释关键证据，也增加成本与延迟。上下文应围绕任务选择、排序和标注来源，并通过固定评测集验证每类信息的增益。
 
-2. **如何证明提升来自 reranker 而不是别的改动？**
+2. **Advisor 越多是否能力就越强？**
 
-   固定其他配置做消融：基线、只加 reranker、完整方案分别回放同一数据集，或在线稳定分桶；比较质量与成本差异。
+   不是。多个 Advisor 可能重复追加历史、改变查询或打乱指令优先级。需要定义顺序、共享状态和 token 预算，并对最终请求快照做契约测试。
 
 **易错点：**
 
-- 把模型裁判一次打分称为准确率，却没有标签、rubric 和人工一致性检查。
-- 拿本地单请求最好值算百分比，隐去高分位、失败率、样本量和质量变化。
+- 把 Prompt 模板、历史、RAG 证据和工具结果混成一段无法追踪来源的字符串。
+- 上下文超长时直接从头截断，误删系统规则、任务目标或关键工具结果。
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：牛客：云鲸智能平台开发面经](https://www.nowcoder.com/discuss/904837245251637248)
-- [真实面经线索（题目已改写）：牛客：Java 后端与 Agent 应用多场面试复盘](https://www.nowcoder.com/discuss/869231276035760128)
-- [技术校准：OpenAI：Evals](https://platform.openai.com/docs/guides/evals)
-- [技术校准：OpenAI：Latency optimization](https://platform.openai.com/docs/guides/latency-optimization)
+- [真实面经线索（题目已改写）：牛客：京东 Agent 二面](https://www.nowcoder.com/feed/main/detail/b51047e32faa44678b3e0fffb798c17d)
+- [真实面经线索（题目已改写）：牛客：阿里、蚂蚁、字节 Agent 开发面经总结](https://www.nowcoder.com/discuss/877151327091027968)
+- [技术校准：Spring AI：Chat Client API](https://docs.spring.io/spring-ai/reference/api/chatclient.html)
+- [技术校准：Spring AI：Chat Memory](https://docs.spring.io/spring-ai/reference/api/chat-memory.html)
+- [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
+- [高频题库参考（内容已重写）：小林 Coding：Agent、RAG 与 LLM 面试题目录](https://www.xiaolincoding.com/project/xiaolinnote.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q38：知识库错误更新导致错误回答时，怎样热修复并回滚？
 
@@ -1471,8 +1502,9 @@ Embedding 批次写成功但消费者在 ack 前崩溃。重启后同 eventId �
 - [真实面经线索（题目已改写）：牛客：阿里、蚂蚁、字节 Agent 开发面经总结](https://www.nowcoder.com/discuss/877151327091027968)
 - [技术校准：Spring AI：Vector Databases](https://docs.spring.io/spring-ai/reference/api/vectordbs.html)
 - [技术校准：Elastic：Hybrid search](https://www.elastic.co/docs/solutions/search/hybrid-search)
+- [高频题库参考（内容已重写）：JavaGuide：AI 应用开发面试指南](https://javaguide.cn/ai/interview-questions/ai-interview-guide.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
 ## Q39：如何设计支持一万份文档与高并发的企业知识助手？
 
@@ -1505,47 +1537,49 @@ Embedding 批次写成功但消费者在 ack 前崩溃。重启后同 eventId �
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [真实面经线索（题目已改写）：牛客：2026 Java 后端与 AI 工程真题汇总](https://www.nowcoder.com/discuss/864594486704291840?sourceSSR=post)
 - [技术校准：Spring AI：Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
 - [技术校准：pgvector 官方项目文档](https://github.com/pgvector/pgvector)
+- [高频题库参考（内容已重写）：小林 Coding：Agent、RAG 与 LLM 面试题目录](https://www.xiaolincoding.com/project/xiaolinnote.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
 
-## Q40：Java 应用团队需要理解哪些模型部署与推理边界？
+## Q40：怎样估算 Java AI 服务的容量、Token 成本与模型网关配额？
 
 **短回答：**
 
-即使模型由平台托管，Java 团队也要理解批处理、连续批处理、KV Cache、上下文长度、量化、并行与显存如何影响吞吐和首 token；但不应把推理引擎职责塞进业务服务。双方以模型契约、容量和 SLO 对接。
+AI 容量不能只看 QPS，还要同时估算输入/输出 Token、并发中的长请求、首 token 与总耗时、供应商 RPM/TPM 配额和每个成功任务成本。模型网关按租户与任务设置 token 预算、并发、deadline、路由和成本归因，用真实长度分布压测并为峰值与降级预留余量。
 
 **原理：**
 
-推理吞吐与并发、输入/输出长度和批处理策略相关，TTFT 与排队及 prefill 紧密相关，生成阶段受逐 token decode 影响。KV Cache 随序列和并发占显存，量化降低显存但可能带来质量变化；模型并行决定跨卡通信成本。Java 服务负责请求验证、路由、deadline、流式协议、业务权限和可观测，推理平台负责加载模型、调度 GPU、批处理与健康。容量验证使用真实长度分布，报告 requests/s、tokens/s、TTFT/ITL P95、失败率和显存，而不是只测短 Prompt。
+先从线上或样本集得到请求到达率、输入与输出 token 的 P50/P95、流式持续时间和任务成功率。并发近似受“到达率 × 请求驻留时间”影响，长输出会持续占用连接、模型配额和下游线程；供应商同时按请求数和 token 吞吐限流，因此只配 QPS 会在长上下文场景失效。网关在请求前计算 prompt、RAG 证据、工具 schema 和最大输出预算，按 tenantId、taskType、model 进行令牌桶或并发舱壁；响应后记录实际 usage、缓存命中、重试与 servedModel。容量测试复刻长度分布和流式连接，报告 TTFT、总时延、tokens/s、429、取消率和每成功任务成本。超过预算时优先减少无关上下文、选择经评测的低成本模型或排队，而不是无界重试。
 
 **代码 / 场景：**
 
-线上长文总结 TTFT 突增，Java trace 显示请求已到推理网关但排队时间升高；平台发现长上下文抢占 KV Cache。双方通过长度分桶限流、最大上下文和独立队列缓解，而不是盲目增加 Java 线程。
+客服系统峰值 20 RPS，平均驻留 8 秒，意味着约 160 个在途请求；P95 输入 9k、输出 1.2k token，供应商 TPM 比 HTTP QPS 更早触顶。网关按租户限制并发和 token/minute，对摘要任务路由小模型，对高风险订单解释保持主模型；429 使用 Retry-After 与抖动退避，超出 deadline 直接失败。上线后按“每个被用户接受的答案成本”而不是总 token 展示预算。
 
 **递进追问：**
 
-1. **量化模型一定更快吗？**
+1. **为什么平均 Token 数不能直接用于容量规划？**
 
-   不一定。它通常减少显存和带宽，但速度取决于硬件、内核与批次，质量也可能变化；必须在目标任务和真实长度下评测。
+   长尾请求会占用更久连接和更多 TPM，并在高峰形成排队。至少要按任务类型观察 P50/P95 和最大输出上限，用真实分布做并发压测。
 
-2. **Java 服务扩容为什么可能完全无效？**
+2. **模型响应变慢时，增加 Java 实例为什么可能无效？**
 
-   若瓶颈在模型配额、GPU 队列或 KV Cache，增加业务实例只会制造更多在途请求。需要端到端 trace 和分层容量指标定位。
+   瓶颈可能在供应商配额、模型队列或 token 吞吐。增加入口实例只会制造更多在途请求；应通过端到端 trace、舱壁、排队和模型路由定位并控制压力。
 
 **易错点：**
 
-- 把所有模型延迟归因于网络或 Java 线程池，不理解排队、prefill 与 decode。
-- 压测只用几十 token 的短请求，无法反映真实长上下文的显存与高分位时延。
+- 只按 HTTP QPS 限流，不统计 TPM、并发连接与最大输出，长请求一来就触发 429。
+- 自动重试所有模型失败，既放大费用和排队，也可能让有副作用的工具重复执行。
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：CSDN：大模型应用开发岗面试经验总结](https://gitcode.csdn.net/69e0e44754b52172bc6a6444.html)
 - [真实面经线索（题目已改写）：牛客：云鲸智能平台开发面经](https://www.nowcoder.com/discuss/904837245251637248)
-- [技术校准：vLLM 官方文档](https://docs.vllm.ai/)
+- [真实面经线索（题目已改写）：牛客：阿里、蚂蚁、字节 Agent 开发面经总结](https://www.nowcoder.com/discuss/877151327091027968)
 - [技术校准：OpenAI：Latency optimization](https://platform.openai.com/docs/guides/latency-optimization)
+- [技术校准：OpenAI：Prompt Caching](https://platform.openai.com/docs/guides/prompt-caching)
+- [技术校准：OpenAI：Production best practices](https://platform.openai.com/docs/guides/production-best-practices)
+- [高频题库参考（内容已重写）：JavaGuide：AI 应用开发面试指南](https://javaguide.cn/ai/interview-questions/ai-interview-guide.html)
 
-校验日期：2026-08-04
+校验日期：2026-08-05
