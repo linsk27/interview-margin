@@ -14,6 +14,11 @@ export const GUIDE = {
     url: 'https://javaguide.cn/java/basis/java-basic-questions-03.html',
     kind: 'curated-guide',
   },
+  java8Features: {
+    label: 'JavaGuide：Java 8 新特性实战',
+    url: 'https://javaguide.cn/java/new-features/java8-common-new-features.html',
+    kind: 'curated-guide',
+  },
   collections01: {
     label: 'JavaGuide：Java 集合常见面试题（上）',
     url: 'https://javaguide.cn/java/collection/java-collection-questions-01.html',
@@ -275,6 +280,76 @@ export const OFFICIAL = {
   jcmd: {
     label: 'JDK 21 jcmd 工具说明',
     url: 'https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html',
+    kind: 'official',
+  },
+  functionPackage: {
+    label: 'Java 21 函数式接口 API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/package-summary.html',
+    kind: 'official',
+  },
+  streamPackage: {
+    label: 'Java 21 Stream API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/package-summary.html',
+    kind: 'official',
+  },
+  optional: {
+    label: 'Java 21 Optional API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html',
+    kind: 'official',
+  },
+  annotation: {
+    label: 'JLS 9.6：注解接口',
+    url: 'https://docs.oracle.com/javase/specs/jls/se21/html/jls-9.html#jls-9.6',
+    kind: 'official',
+  },
+  retention: {
+    label: 'Java 21 Retention API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/annotation/Retention.html',
+    kind: 'official',
+  },
+  queue: {
+    label: 'Java 21 Queue API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Queue.html',
+    kind: 'official',
+  },
+  deque: {
+    label: 'Java 21 Deque API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Deque.html',
+    kind: 'official',
+  },
+  blockingQueue: {
+    label: 'Java 21 BlockingQueue API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/BlockingQueue.html',
+    kind: 'official',
+  },
+  linkedHashMap: {
+    label: 'Java 21 LinkedHashMap API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/LinkedHashMap.html',
+    kind: 'official',
+  },
+  treeMap: {
+    label: 'Java 21 TreeMap API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/TreeMap.html',
+    kind: 'official',
+  },
+  copyOnWriteArrayList: {
+    label: 'Java 21 CopyOnWriteArrayList API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/CopyOnWriteArrayList.html',
+    kind: 'official',
+  },
+  aqs: {
+    label: 'Java 21 AbstractQueuedSynchronizer API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/locks/AbstractQueuedSynchronizer.html',
+    kind: 'official',
+  },
+  completableFuture: {
+    label: 'Java 21 CompletableFuture API',
+    url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/CompletableFuture.html',
+    kind: 'official',
+  },
+  hotspotPerformance: {
+    label: 'Oracle JDK 21：HotSpot 性能增强',
+    url: 'https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html',
     kind: 'official',
   },
 }

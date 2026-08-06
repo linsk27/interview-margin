@@ -153,11 +153,11 @@ try {
     similarTitleReport: similar.slice(0, 30),
   }
   console.log(JSON.stringify(report, null, 2))
-  if (bankCount !== 14 || questionCount !== 741 || uniqueCount !== 741 || newQuestionCount !== 320
+  if (bankCount !== 14 || questionCount !== 762 || uniqueCount !== 762 || newQuestionCount !== 320
     || sourcedCount !== 320 || ai360QuestionCount !== 72 || ai360SourcedCount !== 72
-    || communityQuestionCount !== 118 || communityDualSourcedCount !== 118
-    || foundationQuestionCount !== 50 || foundationOfficialSourcedCount !== 50
-    || javaCuratedGuideSourcedCount !== 128
+    || communityQuestionCount !== 129 || communityDualSourcedCount !== 129
+    || foundationQuestionCount !== 60 || foundationOfficialSourcedCount !== 60
+    || javaCuratedGuideSourcedCount !== 149
     || incomplete.length || missingSections.length || missingMarkers.length
     || thinEnrichedQuestions.length || thinCommunityQuestions.length || thinFoundationQuestions.length
     || ai360MissingMarkers.length || thinAi360Questions.length

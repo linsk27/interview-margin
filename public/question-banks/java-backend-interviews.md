@@ -1,4 +1,4 @@
-# Java 后端高频 48 题
+# Java 后端高频 54 题
 
 # Spring 与 Spring Boot
 
@@ -1648,7 +1648,7 @@ GET、PUT、DELETE 在规范语义上通常幂等，POST 通常不保证；但�
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：OPPO 后端 Spring 与 Redis 面经（牛客）](https://www.nowcoder.com/discuss/597163075975778304)
+- [真实面经线索（题目已改写）：Java 后端高频八股清单（小红书，2026-02-20）](https://www.xiaohongshu.com/explore/6997db890000000015023a49)
 - [高频题库参考（内容已重写）：小林 Coding：图解网络](https://xiaolincoding.com/network/)
 - [技术校准：RFC 9110：HTTP 语义](https://www.rfc-editor.org/rfc/rfc9110)
 
@@ -1685,7 +1685,7 @@ GET、PUT、DELETE 在规范语义上通常幂等，POST 通常不保证；但�
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：20 篇 Java 后端面经汇总（牛客）](https://www.nowcoder.com/discuss/353155591071801344)
+- [真实面经线索（题目已改写）：Java 后端高频八股清单（小红书，2026-02-20）](https://www.xiaohongshu.com/explore/6997db890000000015023a49)
 - [高频题库参考（内容已重写）：小林 Coding：图解网络](https://xiaolincoding.com/network/)
 - [技术校准：RFC 9293：TCP](https://www.rfc-editor.org/rfc/rfc9293)
 
@@ -1722,7 +1722,7 @@ BIO 的线程会阻塞等待读写；Java NIO 提供非阻塞 Channel、Buffer �
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：OPPO Java 后端一二面复盘（牛客）](https://www.nowcoder.com/discuss/411933101142585344)
+- [真实面经线索（题目已改写）：Java 后端高频八股清单（小红书，2026-02-20）](https://www.xiaohongshu.com/explore/6997db890000000015023a49)
 - [高频题库参考（内容已重写）：小林 Coding：图解系统](https://xiaolincoding.com/os/)
 - [技术校准：Java 21：NIO Selector API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/channels/Selector.html)
 
@@ -1759,7 +1759,7 @@ BIO 的线程会阻塞等待读写；Java NIO 提供非阻塞 Channel、Buffer �
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：20 篇 Java 后端面经汇总（牛客）](https://www.nowcoder.com/discuss/353155591071801344)
+- [真实面经线索（题目已改写）：Java 后端高频八股清单（小红书，2026-02-20）](https://www.xiaohongshu.com/explore/6997db890000000015023a49)
 - [高频题库参考（内容已重写）：小林 Coding：图解系统](https://xiaolincoding.com/os/)
 - [技术校准：JDK 21：jcmd 工具](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
 
@@ -1799,5 +1799,255 @@ CPU 路径可用系统工具找高占用线程，将线程 ID 对应到线程转
 - [真实面经线索（题目已改写）：BOSS 直聘 Java 后端面经（牛客，2025）](https://www.nowcoder.com/discuss/801379399596535808)
 - [高频题库参考（内容已重写）：小林 Coding：图解系统](https://xiaolincoding.com/os/)
 - [技术校准：JDK 21：Flight Recorder](https://docs.oracle.com/en/java/javase/21/jfapi/)
+
+校验日期：2026-08-06
+
+# Spring 与 MyBatis 工程高频
+
+## Q49：Spring Bean 作用域及跨作用域依赖怎样处理？
+
+**短回答：**
+
+Spring 提供单例、原型及请求、会话等作用域。长生命周期 Bean 依赖短生命周期对象时，应通过延迟获取或作用域代理保持正确边界。
+
+**原理：**
+
+- singleton 在同一容器和 Bean 定义内复用实例。
+- prototype 在每次向容器请求时创建实例，容器不负责完整销毁。
+- request、session 等 Web 作用域绑定请求或会话上下文。
+- singleton 直接注入 prototype，只会在自身创建时解析一次。
+- ObjectProvider、查找方法或 scoped proxy 可在实际调用时取得当前作用域对象。
+
+**代码 / 场景：**
+
+导出任务 Service 是 singleton，但每次执行都需要新的 TaskContext。用 ObjectProvider<TaskContext>.getObject() 在任务开始时获取，而不是构造注入后长期复用同一个 prototype；请求作用域对象进入异步任务前则应提取必要值，不能继续依赖已结束的请求上下文。
+
+**递进追问：**
+
+1. **prototype 注入 singleton 后为什么没有每次创建？**
+
+   依赖注入发生在 singleton 实例化阶段，当时只解析一次 prototype；后续调用复用的是已经保存的引用。
+
+2. **异步线程能直接使用 request-scoped Bean 吗？**
+
+   通常不能，请求结束或线程切换后上下文可能不存在；应在提交任务前复制必要数据，或显式建立适合异步任务的上下文边界。
+
+**易错点：**
+
+- 把 prototype 作为字段直接注入 singleton，却误以为每次调用都会产生新实例。
+- 把 request-scoped Bean 传入线程池长期持有，导致上下文失效、数据串用或资源无法释放。
+
+**参考来源：**
+
+- [真实面经线索（题目已改写）：Spring 单例 Bean 线程安全问答（牛客）](https://www.nowcoder.com/discuss/353149002420002816)
+- [高频题库参考（内容已重写）：JavaGuide：Spring 常见面试题](https://javaguide.cn/system-design/framework/spring/spring-knowledge-and-questions-summary.html)
+- [技术校准：Spring：Bean 作用域](https://docs.spring.io/spring-framework/reference/core/beans/factory-scopes.html)
+
+校验日期：2026-08-06
+
+## Q50：一次 MyBatis Mapper 方法调用经历了什么？
+
+**短回答：**
+
+Mapper 接口由动态代理实现。调用时先定位映射语句，再经会话、执行器和 JDBC 完成参数绑定与查询，最后把结果集映射成 Java 对象。
+
+**原理：**
+
+- MapperProxy 拦截接口方法并解析 MapperMethod。
+- “接口全名 + 方法名”用于定位 MappedStatement。
+- SqlSession 把操作委托给负责缓存与执行策略的 Executor。
+- StatementHandler 生成 BoundSql，ParameterHandler 绑定 JDBC 参数。
+- JDBC 返回结果后，ResultSetHandler 按 resultMap/resultType 组装对象。
+
+**代码 / 场景：**
+
+调用 userMapper.findById(7) 时，代理定位 namespace 为 UserMapper、id 为 findById 的语句；#{id} 被绑定为 PreparedStatement 参数。查询返回后，ResultSetHandler 根据 resultMap 将 user_id、user_name 映射到 User 字段，SqlSessionTemplate 再按当前 Spring 事务复用或关闭会话。
+
+**递进追问：**
+
+1. **Mapper 接口没有实现类，为什么可以注入？**
+
+   扫描器为接口注册代理对象，代理在运行时把方法签名转换为语句标识并委托 SqlSession 执行；真正的 SQL 和结果映射来自 Mapper 元数据。
+
+2. **Executor 有哪些常见类型？**
+
+   Simple 每次创建 Statement，Reuse 尝试复用 Statement，Batch 累积更新后批量提交；选择 Batch 时必须明确 flush、异常定位和生成键处理。
+
+**易错点：**
+
+- 只回答“动态代理执行 SQL”，说不清 MappedStatement、Executor、StatementHandler 与 JDBC 的职责边界。
+- 把 SqlSession 保存为单例字段跨线程使用，绕开 Spring 的事务绑定与生命周期管理。
+
+**参考来源：**
+
+- [真实面经线索（题目已改写）：小红书 Java 后端岗位面经转载（牛客）](https://www.nowcoder.com/feed/main/detail/b9a57fd0856149ef87a55f80ade7f8fc)
+- [高频题库参考（内容已重写）：JavaGuide：MyBatis 常见面试题](https://javaguide.cn/system-design/framework/mybatis/mybatis-interview.html)
+- [技术校准：MyBatis 3：Java API 与 Mapper](https://mybatis.org/mybatis-3/java-api.html)
+
+校验日期：2026-08-06
+
+## Q51：MyBatis 的 #{} 和 ${} 有什么区别，SQL 注入边界在哪里？
+
+**短回答：**
+
+#{} 通过 PreparedStatement 绑定数据值；${} 直接替换 SQL 文本。前者适合业务参数，后者只应接收代码内白名单片段，否则会越过预编译边界并引入注入风险。
+
+**原理：**
+
+- #{} 先保留 ? 占位符，再由驱动按类型绑定值。
+- 参数中的引号和关键字不会经 #{} 变成 SQL 结构。
+- ${} 在解析阶段直接替换文本，可改变列名、表名和排序。
+- 动态标识符必须由后端枚举映射为固定常量。
+- 普通条件优先使用 if、choose、foreach 与 #{}，不要拼接用户输入。
+
+**代码 / 场景：**
+
+按用户名查询写成 WHERE username = #{username}。排序接口接收 sortKey 枚举，服务端通过 Map.of("createdAt", "created_at", "name", "user_name") 选择固定列，再交给 ${column}；order 也只允许 ASC/DESC 两个常量。绝不能把请求中的 orderBy 原样放进 ${}。
+
+**递进追问：**
+
+1. **为什么列名不能直接使用 #{}？**
+
+   占位符表达的是数据值，数据库会把它作为字符串或其他值类型处理，而不是 SQL 标识符；动态列名必须在生成 SQL 结构前由可信白名单确定。
+
+2. **使用 ${} 就一定有漏洞吗？**
+
+   不一定，若替换内容完全来自代码内固定常量或严格枚举映射，风险可控；漏洞来自不可信输入进入 SQL 结构，而不是符号本身。
+
+**易错点：**
+
+- 认为用了 MyBatis 就天然防注入，忽略 ${}、拼接 LIKE、动态排序和批量片段仍可能接入不可信文本。
+- 用关键词过滤或手工转义保护动态列名，遗漏编码、注释和数据库方言差异；正确边界应是枚举白名单。
+
+**参考来源：**
+
+- [真实面经线索（题目已改写）：阿里、腾讯、VIVO、OPPO Java 面经复盘（牛客）](https://www.nowcoder.com/discuss/422046)
+- [高频题库参考（内容已重写）：JavaGuide：MyBatis 常见面试题](https://javaguide.cn/system-design/framework/mybatis/mybatis-interview.html)
+- [技术校准：MyBatis 3：映射 XML](https://mybatis.org/mybatis-3/sqlmap-xml.html)
+
+校验日期：2026-08-06
+
+## Q52：MyBatis 一级、二级缓存有什么区别，什么时候会失效？
+
+**短回答：**
+
+一级缓存属于会话，二级缓存属于 Mapper 命名空间。写操作、提交回滚或显式刷新会清理缓存；跨表依赖与外部写入仍需自行处理。
+
+**原理：**
+
+- 一级缓存位于 Executor，默认范围是 SESSION。
+- localCacheScope=STATEMENT 时，每条语句结束即清理。
+- 二级缓存按 namespace 管理，需要显式启用。
+- 查询结果通常在会话提交或关闭后才进入二级缓存。
+- 写语句默认 flushCache=true；跨 namespace 和外部写入不会被自动推导。
+
+**代码 / 场景：**
+
+同一事务连续两次按 id 查询用户且没有更新，一级缓存可能让第二次不访问数据库；若随后执行 updateUser，再查会重新访问。对“用户 + 角色”跨表视图，不要简单依赖 UserMapper 二级缓存，因为 RoleMapper 更新未必清理它；更稳妥的是关闭该缓存或使用有明确失效策略的集中缓存。
+
+**递进追问：**
+
+1. **为什么二级缓存不是查询后立即对其他会话可见？**
+
+   当前会话可能仍会回滚；通常要等会话提交或关闭，事务边界确定后才把结果放入共享缓存，避免传播未提交数据。
+
+2. **一级缓存会不会导致读到旧值？**
+
+   会。同一 SqlSession 生命周期过长、数据库被其他事务修改或使用嵌套查询时都可能复用旧对象；应缩短会话边界，必要时清缓存或使用 STATEMENT 范围。
+
+**易错点：**
+
+- 把一级缓存说成“同一线程缓存”，它实际绑定 SqlSession；线程与会话只是框架集成下可能恰好关联。
+- 启用二级缓存后认为所有表更新都会自动失效，忽略 namespace、跨表依赖和多实例一致性边界。
+
+**参考来源：**
+
+- [真实面经线索（题目已改写）：小红书 Java 后端岗位面经转载（牛客）](https://www.nowcoder.com/feed/main/detail/b9a57fd0856149ef87a55f80ade7f8fc)
+- [高频题库参考（内容已重写）：JavaGuide：MyBatis 常见面试题](https://javaguide.cn/system-design/framework/mybatis/mybatis-interview.html)
+- [技术校准：MyBatis 3：Java API 与 Mapper](https://mybatis.org/mybatis-3/java-api.html)
+- [技术校准：MyBatis 3：配置与缓存](https://mybatis.org/mybatis-3/configuration.html)
+
+校验日期：2026-08-06
+
+## Q53：resultMap、懒加载与 N+1 查询是什么关系？
+
+**短回答：**
+
+resultMap 描述列、对象与集合的映射；嵌套查询可懒加载关联数据，却可能随父记录逐条补查而形成 N+1。懒加载只延后 SQL，消除 N+1 仍需 JOIN 或批量查询。
+
+**原理：**
+
+- association 映射一对一，collection 映射一对多。
+- 嵌套结果用一次 JOIN 组装对象图，id 配置帮助去重。
+- 嵌套查询先查父对象，再按外键调用另一条 select。
+- 懒加载代理在属性首次访问时触发关联查询。
+- JOIN、IN 批查或聚合查询应按结果集大小和分页语义选择。
+
+**代码 / 场景：**
+
+查询 50 个订单后逐个访问 order.items，若每个访问都触发 selectItemsByOrderId，就会产生 51 次 SQL。可以改成两次查询：先分页取 50 个订单，再用 WHERE order_id IN (...) 批量取明细并按 order_id 分组；这比把大明细表直接 JOIN 后再做错误的内存分页更可控。
+
+**递进追问：**
+
+1. **为什么 JOIN 也不总是优于两次批量查询？**
+
+   一对多 JOIN 会重复父表列并放大结果集，复杂关联还可能形成笛卡尔膨胀；两次批量查询能保留父级分页并控制传输量。
+
+2. **怎样确认线上出现 N+1？**
+
+   按一次请求关联 SQL 追踪，观察同一语句模板是否随父记录数重复执行；结合数据库慢日志、APM span 和集成测试中的查询计数验证。
+
+**易错点：**
+
+- 开启懒加载后就认为性能已优化，实际只是把大量 SQL 推迟到序列化或循环访问阶段。
+- 用一条多表 JOIN 解决所有关系，却没有处理重复行、分页失真、结果集膨胀和对象去重。
+
+**参考来源：**
+
+- [真实面经线索（题目已改写）：OPPO Java 后端一二面复盘（牛客）](https://www.nowcoder.com/discuss/411933101142585344)
+- [高频题库参考（内容已重写）：JavaGuide：MyBatis 常见面试题](https://javaguide.cn/system-design/framework/mybatis/mybatis-interview.html)
+- [技术校准：MyBatis 3：映射 XML](https://mybatis.org/mybatis-3/sqlmap-xml.html)
+
+校验日期：2026-08-06
+
+## Q54：MySQL 主从复制怎样工作，读写分离如何保证读到刚写的数据？
+
+**短回答：**
+
+主库记录 binlog，副本接收并重放事件。复制存在延迟，读写分离默认不保证写后立即可见；关键读取需通过粘主、等待复制位点或超时回主库显式保证。
+
+**原理：**
+
+- 主库提交事务并把变更写入 binlog。
+- 副本接收事件写入 relay log，再由应用线程重放。
+- 网络、大事务、锁等待和副本负载都会放大延迟。
+- 写后读可短暂粘主，或等待副本追到指定 GTID/位点。
+- 等待超时应回主库；半同步接收确认不等于副本已执行。
+
+**代码 / 场景：**
+
+用户修改昵称后，响应中记录写入时间或复制位点，接下来数秒的个人资料查询固定路由主库；商品推荐仍读副本。若订单确认页必须读到刚提交状态，可等待目标副本追到 GTID，超过几十毫秒立即回主库，并监控复制延迟与回退比例。
+
+**递进追问：**
+
+1. **主库写成功但副本还没同步时，直接重试读副本有用吗？**
+
+   不可靠，重试可能仍落到落后的副本并放大流量；应绑定明确位点、粘主或直接回主库，并设置等待预算。
+
+2. **半同步复制能否保证读副本立即一致？**
+
+   不能。它通常确认副本已接收日志，而不是每个副本都已执行完成；读请求仍可能落到未追平的副本。
+
+**易错点：**
+
+- 把主从复制描述成实时同步，忽略 relay/apply 阶段、复制延迟和大事务对追赶速度的影响。
+- 所有写后读都永久走主库，虽然规避延迟，却失去读扩展价值；应只把关键链路和有限一致性窗口路由到主库。
+
+**参考来源：**
+
+- [真实面经线索（题目已改写）：腾讯二面 Redis 与 MySQL 一致性追问（牛客）](https://www.nowcoder.com/discuss/766955367430438912)
+- [高频题库参考（内容已重写）：JavaGuide：MySQL 常见面试题](https://javaguide.cn/database/mysql/mysql-questions-01.html)
+- [技术校准：MySQL 8.4：主从复制](https://dev.mysql.com/doc/refman/8.4/en/replication.html)
+- [技术校准：MySQL 8.4：通过副本扩展读取](https://dev.mysql.com/doc/refman/8.4/en/replication-solutions-scaleout.html)
 
 校验日期：2026-08-06

@@ -9,9 +9,9 @@ import { denseProseBlocks } from './content/readability.js'
 
 const COMMUNITY_BANK_COUNTS = {
   'frontend-ai-interviews': 40,
-  'java-foundations': 50,
-  'java-backend-interviews': 48,
-  'java-ai-applications': 30,
+  'java-foundations': 60,
+  'java-backend-interviews': 54,
+  'java-ai-applications': 35,
 }
 
 const COMMUNITY_BANK_IDS = Object.keys(COMMUNITY_BANK_COUNTS)
@@ -41,10 +41,10 @@ describe('question catalog seed quality', () => {
   beforeEach(() => { db = createDatabase({ filename: ':memory:', bootstrap: false }).db })
   afterEach(() => db.close())
 
-  it('contains fourteen banks and 741 unique active questions', () => {
+  it('contains fourteen banks and 762 unique active questions', () => {
     expect(db.prepare('SELECT COUNT(*) count FROM question_banks').get().count).toBe(14)
-    expect(db.prepare('SELECT COUNT(*) count FROM questions WHERE archived_at IS NULL').get().count).toBe(741)
-    expect(db.prepare('SELECT COUNT(DISTINCT id) count FROM questions').get().count).toBe(741)
+    expect(db.prepare('SELECT COUNT(*) count FROM questions WHERE archived_at IS NULL').get().count).toBe(762)
+    expect(db.prepare('SELECT COUNT(DISTINCT id) count FROM questions').get().count).toBe(762)
     expect(db.prepare("SELECT COUNT(*) count FROM questions WHERE id IN ('q-1','js-q-100')").get().count).toBe(2)
     const ids = db.prepare(`
       SELECT id FROM questions
@@ -62,12 +62,19 @@ describe('question catalog seed quality', () => {
       SELECT id, display_number, title, body_md
       FROM questions WHERE bank_id='java-foundations' ORDER BY sort_order
     `).all()
-    expect(questions).toHaveLength(50)
+    expect(questions).toHaveLength(60)
+    const originalIdentityMap = questions
+      .slice(0, 50)
+      .map((question) => [question.id, question.display_number, question.title].join('|'))
+      .join('\n')
+    expect(crypto.createHash('sha256').update(originalIdentityMap).digest('hex'))
+      .toBe('b7f4862e5b7a6038645fc977272658795644b4a01deb54e48e6846f325c94613')
+
     const identityMap = questions
       .map((question) => [question.id, question.display_number, question.title].join('|'))
       .join('\n')
     expect(crypto.createHash('sha256').update(identityMap).digest('hex'))
-      .toBe('b7f4862e5b7a6038645fc977272658795644b4a01deb54e48e6846f325c94613')
+      .toBe('2d7a559a7d72c4aae8fb35a073dac3f77484d78d35c836248b7039148f771286')
 
     const diagrams = questions.flatMap((question) => (
       question.body_md.match(/\/content\/diagrams\/[a-z0-9-]+\/[a-z0-9-]+\.svg/g) ?? []
@@ -83,9 +90,9 @@ describe('question catalog seed quality', () => {
 
   it('uses fresh v2 ids for every rebuilt Java question', () => {
     const banks = [
-      ['java-foundations', 'java-foundations-v2', 50, 'java-foundations', 100],
-      ['java-backend-interviews', 'java-backend-v2', 48, 'java-backend-interviews', 48],
-      ['java-ai-applications', 'java-ai-applications-v2', 30, 'java-ai-applications', 40],
+      ['java-foundations', 'java-foundations-v2', 60, 'java-foundations', 100],
+      ['java-backend-interviews', 'java-backend-v2', 54, 'java-backend-interviews', 48],
+      ['java-ai-applications', 'java-ai-applications-v2', 35, 'java-ai-applications', 40],
     ]
 
     for (const [bankId, v2Prefix, count, oldPrefix, oldCount] of banks) {
@@ -113,7 +120,7 @@ describe('question catalog seed quality', () => {
     `).all()
     const directQuestions = questions.filter((question) => DIRECT_QUESTION_TITLE.test(question.title))
 
-    expect(questions).toHaveLength(128)
+    expect(questions).toHaveLength(149)
     expect(questions.filter((question) => COLD_JAVA_MAIN_TITLE.test(question.title))).toEqual([])
     expect(directQuestions.length / questions.length).toBeGreaterThanOrEqual(0.85)
   })
