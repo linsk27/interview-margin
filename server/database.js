@@ -229,6 +229,44 @@ function migrate(db) {
       db.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES(?, ?)').run(3, now)
     })()
   }
+
+  const seedIdentityMigration = db.prepare('SELECT 1 FROM schema_migrations WHERE version = 4').get()
+  if (!seedIdentityMigration) {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TRIGGER retire_seed_question_number_before_insert
+        BEFORE INSERT ON questions
+        WHEN NEW.provenance = 'seed' AND NEW.archived_at IS NULL
+        BEGIN
+          UPDATE questions
+          SET display_number = 'archived:' || id,
+              archived_at = COALESCE(archived_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+              version = version + 1,
+              updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+          WHERE bank_id = NEW.bank_id
+            AND display_number = NEW.display_number
+            AND id <> NEW.id
+            AND provenance = 'seed';
+        END;
+
+        CREATE TRIGGER retire_seed_question_number_before_update
+        BEFORE UPDATE OF bank_id, display_number, archived_at, provenance ON questions
+        WHEN NEW.provenance = 'seed' AND NEW.archived_at IS NULL
+        BEGIN
+          UPDATE questions
+          SET display_number = 'archived:' || id,
+              archived_at = COALESCE(archived_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+              version = version + 1,
+              updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+          WHERE bank_id = NEW.bank_id
+            AND display_number = NEW.display_number
+            AND id <> NEW.id
+            AND provenance = 'seed';
+        END;
+      `)
+      db.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES(?, ?)').run(4, now)
+    })()
+  }
 }
 
 function seedRoles(db) {
