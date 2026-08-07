@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import type { Annotation } from '../types'
 import { rehypeAnnotationMarks } from '../lib/annotationPlugin'
 import { remarkLearningSections } from '../lib/learningSections'
+import { appPath } from '../lib/api'
 import styles from './QuestionMarkdown.module.css'
 
 const DIAGRAM_SOURCE = /^\/content\/diagrams\/(?:[a-z0-9][a-z0-9-]*\/)*[a-z0-9][a-z0-9._-]*\.svg$/
@@ -100,7 +101,7 @@ function MarkdownDiagram({
   return (
     <span className={classNames('markdown-diagram', styles.diagram)} role="group" aria-label="技术图解">
       <img
-        src={src}
+        src={appPath(src)}
         alt={description}
         title={title}
         width={1200}

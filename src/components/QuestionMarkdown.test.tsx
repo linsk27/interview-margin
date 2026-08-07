@@ -1,5 +1,10 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('../lib/api', () => ({
+  appPath: (path: string) => `/interview${path}`,
+}))
+
 import { isSafeDiagramSource, QuestionMarkdown } from './QuestionMarkdown'
 
 afterEach(cleanup)
@@ -172,7 +177,7 @@ describe('QuestionMarkdown diagrams', () => {
     )
 
     const image = screen.getByRole('img', { name: 'Vue 依赖追踪流程' })
-    expect(image).toHaveAttribute('src', '/content/diagrams/vue-core/dependency-tracking-v1.svg')
+    expect(image).toHaveAttribute('src', '/interview/content/diagrams/vue-core/dependency-tracking-v1.svg')
     expect(image).toHaveAttribute('width', '1200')
     expect(image).toHaveAttribute('height', '720')
     expect(image).toHaveAttribute('loading', 'eager')
