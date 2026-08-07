@@ -35,7 +35,7 @@ const CURATED_BANKS = [
     shortTitle: '360 AI 一面',
     kicker: '360 INTERVIEW PLAYBOOK',
     category: '求职专项',
-    description: '面向 360 AI 应用前端一面的 72 道公共技术题解，覆盖 RAG、Agent、SSE、React、浏览器、手写题与跨栈工程。',
+    description: '面向 360 AI 应用前端一面的 72 道公共技术题解，覆盖 RAG、Agent、MCP / Skill / Tool、SSE / WebSocket 安全、React 与工程基础。',
     source: 'public/question-banks/360-ai-frontend.md',
     idPrefix: '360-ai-frontend',
     baseTags: ['360', 'AI 应用前端', '一面'],

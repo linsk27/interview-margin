@@ -88,6 +88,10 @@ describe('360 AI frontend bank importer', () => {
     expect(new Set(topLevelHeadings.slice(1)).size).toBe(10)
     expect(topLevelHeadings).toContain('# RAG 方案选型')
     expect(topLevelHeadings).toContain('# AI 编程工具安全')
+    expect(topLevelHeadings).toContain('# Agent 工程：MCP、Skill 与 Tool')
+    expect(topLevelHeadings).toContain('# 实时通信可靠性与攻击防护')
+    expect(first).not.toContain('# 操作系统进阶')
+    expect(first).not.toContain('# Java 与面向对象')
   })
 
   it('keeps the published IDs of existing and supplemental questions stable', () => {
@@ -133,6 +137,32 @@ describe('360 AI frontend bank importer', () => {
         `Q${question.number} 至少需要两个不同的 HTTPS 来源`,
       ).toBeGreaterThanOrEqual(2)
     }
+  })
+
+  it('backs the Agent and streaming questions with community evidence', () => {
+    const sections = parseQuestionMarkdown(build360AiBankMarkdown(source), {
+      idPrefix: '360-ai-frontend',
+      baseTags: ['360', 'AI 应用前端', '一面'],
+      preserveIds: false,
+    })
+    const questionsByNumber = new Map(
+      sections
+        .flatMap((section) => section.questions)
+        .map((question) => [Number(question.number), question]),
+    )
+
+    for (const number of [27, 28, 29, 30, 34, 78, 79, 80, 81, 82]) {
+      const question = questionsByNumber.get(number)
+      expect(question, `Q${number} 应存在`).toBeDefined()
+      expect(
+        question?.sources.some((item) => item.kind === 'community-interview'),
+        `Q${number} 应保留可核验社区题源`,
+      ).toBe(true)
+    }
+
+    expect(questionsByNumber.get(78)?.title).toContain('MCP、Tool Calling 与 Skill')
+    expect(questionsByNumber.get(81)?.title).toContain('鉴权')
+    expect(questionsByNumber.get(82)?.title).toContain('CSWSH')
   })
 
   it('publishes only generic, resolved learning content', () => {

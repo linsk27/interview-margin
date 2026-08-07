@@ -1,265 +1,308 @@
-export const SUPPLEMENTAL_360_AI_MARKDOWN = `# 操作系统进阶
+export const SUPPLEMENTAL_360_AI_MARKDOWN = `# Agent 工程：MCP、Skill 与 Tool
 
-## Q78：进程状态、PCB 与上下文切换如何协同？
+## Q78：MCP、Tool Calling 与 Skill 分别解决什么问题？
 **短回答：**
 
-进程状态描述“现在能不能运行以及在等什么”，PCB 保存“内核管理这个执行实体所需的信息”，上下文切换则完成“暂停一个执行实体并让另一个继续”。以常见模型看，进程会在运行、就绪、阻塞、停止和终止等状态间迁移；但这些名称不是所有系统都完全一致，Linux 还区分可中断睡眠、不可中断睡眠、跟踪停止和僵尸等状态。时钟中断、主动阻塞或更高优先级任务到来时，调度器可能保存当前任务的寄存器上下文，更新调度状态，再恢复下一个任务。状态迁移不等于每次都发生进程切换，进程切换也不等于把整个 PCB 复制一遍。
+- **Tool** 是可执行能力及其输入输出契约，例如查询订单、检索文档或写入工单。
+- **Tool Calling** 是模型用结构化参数表达“要调用哪个 Tool”的机制，真正执行、鉴权和回填结果仍由宿主应用负责。
+- **MCP** 是 Host、Client 与 Server 之间发现和调用 Tools、读取 Resources、使用 Prompts 的标准协议。
+- **Skill** 是按需加载的操作说明与配套资源，通常包含说明、脚本、参考资料和模板；它教 Agent “怎样完成一类任务”，但本身不等于远程协议或已经执行的 Tool。
+- **Agent** 负责理解目标、选择 Skill、决定是否调用 Tool，并控制循环、确认、失败恢复和停止条件。
+
+这道题来自小红书与牛客公开面经中的 MCP、Tool Calling、Skill 对比问法，不把四个概念压成同一层。
 
 **原理：**
 
-PCB 是概念名，在 Linux 中相关信息分散在 task_struct 及其引用的内存、文件、凭据和调度结构中。它通常包含标识、调度信息、保存的 CPU 上下文、地址空间引用、打开文件、信号状态和统计信息。就绪任务已经具备运行条件，只差 CPU；阻塞任务在等待 I/O、锁、定时器或事件，等待条件满足后只是回到可运行队列，并不保证立刻执行。调度器依据策略从可运行任务中选择下一个任务，底层切换代码保存和恢复程序计数器、栈指针及体系结构要求的寄存器；浮点或向量状态可能按体系结构策略延迟或按需处理。
+1. **模型层**：Tool Calling 产生工具名与 JSON 参数，输出只是调用意图，不应直接产生副作用。
+2. **协议层**：MCP 用 JSON-RPC、生命周期与能力协商，把工具发现和调用从某一家模型 API 中解耦。
+3. **知识层**：Skill 通过渐进披露加载说明；启动时只暴露名称与描述，命中任务后再读取完整步骤和所需资源。
+4. **编排层**：Agent 把用户目标、上下文、Skill 指引、工具结果和停止条件串成一次可观测运行。
 
-同一进程的线程切换通常共享地址空间和文件表，但仍需切换寄存器、栈和线程局部状态；不同进程切换还可能更换页表根及相关内存上下文。不能简单断言“换进程就清空 TLB”，因为现代处理器可用 ASID/PCID 标记地址空间，内核也会避免不必要的失效。上下文切换有直接成本，也有缓存、TLB 和分支预测器热度下降等间接成本。僵尸进程已经不再执行，只保留退出状态和少量记账信息等待父进程回收，因此不能把僵尸等同于阻塞。
+因此“接了 MCP 就有 Agent”“写了 Skill 就会自动执行”都不成立。MCP Server 可能只暴露一个只读 Tool；Skill 也可能完全不调用工具，只规范分析与交付格式。
 
 **代码 / 场景：**
-
-排查“服务 CPU 不高但延迟抖动”时，不要只看进程总 CPU。先同时记录可运行队列长度、非自愿上下文切换、I/O 等待和线程状态，再把现象对齐到时间线：
 
 ~~~text
-请求线程运行
-  -> 读取磁盘：进入等待队列
-  -> I/O 完成：被唤醒并进入可运行队列
-  -> 调度器选中：恢复寄存器与内存上下文
-  -> 继续处理请求
+用户：检查线上告警并生成复盘
+  -> Agent 命中 incident-review Skill，读取排障步骤和复盘模板
+  -> 模型选择 get_alerts Tool，并给出结构化参数
+  -> Host 将调用映射到 MCP Client
+  -> MCP Server 鉴权、执行并返回结果
+  -> Agent 按 Skill 校验证据，必要时请求人工确认，再生成复盘
 ~~~
 
-Linux 上可用 \`ps -eo pid,stat,ni,pri,psr,wchan:24,comm\` 看状态与等待点，用 \`/proc/<pid>/stat\` 或 \`/proc/<pid>/status\` 读取调度和切换计数，再用 \`perf sched\` 或跟踪点观察唤醒到真正上 CPU 的间隔。若线程已被唤醒却长期排队，重点看 CPU 饱和、优先级和绑核；若长期处于不可中断睡眠，则应继续追查具体 I/O 或内核等待点，而不是盲目增加线程。
+面试时可用“可移植排障流程”解释 Skill，用“统一连接告警平台”解释 MCP，用“get_alerts”解释 Tool，用“模型输出工具名和参数”解释 Tool Calling。
 
 **递进追问：**
 
-1. **状态迁移和上下文切换为什么不是一一对应？**
+1. **Skill 中可以带脚本，那它是不是 Tool？**
 
-   运行任务可能被中断后仍继续运行，此时只经历内核态处理而未换到另一任务；阻塞任务被唤醒时只变为可运行，是否立即执行取决于调度。反过来，两个可运行线程之间可以发生切换，而它们在抽象状态图上都只表现为“运行/就绪”变化。
-2. **线程切换一定比进程切换便宜吗？**
+   不必然。脚本是 Skill 的资源；只有宿主把它注册为可调用能力并定义输入、输出、权限与错误语义后，它才成为 Tool。不能因为目录里有脚本就绕过执行授权。
+2. **MCP 与普通 REST API 是替代关系吗？**
 
-   通常同地址空间线程避免了部分内存上下文切换，成本更低，但不是绝对结论。真正成本取决于工作集、缓存局部性、体系结构、调度位置和共享数据竞争；线程在不同核之间迁移也可能产生明显缓存一致性开销。
-3. **PCB 越大，上下文切换就一定越慢吗？**
+   不是。MCP Server 经常在内部复用 REST、数据库或命令行能力；MCP 统一的是 AI Host 侧的发现和调用协议，业务服务是否继续提供 REST 是另一层决策。
+3. **如何判断应该写 Skill 还是接 MCP？**
 
-   不一定。切换不会逐字节复制整个 PCB，只保存和恢复当前路径需要的机器状态并更新少量调度结构。更应观察实际切换频率、缓存失效和运行队列等待，而不是用 PCB 结构体大小直接推导性能。
+   可复用的步骤、规范和模板优先放 Skill；需要访问外部实时数据或执行动作时提供 Tool；当多个 Host 需要以统一协议发现这些能力时，再通过 MCP 暴露。
 
 **易错点：**
 
-- 不要把“就绪”说成正在运行；它只表示可以运行，CPU 仍可能由其他任务占用。
-- 不要说上下文切换必然保存所有硬件状态、刷新全部缓存或清空全部 TLB，这些行为受体系结构和内核实现影响。
-- 不要把用户态到内核态的模式切换都叫进程切换；一次系统调用可以返回原线程继续执行。
-- 不要用单一五状态图解释所有系统实现；先说明抽象模型，再补充目标系统的实际状态。
+- 不要把 Tool Calling 说成模型自己执行了函数；模型只生成调用意图。
+- 不要把 MCP 说成 Agent 框架、模型或知识库。
+- 不要宣称所有产品中的 Skill 都完全同构；应先说明所采用的 Skill 规范。
+- 不要让 Skill 文本或 Tool 描述替代服务端鉴权、参数校验和人工确认。
 
 **参考来源：**
 
-- [Linux proc_pid_stat(5)：进程状态与统计字段](https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html)
-- [Linux 内核文档：CFS 调度器设计](https://www.kernel.org/doc/html/latest/scheduler/sched-design-CFS.html)
-- [Linux 内核文档：体系结构相关的调度支持](https://www.kernel.org/doc/html/latest/scheduler/sched-arch.html)
+- [社区题源｜小红书：AI 应用开发一面](https://www.xiaohongshu.com/explore/6a342fec00000000210215bc)
+- [社区题源｜牛客：一场面试中的 Agent、MCP 与 Skill 问题](https://www.nowcoder.com/discuss/864153617182355456)
+- [社区题源｜牛客：AI 应用开发进阶面](https://www.nowcoder.com/discuss/908750485325086720)
+- [官方校验｜Agent Skills 规范](https://agentskills.io/specification)
+- [官方校验｜MCP 架构](https://modelcontextprotocol.io/docs/learn/architecture)
+- [官方校验｜OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
 
-## Q79：IPC、线程同步与 CPU 调度分别解决什么问题？
+## Q79：MCP 工具接口如何设计，发现、调用与流式结果怎样串起来？
 **短回答：**
 
-IPC 解决进程或隔离组件之间“怎样交换数据与通知事件”，线程同步解决并发执行者之间“怎样维护顺序、互斥和可见性”，CPU 调度解决多个可运行任务之间“谁在何时占用处理器”。三者会在同一系统里配合，但不能互相替代：共享内存提供传输载体，不自动保证并发正确；互斥锁保护临界区，不负责给线程分配 CPU；调度器让线程运行，也不会替应用消除数据竞争。回答时应先按问题域分类，再讨论管道、套接字、共享内存、互斥锁、条件变量、信号量和调度策略的取舍。
+真实面经会继续追问“怎样包装一个 MCP 工具、入参与出参怎么定义、结果能否流式”。完整链路是：
+
+1. Client 与 Server 先执行 initialize，协商协议版本和 capabilities，再进入 operation。
+2. Client 通过 tools/list 获取名称、描述和 input schema，Host 将它转换为模型可见的工具定义。
+3. 模型生成工具调用后，Host 校验参数、用户权限和确认策略，再发 tools/call。
+4. Server 返回结构化结果或错误；Host 把结果关联到原 call id，交给模型继续推理或直接展示。
+5. 传输层可流式承载消息，工具也可发送进度通知，但“流式传输”“业务进度”和“最终调用结果”要分开建模。
 
 **原理：**
 
-IPC 的边界通常是不同地址空间。管道和消息队列以复制或内核缓冲换取清晰的消息边界；本地或网络套接字适合流式、跨主机或语言无关通信；共享内存减少大块数据复制，但参与者必须另行定义所有权、发布时序和一致性协议；信号适合有限的异步通知，不适合承载复杂业务数据。说“共享内存必须加锁”过于绝对：只读快照、单生产者单消费者环形队列、正确使用原子操作的无锁结构可以不用互斥锁，但只要多个执行者并发修改普通数据，就必须有能建立 happens-before 关系的同步方案。
-
-线程同步发生在共享状态周围。互斥锁保证同一时刻只有一个持有者进入临界区；条件变量让线程在谓词不成立时休眠，并要求在锁保护下循环检查谓词，以处理虚假唤醒和条件变化；信号量用计数表达可用资源或完成事件，不应一律等同于锁；原子操作适合小而明确的状态转换，却不能自动维护多个字段组成的不变量。CPU 调度只考虑可运行实体，按普通分时、实时优先级、期限或平台策略分配 CPU。锁竞争会使线程阻塞，唤醒后进入可运行队列，再由调度器决定何时真正执行，这正是三者的交汇点。
+- **Schema 要窄**：名称稳定，描述写清适用条件；参数使用明确类型、枚举、长度和 required，避免一个万能字符串承载 SQL、路径或命令。
+- **结果要可判定**：区分成功数据、业务拒绝、可重试错误和未知错误；返回给模型的文本不能成为新的可信指令。
+- **副作用要显式**：只读、幂等、破坏性操作分别设置权限；写操作带幂等键、目标摘要和确认点。
+- **生命周期要完整**：超时、取消、断开、版本不兼容和 Server 重启都要有确定行为，不能只实现 tools/call 的快乐路径。
+- **可观测要关联**：runId、toolCallId、用户、Server、耗时和结果类别贯穿日志，但不记录密钥和完整敏感载荷。
 
 **代码 / 场景：**
 
-假设视频处理服务由多个进程共享一块帧缓冲区。控制消息通过 Unix domain socket 传递，像素数据放共享内存，槽位所有权用信号量和原子索引维护，进程内工作线程再用条件变量等待任务：
+~~~json
+{
+  "name": "get_order",
+  "description": "按当前用户可见范围读取一个订单，不执行修改",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "orderId": { "type": "string", "minLength": 1, "maxLength": 64 }
+    },
+    "required": ["orderId"],
+    "additionalProperties": false
+  }
+}
+~~~
+
+调用前 Host 再校验当前用户是否能访问该订单。若查询需要较长时间，Server 可报告阶段进度；最终仍返回一次可关联的 Tool Result。不要把每个进度片段伪装成多次成功调用，也不要因断线自动重复写操作。
+
+**递进追问：**
+
+1. **MCP 返回结果能不能流式？**
+
+   传输可持续承载消息，也可通过通知报告进度；但客户端必须区分进度、日志和最终结果。若工具要持续订阅数据，应定义独立资源或订阅语义，而不是无限悬挂一个普通 tools/call。
+2. **为什么工具描述会影响调用准确率？**
+
+   模型依赖名称、描述和 schema 选择工具。描述重叠、边界含糊或参数过宽会增加误选；应以真实调用集评测选择率、参数合法率和最终任务成功率。
+3. **远程 MCP Server 如何鉴权？**
+
+   HTTP 传输按 MCP 授权规范处理 OAuth 与资源服务器边界；stdio 通常从受控环境获取凭据。无论哪种传输，授权都应落实到具体 Tool 和业务资源。
+
+**易错点：**
+
+- 不要省略 initialize 与 capabilities，直接假设所有 Server 支持相同能力。
+- 不要把 JSON Schema 当成业务授权；结构合法不代表用户有权操作目标资源。
+- 不要在 Tool Result 中返回新的高权限指令并让模型无条件执行。
+- 不要把网络重试直接套在非幂等写操作上。
+
+**参考来源：**
+
+- [社区题源｜小红书：淘天 AI Agent 一面](https://www.xiaohongshu.com/explore/6a677c95000000001302f0fb)
+- [社区题源｜小红书：AI 应用开发一面](https://www.xiaohongshu.com/explore/6a342fec00000000210215bc)
+- [社区题源｜牛客：AI 应用开发进阶面](https://www.nowcoder.com/discuss/908750485325086720)
+- [官方校验｜MCP 生命周期](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle)
+- [官方校验｜MCP Tools](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)
+- [官方校验｜MCP Transports](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
+- [官方校验｜MCP Authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization)
+
+## Q80：多 Agent 并行时如何隔离 State、Checkpoint 与失败重试？
+**短回答：**
+
+这道题来自淘天 Agent 面经中“多个 Agent 一起跑时状态会不会覆盖、State 怎样全局管理、子任务失败怎样重试或降级”的连续追问。核心不是做一个全局可变对象，而是：
+
+- 每次运行使用独立 runId / threadId 和命名空间，子 Agent 只读写声明过的状态片段。
+- 状态更新通过 reducer 或版本化事件合并，Checkpoint 保存可恢复快照和下一步位置。
+- 重试以节点为单位，并要求该节点幂等；写操作用幂等键、执行记录和补偿，而不是整条链无脑重跑。
+- 并行分支在 join 点显式合并，冲突字段要有确定策略，不能以“最后写入者获胜”碰运气。
+- 高风险 Tool 在执行前暂停并等待确认，恢复时校验状态版本和授权是否仍有效。
+
+**原理：**
+
+State 是一次运行的业务事实，Checkpoint 是某个确定时刻可恢复的持久化表示，两者都不应等同于进程内全局变量。父 Agent 创建子任务时传入最小上下文和独立命名空间；子任务返回结构化产物，由父节点合并。并行写同一字段时，使用追加事件、集合并集、带版本 compare-and-set 或业务 reducer。
+
+失败至少分四类：瞬时网络错误可有限重试；参数错误回到规划或人工修正；权限拒绝不得重试绕过；已有副作用但响应丢失时先用幂等键查询执行结果。Checkpoint 还应记录模型、Prompt、Tool 版本和关键配置，否则“恢复”可能在新配置下走出另一条路径。
+
+**代码 / 场景：**
 
 ~~~text
-生产进程：等待空槽 -> 写入完整帧 -> 发布写索引 -> 通知“有数据”
-消费进程：等待有数据 -> 取得槽位 -> 处理帧 -> 归还空槽
-调度器：只在生产者或消费者处于可运行状态时为其分配 CPU
+run-42
+  plan
+   ├─ research / namespace=run-42:research
+   └─ verify   / namespace=run-42:verify
+  join(reducer: citations 去重 + conflicts 显式保留)
+  await_approval(version=7)
+  publish(idempotencyKey=run-42:publish:v7)
 ~~~
 
-设计时给每个槽位定义 FREE、WRITING、READY、READING 状态，并规定只有完成写入后才能以 release 语义发布 READY，消费者用 acquire 语义观察它。进程异常退出还要有超时、代次号或重建策略，否则普通 POSIX 信号量并不会自动修复业务不变量。压测时分别记录吞吐、阻塞时间、运行队列等待和上下文切换；如果共享内存很快但线程仍排队，瓶颈可能是调度或锁竞争，而不是 IPC 带宽。
+research 超时只重试 research；verify 已完成的结果从 Checkpoint 恢复。用户确认后若状态已从 version 7 变为 8，旧确认失效并重新展示影响范围，避免批准对象被替换。
 
 **递进追问：**
 
-1. **条件变量为什么必须配合谓词循环，而不是收到通知就直接继续？**
+1. **Checkpoint 越频繁越好吗？**
 
-   通知只表示“条件可能变化”，不是把条件所有权交给某个线程。线程醒来前其他线程可能再次改变状态，系统也允许虚假唤醒，因此应在互斥锁保护下使用 \`while (!predicate) wait()\`，醒来后重新验证共享状态。
-2. **信号量、互斥锁和消息队列怎样选择？**
+   不是。频繁持久化增加延迟和存储；应放在昂贵步骤后、人工确认前、外部副作用前后和可恢复边界上，并通过故障注入验证恢复点。
+2. **子 Agent 能否共享同一个 Memory？**
 
-   保护单一临界区优先用互斥锁；表达 N 个同类资源或事件计数可用信号量；若业务需要保留每个事件的载荷、顺序和失败边界，则使用消息队列更清楚。工具名称不是目标，关键是要表达的数据所有权和不变量。
-3. **提高线程优先级能修复竞态或死锁吗？**
+   可以共享经过授权的只读事实或显式共享区，但会话草稿、工具凭据和临时推理不应默认广播。共享内容要有范围、版本、来源和清理策略。
+3. **怎样证明重试没有重复执行？**
 
-   不能。优先级只影响获得 CPU 的机会，竞态来自缺少同步，死锁来自等待环。某些实时系统还需处理优先级反转，可用优先级继承等协议缓解，但它仍不能替代正确的锁顺序和超时设计。
+   对写 Tool 使用业务幂等键和执行表；测试“服务端成功但响应丢失”场景，重试后应读取同一执行结果，而不是创建第二次副作用。
 
 **易错点：**
 
-- 不要把 IPC 限定为共享内存，也不要把线程间的普通函数调用误称为 IPC。
-- 不要说“用了 volatile 就线程安全”；可见性、原子性、顺序性和复合不变量需要分别判断。
-- 不要在条件变量外修改谓词，或用一次 \`if\` 检查替代循环检查。
-- 不要认为调度器会理解业务事务；它调度执行实体，不知道订单、帧或队列项是否处于一致状态。
+- 不要把所有状态塞进一个可变 Map，并让多个 Agent 任意覆盖。
+- 不要把异常全部归为“再问一次模型”；权限和确定性参数错误不会因此消失。
+- 不要只保存对话文本却遗漏节点位置、Tool 结果和配置版本。
+- 不要在恢复后自动执行旧的人工确认，确认必须绑定具体版本与影响范围。
 
 **参考来源：**
 
-- [POSIX pthread_cond_wait：条件变量等待语义](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_cond_wait.html)
-- [Linux shm_overview(7)：POSIX 共享内存](https://man7.org/linux/man-pages/man7/shm_overview.7.html)
-- [Linux sched(7)：调度策略与优先级](https://man7.org/linux/man-pages/man7/sched.7.html)
+- [社区题源｜小红书：淘天 AI Agent 一面](https://www.xiaohongshu.com/explore/6a677c95000000001302f0fb)
+- [社区题源｜牛客：第四范式 Agent 实习面试](https://www.nowcoder.com/feed/main/detail/77a81a03b55143c89d1caf76833676d9)
+- [官方校验｜LangGraph Persistence](https://docs.langchain.com/oss/javascript/langgraph/persistence)
+- [官方校验｜OpenAI Agents SDK：Human in the loop](https://openai.github.io/openai-agents-js/guides/human-in-the-loop/)
 
-# Java 与面向对象
+# 实时通信可靠性与攻击防护
 
-## Q80：封装、继承和多态分别解决什么问题？
+## Q81：SSE / WebSocket 长连接怎样鉴权，断线后如何避免重连风暴？
 **短回答：**
 
-封装把状态、操作和不变量放在明确边界内，让调用者依赖公开契约而不是内部表示；继承表达稳定的“是一个”类型关系，让子类型复用或扩展父类型契约；多态让同一调用点面向抽象工作，运行时由实际对象选择实现。三者不是“代码复用三件套”：继承首先是可替换性承诺，复用只是可能的结果；多态也不只来自类继承，Java 接口与组合往往能提供更低耦合的实现。设计时通常先封装变化，再提取接口形成多态，只有存在真正稳定的子类型关系时才使用实现继承。
+牛客公开面经真实问到了 SSE / WebSocket 选型、长连接为何失效、如何鉴权，以及为什么使用指数退避而不是固定重连。可靠方案包含五层：
+
+1. 建连前完成身份认证，订阅或每条消息继续做资源级授权；连接成功不等于永久拥有所有操作权限。
+2. 用心跳发现半开连接，并让心跳间隔小于链路中最短的空闲超时。
+3. 断线后采用有上限的指数退避、随机抖动和总重试预算；401、403、协议错误不自动重试。
+4. 重连携带 runId、事件游标或序号，服务端去重并从可重放窗口续发，避免重复启动模型或重复写操作。
+5. 页面隐藏、网络切换和服务发布时只允许一个重连调度器运行，旧连接、定时器和监听器全部清理。
 
 **原理：**
 
-封装不等于把所有字段改成 private。有效封装还要求构造阶段建立合法状态、公开操作维护不变量、返回可控视图，并避免可变内部对象从 getter 泄漏。例如账户对象公开 debit 方法而不是让调用者任意修改 balance，方法可以统一检查额度、记录审计并保证失败时不产生半更新。不可变对象是强封装的一种形式，但并非所有对象都必须不可变。
+连接可能被浏览器休眠、移动网络切换、Nginx / 网关空闲超时、服务重启或中间 NAT 回收。固定间隔重试会让大量客户端在同一时刻再次冲击服务；指数退避降低频率，jitter 打散请求，但必须设置最大延迟和总时长。
 
-继承包含类型继承和实现继承。子类覆写实例方法后，Java 的动态方法分派根据运行时类型选择实现；但字段访问、静态方法和重载不遵循同一套运行时多态规则。正确继承必须满足父类型契约：不能加强前置条件、削弱后置条件或破坏可观察不变量。仅仅因为两个类“有一些相同字段”就建立继承，容易形成脆弱基类问题；组合把可变策略作为协作者注入，通常更易替换和测试。
-
-多态的价值是把变化收敛到实现端。调用者依赖 PaymentGateway 接口，新增实现时无需在每个调用处添加按类型分支。但接口并不会自动产生良好设计：过宽接口会迫使实现类提供无意义方法，缺少语义约束的接口也无法保证可替换。抽象应围绕业务能力和失败语义，而不是机械地为每个类生成一个接口。
+原生 EventSource 主要使用 GET，不能随意设置 Authorization Header；可使用安全 Cookie、先创建一次性订阅票据再 GET，或改用 fetch 流。票据应短期、一次性并绑定用户、订阅目标与来源，不能把长期 Token 放进 URL、日志和 Referer。WebSocket 建连时校验身份与 Origin，握手后仍按消息类型和资源做授权。
 
 **代码 / 场景：**
 
-支付场景可把“校验订单、记录结果”封装在应用服务，把支付渠道变化放进接口：
-
-~~~java
-interface PaymentGateway {
-    Receipt charge(Money amount, IdempotencyKey key);
-}
-
-final class CheckoutService {
-    private final PaymentGateway gateway;
-    Receipt checkout(Order order, IdempotencyKey key) {
-        order.ensurePayable();
-        return gateway.charge(order.total(), key);
-    }
-}
+~~~text
+POST /runs              -> 创建 runId（幂等）
+GET  /runs/42/events    -> SSE，携带短期订阅凭据
+断线 lastEventId=107
+等待 min(cap, base * 2^attempt) + jitter
+GET  /runs/42/events    -> 从 108 续发；不重新创建 run
 ~~~
 
-CardGateway 与 WalletGateway 都实现同一契约，CheckoutService 只依赖抽象，这体现多态；gateway 通过构造器组合进服务，没有为了复用几行代码建立 CheckoutService 子类。若不同渠道确有共同、稳定且不泄漏内部细节的算法骨架，可以谨慎抽取基类；若只是参数不同，优先用策略对象或配置。测试时用假实现验证重复幂等键、失败重试和金额不变量，而不是只断言调用了某个方法。
+若服务端返回 401 / 403，客户端停止自动重试并要求重新登录；若事件游标已过期，先拉取 run 快照再继续，而不是把新旧片段盲目拼接。
 
 **递进追问：**
 
-1. **重载和覆写都算多态吗？**
+1. **心跳能替代业务消息确认吗？**
 
-   广义上都可称多态，但面试中应区分：重载由编译器依据静态参数类型选择签名，覆写后的实例方法通过动态分派按运行时对象类型选择实现。字段隐藏和静态方法隐藏也不是实例方法覆写。
-2. **为什么常说“组合优于继承”？**
+   不能。心跳只证明链路仍活着；业务是否处理成功需要事件 id、ACK、幂等键或状态查询。
+2. **为什么 jitter 仍需重试预算？**
 
-   组合只暴露协作接口，可在运行时替换策略，也不会把父类的受保护状态和生命周期耦合给子类；继承则绑定父类契约和实现演进。不过当领域确有稳定子类型关系并需要可替换性时，继承仍然合理，不能把这句话理解成禁止继承。
-3. **把字段设为 private 后为什么仍可能破坏封装？**
+   jitter 只打散时间，不能阻止永久故障下的无限请求。预算耗尽后应进入手动恢复或较低频探测。
+3. **SSE 自动重连是否一定无损？**
 
-   getter 若直接返回可变集合，外部仍可绕过校验修改内部状态；构造器若保存调用方传入的可变对象引用也一样。可以使用防御性复制、不可变集合、只读视图和表达业务动作的方法保护边界。
+   不一定。服务端必须保存可重放窗口并正确处理 Last-Event-ID；超出窗口时返回快照恢复策略，否则只能重新开始。
 
 **易错点：**
 
-- 不要把封装简化成访问修饰符，也不要为所有字段机械生成 getter/setter。
-- 不要把继承当作默认复用手段；先验证子类型能否在所有父类型使用位置保持契约。
-- 不要说 Java 所有方法调用都是动态绑定，静态方法、字段和重载的解析规则不同。
-- 不要为了“面向接口”制造只有一个实现、没有变化理由且语义空洞的接口层。
+- 不要把 Token 长期放在 EventSource URL 查询参数中。
+- 不要对 401、403、参数错误和协议错误无限重试。
+- 不要在重连时重新创建生成任务，导致重复计费或副作用。
+- 不要只清理连接却遗漏重连定时器和网络、可见性监听器。
 
 **参考来源：**
 
-- [Oracle Java 教程：面向对象概念](https://docs.oracle.com/javase/tutorial/java/concepts/)
-- [Java 语言规范：覆写与隐藏](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html#jls-8.4.8)
-- [Oracle Java 教程：接口作为类型](https://docs.oracle.com/javase/tutorial/java/IandI/interfaceAsType.html)
+- [社区题源｜牛客：字节前端 SSE / WebSocket 追问](https://www.nowcoder.com/discuss/888046680824639488)
+- [社区题源｜牛客：网易互娱 SSE、长连接与鉴权](https://www.nowcoder.com/feed/main/detail/fcdbf2d6868347bc8256068c60dd70a0)
+- [社区题源｜牛客：Shopee WebSocket 心跳、重连与 JWT](https://www.nowcoder.com/feed/main/detail/e82a37ee238f4157af6e6c2d33fb31eb)
+- [官方校验｜MDN：Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
+- [官方校验｜Nginx：proxy read timeout](https://nginx.org/en/docs/http/ngx_http_proxy_module.html)
+- [官方校验｜AWS：Exponential Backoff and Jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/)
 
-## Q81：Java 集合体系应如何选型？
+## Q82：WebSocket 如何防御 CSWSH、消息洪泛和连接耗尽？
 **短回答：**
 
-Java 集合选型应先看语义，再看性能：是否需要重复元素、键值映射、插入顺序、排序、优先级、双端操作、空值以及并发访问；随后用真实的读取、插入、删除和遍历比例验证实现。一般顺序数据从 ArrayList 开始，去重用 Set，键查找用 Map，先进先出或栈用 ArrayDeque，按优先级取元素用 PriorityQueue。HashMap/HashSet 适合无序查找，LinkedHashMap/LinkedHashSet 保留可预测迭代顺序，TreeMap/TreeSet 提供按比较规则排序；并发场景再依据读写模型选择 ConcurrentHashMap、CopyOnWriteArrayList 或显式同步，而不是看到多线程就统一套 synchronized。
+这道题明确标为：由真实面经中的“WebSocket 如何鉴权、心跳与重连”延伸出的工程安全追问，不冒充社区原题原句。
+
+- **跨站握手**：使用 WSS，严格等值校验 Origin allowlist；Cookie 会被浏览器自动带上时，要防跨站 WebSocket 劫持（CSWSH）。
+- **授权绕过**：握手认证后，每条消息仍校验 action、目标资源和当前会话；退出、封禁或 Token 过期时主动断开。
+- **资源耗尽**：设置全局、租户、用户和 IP 连接上限，握手与消息分别限流，并设置空闲与最大生命周期。
+- **消息攻击**：只接受明确 schema，限制单帧、分片重组后完整消息和队列大小；持续超限直接关闭。
+- **慢消费者**：监控发送缓冲和有界队列，合并非关键 delta；长期积压时取消上游或断开，不能无限占内存。
+- **内容注入**：收到的文本和流式 AI 内容均按不可信数据处理，安全渲染 Markdown，禁止 eval 和原始危险 HTML。
 
 **原理：**
 
-List 表达有序、可重复的序列；Set 表达唯一成员；Map 表达键到值的关联，它不继承 Collection；Queue/Deque 表达消费顺序和两端操作。接口决定调用者能依赖的语义，具体实现决定复杂度、内存布局和并发保证。HashMap 的 get/put 在良好散列下是期望常数时间，但不是无条件最坏 O(1)；键的 equals 与 hashCode 必须一致，而且键放入后不应修改参与散列的字段。TreeMap 基于比较顺序，常见操作 O(log n)，比较器还必须与期望的键相等语义协调。
+CSWSH 类似针对 WebSocket 握手的跨站请求利用：恶意页面可能借受害者 Cookie 建连并读写数据。WebSocket 不依赖普通 CORS 预检作为安全边界，所以服务端要校验 Origin；但 Origin 也不能替代身份认证和消息级授权，因为非浏览器客户端可自行构造请求。
 
-LinkedHashMap 用额外链维护插入或访问顺序，适合可预测遍历和 LRU 骨架；EnumMap/EnumSet 在键或成员是固定枚举时通常更紧凑；PriorityQueue 只保证队头是优先元素，不保证迭代器输出全局排序。并发集合的语义也不同：ConcurrentHashMap 支持高并发访问且不允许 null 键值；CopyOnWriteArrayList 每次写入复制底层数组，适合小集合、读远多于写且需要快照遍历的场景，不适合高频更新；Collections.synchronizedList 提供同步包装，但复合操作和迭代仍需按文档在外部同步。选型最终应包含容量、对象开销、局部性和数据规模，而不仅是一张复杂度表。
-
-**代码 / 场景：**
-
-假设实现“按用户保存最近 100 条事件，并能并发读取”。外层键查询可用 ConcurrentHashMap，单个用户的有界事件缓冲不能只写成“先 size 再 remove 再 add”的三个独立线程安全调用，因为复合不变量仍会竞争。可以让每个用户拥有一把细粒度锁和 ArrayDeque：
-
-~~~java
-final class RecentEvents {
-    private final ArrayDeque<Event> deque = new ArrayDeque<>();
-    synchronized void add(Event event) {
-        if (deque.size() == 100) deque.removeFirst();
-        deque.addLast(event);
-    }
-    synchronized List<Event> snapshot() {
-        return List.copyOf(deque);
-    }
-}
-~~~
-
-如果需求改为“按分数持续取最高项”，应换 PriorityQueue，而不是每次把 List 全量排序；如果要求按时间范围检索，单纯 Map 也许不是正确数据结构，应考虑 NavigableMap 或数据库索引。基准测试要用接近生产的数据分布，预热 JVM，并把构建集合、查询和 GC 成本分开测量，避免拿十个元素的微基准推导百万级行为。
-
-**递进追问：**
-
-1. **HashMap、LinkedHashMap 与 TreeMap 的核心差异是什么？**
-
-   HashMap 关注基于散列的查找且不承诺迭代顺序；LinkedHashMap 在其上维护插入或访问顺序；TreeMap 按自然顺序或 Comparator 维护有序树，可做范围查询。选择依据是顺序语义和操作模式，不是简单地比较谁“最快”。
-2. **ConcurrentHashMap 的单次操作线程安全，为什么业务仍可能出错？**
-
-   “读取余额、判断、再扣减”是跨多个调用的复合操作，其他线程可在中间插入。应使用 compute、merge 等原子组合 API，或在更高层用锁、事务和不可变值表达完整不变量。
-3. **需要排好序的结果时，为什么 PriorityQueue 不一定够？**
-
-   它只保证 peek/poll 取到当前优先元素，迭代顺序没有排序保证。若要完整有序输出，可反复 poll 到副本、最终排序，或根据更新与范围查询需求选择 TreeSet/TreeMap。
-
-**易错点：**
-
-- 不要把 HashMap 描述成始终 O(1)，也不要依赖其未承诺的迭代顺序。
-- 不要修改已作为 HashMap 键的对象中参与 equals/hashCode 的字段。
-- 不要把“并发集合”理解为所有复合业务操作都自动原子，也不要忽略迭代时的具体一致性语义。
-- 不要为了去重随手换 Set 后丢失顺序和重复次数；数据结构必须保留业务真正需要的信息。
-
-**参考来源：**
-
-- [Java 21 API：Collections Framework 概览](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/doc-files/coll-overview.html)
-- [Java 21 API：Map 接口](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html)
-- [Java 21 API：ConcurrentHashMap](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/ConcurrentHashMap.html)
-
-## Q82：ArrayList、LinkedList 与 ArrayDeque 如何选择？
-**短回答：**
-
-需要按索引读取、顺序遍历或在尾部追加时，默认选 ArrayList；需要真正的队列、栈或双端队列时，默认选 ArrayDeque；LinkedList 只有在已经持有迭代器位置并频繁在该位置插删、或确实需要 List 与 Deque 的组合契约时才可能合适，实际业务中比直觉少。ArrayList 中间插删要搬移元素，ArrayDeque 不支持随机索引，LinkedList 虽有 get(index) API 但要沿节点遍历。不能只背 Big-O：连续数组的缓存局部性和更少对象分配，常使 ArrayList/ArrayDeque 在中等规模下明显优于链表。
-
-**原理：**
-
-ArrayList 以可扩容数组保存引用，get/set 是常数时间，尾部 add 是摊销常数时间；扩容时会分配新数组并复制已有引用，中间插删则移动后续区间，因此是 O(n)。预知规模时可设置初始容量或 ensureCapacity 降低扩容次数，但不应为偶发峰值长期预留巨量空间。clear 会移除元素引用，却不承诺把容量缩回初始值。
-
-LinkedList 是双向链表。已知节点位置后连接或拆除节点是常数操作，但公共 List API 的 get(index)、add(index) 和 remove(index) 需要从头或尾遍历到位置，整体仍是 O(n)；每个元素还有前驱、后继引用和独立节点对象，带来内存与 GC 成本，指针跳转也不利于 CPU 缓存。因此“中间插入多就用 LinkedList”只有在位置查找不计入成本、且基准证明收益时才成立。
-
-ArrayDeque 为两端操作设计，addFirst/addLast/removeFirst/removeLast 通常为摊销常数时间，不允许 null 元素。它没有按索引随机访问语义，却通常比用 ArrayList 的 remove(0) 更适合 FIFO，也比遗留 Stack 更适合 LIFO。三者的普通迭代器都是 fail-fast 的尽力检测机制，ConcurrentModificationException 不能作为并发正确性保障；跨线程共享时仍需外部同步或选择并发队列。
+DoS 不只来自连接数。攻击者还可以频繁握手、发送超大分片消息、制造压缩放大、让服务端为未授权连接提前分配昂贵资源，或作为慢消费者让发送队列不断增长。防护要在昂贵操作之前完成认证、大小检查和配额判断。
 
 **代码 / 场景：**
 
-同一批任务可因操作语义选择不同容器：
-
-~~~java
-List<Task> page = new ArrayList<>(expectedSize); // 构建后按索引渲染
-Deque<Task> ready = new ArrayDeque<>();          // FIFO：尾部入、头部出
-Deque<Route> path = new ArrayDeque<>();          // LIFO：push / pop
+~~~text
+Upgrade 请求
+  -> WSS + Origin 精确白名单
+  -> 认证会话 / 一次性票据
+  -> 用户与 IP 连接配额
+  -> 建连
+每条消息
+  -> 最大尺寸 -> JSON Schema -> action / resource 授权 -> 速率限制
+发送侧
+  -> 有界队列 -> 高水位降级 -> 持续积压则关闭并取消上游
 ~~~
 
-若要维护最近 100 项，ArrayDeque 在满时 removeFirst、再 addLast，不会像 ArrayList.remove(0) 那样每次移动其余元素。若编辑器需要在长文档光标附近持续插入，直接使用 LinkedList 也未必理想：从字符偏移查找节点仍然线性，分段缓冲、rope 或专用文本结构可能更适合。比较实现时至少测量目标数据规模、头尾与中间操作比例、遍历速度和分配量；不要在基准中把随机数生成、日志或 I/O 混进被测路径。
+关闭连接时使用明确的业务错误码，但发给客户端的信息保持最小；安全日志记录用户、来源、动作和拒绝原因，不写入 Token、Cookie 或完整敏感消息。
 
 **递进追问：**
 
-1. **为什么 LinkedList 的“中间插入 O(1)”经常误导？**
+1. **为什么只校验 Origin 仍不安全？**
 
-   这个结论假设已经拿到目标节点或 ListIterator。若调用 add(index, value)，寻找 index 本身是 O(n)。真实代码通常先按索引定位，因此总成本仍是线性的，还要承担节点分配和较差局部性。
-2. **为什么不用 ArrayList 实现普通队列？**
+   Origin 主要约束浏览器跨站场景，脚本客户端可伪造；服务端仍需认证、资源级授权、速率限制和审计。
+2. **经典 WebSocket API 的 bufferedAmount 能做什么？**
 
-   尾部 add 很合适，但从头部 remove(0) 会移动后续全部元素。ArrayDeque 专门提供两端操作，能避免这种搬移；若需要阻塞、容量限制或多生产者多消费者语义，则进一步选择 BlockingQueue 或并发队列。
-3. **ArrayDeque 扩容时会不会失去队列顺序？**
+   它能提示客户端发送缓冲积压，可用于暂停非关键发送或断开；服务端还必须有自己的有界队列和慢消费者策略，不能只依赖浏览器指标。
+3. **握手成功后用户退出登录怎么办？**
 
-   不会。实现会在扩容时按逻辑次序重新布置元素，对调用者仍保持从头到尾的 Deque 顺序。扩容某次操作可能是 O(n)，因此承诺通常是摊销常数时间，而非每一次都严格 O(1)。
+   服务端维护会话到连接的映射，注销或撤销时关闭相关连接；长连接也要周期性检查会话有效性，不能只在握手时验证一次。
 
 **易错点：**
 
-- 不要看到频繁插删就默认 LinkedList；先把定位位置、对象开销和遍历成本一起计算。
-- 不要用 ArrayList.remove(0) 实现高频 FIFO，也不要继续用遗留 Stack 作为新代码的默认栈。
-- 不要向 ArrayDeque 放 null；其 API 用 null 表示某些无元素结果，规范明确禁止 null 元素。
-- 不要把 fail-fast 迭代器当作线程安全机制，它只用于尽早暴露部分错误修改，检测不作绝对保证。
+- 不要说“配置了 CORS 就能防 CSWSH”；WebSocket 握手必须单独校验 Origin。
+- 不要只限制单帧大小而忽略分片重组后的完整消息。
+- 不要在认证前创建模型任务、数据库订阅或大缓冲区。
+- 不要把未消毒的流式片段直接写入 innerHTML。
 
 **参考来源：**
 
-- [Java 21 API：ArrayList](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayList.html)
-- [Java 21 API：LinkedList](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/LinkedList.html)
-- [Java 21 API：ArrayDeque](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayDeque.html)
+- [社区题源｜牛客：WebSocket 如何鉴权](https://www.nowcoder.com/discuss/comment/14201373)
+- [社区题源｜牛客：Shopee WebSocket、JWT、XSS 与 CSRF](https://www.nowcoder.com/feed/main/detail/e82a37ee238f4157af6e6c2d33fb31eb)
+- [工程安全延伸｜CSDN：WebSocket 握手、消息鉴权与限流](https://blog.csdn.net/jam_yin/article/details/154494892)
+- [官方校验｜OWASP WebSocket Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html)
+- [官方校验｜RFC 6455](https://www.rfc-editor.org/rfc/rfc6455.html)
+- [官方校验｜MDN：WebSocket API](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)
 `

@@ -386,6 +386,12 @@ const REFERENCES = {
   mysqlTransactions: ['MySQL：InnoDB Transaction Model', 'https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-model.html'],
   flask: ['Flask：The Request Context', 'https://flask.palletsprojects.com/en/stable/reqcontext/'],
   goContext: ['Go：context package', 'https://pkg.go.dev/context'],
+  xhsAiDevInterview: ['社区题源｜小红书：AI 应用开发一面', 'https://www.xiaohongshu.com/explore/6a342fec00000000210215bc'],
+  xhsTaotianAgentInterview: ['社区题源｜小红书：淘天 AI Agent 一面', 'https://www.xiaohongshu.com/explore/6a677c95000000001302f0fb'],
+  nowcoderAgentQuestions: ['社区题源｜牛客：23 个 Agent 连续追问', 'https://www.nowcoder.com/discuss/864153617182355456'],
+  nowcoderMinimaxMcp: ['社区题源｜牛客：MiniMax AI App MCP 追问', 'https://www.nowcoder.com/feed/main/detail/1b59cf26967b45269d1274d208e5b35b'],
+  nowcoderByteSse: ['社区题源｜牛客：字节 SSE 与 WebSocket 追问', 'https://www.nowcoder.com/discuss/888046680824639488'],
+  nowcoderNetEaseSse: ['社区题源｜牛客：网易互娱 SSE、长连接与鉴权', 'https://www.nowcoder.com/feed/main/detail/fcdbf2d6868347bc8256068c60dd70a0'],
 }
 
 const LABELS = {
@@ -560,9 +566,24 @@ function referencesFor(sectionNumber, title) {
   if (text.includes('prompt injection') || text.includes('rag 投毒')) {
     return [REFERENCES.owaspPrompt, REFERENCES.owaspOutput, REFERENCES.ragPaper]
   }
-  if (text.includes('mcp')) return [REFERENCES.mcpArchitecture, REFERENCES.mcpTools, REFERENCES.owaspPrompt]
+  if (text.includes('mcp')) {
+    return [
+      REFERENCES.xhsAiDevInterview,
+      REFERENCES.xhsTaotianAgentInterview,
+      REFERENCES.nowcoderMinimaxMcp,
+      REFERENCES.mcpArchitecture,
+      REFERENCES.mcpTools,
+      REFERENCES.owaspPrompt,
+    ]
+  }
   if (text.includes('function calling') || text.includes('agent')) {
-    return [REFERENCES.mcpTools, REFERENCES.mcpArchitecture, REFERENCES.owaspPrompt]
+    return [
+      REFERENCES.nowcoderAgentQuestions,
+      REFERENCES.xhsAiDevInterview,
+      REFERENCES.mcpTools,
+      REFERENCES.mcpArchitecture,
+      REFERENCES.owaspPrompt,
+    ]
   }
   if (text.includes('transformer') || text.includes('q、k、v') || text.includes('decoder-only')) {
     return [REFERENCES.attentionPaper, REFERENCES.ragPaper, REFERENCES.owaspOutput]
@@ -572,7 +593,13 @@ function referencesFor(sectionNumber, title) {
   if (text.includes('vite') || text.includes('webpack')) return [REFERENCES.vite, REFERENCES.webpack, REFERENCES.typescript]
   if (text.includes('cors') || text.includes('csrf')) return [REFERENCES.mdnCors, REFERENCES.rfc9110, REFERENCES.owaspOutput]
   if (text.includes('sse') || text.includes('eventsource') || text.includes('流式') || text.includes('utf-8')) {
-    return [REFERENCES.mdnSse, REFERENCES.mdnStreams, REFERENCES.owaspOutput]
+    return [
+      REFERENCES.nowcoderByteSse,
+      REFERENCES.nowcoderNetEaseSse,
+      REFERENCES.mdnSse,
+      REFERENCES.mdnStreams,
+      REFERENCES.owaspOutput,
+    ]
   }
   if (sectionNumber === '6') return [REFERENCES.mdnStreams, REFERENCES.react, REFERENCES.typescript]
   if (text.includes('tcp')) return [REFERENCES.rfc9293, REFERENCES.rfc9110, REFERENCES.mdnStreams]

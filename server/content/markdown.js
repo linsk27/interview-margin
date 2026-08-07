@@ -15,6 +15,12 @@ function stableUuid(value) {
 }
 
 const TAG_RULES = [
+  ['MCP', ['mcp', 'model context protocol']],
+  ['Skill', ['skill', 'skill.md', '技能包']],
+  ['Agent', ['agent', '智能体', '多 agent', 'sub-agent']],
+  ['Tool Calling', ['tool calling', 'function calling', 'tools/call', '工具调用']],
+  ['实时通信', ['sse', 'server-sent', 'websocket', 'eventsource', 'streamable http', '流式']],
+  ['安全', ['cswsh', '攻击', '鉴权', '认证', '授权', 'xss', 'csrf', '洪泛', '耗尽']],
   ['Vue', ['vue', '响应式', 'computed', 'watch', 'pinia', 'vuex', 'nexttick']],
   ['React', ['react', 'hook', 'jsx', 'fiber']],
   ['JavaScript', ['javascript', '闭包', '原型', 'promise', 'event loop']],
@@ -22,10 +28,10 @@ const TAG_RULES = [
   ['工程化', ['vite', 'webpack', 'nginx', '性能', 'lighthouse', '部署']],
   ['后端', ['flask', 'node', 'jwt', 'rbac', 'cors', 'restful', 'sqlalchemy']],
   ['数据库', ['mysql', 'sql', '索引', '事务', 'redis']],
-  ['AI / RAG', ['rag', 'embedding', 'agent', 'prompt', 'sse', 'token', 'contextforge']],
+  ['AI / RAG', ['rag', 'embedding', 'prompt', 'token', 'contextforge']],
   ['小程序', ['uniapp', '小程序', '页面栈', '微信']],
   ['IoT', ['ble', '蓝牙', 'mqtt', 'gatt', 'mtu']],
-  ['网络', ['tcp', 'udp', 'http', 'osi', '网络']],
+  ['网络', ['tcp', 'udp', 'http', 'websocket', 'osi', '网络']],
   ['可视化', ['three.js', 'raycaster', 'echarts', '数字孪生']],
   ['项目拷打', ['项目', 'crud', 'srm', 'amz123', '包装']],
   ['场景题', ['排查', '怎么办', '失败', '卡顿', '中断', '异常']],
@@ -35,11 +41,16 @@ function slugify(value) {
   return value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
 }
 
-function inferTags(title, plainText, baseTags = []) {
-  const haystack = `${title} ${plainText}`.toLowerCase()
-  return [...baseTags, ...TAG_RULES
+export function inferTags(title, plainText, baseTags = []) {
+  const normalizedTitle = title.toLowerCase()
+  const normalizedBody = plainText.toLowerCase()
+  const matchedTags = (haystack) => TAG_RULES
     .filter(([, keywords]) => keywords.some((keyword) => haystack.includes(keyword)))
-    .map(([tag]) => tag)]
+    .map(([tag]) => tag)
+  const titleTags = matchedTags(normalizedTitle)
+  const fallbackTags = titleTags.length ? [] : matchedTags(normalizedBody).slice(0, 2)
+
+  return [...baseTags, ...titleTags, ...fallbackTags]
     .filter((tag, index, tags) => tags.indexOf(tag) === index)
     .slice(0, 6)
 }
@@ -63,6 +74,7 @@ const COMMUNITY_SOURCE_HOSTS = [
   'nowcoder.com',
   'maimai.cn',
   'xiaohongshu.com',
+  'csdn.net',
 ]
 
 const CURATED_GUIDE_SOURCE_HOSTS = [
