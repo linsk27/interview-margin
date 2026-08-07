@@ -1,0 +1,7 @@
+[Unit]
+Description=Restart interview-margin Cloudflare Tunnel when disconnected
+After=network-online.target cloudflared-interview-margin.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/cloudflared-interview-margin-healthcheck

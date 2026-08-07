@@ -4,7 +4,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  api, ApiError, createInvitation, listInvitations, revokeInvitation,
+  api, ApiError, appPath, createInvitation, listInvitations, revokeInvitation,
   type ManagedInvitation,
 } from '../lib/api'
 import { invitationLink } from '../lib/invitations'
@@ -619,5 +619,5 @@ function InvitationManager() {
 
 function BackupManager({ backups, onReload }: { backups: BackupRecord[]; onReload: () => Promise<void> }) {
   const create = async () => { await api('/api/backups', { method: 'POST' }); await onReload() }
-  return <div className="admin-backups"><header><div><DatabaseBackup /><p><strong>SQLite 在线备份</strong><span>WAL 一致性备份，自动保留最近 30 份。</span></p></div><button className="primary-button" onClick={create}><Plus />立即备份</button></header><section>{backups.map((item) => <article key={item.filename}><div><strong>{item.filename}</strong><span>{new Date(item.createdAt).toLocaleString()} · {(item.size / 1024 / 1024).toFixed(2)} MB</span></div><a href={`/api/backups/${item.filename}`}><Download />下载</a></article>)}</section><footer><History />管理操作会写入审计日志；管理员接口不会读取其他用户的私人批注正文。</footer></div>
+  return <div className="admin-backups"><header><div><DatabaseBackup /><p><strong>SQLite 在线备份</strong><span>WAL 一致性备份，自动保留最近 30 份。</span></p></div><button className="primary-button" onClick={create}><Plus />立即备份</button></header><section>{backups.map((item) => <article key={item.filename}><div><strong>{item.filename}</strong><span>{new Date(item.createdAt).toLocaleString()} · {(item.size / 1024 / 1024).toFixed(2)} MB</span></div><a href={appPath(`/api/backups/${item.filename}`)}><Download />下载</a></article>)}</section><footer><History />管理操作会写入审计日志；管理员接口不会读取其他用户的私人批注正文。</footer></div>
 }

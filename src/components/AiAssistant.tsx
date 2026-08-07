@@ -17,6 +17,7 @@ import {
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { appPath } from '../lib/api'
 import type { InterviewQuestion } from '../types'
 import styles from './AiAssistant.module.css'
 
@@ -199,7 +200,7 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/ai-chat', {
+      const response = await fetch(appPath('/api/ai-chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

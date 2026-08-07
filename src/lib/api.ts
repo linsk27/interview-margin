@@ -6,6 +6,11 @@ export interface PublicCatalog {
 }
 
 const CATALOG_API_TIMEOUT_MS = 2_000
+const APP_BASE = import.meta.env.BASE_URL === '/' ? '' : import.meta.env.BASE_URL.replace(/\/$/, '')
+
+export function appPath(path: string) {
+  return `${APP_BASE}${path.startsWith('/') ? path : `/${path}`}`
+}
 
 function isPublicCatalog(value: unknown): value is PublicCatalog {
   return Boolean(value && typeof value === 'object'
@@ -42,7 +47,7 @@ export async function api<T>(url: string, options: RequestInit = {}): Promise<T>
     headers.set('Content-Type', 'application/json')
   }
   const method = (options.method ?? 'GET').toUpperCase()
-  const response = await fetch(url, {
+  const response = await fetch(appPath(url), {
     ...options,
     headers,
     credentials: 'same-origin',
