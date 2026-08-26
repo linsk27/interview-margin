@@ -57,6 +57,22 @@ describe('question catalog seed quality', () => {
       .toBeGreaterThanOrEqual(24)
   })
 
+  it('keeps the library navigation at four broad learning directions', () => {
+    const categories = db.prepare(`
+      SELECT category, COUNT(*) count
+      FROM question_banks
+      GROUP BY category
+      ORDER BY category
+    `).all()
+
+    expect(categories).toEqual([
+      { category: 'AI 应用开发', count: 2 },
+      { category: '前端开发', count: 5 },
+      { category: '后端开发', count: 5 },
+      { category: '求职专项', count: 2 },
+    ])
+  })
+
   it('locks the Java foundation v2 identity map and its teaching diagrams', () => {
     const questions = db.prepare(`
       SELECT id, display_number, title, body_md

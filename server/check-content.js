@@ -20,6 +20,58 @@ function similarity(left, right) {
   return intersection / (a.size + b.size - intersection)
 }
 
+const AUDIT_SECTION_PATTERNS = {
+  answer: /^(?:\*\*)?(?:先背答案|短回答|题解)(?:[：:])(?:\*\*)?\s*$/,
+  glossary: /^(?:\*\*)?关键词翻译(?:[：:])(?:\*\*)?\s*$/,
+  mechanism: /^(?:\*\*)?(?:原理(?:\s*\/?\s*流程)?|机制拆解)(?:[：:])(?:\*\*)?\s*$/,
+  practice: /^(?:\*\*)?(?:代码\s*\/\s*场景|排查\s*\/\s*场景|项目\s*\/\s*场景|项目场景|项目落点)(?:[：:])(?:\*\*)?\s*$/,
+  followups: /^(?:\*\*)?(?:继续追问|递进追问)(?:[：:])?.*?(?:\*\*)?\s*$/,
+  pitfalls: /^(?:\*\*)?易错点(?:[：:])(?:\*\*)?\s*$/,
+  sources: /^(?:\*\*)?参考来源(?:[：:])(?:\*\*)?\s*$/,
+}
+const FENCE_START = /^[\t ]*(?:`{3,}|~{3,})/m
+
+function auditSections(markdown) {
+  const sections = { intro: [] }
+  let current = 'intro'
+  let fence
+  for (const line of String(markdown ?? '').replace(/\r\n?/g, '\n').split('\n')) {
+    const fenceMatch = line.trim().match(/^(```|~~~)/)
+    if (fence) {
+      sections[current].push(line)
+      if (fenceMatch?.[1] === fence) fence = undefined
+      continue
+    }
+    if (fenceMatch) {
+      fence = fenceMatch[1]
+      sections[current].push(line)
+      continue
+    }
+    const next = Object.entries(AUDIT_SECTION_PATTERNS)
+      .find(([, pattern]) => pattern.test(line.trim()))?.[0]
+    if (next) {
+      current = next
+      sections[current] ??= []
+      if (next === 'followups') sections[current].push(line)
+      continue
+    }
+    sections[current].push(line)
+  }
+  return Object.fromEntries(Object.entries(sections)
+    .map(([key, lines]) => [key, lines.join('\n').trim()]))
+}
+
+function proseLength(markdown) {
+  return markdown
+    .replace(/(```|~~~)[\s\S]*?\1/g, '')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[*_>#-]/g, '')
+    .replace(/\s+/g, '')
+    .length
+}
+
 const { db } = createDatabase({
   filename: ':memory:',
   bootstrap: { username: 'admin', password: 'ContentCheckPassword!1', skipCredentialFile: true },
@@ -107,6 +159,74 @@ try {
       preview: paragraph.slice(0, 96),
     })))
 
+  const activeQuestions = db.prepare(`
+    SELECT q.id, q.bank_id, q.section_id, q.title, q.body_md,
+      EXISTS(SELECT 1 FROM source_refs s WHERE s.question_id=q.id) AS has_sources
+    FROM questions q
+    WHERE q.archived_at IS NULL
+  `).all()
+  const auditedQuestions = activeQuestions.map((question) => ({
+    ...question,
+    sections: auditSections(question.body_md),
+  }))
+  const categoryDistribution = db.prepare(`
+    SELECT b.category,
+      COUNT(DISTINCT b.id) AS banks,
+      COUNT(q.id) AS questions
+    FROM question_banks b
+    JOIN questions q ON q.bank_id=b.id AND q.archived_at IS NULL
+    WHERE b.archived_at IS NULL
+    GROUP BY b.category
+    ORDER BY b.category
+  `).all()
+  const bankAudit = db.prepare(`
+    SELECT id, title, category
+    FROM question_banks
+    WHERE archived_at IS NULL
+    ORDER BY sort_order
+  `).all().map((bank) => {
+    const questions = auditedQuestions.filter((question) => question.bank_id === bank.id)
+    return {
+      bankId: bank.id,
+      title: bank.title,
+      category: bank.category,
+      questions: questions.length,
+      activeSections: new Set(questions.map((question) => question.section_id)).size,
+      sourcedQuestions: questions.filter((question) => question.has_sources).length,
+      mechanismSections: questions.filter((question) => question.sections.mechanism).length,
+      practiceSections: questions.filter((question) => question.sections.practice).length,
+      bodyUnder620: questions.filter((question) => question.body_md.length < 620).length,
+      shortAnswerOver160: questions.filter((question) => proseLength(question.sections.answer ?? '') > 160).length,
+      fencedCode: questions.filter((question) => FENCE_START.test(question.body_md)).length,
+      diagrams: questions.filter((question) => question.body_md.includes('/content/diagrams/')).length,
+    }
+  })
+  const qualityAudit = {
+    activeSections: db.prepare(`
+      SELECT COUNT(DISTINCT section_id) AS count
+      FROM questions WHERE archived_at IS NULL
+    `).get().count,
+    categoryDistribution,
+    byBank: bankAudit,
+    sourcedQuestions: activeQuestions.filter((question) => question.has_sources).length,
+    sourceReferences: db.prepare('SELECT COUNT(*) AS count FROM source_refs').get().count,
+    uniqueSourceUrls: db.prepare('SELECT COUNT(DISTINCT url) AS count FROM source_refs').get().count,
+    sectionCoverage: Object.fromEntries(Object.keys(AUDIT_SECTION_PATTERNS).map((section) => [
+      section,
+      auditedQuestions.filter((question) => question.sections[section]).length,
+    ])),
+    bodyUnder620: activeQuestions.filter((question) => question.body_md.length < 620).length,
+    bodyOver1800: activeQuestions.filter((question) => question.body_md.length > 1800).length,
+    shortAnswerNonWhitespaceCharsOver160: auditedQuestions.filter((question) => proseLength(question.sections.answer ?? '') > 160).length,
+    shortAnswerNonWhitespaceCharsOver240: auditedQuestions.filter((question) => proseLength(question.sections.answer ?? '') > 240).length,
+    shortAnswerNonWhitespaceCharsOver400: auditedQuestions.filter((question) => proseLength(question.sections.answer ?? '') > 400).length,
+    shortAnswerContainsFencedCode: auditedQuestions.filter((question) => FENCE_START.test(question.sections.answer ?? '')).length,
+    questionsWithFencedCode: activeQuestions.filter((question) => FENCE_START.test(question.body_md)).length,
+    practiceSectionsWithFencedCode: auditedQuestions.filter((question) => FENCE_START.test(question.sections.practice ?? '')).length,
+    questionsWithDiagrams: activeQuestions.filter((question) => question.body_md.includes('/content/diagrams/')).length,
+    longTitlesOver40: activeQuestions.filter((question) => question.title.length > 40).length,
+  }
+
   const titles = db.prepare('SELECT id, bank_id, title FROM questions ORDER BY bank_id, sort_order').all()
   const exact = new Map()
   for (const item of titles) {
@@ -151,6 +271,7 @@ try {
     denseParagraphs,
     exactDuplicateTitles: exactDuplicates,
     similarTitleReport: similar.slice(0, 30),
+    qualityAudit,
   }
   console.log(JSON.stringify(report, null, 2))
   if (bankCount !== 14 || questionCount !== 762 || uniqueCount !== 762 || newQuestionCount !== 320

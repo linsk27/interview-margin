@@ -231,7 +231,7 @@ export const javaAiInterviewBank = {
   shortTitle: 'Java + AI',
   kicker: 'JAVA AI APPLICATIONS',
   category: 'AI 应用开发',
-  description: '面向 Java 后端转 AI 应用开发岗位的 35 道高频题，覆盖模型 API、Prompt、工具调用、RAG、Agent、评测安全与 Spring AI 工程接入；JavaGuide 与小林用于建立知识主线，小红书公开真实面经仅作为高频主题样本，技术结论以官方文档和可验证工程机制为准。',
+  description: '面向 Java 后端转 AI 应用开发，覆盖模型 API、Prompt、工具调用、RAG、Agent、评测安全与 Spring AI 工程接入。',
   baseTags: ['Java', 'AI 应用', 'Spring AI', 'LangChain4j', 'RAG', 'Agent'],
   tone: 'green',
   sourcePolicy: 'community-guide-official',

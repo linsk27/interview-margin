@@ -59,7 +59,7 @@ describe('QuestionBankHub', () => {
       />,
     )
 
-    const categoryFilter = screen.getByRole('button', { name: '前端基础' })
+    const categoryFilter = screen.getByRole('button', { name: '前端开发' })
     expect(categoryFilter).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(categoryFilter)
     expect(categoryFilter).toHaveAttribute('aria-pressed', 'true')

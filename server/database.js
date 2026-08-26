@@ -7,6 +7,7 @@ import Database from 'better-sqlite3'
 
 import { BUILTIN_BANKS } from './content/banks.js'
 import { parseQuestionMarkdown } from './content/markdown.js'
+import { groupBuiltinSections } from './content/section-groups.js'
 
 const DEFAULT_SETTINGS = {
   theme: 'light',
@@ -331,12 +332,12 @@ function seedBuiltins(db, rootDir) {
       insertBank.run(bank.id, bank.title, bank.shortTitle, bank.kicker, bank.category,
         bank.description, JSON.stringify(bank.baseTags), bank.tone, bankOrder, now, now)
       const source = fs.readFileSync(sourcePath, 'utf8')
-      const sections = parseQuestionMarkdown(source, {
+      const sections = groupBuiltinSections(bank.id, parseQuestionMarkdown(source, {
         idPrefix: bank.idPrefix,
         baseTags: bank.baseTags,
         preserveIds: bank.preserveIds,
         normalizeReadability: true,
-      })
+      }))
       const currentQuestionIds = []
       for (const section of sections) {
         const proposedSectionId = `${bank.id}:${section.id}`

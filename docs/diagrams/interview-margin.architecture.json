@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Interview Margin 运行架构",
+    "output": "interview-margin.architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/linsk27/interview-margin",
+      "revision": "7d68617442df336bac4d054ddf5a779ab403ab78"
+    },
+    "views": [
+      {
+        "id": "guest_reading",
+        "label": "游客阅读",
+        "focus": ["visitor", "nginx", "spa", "catalog"],
+        "note": "静态题库快照允许游客直接阅读，并在 API 不可用时继续回退。"
+      },
+      {
+        "id": "learning_state",
+        "label": "登录与学习数据",
+        "focus": ["learner", "nginx", "spa", "api", "sqlite"],
+        "note": "登录后，批注、收藏、进度和复习状态由 Express API 写入 SQLite。"
+      },
+      {
+        "id": "ai_assistant",
+        "label": "AI 助手",
+        "focus": ["learner", "spa", "api", "model_api"],
+        "note": "浏览器只请求站内 API，模型密钥保留在服务端。"
+      }
+    ]
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [56, 72],
+    "cols": 5,
+    "gapX": 96,
+    "gapY": 94,
+    "cellW": 176,
+    "cellH": 76
+  },
+  "components": [
+    {
+      "id": "visitor",
+      "type": "external",
+      "label": "游客",
+      "sublabel": "只读访问",
+      "row": 0,
+      "col": 0
+    },
+    {
+      "id": "learner",
+      "type": "external",
+      "label": "学习用户",
+      "sublabel": "登录后同步进度",
+      "row": 2,
+      "col": 0
+    },
+    {
+      "id": "nginx",
+      "type": "cloud",
+      "label": "Nginx + TLS",
+      "sublabel": "阿里云 ECS 入口",
+      "tag": "HTTPS",
+      "row": 1,
+      "col": 1,
+      "sources": [
+        { "path": "ops/deploy-ecs.ps1", "label": "部署脚本" }
+      ]
+    },
+    {
+      "id": "spa",
+      "type": "frontend",
+      "label": "React SPA",
+      "sublabel": "题库阅读与学习工作区",
+      "row": 1,
+      "col": 2,
+      "sources": [
+        { "path": "src/App.tsx", "label": "应用入口" },
+        { "path": "src/lib/api.ts", "label": "目录回退" }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Express API",
+      "sublabel": "认证、批注、进度、管理",
+      "row": 1,
+      "col": 3,
+      "sources": [
+        { "path": "server/app.js", "label": "API 路由" }
+      ]
+    },
+    {
+      "id": "catalog",
+      "type": "database",
+      "label": "公开题库快照",
+      "sublabel": "catalog.json + Markdown",
+      "tag": "游客回退",
+      "row": 0,
+      "col": 3,
+      "sources": [
+        { "path": "server/content/export-public-catalog.js", "label": "快照导出" }
+      ]
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "账号与个人学习数据",
+      "row": 2,
+      "col": 3
+    },
+    {
+      "id": "model_api",
+      "type": "external",
+      "label": "模型 API",
+      "sublabel": "服务端代理调用",
+      "row": 1,
+      "col": 4
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "阿里云 ECS",
+      "wraps": ["nginx", "spa", "api", "catalog", "sqlite"]
+    },
+    {
+      "kind": "security-group",
+      "label": "服务端信任边界",
+      "wraps": ["api", "sqlite"]
+    }
+  ],
+  "connections": [
+    { "id": "visitor_entry", "from": "visitor", "to": "nginx", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "learner_entry", "from": "learner", "to": "nginx", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "serve_spa", "from": "nginx", "to": "spa", "label": "静态资源" },
+    { "id": "call_api", "from": "spa", "to": "api" },
+    { "id": "fallback_catalog", "from": "spa", "to": "catalog", "label": "目录回退", "variant": "dashed" },
+    { "id": "read_catalog", "from": "api", "to": "catalog", "label": "公开题库" },
+    { "id": "save_learning", "from": "api", "to": "sqlite", "label": "持久化", "labelDy": 24 },
+    { "id": "ask_model", "from": "api", "to": "model_api", "label": "服务端请求", "variant": "security" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "可访问性",
+      "items": ["ECS 直接提供 HTTPS", "游客优先读取公开题库快照", "实时 API 失败时保留静态目录回退"]
+    },
+    {
+      "dot": "emerald",
+      "title": "学习状态",
+      "items": ["游客无个人记忆", "登录后同步批注、收藏、进度和复习状态"]
+    },
+    {
+      "dot": "rose",
+      "title": "安全边界",
+      "items": ["浏览器不接触模型密钥", "账号与学习数据只由服务端访问"]
+    }
+  ]
+}

@@ -7,7 +7,7 @@ const rows = (text) => text.trim().split('\n').map((line) => {
 export const GENERATED_BANKS = [
   {
     id: 'git-engineering', title: 'Git 与协作工程', shortTitle: 'Git 工程', kicker: 'SOURCE CONTROL',
-    category: '软件工程', description: '从对象模型、分支协作到故障恢复与持续集成的 Git 高频面试题。',
+    category: '前端开发', description: '从对象模型、分支协作到故障恢复与持续集成的 Git 高频面试题。',
     baseTags: ['Git', '协作'], tone: 'green', source: 'public/question-banks/git-engineering.md',
     official: ['Git 官方参考', 'https://git-scm.com/docs'], scenario: '多人协作仓库、线上热修复与发布分支',
     secondary: ['Git 用户手册', 'https://git-scm.com/docs/user-manual'],
@@ -64,7 +64,7 @@ CI 中如何保证构建可复现？|||固定依赖锁、运行时与构建参�
   },
   {
     id: 'vue-core', title: 'Vue 核心与源码', shortTitle: 'Vue 核心', kicker: 'VUE INTERNALS',
-    category: '前端框架', description: '覆盖 Vue 3 响应式、渲染机制、组件设计、状态管理和性能排查。',
+    category: '前端开发', description: '覆盖 Vue 3 响应式、渲染机制、组件设计、状态管理和性能排查。',
     baseTags: ['Vue'], tone: 'green', source: 'public/question-banks/vue-core.md',
     official: ['Vue 官方指南', 'https://vuejs.org/guide/essentials/reactivity-fundamentals.html'], scenario: '大型 Vue 业务后台、复杂表单和组件库',
     secondary: ['Vue 深入响应式系统', 'https://vuejs.org/guide/extras/reactivity-in-depth.html'],
@@ -133,7 +133,7 @@ Vue 2 数组为什么要改写七个方法？|||Object.defineProperty 无法拦�
   },
   {
     id: 'react-core', title: 'React 核心与工程实践', shortTitle: 'React 核心', kicker: 'REACT PRACTICE',
-    category: '前端框架', description: '覆盖组件模型、Hooks、并发渲染、状态设计、性能和工程测试。',
+    category: '前端开发', description: '覆盖组件模型、Hooks、并发渲染、状态设计、性能和工程测试。',
     baseTags: ['React'], tone: 'rose', source: 'public/question-banks/react-core.md',
     official: ['React 官方文档', 'https://react.dev/reference/react'], scenario: '中大型 React 产品、数据流和交互性能优化',
     secondary: ['React 状态管理指南', 'https://react.dev/learn/managing-state'],
@@ -202,7 +202,7 @@ React 组件库如何避免样式和状态耦合？|||把无样式行为、设�
   },
   {
     id: 'frontend-engineering', title: '前端工程化、浏览器与 TypeScript', shortTitle: '前端工程', kicker: 'FRONTEND SYSTEMS',
-    category: '前端工程', description: '覆盖浏览器运行机制、网络性能、构建工具、TypeScript、测试和前端安全。',
+    category: '前端开发', description: '覆盖浏览器运行机制、网络性能、构建工具、TypeScript、测试和前端安全。',
     baseTags: ['工程化', 'TypeScript'], tone: 'blue', source: 'public/question-banks/frontend-engineering.md',
     official: ['MDN Web 文档', 'https://developer.mozilla.org/en-US/docs/Web'], scenario: '复杂前端应用的构建、性能、兼容性与质量保障',
     secondary: ['TypeScript Handbook', 'https://www.typescriptlang.org/docs/handbook/intro.html'],
@@ -359,7 +359,7 @@ Embedding 维度或模型变化如何迁移？|||向量不可直接跨模型比�
   },
   {
     id: 'database-cache', title: 'SQL、MySQL、Redis 与缓存', shortTitle: '数据库缓存', kicker: 'DATA SYSTEMS',
-    category: '数据系统', description: '覆盖 SQL 索引设计、事务与锁、查询优化、Redis 数据结构和缓存一致性。',
+    category: '后端开发', description: '覆盖 SQL 索引设计、事务与锁、查询优化、Redis 数据结构和缓存一致性。',
     baseTags: ['SQL', 'Redis'], tone: 'amber', source: 'public/question-banks/database-cache.md',
     official: ['MySQL 8.4 参考手册', 'https://dev.mysql.com/doc/refman/8.4/en/'], scenario: '订单、库存、题库和高并发缓存的数据设计',
     secondary: ['Redis 官方文档', 'https://redis.io/docs/latest/'],
@@ -416,7 +416,7 @@ Redis 分布式锁至少要满足什么？|||唯一随机令牌、带过期的�
   },
   {
     id: 'network-deployment', title: '网络、Linux、Nginx 与部署', shortTitle: '网络部署', kicker: 'NETWORK & DELIVERY',
-    category: '系统与部署', description: '覆盖 OSI/TCP/IP、TCP/UDP、TLS、Linux 排障、Nginx 和生产发布。',
+    category: '后端开发', description: '覆盖 OSI/TCP/IP、TCP/UDP、TLS、Linux 排障、Nginx 和生产发布。',
     baseTags: ['网络', 'Linux', 'Nginx'], tone: 'blue', source: 'public/question-banks/network-deployment.md',
     official: ['RFC 9293：TCP', 'https://datatracker.ietf.org/doc/html/rfc9293'], scenario: '公网 Web 服务、反向代理和线上故障排查',
     secondary: ['Nginx 官方文档', 'https://nginx.org/en/docs/'],
