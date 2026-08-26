@@ -17,7 +17,6 @@ const state: StudyState = {
   settings: {
     theme: 'light',
     readingSize: 'comfortable',
-    readingFont: 'serif',
     pageLayout: 'single',
     focusMode: false,
     notesOpen: true,

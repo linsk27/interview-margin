@@ -18,7 +18,7 @@ function emptyState() {
     annotations: [],
     activity: {},
     settings: {
-      theme: 'light', readingSize: 'comfortable', readingFont: 'serif', pageLayout: 'spread', focusMode: false, notesOpen: true,
+      theme: 'light', readingSize: 'comfortable', readingFont: 'sans', pageLayout: 'spread', focusMode: false, notesOpen: true,
     },
   }
 }

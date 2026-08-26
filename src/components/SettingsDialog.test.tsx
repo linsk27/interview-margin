@@ -13,45 +13,26 @@ afterEach(cleanup)
 const settings: ReaderSettings = {
   theme: 'light',
   readingSize: 'comfortable',
-  readingFont: 'serif',
   pageLayout: 'single',
   focusMode: false,
   notesOpen: true,
 }
 
 describe('reading settings dialog', () => {
-  it('exposes controlled serif and sans font choices and emits the selected font', () => {
-    const onChange = vi.fn()
-    const { rerender } = render(
+  it('uses one unified site font without exposing a redundant font selector', () => {
+    render(
       <SettingsDialog
         open
         settings={settings}
         spreadAvailable
         onClose={vi.fn()}
-        onChange={onChange}
+        onChange={vi.fn()}
       />,
     )
 
-    const fontGroup = screen.getByRole('radiogroup', { name: '正文字体' })
-    const serif = within(fontGroup).getByRole('radio', { name: /书刊宋体/ })
-    const sans = within(fontGroup).getByRole('radio', { name: /清晰黑体/ })
-    expect(serif).toHaveAttribute('aria-checked', 'true')
-    expect(sans).toHaveAttribute('aria-checked', 'false')
-
-    fireEvent.click(sans)
-    expect(onChange).toHaveBeenCalledWith({ ...settings, readingFont: 'sans' })
-
-    rerender(
-      <SettingsDialog
-        open
-        settings={{ ...settings, readingFont: 'sans' }}
-        spreadAvailable
-        onClose={vi.fn()}
-        onChange={onChange}
-      />,
-    )
-    expect(serif).toHaveAttribute('aria-checked', 'false')
-    expect(sans).toHaveAttribute('aria-checked', 'true')
+    expect(screen.queryByRole('radiogroup', { name: '正文字体' })).not.toBeInTheDocument()
+    expect(screen.queryByText('书刊宋体')).not.toBeInTheDocument()
+    expect(screen.queryByText('清晰黑体')).not.toBeInTheDocument()
   })
 
   it('labels each reading size with its visibly distinct target pixel size', () => {

@@ -12,7 +12,6 @@ describe('study state storage', () => {
 
     expect(parsed.settings.theme).toBe('dark')
     expect(parsed.settings.readingSize).toBe('comfortable')
-    expect(parsed.settings.readingFont).toBe('serif')
     expect(parsed.settings.pageLayout).toBe('single')
   })
 

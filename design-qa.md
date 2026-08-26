@@ -122,12 +122,12 @@ The source and focused implementation navigation were compared at the same 536 �
 
 No actionable P0, P1, or P2 issues remain.
 
-- Fonts and typography: the reader now exposes two genuinely different bundled Chinese families—Noto Serif SC and Noto Sans SC—and the setting cards preview the same Chinese phrase in each family. Body sizes resolve to 15, 17, and 20 px; section headings scale with the selected body size. At 390 px the two font cards stack, and both preview strings render without truncation.
-- Spacing and layout rhythm: the learning route retains the compact strip from the source. The current item adds a blue surface, stronger weight, and a 2 px inset underline without shifting surrounding items. The font-setting cards fit both 1280 px and 390 px viewports with no horizontal overflow.
+- Fonts and typography: the full interface now uses the self-hosted Noto Sans SC variable family for headings, reading copy, controls, and navigation, with IBM Plex Mono reserved for code and technical identifiers. Body sizes resolve to 15, 17, and 20 px; section headings scale with the selected body size. The redundant family selector was removed so every account receives the same typography.
+- Spacing and layout rhythm: the learning route retains the compact strip from the source. The current item adds a blue surface, stronger weight, and a 2 px inset underline without shifting surrounding items. Reading-size controls fit both 1280 px and 390 px viewports with no horizontal overflow.
 - Colors and visual tokens: active navigation and selected font/size cards use the existing accent tokens. Inactive items remain neutral, while the pitfalls label preserves its warm semantic color.
 - Image quality and asset fidelity: this change introduces no raster or illustrative assets. Existing Lucide interface icons and bundled web fonts remain sharp at both tested densities.
-- Copy and content: route labels remain content-derived (`速答 / 术语 / 原理 / 追问…`). Font choices are named `书刊宋体` and `清晰黑体`, with concise usage descriptions; size choices show their actual pixel values.
-- Accessibility and interaction: exactly one route button exposes `aria-current="location"`. Clicking a route item scrolls and focuses its target. Clicking `追问` or `来源` opens the related disclosure. Font and size options are radio groups with correct checked state.
+- Copy and content: route labels remain content-derived (`速答 / 术语 / 原理 / 追问…`). Size choices show their actual pixel values; the obsolete font-family choice is no longer shown.
+- Accessibility and interaction: exactly one route button exposes `aria-current="location"`. Clicking a route item scrolls and focuses its target. Clicking `追问` or `来源` opens the related disclosure. Size options are a radio group with correct checked state.
 
 ## Comparison History
 

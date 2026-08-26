@@ -12,7 +12,7 @@ import { groupBuiltinSections } from './content/section-groups.js'
 const DEFAULT_SETTINGS = {
   theme: 'light',
   readingSize: 'comfortable',
-  readingFont: 'serif',
+  readingFont: 'sans',
   pageLayout: 'spread',
   focusMode: false,
   notesOpen: true,

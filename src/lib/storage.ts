@@ -19,7 +19,6 @@ export function createDefaultState(): StudyState {
     settings: {
       theme: preferredTheme(),
       readingSize: 'comfortable',
-      readingFont: 'serif',
       pageLayout: 'single',
       focusMode: false,
       notesOpen: true,

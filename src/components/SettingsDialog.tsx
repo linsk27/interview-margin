@@ -1,15 +1,6 @@
-import { BookOpen, FileText, Focus, Keyboard, Moon, MonitorSmartphone, Sun, Type, X } from 'lucide-react'
+import { BookOpen, FileText, Focus, Keyboard, Moon, MonitorSmartphone, Sun, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import type { ReaderSettings, ReadingFont, ReadingSize, ThemeMode } from '../types'
-
-const READING_FONT_OPTIONS: Array<{
-  value: ReadingFont
-  label: string
-  description: string
-}> = [
-  { value: 'serif', label: '书刊宋体', description: '层次鲜明，适合沉浸长文' },
-  { value: 'sans', label: '清晰黑体', description: '笔画利落，适合快速扫读' },
-]
+import type { ReaderSettings, ReadingSize, ThemeMode } from '../types'
 
 const READING_SIZE_OPTIONS: Array<{
   value: ReadingSize
@@ -39,7 +30,6 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
 
   const setTheme = (theme: ThemeMode) => onChange({ ...settings, theme })
   const setSize = (readingSize: ReadingSize) => onChange({ ...settings, readingSize })
-  const setFont = (readingFont: ReadingFont) => onChange({ ...settings, readingFont })
   const setPageLayout = (pageLayout: ReaderSettings['pageLayout']) => onChange({ ...settings, pageLayout })
 
   return (
@@ -54,30 +44,6 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
           <div className="settings-segment" role="radiogroup" aria-label="页面主题">
             <button type="button" role="radio" aria-checked={settings.theme === 'light'} className={settings.theme === 'light' ? 'is-active' : ''} onClick={() => setTheme('light')}><Sun aria-hidden="true" />浅色</button>
             <button type="button" role="radio" aria-checked={settings.theme === 'dark'} className={settings.theme === 'dark' ? 'is-active' : ''} onClick={() => setTheme('dark')}><Moon aria-hidden="true" />深色</button>
-          </div>
-        </section>
-        <section className="settings-panel">
-          <div className="settings-row__label"><Type aria-hidden="true" /><div><strong>正文字体</strong><span>标题保持书刊层次，正文可按阅读习惯切换。</span></div></div>
-          <div className="settings-font-segment" role="radiogroup" aria-label="正文字体">
-            {READING_FONT_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={settings.readingFont === option.value}
-                className={`settings-font-option settings-font-option--${option.value}${settings.readingFont === option.value ? ' is-active' : ''}`}
-                onClick={() => setFont(option.value)}
-              >
-                <span className="settings-font-option__sample" aria-hidden="true">
-                  <strong>响应式更新</strong>
-                  <small>原理 · 边界 · Aa 0123</small>
-                </span>
-                <span className="settings-font-option__copy">
-                  <strong>{option.label}</strong>
-                  <small>{option.description}</small>
-                </span>
-              </button>
-            ))}
           </div>
         </section>
         <section className="settings-panel">

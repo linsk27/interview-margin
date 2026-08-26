@@ -35,11 +35,12 @@
   --color-rail-bg: oklch(16% 0.024 245);
   --color-rail-fg: oklch(97% 0.007 245);
 
-  --font-display: "Noto Serif SC Variable", ui-serif, serif;
-  --font-reading-serif: "Noto Serif SC Variable", ui-serif, serif;
-  --font-reading-sans: "Noto Sans SC Variable", ui-sans-serif, sans-serif;
-  --font-reading: var(--font-reading-serif);
-  --font-body: "Noto Sans SC Variable", ui-sans-serif, sans-serif;
+  --font-sans: "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sans);
+  --font-reading-serif: var(--font-sans);
+  --font-reading-sans: var(--font-sans);
+  --font-reading: var(--font-sans);
+  --font-body: var(--font-sans);
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
   --text-xs: 0.6875rem;
@@ -123,8 +124,4 @@
   --color-shadow: oklch(8% 0.012 248 / 0.24);
   --color-rail-bg: oklch(11.5% 0.014 248);
   --color-rail-fg: oklch(94% 0.008 245);
-}
-
-[data-reading-font="sans"] {
-  --font-reading: var(--font-reading-sans);
 }

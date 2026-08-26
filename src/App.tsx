@@ -514,10 +514,6 @@ export default function App() {
   }, [state.settings.theme])
 
   useEffect(() => {
-    document.documentElement.dataset.readingFont = state.settings.readingFont
-  }, [state.settings.readingFont])
-
-  useEffect(() => {
     const handleHistory = () => {
       const routeContext = workspaceRouteContext.current
       const route = resolveWorkspaceRoute({
