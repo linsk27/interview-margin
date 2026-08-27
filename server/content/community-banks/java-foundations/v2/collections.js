@@ -120,7 +120,7 @@ export const JAVA_FOUNDATION_V2_COLLECTIONS = {
       example: '删除所有失效会话可写 sessions.removeIf(Session::expired)，或显式 Iterator 遍历后调用 iterator.remove。增强 for 中直接 sessions.remove(item) 可能抛异常。CopyOnWriteArrayList 适合读多写少的快照遍历，但每次写会复制数组，不适合高频更新。',
       followUps: [
         { question: '修改元素内部字段会触发 fail-fast 吗？', answer: '通常不会，结构修改计数关注容器增删等结构变化；但元素可变仍可能破坏排序或哈希契约。' },
-        { question: 'ConcurrentHashMap 的迭代器会抛同样异常吗？', answer: '它通常提供弱一致遍历，可与并发更新共存，但不保证看到某个时刻的完整快照。' },
+        { question: 'ConcurrentHashMap 的迭代器会抛同样异常吗？', answer: '通常不会因并发更新抛出 ConcurrentModificationException。它不会锁住整张表，而是在遍历节点时读取可达状态，因此结果可能混合多个时刻：能看到部分迭代开始后的更新，也可能看不到另一些更新，但不能据此得到事务级快照。若导出、对账或权限判断要求稳定集合，应在业务边界使用版本、锁或受控复制，并校验遍历期间是否发生变化。' },
       ],
       pitfalls: ['把 ConcurrentModificationException 当作可靠的并发冲突检测器。', '在增强 for 中直接调用集合自身 remove，期待每次都能安全工作。'],
     }, GUIDE.collections01, OFFICIAL.iterator, OFFICIAL.arrayList),

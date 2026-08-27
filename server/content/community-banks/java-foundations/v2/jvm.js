@@ -10,7 +10,7 @@ export const JAVA_FOUNDATION_V2_JVM = {
       example: '堆使用正常但容器仍被 OOM Kill 时，不能只调大 Xmx；还要检查线程数量乘 Xss、DirectByteBuffer、Metaspace、JIT 代码缓存和本地库。通过进程 RSS、NMT、GC 日志和线程数逐层对账。',
       followUps: [
         { question: '方法区是否等同于永久代或 Metaspace？', answer: '方法区是 JVM 规范的逻辑区域，永久代和 Metaspace 是 HotSpot 在不同版本中的具体实现。' },
-        { question: '运行时常量池放在哪里？', answer: '它是每个类或接口常量池表的运行时表示，属于方法区逻辑内容，具体存储由实现决定。' },
+        { question: '运行时常量池放在哪里？', answer: '在 JVM 规范中，它是每个类或接口在方法区中的运行时结构，由 class 文件的 constant_pool 表构建，保存字面量以及指向类、字段和方法的符号引用；这些引用可在加载后按需要解析为可直接使用的目标。方法区只是逻辑归属，HotSpot 的具体表项、元数据和关联对象可能分布在 Metaspace 与堆等实现区域，不能据此推断单一物理地址。它也不等同于 String.intern 使用的字符串池，排查时应区分类元数据增长与字符串对象增长。' },
       ],
       pitfalls: ['继续把 JDK 8 以后方法区直接称为永久代。', '只看 Java 堆使用量，忽略直接内存、线程栈和元数据等本地内存。'],
     }, GUIDE.memory, OFFICIAL.jvmsRuntime),
@@ -53,8 +53,8 @@ export const JAVA_FOUNDATION_V2_JVM = {
       mechanism: '三类算法的权衡点是存活比例、移动成本、额外空间和停顿：\n- 标记—清除不必搬移所有存活对象，但空闲块分散，后续大对象分配可能困难。\n- 复制算法按存活对象量搬迁，分配连续且简单，却需要目标空间。\n- 标记—整理在标记后移动并压缩存活对象，减少碎片，但移动和更新引用成本更高。\n现代收集器常分区并组合这些思想，不应把整个堆简单归为单一算法。',
       example: '年轻代多数对象很快死亡，复制少量存活对象通常划算；老年代存活率较高，若每次复制全部存活对象成本更大。G1 按 Region 选择回收集合并转移存活对象，本质上组合分区、标记和复制整理思想。',
       followUps: [
-        { question: '复制算法是否一定浪费一半内存？', answer: '不一定。具体收集器可使用多个区域和动态回收集合，不必采用固定对半的经典教科书布局。' },
-        { question: '对象移动后引用怎样保持正确？', answer: 'GC 会更新指向被移动对象的引用，并通过转发表、记忆集等实现细节维护对象图。' },
+        { question: '复制算法是否一定浪费一半内存？', answer: '不一定。经典 semispace 把空间固定分成 from/to 两半，是为了保证最坏情况下所有存活对象都有目标位置；现代分代或区域化收集器可以只选择部分 Region 作为回收集合，再按实际存活量把对象疏散到其他 Survivor 或 Old Region，因此不必永久空置半个堆。代价并没有消失：收集器仍须预留足够的疏散空间，存活率估算错误或目标空间不足会导致 evacuation failure、退化回收甚至 Full GC，可从 GC 日志的回收集合、存活量和 to-space 指标验证。' },
+        { question: '对象移动后引用怎样保持正确？', answer: '移动式收集器复制对象时会记录旧地址到新地址的转发关系，并扫描 GC Roots 与已知引用槽，把仍指向旧对象的引用改写或重定向到新位置。停顿式收集器可在应用线程暂停时集中完成更新；并发移动收集器则可能借助读屏障、转发表或带状态的指针，让应用访问时安全解析到新对象。卡表和记忆集主要帮助定位跨代或跨 Region 的引用来源，不能简单等同为“自动修复全部指针”；具体步骤应以所用收集器文档和 GC 日志为准。' },
       ],
       pitfalls: ['把教科书三种算法机械对应到所有现代收集器实现。', '只比较暂停时间，不考虑额外空间、碎片和存活对象复制成本。'],
     }, GUIDE.gc, OFFICIAL.gcTuning),
@@ -75,7 +75,7 @@ export const JAVA_FOUNDATION_V2_JVM = {
       mechanism: '这些术语不是 JVMS 为所有实现规定的严格统一事件名。传统分代语境中，Minor GC 回收年轻代，通常频繁且停顿较短；Major GC 有时指老年代回收，有些日志却把它与 Full GC 混用；Full GC 往往进行更完整的堆回收、类卸载或压缩，停顿风险较大。分析时必须看所用 JDK、收集器和 GC 日志事件，例如 G1 的 Young、Mixed、Concurrent Mark 与 Full GC，而不是仅凭口头名称判断。',
       example: '监控显示“Major GC 次数增加”时，先核对采集器如何定义指标，并查看原始 GC 日志的 cause、回收前后占用和暂停。G1 连续 Young GC 本身不等于故障；若最终出现 to-space exhausted 后 Full GC，才需要结合分配与标记进度分析。',
       followUps: [
-        { question: 'Minor GC 一定不会回收老年代对象吗？', answer: '术语通常指年轻代回收，但具体收集器会处理跨区引用等辅助信息，仍应以实际日志事件为准。' },
+        { question: 'Minor GC 一定不会回收老年代对象吗？', answer: '在传统分代 HotSpot 语境中，Young/Minor GC 的回收集合通常只包含年轻代，不会把老年代 Region 当作本次回收目标；它仍要扫描记忆集中的老年代到年轻代引用，但“处理跨代引用”不等于回收老年代对象。G1 的 Mixed GC 会在年轻代之外加入部分老年代 Region，Full GC 的范围又更大，而 Major GC 这个名称在不同工具中并不统一。因此不能只看口头名称，应核对原始 GC 日志中的 Young、Mixed、Full 事件及各区域回收前后占用。' },
         { question: 'Full GC 次数为零就代表 GC 健康吗？', answer: '不代表。频繁年轻代停顿、并发周期跟不上或分配失败同样可能造成严重延迟。' },
       ],
       pitfalls: ['把 Major GC 与 Full GC 当作所有 JVM 中完全统一的同义词。', '只看 GC 次数，不看暂停、回收效果、分配率和触发原因。'],
@@ -109,7 +109,7 @@ export const JAVA_FOUNDATION_V2_JVM = {
       example: '递归解析深层树导致 StackOverflow，应改迭代或限制深度，而不是只调大 Xss。堆 OOM 时先比较对象数量和到 GC Root 的路径；若容器被杀却没有 Java 堆 OOM，则核对 RSS、线程栈和直接内存。',
       followUps: [
         { question: '调大 Xmx 能解决所有 OOM 吗？', answer: '不能。非堆、直接内存、线程和操作系统限制导致的问题不会由 Xmx 解决，内存泄漏也只是延后失败。' },
-        { question: 'StackOverflowError 是否只可能由无限递归造成？', answer: '不是。有限但过深的调用、过大的栈帧和较小线程栈也可能触发。' },
+        { question: 'StackOverflowError 是否只可能由无限递归造成？', answer: '不是。每次方法调用都要在线程的有限栈空间中建立栈帧，保存局部变量、操作数和返回信息；无限递归只是最常见的持续压栈方式，有限但过深的调用链、局部变量较多导致的大栈帧，或较小的 -Xss 也可能先耗尽栈。应从异常栈追踪观察重复帧和调用深度，并修复递归终止、改为迭代或限制输入深度；盲目调大 -Xss 只会推迟错误，还会增加每线程内存并限制可创建线程数。' },
       ],
       pitfalls: ['看到任何内存问题都先增大 Xmx，没有确认具体失败区域。', '捕获 OOM 后继续提供服务，忽略进程状态和诊断证据可能已经不可靠。'],
     }, GUIDE.memory, OFFICIAL.throwable, OFFICIAL.jvmsRuntime),

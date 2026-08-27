@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { formatEnrichedBody, enrichmentTextLength } from './enrichments/format.js'
+import { isConclusionOnlyDecisionAnswer } from './answer-quality.js'
 import { sourceKindForUrl } from './markdown.js'
 import { visualForCommunityQuestion } from './community-visuals.js'
 
@@ -140,6 +141,12 @@ export function assertCommunityInterviewBank(bank, { minimumQuestions = 24 } = {
     if (!Array.isArray(question.followUps) || question.followUps.length < 2
       || question.followUps.some((item) => !item?.question || enrichmentTextLength(item.answer) < 24)) {
       throw new Error(`${label}: 至少需要两组具体追问`)
+    }
+    const conclusionOnlyFollowUp = question.followUps.find((item) => (
+      isConclusionOnlyDecisionAnswer(item.question, item.answer)
+    ))
+    if (conclusionOnlyFollowUp) {
+      throw new Error(`${label}: 追问“${conclusionOnlyFollowUp.question}”只给结论，缺少原因或机制`)
     }
     if (!Array.isArray(question.pitfalls) || question.pitfalls.length < 2
       || question.pitfalls.some((item) => enrichmentTextLength(item) < 12)) {

@@ -1,4 +1,8 @@
 import { createDatabase } from './database.js'
+import {
+  extractFollowUpAnswers,
+  isConclusionOnlyDecisionAnswer,
+} from './content/answer-quality.js'
 import { denseProseBlocks } from './content/readability.js'
 
 function normalizeTitle(value) {
@@ -169,6 +173,17 @@ try {
     ...question,
     sections: auditSections(question.body_md),
   }))
+  const conclusionOnlyFollowups = auditedQuestions.flatMap((question) => (
+    extractFollowUpAnswers(question.body_md)
+      .filter((followUp) => isConclusionOnlyDecisionAnswer(followUp.question, followUp.answer))
+      .map((followUp) => ({
+        id: question.id,
+        bankId: question.bank_id,
+        title: question.title,
+        followUpQuestion: followUp.question,
+        answer: followUp.answer,
+      }))
+  ))
   const categoryDistribution = db.prepare(`
     SELECT b.category,
       COUNT(DISTINCT b.id) AS banks,
@@ -225,6 +240,7 @@ try {
     practiceSectionsWithFencedCode: auditedQuestions.filter((question) => FENCE_START.test(question.sections.practice ?? '')).length,
     questionsWithDiagrams: activeQuestions.filter((question) => question.body_md.includes('/content/diagrams/')).length,
     longTitlesOver40: activeQuestions.filter((question) => question.title.length > 40).length,
+    conclusionOnlyFollowupAnswers: conclusionOnlyFollowups.length,
   }
 
   const titles = db.prepare('SELECT id, bank_id, title FROM questions ORDER BY bank_id, sort_order').all()
@@ -269,6 +285,7 @@ try {
     genericTemplateCount,
     diagramQuestionCount,
     denseParagraphs,
+    conclusionOnlyFollowups,
     exactDuplicateTitles: exactDuplicates,
     similarTitleReport: similar.slice(0, 30),
     qualityAudit,
@@ -282,7 +299,8 @@ try {
     || incomplete.length || missingSections.length || missingMarkers.length
     || thinEnrichedQuestions.length || thinCommunityQuestions.length || thinFoundationQuestions.length
     || ai360MissingMarkers.length || thinAi360Questions.length
-    || genericTemplateCount || diagramQuestionCount < 29 || denseParagraphs.length) {
+    || genericTemplateCount || diagramQuestionCount < 29 || denseParagraphs.length
+    || conclusionOnlyFollowups.length) {
     process.exitCode = 1
   }
 } finally {

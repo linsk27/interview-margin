@@ -85,6 +85,20 @@ describe('community interview bank quality gate', () => {
     expect(assertCommunityInterviewBank(bank)).toBe(bank)
   })
 
+  it('rejects a follow-up that gives only a selection result without explaining why', () => {
+    const question = validQuestion(1)
+    question.followUps[0] = {
+      question: '上下文窗口大是否可以不用 RAG？',
+      answer: '不一定。持续更新、细粒度权限和需要引用的企业知识仍更适合 RAG；长窗口更适合少量材料的一次性综合分析。',
+    }
+    expect(() => assertCommunityInterviewBank({
+      id: 'example-bank',
+      title: '示例真实面经',
+      source: 'public/question-banks/example-bank.md',
+      sections: [{ title: '章节', questions: [question] }],
+    }, { minimumQuestions: 1 })).toThrow('只给结论，缺少原因或机制')
+  })
+
   it('accepts a Java foundation bank with a curated high-frequency guide and official calibration', () => {
     const questions = Array.from({ length: 24 }, (_, index) => javaFoundationQuestion(index + 1))
     const bank = {

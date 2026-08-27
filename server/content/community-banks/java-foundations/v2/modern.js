@@ -43,7 +43,7 @@ export const JAVA_FOUNDATION_V2_MODERN = {
       example: '运行时路由框架若要通过反射读取自定义 `@Route`，必须把保留策略设为 RUNTIME，并把 Target 设为 METHOD 或 TYPE。编译期生成代码的注解可以使用 SOURCE 或 CLASS，再由 annotation processor 处理，不必为运行时反射付出成本。',
       followUps: [
         { question: '@Inherited 能让接口上的注解被实现类继承吗？', answer: '不能。它只影响类上的注解沿超类关系查询，不适用于接口实现、字段或方法。' },
-        { question: 'RUNTIME 注解会自动执行逻辑吗？', answer: '不会。必须有框架、反射代码或其他处理器主动读取并解释它。' },
+        { question: 'RUNTIME 注解会自动执行逻辑吗？', answer: '不会。RetentionPolicy.RUNTIME 只保证注解元数据保留到运行期并可被反射读取，它不会注册回调或自动调用任何业务方法；必须由框架在扫描、创建代理或处理请求等明确生命周期中读取注解并执行约定逻辑。编译期 annotation processor 则在另一阶段消费 SOURCE/CLASS 元数据。没有任何消费者时，RUNTIME 注解只是惰性元数据，可用 isAnnotationPresent 或框架启动日志验证它是否被真正发现和处理。' },
       ],
       pitfalls: ['忘记设置 RUNTIME，却在生产中用反射读取，结果始终拿不到注解。', '把注解当成业务能力本身，忽略真正执行逻辑的处理器、代理与生命周期。'],
     }, GUIDE.basics03, OFFICIAL.annotation, OFFICIAL.retention),
@@ -64,7 +64,7 @@ export const JAVA_FOUNDATION_V2_MODERN = {
       mechanism: '选择时同时比较顺序语义与复杂度：\n- LinkedHashMap 通过双向链表串联条目，常规查找平均仍为 O(1)，可配置 accessOrder 并重写 removeEldestEntry 做简单容量淘汰。\n- TreeMap 基于红黑树，查找、插入、删除通常为 O(log n)，提供 floorKey、ceilingKey、subMap 等导航与范围视图。\n- TreeMap 的比较结果决定键是否相同：Comparator 返回 0 的两个键会占同一映射位置，即使 equals 为 false。\n- 两者默认都不是线程安全；视图通常与原映射联动，不是独立副本。',
       example: '接口需要按用户提交顺序输出字段时使用 LinkedHashMap；做价格区间索引并查找不高于目标价的最近档位时使用 TreeMap.floorEntry。简单本地 LRU 可借助访问序 LinkedHashMap，但并发缓存、过期和统计应交给专门缓存库。',
       followUps: [
-        { question: 'HashMap 能保证某种遍历顺序吗？', answer: '不能把当前观察到的顺序当作契约；需要插入序应明确选择 LinkedHashMap。' },
+        { question: 'HashMap 能保证某种遍历顺序吗？', answer: '不能。HashMap 迭代的是当前内部 table 的桶以及桶内链表或树节点，表观顺序会受到 key 哈希、容量、扩容、树化和具体 JDK 实现影响；某组数据多次运行看起来稳定，也不构成 API 契约，插入或删除一个键就可能改变结果。需要插入序或访问序应明确使用 LinkedHashMap，需要按键比较规则排序则使用 TreeMap；测试和序列化输出不能依赖偶然的 HashMap 顺序。' },
         { question: 'TreeMap 的 Comparator 为什么要与 equals 一致？', answer: '若比较为 0 但 equals 为 false，Map 会按同一个键处理，容易产生违反调用方直觉的覆盖和查询结果。' },
       ],
       pitfalls: ['用 LinkedHashMap 手写生产级缓存，却遗漏并发、过期、权重与命中率治理。', 'Comparator 只比较一个非唯一字段，导致多个业务键被 TreeMap 当作同一键。'],

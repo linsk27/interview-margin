@@ -1,3 +1,5 @@
+import { isConclusionOnlyDecisionAnswer } from '../answer-quality.js'
+
 const DEFAULT_VERIFIED_AT = '2026-07-20'
 
 function countText(value) {
@@ -48,6 +50,12 @@ export function assertEnrichmentEntries(entries, {
     if (!Array.isArray(entry.followUps) || entry.followUps.length < 2
       || entry.followUps.some((item) => !item?.question || countText(item.answer) < 28)) {
       throw new Error(`${bankId} Q${entry.number}: 至少需要两组具体追问与回答`)
+    }
+    const conclusionOnlyFollowUp = entry.followUps.find((item) => (
+      isConclusionOnlyDecisionAnswer(item.question, item.answer)
+    ))
+    if (conclusionOnlyFollowUp) {
+      throw new Error(`${bankId} Q${entry.number}: 追问“${conclusionOnlyFollowUp.question}”只给结论，缺少原因或机制`)
     }
     if (!Array.isArray(entry.pitfalls) || entry.pitfalls.length < 2
       || entry.pitfalls.some((item) => countText(item) < 14)) {

@@ -50,4 +50,17 @@ describe('content enrichment format', () => {
       bankId: 'test', expectedQuestions: [{ title: '示例题？' }],
     })).toThrow('mechanism 过短')
   })
+
+  it('rejects a follow-up that gives only a decision without its rationale', () => {
+    const followUps = [
+      {
+        question: '上下文窗口大是否可以不用 RAG？',
+        answer: '不一定。持续更新、细粒度权限和需要引用的企业知识仍更适合 RAG；长窗口更适合少量材料的一次性综合分析。',
+      },
+      entry.followUps[1],
+    ]
+    expect(() => assertEnrichmentEntries([{ ...entry, followUps }], {
+      bankId: 'test', expectedQuestions: [{ title: '示例题？' }],
+    })).toThrow('只给结论，缺少原因或机制')
+  })
 })
