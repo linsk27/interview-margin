@@ -16,6 +16,7 @@ const state: StudyState = {
   activity: {},
   settings: {
     theme: 'light',
+    fontTheme: 'clean',
     readingSize: 'comfortable',
     pageLayout: 'single',
     focusMode: false,

@@ -93,6 +93,30 @@
   --banner-height: 4rem;
 }
 
+:root[data-font-theme="clean"],
+.app-shell[data-font-theme="clean"] {
+  --font-display: var(--font-sans);
+  --font-reading: var(--font-sans);
+}
+
+:root[data-font-theme="playful"],
+.app-shell[data-font-theme="playful"] {
+  --font-display: "ZCOOL KuaiLe", var(--font-sans);
+  --font-reading: var(--font-sans);
+}
+
+:root[data-font-theme="notebook"],
+.app-shell[data-font-theme="notebook"] {
+  --font-display: "LXGW WenKai", var(--font-sans);
+  --font-reading: "LXGW WenKai", var(--font-sans);
+}
+
+:root[data-font-theme="flowing"],
+.app-shell[data-font-theme="flowing"] {
+  --font-display: "Zhi Mang Xing", "LXGW WenKai", var(--font-sans);
+  --font-reading: "LXGW WenKai", var(--font-sans);
+}
+
 [data-theme="dark"] {
   color-scheme: dark;
   --color-paper: oklch(17% 0.012 248);

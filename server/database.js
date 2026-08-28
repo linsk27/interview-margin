@@ -11,6 +11,7 @@ import { groupBuiltinSections } from './content/section-groups.js'
 
 const DEFAULT_SETTINGS = {
   theme: 'light',
+  fontTheme: 'clean',
   readingSize: 'comfortable',
   readingFont: 'sans',
   pageLayout: 'spread',

@@ -43,6 +43,7 @@ import {
   legacyStudyState,
   parseStudyState,
   progressFor,
+  saveFontTheme,
   uid,
   withActivity,
 } from './lib/storage'
@@ -510,8 +511,10 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = state.settings.theme
+    document.documentElement.dataset.fontTheme = state.settings.fontTheme
     document.documentElement.style.colorScheme = state.settings.theme
-  }, [state.settings.theme])
+    saveFontTheme(state.settings.fontTheme)
+  }, [state.settings.fontTheme, state.settings.theme])
 
   useEffect(() => {
     const handleHistory = () => {
@@ -966,6 +969,7 @@ export default function App() {
       className={`app-shell${workspaceView === 'banks' || workspaceView === 'admin'
       ? ' is-bank-hub is-notes-closed is-library-closed'
       : `${focusMode ? ' is-focus-mode' : ''}${notesVisible ? '' : ' is-notes-closed'}${visibleDrawers.libraryOpen ? '' : ' is-library-closed'}${notesResizing ? ' is-resizing-notes' : ''}`}`}
+      data-font-theme={state.settings.fontTheme}
       style={{ '--notes-panel-width': `${notesPanelWidth}px` } as CSSProperties}
     >
       <Rail
@@ -1057,6 +1061,7 @@ export default function App() {
         <Reader
           question={activeQuestion}
           annotations={activeAnnotations}
+          fontTheme={state.settings.fontTheme}
           readingSize={state.settings.readingSize}
           pageLayout={state.settings.pageLayout}
           initialScrollTop={activeProgress.scrollTop ?? 0}

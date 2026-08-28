@@ -77,6 +77,7 @@ function renderReader(
   const props = {
     question,
     annotations: [],
+    fontTheme: 'clean' as const,
     readingSize: 'comfortable' as const,
     pageLayout: 'single' as const,
     initialScrollTop: 0,

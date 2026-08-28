@@ -5,6 +5,7 @@ import { inspectMarkdownDiagrams } from './content/diagram-policy.js'
 export const roleSchema = z.enum(['admin', 'editor', 'learner'])
 export const settingsSchema = z.object({
   theme: z.enum(['light', 'dark']),
+  fontTheme: z.enum(['clean', 'playful', 'notebook', 'flowing']).default('clean'),
   readingSize: z.enum(['compact', 'comfortable', 'large']),
   readingFont: z.enum(['serif', 'sans']).default('sans'),
   pageLayout: z.enum(['single', 'spread']),

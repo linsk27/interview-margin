@@ -1,6 +1,6 @@
-import { BookOpen, FileText, Focus, Keyboard, Moon, MonitorSmartphone, Sun, X } from 'lucide-react'
+import { BookOpen, Brush, FileText, Focus, Keyboard, Moon, MonitorSmartphone, Sun, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import type { ReaderSettings, ReadingSize, ThemeMode } from '../types'
+import type { FontTheme, ReaderSettings, ReadingSize, ThemeMode } from '../types'
 
 const READING_SIZE_OPTIONS: Array<{
   value: ReadingSize
@@ -10,6 +10,18 @@ const READING_SIZE_OPTIONS: Array<{
   { value: 'compact', label: '紧凑', pixels: '15 px' },
   { value: 'comfortable', label: '标准', pixels: '17 px' },
   { value: 'large', label: '大字', pixels: '20 px' },
+]
+
+const FONT_THEME_OPTIONS: Array<{
+  value: FontTheme
+  label: string
+  description: string
+  sample: string
+}> = [
+  { value: 'clean', label: '清爽', description: '清楚耐看', sample: '今天也要会一道' },
+  { value: 'playful', label: '快乐', description: '标题有点怪可爱', sample: '开心刷题' },
+  { value: 'notebook', label: '手账', description: '答案像随手笔记', sample: '慢慢想明白' },
+  { value: 'flowing', label: '飘逸', description: '标题舒展，正文温和', sample: '风吹题页' },
 ]
 
 export function SettingsDialog({ open, settings, spreadAvailable, onClose, onChange }: {
@@ -29,6 +41,7 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
   }, [open])
 
   const setTheme = (theme: ThemeMode) => onChange({ ...settings, theme })
+  const setFontTheme = (fontTheme: FontTheme) => onChange({ ...settings, fontTheme })
   const setSize = (readingSize: ReadingSize) => onChange({ ...settings, readingSize })
   const setPageLayout = (pageLayout: ReaderSettings['pageLayout']) => onChange({ ...settings, pageLayout })
 
@@ -44,6 +57,32 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
           <div className="settings-segment" role="radiogroup" aria-label="页面主题">
             <button type="button" role="radio" aria-checked={settings.theme === 'light'} className={settings.theme === 'light' ? 'is-active' : ''} onClick={() => setTheme('light')}><Sun aria-hidden="true" />浅色</button>
             <button type="button" role="radio" aria-checked={settings.theme === 'dark'} className={settings.theme === 'dark' ? 'is-active' : ''} onClick={() => setTheme('dark')}><Moon aria-hidden="true" />深色</button>
+          </div>
+        </section>
+        <section className="settings-panel settings-panel--font">
+          <div className="settings-row__label"><Brush aria-hidden="true" /><div><strong>字体气质</strong><span>标题可以有性格，长答案仍保持容易阅读。</span></div></div>
+          <div className="settings-font-grid" role="radiogroup" aria-label="字体主题">
+            {FONT_THEME_OPTIONS.map((option) => {
+              const active = settings.fontTheme === option.value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  aria-label={`${option.label}字体，${option.description}`}
+                  className={`settings-font-option settings-font-option--${option.value}${active ? ' is-active' : ''}`}
+                  onClick={() => setFontTheme(option.value)}
+                >
+                  <span className="settings-font-option__sample" aria-hidden="true">{option.sample}</span>
+                  <span className="settings-font-option__meta">
+                    <strong>{option.label}</strong>
+                    <small>{option.description}</small>
+                  </span>
+                  {active && <span className="settings-font-option__current">当前</span>}
+                </button>
+              )
+            })}
           </div>
         </section>
         <section className="settings-panel">

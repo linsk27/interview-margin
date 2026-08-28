@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDefaultState, parseStudyState, progressFor, withActivity } from './storage'
+import { FONT_THEME_STORAGE_KEY, createDefaultState, parseStudyState, progressFor, saveFontTheme, withActivity } from './storage'
 
 describe('study state storage', () => {
   it('merges imported settings with current defaults', () => {
@@ -11,8 +11,28 @@ describe('study state storage', () => {
     }))
 
     expect(parsed.settings.theme).toBe('dark')
+    expect(parsed.settings.fontTheme).toBe('clean')
     expect(parsed.settings.readingSize).toBe('comfortable')
     expect(parsed.settings.pageLayout).toBe('single')
+  })
+
+  it('keeps the device font theme for guests and rejects stale values', () => {
+    saveFontTheme('notebook')
+    expect(createDefaultState().settings.fontTheme).toBe('notebook')
+
+    window.localStorage.setItem(FONT_THEME_STORAGE_KEY, 'removed-theme')
+    expect(createDefaultState().settings.fontTheme).toBe('clean')
+  })
+
+  it('falls back when an imported progress file contains an unknown font theme', () => {
+    const parsed = parseStudyState(JSON.stringify({
+      version: 1,
+      progress: {},
+      annotations: [],
+      settings: { fontTheme: 'removed-theme' },
+    }))
+
+    expect(parsed.settings.fontTheme).toBe('clean')
   })
 
   it('rejects unrelated json', () => {

@@ -12,6 +12,7 @@ afterEach(cleanup)
 
 const settings: ReaderSettings = {
   theme: 'light',
+  fontTheme: 'clean',
   readingSize: 'comfortable',
   pageLayout: 'single',
   focusMode: false,
@@ -19,20 +20,29 @@ const settings: ReaderSettings = {
 }
 
 describe('reading settings dialog', () => {
-  it('uses one unified site font without exposing a redundant font selector', () => {
+  it('offers four visibly named font themes and applies the selected value', () => {
+    const onChange = vi.fn()
     render(
       <SettingsDialog
         open
         settings={settings}
         spreadAvailable
         onClose={vi.fn()}
-        onChange={vi.fn()}
+        onChange={onChange}
       />,
     )
 
-    expect(screen.queryByRole('radiogroup', { name: '正文字体' })).not.toBeInTheDocument()
-    expect(screen.queryByText('书刊宋体')).not.toBeInTheDocument()
-    expect(screen.queryByText('清晰黑体')).not.toBeInTheDocument()
+    const fontGroup = screen.getByRole('radiogroup', { name: '字体主题' })
+    const clean = within(fontGroup).getByRole('radio', { name: '清爽字体，清楚耐看' })
+    const playful = within(fontGroup).getByRole('radio', { name: '快乐字体，标题有点怪可爱' })
+
+    expect(within(fontGroup).getAllByRole('radio')).toHaveLength(4)
+    expect(clean).toHaveAttribute('aria-checked', 'true')
+    expect(playful).toHaveAttribute('aria-checked', 'false')
+    expect(within(clean).getByText('当前')).toBeVisible()
+
+    fireEvent.click(playful)
+    expect(onChange).toHaveBeenCalledWith({ ...settings, fontTheme: 'playful' })
   })
 
   it('labels each reading size with its visibly distinct target pixel size', () => {

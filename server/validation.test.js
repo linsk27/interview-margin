@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { questionCreateSchema, questionPatchSchema } from './validation.js'
+import { questionCreateSchema, questionPatchSchema, settingsSchema } from './validation.js'
 
 const question = {
   sectionTitle: '浏览器',
@@ -28,5 +28,24 @@ describe('question Markdown validation', () => {
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error.issues.some((issue) => issue.path[0] === 'body')).toBe(true)
     expect(questionPatchSchema.safeParse({ version: 1, body }).success).toBe(false)
+  })
+})
+
+describe('reader font theme validation', () => {
+  const base = {
+    theme: 'light',
+    readingSize: 'comfortable',
+    pageLayout: 'single',
+    focusMode: false,
+    notesOpen: true,
+  }
+
+  it('defaults old settings to the clean theme', () => {
+    expect(settingsSchema.parse(base).fontTheme).toBe('clean')
+  })
+
+  it('accepts supported themes and rejects unknown ones', () => {
+    expect(settingsSchema.safeParse({ ...base, fontTheme: 'flowing' }).success).toBe(true)
+    expect(settingsSchema.safeParse({ ...base, fontTheme: 'comic-sans' }).success).toBe(false)
   })
 })

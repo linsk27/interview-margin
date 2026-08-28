@@ -1,13 +1,38 @@
-import type { QuestionProgress, StudyState } from '../types'
+import type { FontTheme, QuestionProgress, StudyState } from '../types'
 import { EMPTY_PROGRESS } from '../types'
 
 export const STORAGE_KEY = 'interview-margin:study-state:v1'
 export const MIGRATED_STORAGE_KEY = 'interview-margin:legacy-migrated:v1'
 export const LEGACY_BACKUP_KEY = 'interview-margin:legacy-backup:v1'
+export const FONT_THEME_STORAGE_KEY = 'interview-margin:font-theme:v1'
+
+const FONT_THEMES = new Set<FontTheme>(['clean', 'playful', 'notebook', 'flowing'])
+
+function isFontTheme(value: unknown): value is FontTheme {
+  return typeof value === 'string' && FONT_THEMES.has(value as FontTheme)
+}
 
 function preferredTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light'
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+function preferredFontTheme(): FontTheme {
+  if (typeof window === 'undefined') return 'clean'
+  try {
+    const stored = window.localStorage.getItem(FONT_THEME_STORAGE_KEY)
+    return isFontTheme(stored) ? stored : 'clean'
+  } catch {
+    return 'clean'
+  }
+}
+
+export function saveFontTheme(fontTheme: FontTheme): void {
+  try {
+    window.localStorage.setItem(FONT_THEME_STORAGE_KEY, fontTheme)
+  } catch {
+    // Font choice remains active for this session when storage is unavailable.
+  }
 }
 
 export function createDefaultState(): StudyState {
@@ -18,6 +43,7 @@ export function createDefaultState(): StudyState {
     activity: {},
     settings: {
       theme: preferredTheme(),
+      fontTheme: preferredFontTheme(),
       readingSize: 'comfortable',
       pageLayout: 'single',
       focusMode: false,
@@ -66,7 +92,13 @@ export function parseStudyState(raw: string, fallback = createDefaultState()): S
     progress: parsed.progress ?? {},
     annotations: parsed.annotations,
     activity: parsed.activity ?? {},
-    settings: { ...fallback.settings, ...parsed.settings },
+    settings: {
+      ...fallback.settings,
+      ...parsed.settings,
+      fontTheme: isFontTheme(parsed.settings?.fontTheme)
+        ? parsed.settings.fontTheme
+        : fallback.settings.fontTheme,
+    },
   }
 }
 

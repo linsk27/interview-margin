@@ -1,6 +1,7 @@
 export type StudyStatus = 'unread' | 'learning' | 'review' | 'mastered'
 export type HighlightColor = 'yellow' | 'blue' | 'green' | 'rose'
 export type ThemeMode = 'light' | 'dark'
+export type FontTheme = 'clean' | 'playful' | 'notebook' | 'flowing'
 export type ReadingSize = 'compact' | 'comfortable' | 'large'
 export type PageLayout = 'single' | 'spread'
 // Question banks are registered at runtime, so new packs do not require widening a union type.
@@ -90,6 +91,7 @@ export interface Annotation {
 
 export interface ReaderSettings {
   theme: ThemeMode
+  fontTheme: FontTheme
   readingSize: ReadingSize
   pageLayout: PageLayout
   focusMode: boolean

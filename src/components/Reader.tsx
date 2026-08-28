@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, ChevronLeft, ChevronRight } from 'lucide-react'
 import { domToCanvas } from 'modern-screenshot'
-import type { Annotation, InterviewQuestion, PageLayout, ReadingSize, SelectionDraft } from '../types'
+import type { Annotation, FontTheme, InterviewQuestion, PageLayout, ReadingSize, SelectionDraft } from '../types'
 import { getLearningOutline, type LearningSectionKind } from '../lib/learningSections'
 import { QuestionMarkdown } from './QuestionMarkdown'
 import {
@@ -17,6 +17,7 @@ import {
 interface ReaderProps {
   question: InterviewQuestion
   annotations: Annotation[]
+  fontTheme: FontTheme
   readingSize: ReadingSize
   pageLayout: PageLayout
   initialScrollTop: number
@@ -189,6 +190,7 @@ function waitForPaint() {
 export function Reader({
   question,
   annotations,
+  fontTheme,
   readingSize,
   pageLayout,
   initialScrollTop,
@@ -402,7 +404,7 @@ export function Reader({
     observer.observe(container)
     observer.observe(article)
     return () => observer.disconnect()
-  }, [annotations.length, contentRevision, question.id, readingSize, scheduleLearningSectionUpdate, updateReadingProgress])
+  }, [annotations.length, contentRevision, fontTheme, question.id, readingSize, scheduleLearningSectionUpdate, updateReadingProgress])
 
   useEffect(() => {
     if (!spreadMode) return
@@ -484,7 +486,7 @@ export function Reader({
       window.cancelAnimationFrame(frame)
       observer.disconnect()
     }
-  }, [annotations.length, contentRevision, question.id, readingSize, scheduleLearningSectionUpdate, spreadMode])
+  }, [annotations.length, contentRevision, fontTheme, question.id, readingSize, scheduleLearningSectionUpdate, spreadMode])
 
   useEffect(() => () => {
     turnSequence.current += 1

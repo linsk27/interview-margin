@@ -3710,6 +3710,109 @@ body:has(dialog[open]) .reader {
   font-weight: 750;
 }
 
+.settings-font-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xs);
+}
+
+.settings-font-option {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 6rem;
+  align-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border: var(--rule-thin) solid var(--color-rule);
+  border-radius: var(--radius-md);
+  outline: var(--rule-heavy) solid transparent;
+  outline-offset: var(--space-3xs);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: start;
+  transition:
+    border-color var(--dur-short) var(--ease-out),
+    background-color var(--dur-short) var(--ease-out),
+    box-shadow var(--dur-short) var(--ease-out);
+}
+
+.settings-font-option:focus-visible {
+  outline-color: var(--color-focus);
+}
+
+.settings-font-option.is-active {
+  border-color: color-mix(in oklch, var(--color-accent) 64%, var(--color-rule));
+  background: color-mix(in oklch, var(--color-accent-soft) 38%, var(--color-paper));
+  box-shadow: 0 var(--space-3xs) var(--space-xs) var(--color-shadow);
+}
+
+.settings-font-option__sample {
+  min-width: 0;
+  padding-inline-end: 2.75rem;
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: 1.3rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-font-option--clean .settings-font-option__sample {
+  font-family: var(--font-sans);
+  font-weight: 720;
+}
+
+.settings-font-option--playful .settings-font-option__sample {
+  font-family: "ZCOOL KuaiLe", var(--font-sans);
+  font-weight: 400;
+}
+
+.settings-font-option--notebook .settings-font-option__sample {
+  font-family: "LXGW WenKai", var(--font-sans);
+  font-weight: 500;
+}
+
+.settings-font-option--flowing .settings-font-option__sample {
+  font-family: "Zhi Mang Xing", "LXGW WenKai", var(--font-sans);
+  font-size: 1.55rem;
+  font-weight: 400;
+}
+
+.settings-font-option__meta {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3xs);
+  font-family: var(--font-body);
+}
+
+.settings-font-option__meta strong {
+  font-size: var(--text-sm);
+}
+
+.settings-font-option__meta small {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 450;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-font-option__current {
+  position: absolute;
+  inset-block-start: var(--space-sm);
+  inset-inline-end: var(--space-sm);
+  padding: var(--space-3xs) var(--space-xs);
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .settings-segment {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4150,6 +4253,10 @@ body:has(dialog[open]) .reader {
 
   .settings-dialog__body > section {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .settings-dialog__body > .settings-panel--font {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .shortcut-sheet dl {
@@ -4672,7 +4779,8 @@ body:has(dialog[open]) .reader {
   }
 
   .topbar__layout-switch button:not(:disabled):hover,
-  .settings-segment button:not(:disabled):hover {
+  .settings-segment button:not(:disabled):hover,
+  .settings-font-option:not(:disabled):hover {
     background: var(--color-paper-3);
     color: var(--color-ink);
   }
@@ -5694,6 +5802,14 @@ body:has(.admin-overlay) {
 }
 
 @media (max-width: 30rem) {
+  .settings-font-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-font-option {
+    min-height: 5.25rem;
+  }
+
   .settings-size-segment {
     grid-template-columns: minmax(0, 1fr);
   }
