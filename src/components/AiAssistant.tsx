@@ -25,7 +25,26 @@ interface AssistantMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
-  status?: 'streaming' | 'complete' | 'stopped'
+  status?: 'streaming' | 'complete' | 'stopped' | 'interrupted' | 'truncated'
+}
+
+interface ReplyResult {
+  content: string
+  truncated: boolean
+}
+
+class AiStreamError extends Error {
+  partialContent: string
+  code?: string
+  retryable: boolean
+
+  constructor(message: string, partialContent: string, code?: string, retryable = true) {
+    super(message)
+    this.name = 'AiStreamError'
+    this.partialContent = partialContent
+    this.code = code
+    this.retryable = retryable
+  }
 }
 
 interface AiAssistantProps {
@@ -86,11 +105,30 @@ function textFromStreamPayload(payload: unknown): string {
   return ''
 }
 
+function errorFromStreamPayload(payload: unknown) {
+  if (!payload || typeof payload !== 'object') return undefined
+  const data = payload as Record<string, unknown>
+  if (!data.error) return undefined
+  const nested = typeof data.error === 'object' && data.error
+    ? data.error as Record<string, unknown>
+    : undefined
+  const message = typeof data.error === 'string'
+    ? data.error
+    : typeof nested?.message === 'string'
+      ? nested.message
+      : 'AI 回复在生成途中断开，请重试。'
+  return {
+    message,
+    code: typeof data.code === 'string' ? data.code : undefined,
+    retryable: data.retryable !== false,
+  }
+}
+
 async function readStream(
   response: Response,
   onDelta: (delta: string) => void,
-): Promise<string> {
-  if (!response.body) return ''
+): Promise<ReplyResult> {
+  if (!response.body) return { content: '', truncated: false }
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
@@ -98,6 +136,7 @@ async function readStream(
   const isEventStream = contentType.includes('text/event-stream')
   let buffer = ''
   let result = ''
+  let truncated = false
 
   const emit = (value: string) => {
     if (!value) return
@@ -111,27 +150,43 @@ async function readStream(
     const source = isEventStream && line.startsWith('data:') ? line.slice(5).trimStart() : line
     if (!source || source === '[DONE]') return
 
+    let payload: unknown
     try {
-      emit(textFromStreamPayload(JSON.parse(source)))
+      payload = JSON.parse(source)
     } catch {
       emit(source)
+      return
     }
+
+    const streamError = errorFromStreamPayload(payload)
+    if (streamError) {
+      throw new AiStreamError(streamError.message, result, streamError.code, streamError.retryable)
+    }
+    if (payload && typeof payload === 'object' && (payload as Record<string, unknown>).truncated === true) {
+      truncated = true
+    }
+    emit(textFromStreamPayload(payload))
   }
 
-  while (true) {
-    const { done, value } = await reader.read()
-    buffer += decoder.decode(value, { stream: !done })
-    const lines = buffer.split(/\r?\n/)
-    buffer = lines.pop() ?? ''
-    lines.forEach(parseLine)
-    if (done) break
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      buffer += decoder.decode(value, { stream: !done })
+      const lines = buffer.split(/\r?\n/)
+      buffer = lines.pop() ?? ''
+      lines.forEach(parseLine)
+      if (done) break
+    }
+    parseLine(buffer)
+  } catch (streamError) {
+    if (streamError instanceof AiStreamError) throw streamError
+    if (streamError instanceof DOMException && streamError.name === 'AbortError') throw streamError
+    throw new AiStreamError('AI 回复在传输途中断开，请重试。', result, 'AI_STREAM_INTERRUPTED')
   }
-
-  parseLine(buffer)
-  return result
+  return { content: result, truncated }
 }
 
-async function readReply(response: Response, onDelta: (delta: string) => void): Promise<string> {
+async function readReply(response: Response, onDelta: (delta: string) => void): Promise<ReplyResult> {
   const contentType = response.headers?.get?.('content-type') ?? ''
 
   if (!response.ok) {
@@ -149,7 +204,7 @@ async function readReply(response: Response, onDelta: (delta: string) => void): 
     throw new Error(typeof data.error === 'string' ? data.error : 'AI 服务没有返回可显示的文本。')
   }
   onDelta(reply)
-  return reply
+  return { content: reply, truncated: false }
 }
 
 export function AiAssistant({ question, focusToken, onClose, embedded = false }: AiAssistantProps) {
@@ -228,15 +283,24 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
         )))
       })
 
-      if (!reply) throw new Error('AI 服务没有返回可显示的文本。')
+      if (!reply.content) throw new Error('AI 服务没有返回可显示的文本。')
       setMessages((current) => current.map((message) => (
         message.id === assistantMessage.id
-          ? { ...message, content: streamedContent || reply, status: 'complete' }
+          ? {
+              ...message,
+              content: streamedContent || reply.content,
+              status: reply.truncated ? 'truncated' : 'complete',
+            }
           : message
       )))
     } catch (requestError) {
-      if (requestError instanceof DOMException && requestError.name === 'AbortError') return
-      setMessages((current) => current.filter((message) => message.id !== assistantMessage.id))
+      if (controller.signal.aborted || (requestError instanceof DOMException && requestError.name === 'AbortError')) return
+      const partialContent = requestError instanceof AiStreamError ? requestError.partialContent : ''
+      setMessages((current) => partialContent
+        ? current.map((message) => message.id === assistantMessage.id
+            ? { ...message, content: partialContent, status: 'interrupted' }
+            : message)
+        : current.filter((message) => message.id !== assistantMessage.id))
       setError(requestError instanceof Error ? requestError.message : 'AI 服务暂时无法响应，请稍后再试。')
     } finally {
       if (abortRef.current === controller) {
@@ -251,7 +315,11 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
     if (!content || isLoading) return
 
     const conversation = [
-      ...messages.filter((message) => message.status !== 'streaming' && message.status !== 'stopped'),
+      ...messages.filter((message) => (
+        message.status !== 'streaming'
+        && message.status !== 'stopped'
+        && message.status !== 'interrupted'
+      )),
       newMessage('user', content, 'complete'),
     ]
     setDraft('')
@@ -273,6 +341,18 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
     const conversation = messages
       .slice(0, lastUserIndex + 1)
       .filter((message) => message.status !== 'streaming' && message.status !== 'stopped')
+    void requestReply(conversation)
+  }
+
+  const continueTruncatedReply = () => {
+    const conversation = [
+      ...messages.filter((message) => (
+        message.status !== 'streaming'
+        && message.status !== 'stopped'
+        && message.status !== 'interrupted'
+      )),
+      newMessage('user', '请从刚才被截断的位置继续回答，不要重复已经给出的内容。', 'complete'),
+    ]
     void requestReply(conversation)
   }
 
@@ -298,7 +378,10 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
   }
 
   const hasConversation = messages.length > 0
-  const hasStoppedReply = messages.at(-1)?.status === 'stopped'
+  const lastReplyStatus = messages.at(-1)?.status
+  const hasStoppedReply = lastReplyStatus === 'stopped'
+  const hasInterruptedReply = lastReplyStatus === 'interrupted'
+  const hasTruncatedReply = lastReplyStatus === 'truncated'
 
   return (
     <section
@@ -388,11 +471,20 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
                           : <div className={styles.thinking} role="status"><LoaderCircle aria-hidden="true" /><span><strong>正在分析题目</strong><small>整理关键概念与回答结构…</small></span></div>
                       : <p>{message.content}</p>}
                   </div>
-                  {message.status === 'stopped' && message.role === 'assistant' && (
+                  {(message.status === 'stopped' || message.status === 'interrupted' || message.status === 'truncated')
+                    && message.role === 'assistant' && (
                     <div className={styles.stoppedState} role="status">
-                      <span>已停止生成</span>
-                      <button type="button" onClick={retryFromLastUser} disabled={isLoading}>
-                        <RotateCcw aria-hidden="true" />重新生成
+                      <span>{message.status === 'truncated'
+                        ? '回答已达到长度上限'
+                        : message.status === 'interrupted'
+                          ? '回答传输中断'
+                          : '已停止生成'}</span>
+                      <button
+                        type="button"
+                        onClick={message.status === 'truncated' ? continueTruncatedReply : retryFromLastUser}
+                        disabled={isLoading}
+                      >
+                        <RotateCcw aria-hidden="true" />{message.status === 'truncated' ? '继续回答' : '重新生成'}
                       </button>
                     </div>
                   )}
@@ -422,6 +514,12 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
       <footer className={styles.composerArea}>
         {hasStoppedReply && (
           <p className={styles.composerStatus}><Square aria-hidden="true" />上一次回答已停止，可直接调整问题后再次发送。</p>
+        )}
+        {hasInterruptedReply && (
+          <p className={styles.composerStatus}><CircleAlert aria-hidden="true" />回答传输中断，可重新生成或调整问题。</p>
+        )}
+        {hasTruncatedReply && (
+          <p className={styles.composerStatus}><CircleAlert aria-hidden="true" />回答达到长度上限，可继续生成剩余内容。</p>
         )}
         <form className={styles.composer} onSubmit={submit}>
           <label className="sr-only" htmlFor="ai-question">向 AI 提问</label>

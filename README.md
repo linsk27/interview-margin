@@ -176,10 +176,20 @@ ECS，再更新 Vercel API 代理、`APP_ORIGINS` 并完成验证后切换主域
 ```bash
 OPENAI_API_KEY=你的密钥
 OPENAI_BASE_URL=https://code.rayinai.com/v1
-OPENAI_MODEL=gpt-5.6-terra
+OPENAI_MODEL=gpt-5.6-luna
+OPENAI_TOKEN_LIMIT_FIELD=max_completion_tokens
+AI_MAX_OUTPUT_TOKENS=1200
+AI_MAX_CONCURRENCY=4
+AI_FIRST_TOKEN_TIMEOUT_MS=15000
+AI_REQUEST_TIMEOUT_MS=60000
 ```
 
-以上为 RayinAI 中转配置。`OPENAI_BASE_URL` 也可以改为其他支持 Chat Completions 的兼容服务地址。变量配置后重新部署；本地仅运行 Vite 时 `/api/ai-chat` 不会存在，因此会提示服务未连接。
+以上为 RayinAI 中转配置。`OPENAI_BASE_URL` 也可以改为其他支持 Chat Completions 的兼容服务地址。不同兼容服务对输出上限字段的支持可能不同：新模型优先使用 `max_completion_tokens`，若服务商只兼容旧字段再改为 `max_tokens`。变量配置后重新部署；本地仅运行 Vite 时 `/api/ai-chat` 不会存在，因此会提示服务未连接。
 
 ECS 应用未配置 `OPENAI_API_KEY` 时，可以通过 `AI_FALLBACK_URL` 转发到现有的
 Vercel AI 代理。这样密钥仍只保存在 Vercel，ECS 应用进程和浏览器都不会接触原始密钥。
+
+`AI_MAX_CONCURRENCY` 是单个 Node.js 进程或单个 Serverless 实例内的并发上限。当前单进程 ECS
+部署可直接依赖它；Vercel 会按流量创建多个隔离实例，因此它不是跨实例的全局配额。若继续向游客
+开放 Vercel AI 接口，应同时在 Vercel 防火墙中配置 `/api/ai-chat` 的速率限制和项目消费上限；
+在没有共享限流存储时，不应把进程内计数描述成全局限流。

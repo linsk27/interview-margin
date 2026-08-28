@@ -122,6 +122,30 @@ afterEach(() => {
 })
 
 describe('Reader learning document structure', () => {
+  it('keeps the answer hidden in practice mode until reveal and emits the chosen review interval', () => {
+    const onPracticeSchedule = vi.fn(() => true)
+    const onPracticeRevealChange = vi.fn()
+    renderReader(firstQuestion, { practiceMode: true, onPracticeSchedule, onPracticeRevealChange })
+
+    expect(screen.queryByText('通过代理读取和写入来追踪依赖。')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /速答/ })).not.toBeInTheDocument()
+    expect(onPracticeRevealChange).toHaveBeenLastCalledWith(false)
+
+    fireEvent.change(screen.getByRole('textbox', { name: '用自己的话写下答案' }), {
+      target: { value: '先说依赖收集，再说触发更新。' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '揭晓标准答案' }))
+    expect(screen.getByText('通过代理读取和写入来追踪依赖。')).toBeInTheDocument()
+    expect(onPracticeRevealChange).toHaveBeenLastCalledWith(true)
+
+    fireEvent.click(screen.getByRole('radio', { name: '模糊，3 天后复习' }))
+    expect(onPracticeSchedule).toHaveBeenCalledWith({
+      rating: 'unsure',
+      intervalDays: 3,
+      draftAnswer: '先说依赖收集，再说触发更新。',
+    })
+  })
+
   it('labels the article from a stable focusable title and exposes real learning anchors', () => {
     renderReader()
 

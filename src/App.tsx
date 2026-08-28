@@ -1,25 +1,27 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Highlighter, MessageSquareText } from 'lucide-react'
-import { CommandPalette } from './components/CommandPalette'
-import { DashboardDialog } from './components/DashboardDialog'
-import { AdminPanel } from './components/AdminPanel'
-import { AuthDialog } from './components/AuthDialog'
 import { FloatingAiButton } from './components/FloatingAiButton'
-import { LegacyMigrationDialog } from './components/LegacyMigrationDialog'
-import { InviteRegistrationDialog } from './components/InviteRegistrationDialog'
 import { NotesPanel } from './components/NotesPanel'
-import { QuestionBankHub } from './components/QuestionBankHub'
 import { Rail } from './components/Rail'
 import { Reader } from './components/Reader'
+import type { PracticeAssessment } from './components/PracticeMode'
 import { SelectionMenu } from './components/SelectionMenu'
-import { SettingsDialog } from './components/SettingsDialog'
 import { Sidebar, type LibraryFilter } from './components/Sidebar'
 import { StatusDock } from './components/StatusDock'
 import { Topbar } from './components/Topbar'
 import { UndoToast } from './components/UndoToast'
 import { dateAfterDays } from './lib/format'
 import { consumeInvitationToken } from './lib/invitations'
-import { getCatalog, getMyState, getSession, saveMyState } from './lib/api'
+import {
+  catalogIndexSections,
+  getCatalogBank,
+  getCatalogIndex,
+  getMyState,
+  getSession,
+  loadSplitCatalogWithLegacyFallback,
+  saveMyState,
+  type PublicBankCatalog,
+} from './lib/api'
 import {
   openLibrary as transitionOpenLibrary,
   openNotes as transitionOpenNotes,
@@ -36,6 +38,7 @@ import {
   maximumNotesPanelWidth,
 } from './lib/notesPanelSizing'
 import { selectLibraryResumeQuestion } from './lib/questionSelection'
+import { isReviewDue } from './lib/reviewSchedule'
 import { clearQueuedState, flushQueuedState, queueStudyState } from './lib/outbox'
 import {
   createDefaultState,
@@ -69,6 +72,15 @@ import type {
   StudyStatus,
 } from './types'
 
+const AdminPanel = lazy(() => import('./components/AdminPanel').then((module) => ({ default: module.AdminPanel })))
+const AuthDialog = lazy(() => import('./components/AuthDialog').then((module) => ({ default: module.AuthDialog })))
+const CommandPalette = lazy(() => import('./components/CommandPalette').then((module) => ({ default: module.CommandPalette })))
+const DashboardDialog = lazy(() => import('./components/DashboardDialog').then((module) => ({ default: module.DashboardDialog })))
+const InviteRegistrationDialog = lazy(() => import('./components/InviteRegistrationDialog').then((module) => ({ default: module.InviteRegistrationDialog })))
+const LegacyMigrationDialog = lazy(() => import('./components/LegacyMigrationDialog').then((module) => ({ default: module.LegacyMigrationDialog })))
+const QuestionBankHub = lazy(() => import('./components/QuestionBankHub').then((module) => ({ default: module.QuestionBankHub })))
+const SettingsDialog = lazy(() => import('./components/SettingsDialog').then((module) => ({ default: module.SettingsDialog })))
+
 interface ComposerDraft {
   quote: string
   color: HighlightColor
@@ -93,6 +105,29 @@ const LOGIN_REASONS = {
 } as const
 
 const NOTES_PANEL_WIDTH_STORAGE_KEY = 'interview-margin:notes-pane-width:v1'
+
+function mergeLoadedBankSections(
+  baseSections: InterviewSection[],
+  bankId: QuestionLibrary,
+  loadedSections: InterviewSection[],
+) {
+  const nextSections: InterviewSection[] = []
+  let inserted = false
+
+  for (const section of baseSections) {
+    const belongsToBank = section.questions.some((question) => question.library === bankId)
+    if (!belongsToBank) {
+      nextSections.push(section)
+      continue
+    }
+    if (!inserted) {
+      nextSections.push(...loadedSections)
+      inserted = true
+    }
+  }
+
+  return nextSections
+}
 
 function loadNotesPanelWidth(): number {
   const fallback = defaultNotesPanelWidth(window.innerWidth)
@@ -147,6 +182,7 @@ export default function App() {
   const [banks, setBanks] = useState<QuestionBankDefinition[]>([])
   const [sections, setSections] = useState<InterviewSection[]>([])
   const [loadError, setLoadError] = useState('')
+  const [bankLoadError, setBankLoadError] = useState<{ bankId: QuestionLibrary; message: string }>()
   const [activeId, setActiveId] = useState('')
   const [state, setState] = useState<StudyState>(() => createDefaultState())
   const [user, setUser] = useState<SessionUser | null>(null)
@@ -162,6 +198,8 @@ export default function App() {
   const sessionGeneration = useRef(0)
   const [drawerState, setDrawerState] = useState<DrawerState>({ libraryOpen: false, notesOpen: false })
   const [focusMode, setFocusMode] = useState(false)
+  const [practiceMode, setPracticeMode] = useState(false)
+  const [practiceRevealed, setPracticeRevealed] = useState(false)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<LibraryFilter>('all')
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false)
@@ -178,6 +216,11 @@ export default function App() {
   const [composer, setComposer] = useState<ComposerDraft>()
   const [undo, setUndo] = useState<UndoState>()
   const undoTimer = useRef<number | undefined>(undefined)
+  const loadedBankCatalogs = useRef(new Map<QuestionLibrary, PublicBankCatalog>())
+  const pendingBankCatalogs = useRef(new Map<QuestionLibrary, Promise<PublicBankCatalog>>())
+  const catalogGeneration = useRef(0)
+  const sectionsRef = useRef<InterviewSection[]>([])
+  const banksRef = useRef<QuestionBankDefinition[]>([])
   const mobileDrawerTrigger = useRef<HTMLElement | null>(null)
   const mobileDrawerWasOpen = useRef(false)
   const desktopLibraryLayout = useMediaQuery('(min-width: 60rem)')
@@ -222,7 +265,7 @@ export default function App() {
       const matchesQuery = !needle || `${question.title} ${question.plainText} ${question.tags.join(' ')}`.toLowerCase().includes(needle)
       const matchesFilter = filter === 'all'
         || (filter === 'favorite' && progress.favorite)
-        || (filter === 'review' && (progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())))
+        || (filter === 'review' && isReviewDue(progress))
         || (filter === 'mastered' && progress.status === 'mastered')
       return matchesQuery && matchesFilter
     })
@@ -235,7 +278,7 @@ export default function App() {
   const railMasteredCount = railQuestions.filter((question) => progressFor(state, question.id).status === 'mastered').length
   const railReviewCount = railQuestions.filter((question) => {
     const progress = progressFor(state, question.id)
-    return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
+    return isReviewDue(progress)
   }).length
   const visibleDrawers = visibleDrawerState(drawerState, focusMode)
   const visibleMobileLibrary = focusMode ? false : mobileLibraryOpen
@@ -254,6 +297,9 @@ export default function App() {
     desktopLibraryLayout && visibleDrawers.libraryOpen,
   )
   const notesCompact = notesPanelWidth <= NOTES_PANEL_MIN_WIDTH + 1
+  const practiceWorkspaceLocked = practiceMode && !practiceRevealed
+  sectionsRef.current = sections
+  banksRef.current = banks
 
   const openAuth = (reason = '') => {
     setAuthReason(accountServiceAvailable
@@ -366,11 +412,137 @@ export default function App() {
     })
   }, [drawerState.notesOpen, focusMode])
 
+  const ensureBankLoaded = useCallback(async (bankId: QuestionLibrary) => {
+    const loaded = loadedBankCatalogs.current.get(bankId)
+    if (loaded) return loaded
+    const pending = pendingBankCatalogs.current.get(bankId)
+    if (pending) return pending
+
+    const generation = catalogGeneration.current
+    const request = getCatalogBank(bankId)
+    pendingBankCatalogs.current.set(bankId, request)
+    try {
+      const catalog = await request
+      if (generation !== catalogGeneration.current) return catalog
+      if (!banksRef.current.some((bank) => bank.id === bankId)) return catalog
+      const nextSections = mergeLoadedBankSections(sectionsRef.current, bankId, catalog.sections)
+      loadedBankCatalogs.current.set(bankId, catalog)
+      sectionsRef.current = nextSections
+      setSections(nextSections)
+
+      const nextQuestions = flattenQuestions(nextSections)
+      const routeContext = workspaceRouteContext.current
+      workspaceRouteContext.current = { ...routeContext, questions: nextQuestions }
+      if (!nextQuestions.some((question) => question.id === routeContext.activeId)) {
+        const route = resolveWorkspaceRoute({
+          hash: window.location.hash,
+          questions: nextQuestions,
+          canAccessAdmin: routeContext.canAccessAdmin,
+          preferredQuestionId: nextQuestions.find((question) => question.library === bankId)?.id,
+        })
+        if (route) {
+          workspaceRouteContext.current = {
+            questions: nextQuestions,
+            activeId: route.question.id,
+            canAccessAdmin: routeContext.canAccessAdmin,
+          }
+          setActiveId(route.question.id)
+          setLibrary(route.question.library)
+          setWorkspaceView(route.view)
+          if (route.needsReplace) writeWorkspaceHash(route.hash, 'replace')
+        } else {
+          workspaceRouteContext.current = {
+            questions: [],
+            activeId: '',
+            canAccessAdmin: routeContext.canAccessAdmin,
+          }
+          setActiveId('')
+          setLibrary(banksRef.current[0]?.id ?? '')
+          setWorkspaceView('banks')
+          writeWorkspaceHash('#question-banks', 'replace')
+        }
+      }
+      return catalog
+    } finally {
+      if (pendingBankCatalogs.current.get(bankId) === request) pendingBankCatalogs.current.delete(bankId)
+    }
+  }, [])
+
   const reloadCatalog = async () => {
-    const catalog = await getCatalog()
-    setBanks(catalog.banks)
-    setSections(catalog.sections)
-    return catalog
+    const generation = ++catalogGeneration.current
+    pendingBankCatalogs.current.clear()
+    let targetBankId: QuestionLibrary | undefined
+    let currentBankCatalog: PublicBankCatalog | undefined
+    const nextCatalog = await loadSplitCatalogWithLegacyFallback(async () => {
+      const index = await getCatalogIndex()
+      const metadataSections = catalogIndexSections(index)
+      const metadataQuestions = flattenQuestions(metadataSections)
+      const indexedRoute = resolveWorkspaceRoute({
+        hash: window.location.hash,
+        questions: metadataQuestions,
+        canAccessAdmin: true,
+      })
+      const indexedBankIds = new Set(index.banks.map((bank) => bank.id))
+      const retainedLibrary = library && indexedBankIds.has(library) ? library : undefined
+      const metadataOnly = window.location.hash === '#question-banks' || window.location.hash === '#admin'
+      targetBankId = (metadataOnly
+        ? retainedLibrary || indexedRoute?.question.library
+        : indexedRoute?.question.library) ?? index.banks[0]?.id
+
+      if (metadataOnly) return { banks: index.banks, sections: metadataSections }
+      if (!targetBankId) throw new Error('题库索引中没有可读取的题库。')
+
+      currentBankCatalog = await getCatalogBank(targetBankId)
+      return {
+        banks: index.banks,
+        sections: mergeLoadedBankSections(metadataSections, targetBankId, currentBankCatalog.sections),
+      }
+    })
+
+    if (generation !== catalogGeneration.current) return nextCatalog
+    // Invalidate bank requests that started while this reload was in flight.
+    catalogGeneration.current += 1
+    pendingBankCatalogs.current.clear()
+    loadedBankCatalogs.current = targetBankId && currentBankCatalog
+      ? new Map([[targetBankId, currentBankCatalog]])
+      : new Map()
+    banksRef.current = nextCatalog.banks
+    sectionsRef.current = nextCatalog.sections
+    setBanks(nextCatalog.banks)
+    setSections(nextCatalog.sections)
+    setLoadError('')
+    setBankLoadError(undefined)
+
+    if (hydrated) {
+      const nextQuestions = flattenQuestions(nextCatalog.sections)
+      const route = resolveWorkspaceRoute({
+        hash: window.location.hash,
+        questions: nextQuestions,
+        canAccessAdmin: Boolean(user?.permissions.includes('banks.write')),
+        preferredQuestionId: nextQuestions.find((question) => question.library === targetBankId)?.id,
+      })
+      if (route) {
+        workspaceRouteContext.current = {
+          questions: nextQuestions,
+          activeId: route.question.id,
+          canAccessAdmin: Boolean(user?.permissions.includes('banks.write')),
+        }
+        setActiveId(route.question.id)
+        setLibrary(route.question.library)
+        setWorkspaceView(route.view)
+        if (route.needsReplace) writeWorkspaceHash(route.hash, 'replace')
+      } else {
+        const canAccessAdmin = Boolean(user?.permissions.includes('banks.write'))
+        const emptyView: WorkspaceView = window.location.hash === '#admin' && canAccessAdmin ? 'admin' : 'banks'
+        workspaceRouteContext.current = { questions: [], activeId: '', canAccessAdmin }
+        setActiveId('')
+        setLibrary(nextCatalog.banks[0]?.id ?? '')
+        setWorkspaceView(emptyView)
+        const emptyHash = emptyView === 'admin' ? '#admin' : '#question-banks'
+        if (window.location.hash !== emptyHash) writeWorkspaceHash(emptyHash, 'replace')
+      }
+    }
+    return nextCatalog
   }
 
   const refreshSession = async (offerMigration = true) => {
@@ -467,9 +639,13 @@ export default function App() {
           setWorkspaceView(route.view)
           if (route.needsReplace) writeWorkspaceHash(route.hash, 'replace')
         } else {
+          const canAccessAdmin = Boolean(session.user?.permissions.includes('banks.write'))
+          const emptyView: WorkspaceView = window.location.hash === '#admin' && canAccessAdmin ? 'admin' : 'banks'
           setActiveId('')
           setLibrary(catalog.banks[0]?.id ?? '')
-          setWorkspaceView('reader')
+          setWorkspaceView(emptyView)
+          const emptyHash = emptyView === 'admin' ? '#admin' : '#question-banks'
+          if (window.location.hash !== emptyHash) writeWorkspaceHash(emptyHash, 'replace')
         }
         setHydrated(true)
       })
@@ -547,6 +723,26 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (workspaceView !== 'reader' || !hydrated || !activeQuestion || activeQuestion.body || loadedBankCatalogs.current.has(activeQuestion.library)) return
+    let cancelled = false
+    const bankId = activeQuestion.library
+    setBankLoadError((current) => current?.bankId === bankId ? undefined : current)
+    void ensureBankLoaded(activeQuestion.library).catch((error: unknown) => {
+      if (!cancelled) {
+        setBankLoadError({
+          bankId,
+          message: error instanceof Error ? error.message : '该题库暂时无法载入。',
+        })
+      }
+    })
+    return () => { cancelled = true }
+  }, [activeQuestion, ensureBankLoaded, hydrated, workspaceView])
+
+  useEffect(() => {
+    setPracticeRevealed(false)
+  }, [activeQuestion?.id, practiceMode])
+
+  useEffect(() => {
     if (!activeQuestion || workspaceView !== 'reader' || !user) return
     setSelection(undefined)
     setComposer(undefined)
@@ -596,6 +792,12 @@ export default function App() {
 
   const openQuestion = (question: InterviewQuestion) => {
     clearActiveSelection()
+    if (practiceMode) {
+      setPracticeRevealed(false)
+      setDrawerState((current) => ({ ...current, notesOpen: false }))
+      setMobileNotesOpen(false)
+      setComposer(undefined)
+    }
     setLibrary(question.library)
     setWorkspaceView('reader')
     writeWorkspaceHash(questionHash(question.id))
@@ -638,10 +840,10 @@ export default function App() {
   }
 
   const updateProgress = (patch: Partial<QuestionProgress>, options: ProgressUpdateOptions = {}) => {
-    if (!activeQuestion) return
+    if (!activeQuestion) return false
     if (!user || user.mustChangePassword) {
       if (options.guestBehavior !== 'ignore') openAuth(options.reason ?? LOGIN_REASONS.progress)
-      return
+      return false
     }
     setState((current) => {
       const next = {
@@ -653,12 +855,23 @@ export default function App() {
       }
       return options.recordActivity ? withActivity(next) : next
     })
+    return true
   }
 
   const setStatus = (status: StudyStatus) => {
     updateProgress(
       { status, dueAt: status === 'review' ? dateAfterDays(1) : undefined },
       { recordActivity: true, reason: LOGIN_REASONS.progress },
+    )
+  }
+
+  const schedulePracticeReview = ({ rating, intervalDays }: PracticeAssessment) => {
+    return updateProgress(
+      {
+        status: rating === 'mastered' ? 'mastered' : 'review',
+        dueAt: dateAfterDays(intervalDays),
+      },
+      { recordActivity: true, reason: LOGIN_REASONS.review },
     )
   }
 
@@ -714,6 +927,7 @@ export default function App() {
   }
 
   const openNotes = () => {
+    if (practiceMode && !practiceRevealed) return false
     if (!requireUser(LOGIN_REASONS.notes)) return false
     rememberMobileDrawerTrigger()
     clearActiveSelection()
@@ -729,6 +943,7 @@ export default function App() {
   }
 
   const openAssistant = () => {
+    if (practiceMode && !practiceRevealed) return false
     rememberMobileDrawerTrigger()
     clearActiveSelection()
     setContextMode('assistant')
@@ -740,6 +955,7 @@ export default function App() {
     setMobileLibraryOpen(false)
     setMobileNotesOpen(!desktopNotesLayout)
     setAssistantFocusToken((current) => current + 1)
+    return true
   }
 
   const closeNotes = () => {
@@ -846,11 +1062,19 @@ export default function App() {
     setFocusMode((current) => !current)
   }
 
+  const togglePracticeMode = () => {
+    const next = !practiceMode
+    setPracticeMode(next)
+    setPracticeRevealed(false)
+    clearActiveSelection()
+    if (next) closeNotes()
+  }
+
   const openReviewLibrary = () => {
     if (!requireUser(LOGIN_REASONS.review)) return
     const reviewQuestion = currentLibraryQuestions.find((question) => {
       const progress = progressFor(state, question.id)
-      return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
+      return isReviewDue(progress)
     })
     if (reviewQuestion) openQuestion(reviewQuestion)
     else if (activeQuestion) openQuestion(activeQuestion)
@@ -891,6 +1115,14 @@ export default function App() {
         return
       }
       if (workspaceView !== 'reader') return
+      if (practiceMode && ['j', 'k', 'm', 'r'].includes(event.key.toLowerCase())) {
+        event.preventDefault()
+        return
+      }
+      if (practiceWorkspaceLocked && event.key.toLowerCase() === 'n') {
+        event.preventDefault()
+        return
+      }
       if (event.key.toLowerCase() === 'j') navigateRelative(1)
       if (event.key.toLowerCase() === 'k') navigateRelative(-1)
       if (event.key.toLowerCase() === 'm') setStatus('mastered')
@@ -942,18 +1174,36 @@ export default function App() {
     }))
   }
 
-  if (loadError) {
+  const activeLoadError = workspaceView === 'reader'
+    && activeQuestion
+    && bankLoadError?.bankId === activeQuestion.library
+      ? bankLoadError.message
+      : ''
+
+  if (loadError || activeLoadError) {
     return (
       <main className="load-state load-state--error">
         <AlertCircle aria-hidden="true" />
         <h1>题库没有载入</h1>
-        <p>{loadError}</p>
-        <button type="button" onClick={() => window.location.reload()}>重新读取</button>
+        <p>{loadError || activeLoadError}</p>
+        <button type="button" onClick={() => {
+          if (!activeLoadError || !activeQuestion) {
+            window.location.reload()
+            return
+          }
+          setBankLoadError(undefined)
+          void ensureBankLoaded(activeQuestion.library).catch((error: unknown) => {
+            setBankLoadError({
+              bankId: activeQuestion.library,
+              message: error instanceof Error ? error.message : '该题库暂时无法载入。',
+            })
+          })
+        }}>重新读取</button>
       </main>
     )
   }
 
-  if (!activeQuestion || !activeProgress) {
+  if (workspaceView === 'reader' && (!activeQuestion || !activeProgress || !activeQuestion.body)) {
     return (
       <main className="load-state" aria-busy="true">
         <span className="load-state__mark"><Highlighter aria-hidden="true" /></span>
@@ -963,6 +1213,8 @@ export default function App() {
       </main>
     )
   }
+
+  const readerProgress = activeProgress ?? progressFor(state, '')
 
   return (
     <div
@@ -980,6 +1232,7 @@ export default function App() {
         libraryOpen={libraryExpanded}
         notesOpen={notesExpanded && contextMode === 'notes'}
         workspaceOpen={notesExpanded}
+        notesDisabled={practiceWorkspaceLocked}
         modalBlocked={mobileDrawerOpen}
         readerMode={readerMode}
         bankHubActive={workspaceView === 'banks'}
@@ -997,22 +1250,26 @@ export default function App() {
       />
 
       {workspaceView === 'banks' ? (
-        <QuestionBankHub
-          banks={banks}
-          questions={questions}
-          state={state}
-          currentBankId={library}
-          onOpenBank={openQuestionBank}
-          onOpenDashboard={openDashboard}
-          onOpenSettings={() => setSettingsOpen(true)}
-        />
+        <Suspense fallback={<main className="load-state" aria-live="polite"><p>正在打开题库中心…</p></main>}>
+          <QuestionBankHub
+            banks={banks}
+            questions={questions}
+            state={state}
+            currentBankId={library}
+            onOpenBank={openQuestionBank}
+            onOpenDashboard={openDashboard}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
+        </Suspense>
       ) : workspaceView === 'admin' && user?.permissions.includes('banks.write') ? (
-        <AdminPanel
-          user={user}
-          initialCatalog={{ banks, sections }}
-          onExit={openQuestionBanks}
-          onCatalogChanged={async () => { await reloadCatalog() }}
-        />
+        <Suspense fallback={<main className="load-state" aria-live="polite"><p>正在打开管理工作区…</p></main>}>
+          <AdminPanel
+            user={user}
+            initialCatalog={{ banks, sections }}
+            onExit={openQuestionBanks}
+            onCatalogChanged={async () => { await reloadCatalog() }}
+          />
+        </Suspense>
       ) : (
         <>
           <Sidebar
@@ -1039,22 +1296,25 @@ export default function App() {
           <section className="reading-desk" inert={mobileDrawerOpen}>
         <Topbar
           question={activeQuestion}
-          progress={activeProgress}
+          progress={readerProgress}
           libraryOpen={libraryExpanded}
           notesOpen={notesExpanded && contextMode === 'notes'}
           workspaceOpen={notesExpanded}
           pageLayout={state.settings.pageLayout}
           spreadAvailable={spreadAvailable}
-          hasPrevious={activeLibraryIndex > 0}
-          hasNext={activeLibraryIndex < activeLibraryQuestions.length - 1}
+          practiceMode={practiceMode}
+          notesDisabled={practiceWorkspaceLocked}
+          hasPrevious={!practiceMode && activeLibraryIndex > 0}
+          hasNext={!practiceMode && activeLibraryIndex < activeLibraryQuestions.length - 1}
           onPrevious={() => navigateRelative(-1)}
           onNext={() => navigateRelative(1)}
           onToggleLibrary={toggleMobileLibrary}
           onToggleNotes={toggleNotes}
           onPageLayoutChange={changePageLayout}
+          onTogglePracticeMode={togglePracticeMode}
           onOpenSearch={() => setCommandOpen(true)}
           onToggleFavorite={() => updateProgress(
-            { favorite: !activeProgress.favorite },
+            { favorite: !readerProgress.favorite },
             { recordActivity: true, reason: LOGIN_REASONS.progress },
           )}
         />
@@ -1064,20 +1324,29 @@ export default function App() {
           fontTheme={state.settings.fontTheme}
           readingSize={state.settings.readingSize}
           pageLayout={state.settings.pageLayout}
-          initialScrollTop={activeProgress.scrollTop ?? 0}
-          initialSpreadIndex={activeProgress.spreadIndex ?? 0}
+          practiceMode={practiceMode}
+          initialScrollTop={readerProgress.scrollTop ?? 0}
+          initialSpreadIndex={readerProgress.spreadIndex ?? 0}
           onSelection={setSelection}
           onAnnotationClick={() => openNotes()}
           onScrollPosition={(scrollTop) => updateProgress({ scrollTop }, { guestBehavior: 'ignore' })}
           onSpreadChange={(spreadIndex) => updateProgress({ spreadIndex }, { guestBehavior: 'ignore' })}
           onSpreadAvailabilityChange={setSpreadAvailable}
+          onPracticeSchedule={schedulePracticeReview}
+          onPracticeRevealChange={setPracticeRevealed}
+          practiceCanSaveReview={Boolean(user && !user.mustChangePassword && syncReady)}
+          onPracticeNext={() => {
+            if (activeLibraryIndex < activeLibraryQuestions.length - 1) navigateRelative(1)
+            else setPracticeMode(false)
+          }}
+          practiceNextLabel={activeLibraryIndex < activeLibraryQuestions.length - 1 ? '下一题' : '返回阅读'}
         />
-        <StatusDock value={activeProgress.status} onChange={setStatus} />
+        {!practiceMode && <StatusDock value={readerProgress.status} onChange={setStatus} />}
           </section>
 
-          <NotesPanel
+          {!practiceWorkspaceLocked && <NotesPanel
           question={activeQuestion}
-          progress={activeProgress}
+          progress={readerProgress}
           annotations={activeAnnotations}
           composer={composer}
           mobileOpen={visibleMobileNotes}
@@ -1108,9 +1377,9 @@ export default function App() {
             { status: 'review', dueAt: dateAfterDays(days) },
             { recordActivity: true, reason: LOGIN_REASONS.review },
           )}
-          />
+          />}
 
-          <SelectionMenu
+          {!practiceWorkspaceLocked && <SelectionMenu
         selection={selection}
         onHighlight={(color) => selection && addAnnotation(selection.quote, '', color)}
         onAnnotate={() => {
@@ -1123,14 +1392,14 @@ export default function App() {
           void openNotes()
           setSelection(undefined)
         }}
-          />
+          />}
 
-          {!notesExpanded && !visibleMobileLibrary && <FloatingAiButton open={false} onOpen={openAssistant} />}
+          {!practiceWorkspaceLocked && !notesExpanded && !visibleMobileLibrary && <FloatingAiButton open={false} onOpen={openAssistant} />}
         </>
       )}
 
-      <CommandPalette open={commandOpen} questions={questions} state={state} onClose={() => setCommandOpen(false)} onSelect={openQuestion} />
-      <DashboardDialog
+      {commandOpen && <Suspense fallback={null}><CommandPalette open questions={questions} state={state} onClose={() => setCommandOpen(false)} onSelect={openQuestion} /></Suspense>}
+      {dashboardOpen && <Suspense fallback={null}><DashboardDialog
         open={dashboardOpen}
         sections={sections}
         questions={questions}
@@ -1142,15 +1411,15 @@ export default function App() {
         }}
         onImport={importProgress}
         synced={Boolean(user)}
-      />
-      <SettingsDialog
+      /></Suspense>}
+      {settingsOpen && <Suspense fallback={null}><SettingsDialog
         open={settingsOpen}
         settings={{ ...state.settings, focusMode, notesOpen: drawerState.notesOpen }}
         spreadAvailable={spreadAvailable}
         onClose={() => setSettingsOpen(false)}
         onChange={changeSettings}
-      />
-      <AuthDialog
+      /></Suspense>}
+      {authOpen && <Suspense fallback={null}><AuthDialog
         open={authOpen}
         user={user}
         reason={authReason}
@@ -1160,27 +1429,29 @@ export default function App() {
           await reloadCatalog()
           if (!nextUser && workspaceView === 'admin') openQuestionBanks()
         }}
-      />
+      /></Suspense>}
       {inviteToken && (
-        <InviteRegistrationDialog
-          key={inviteToken}
-          token={inviteToken}
-          user={user}
-          onDismiss={() => {
-            setInviteToken(null)
-            if (inviteAccepted) {
-              setInviteAccepted(false)
-              setMigrationOpen(Boolean(user && !user.mustChangePassword && legacyStudyState()))
-            }
-          }}
-          onAccepted={async () => {
-            const acceptedUser = await refreshSession(false)
-            await reloadCatalog()
-            if (acceptedUser) setInviteAccepted(true)
-          }}
-        />
+        <Suspense fallback={null}>
+          <InviteRegistrationDialog
+            key={inviteToken}
+            token={inviteToken}
+            user={user}
+            onDismiss={() => {
+              setInviteToken(null)
+              if (inviteAccepted) {
+                setInviteAccepted(false)
+                setMigrationOpen(Boolean(user && !user.mustChangePassword && legacyStudyState()))
+              }
+            }}
+            onAccepted={async () => {
+              const acceptedUser = await refreshSession(false)
+              await reloadCatalog()
+              if (acceptedUser) setInviteAccepted(true)
+            }}
+          />
+        </Suspense>
       )}
-      <LegacyMigrationDialog
+      {migrationOpen && <Suspense fallback={null}><LegacyMigrationDialog
         legacy={legacyStudyState()}
         userId={user?.id ?? ''}
         open={migrationOpen}
@@ -1189,7 +1460,7 @@ export default function App() {
           lastServerState.current = JSON.stringify(nextState)
           setState(nextState)
         }}
-      />
+      /></Suspense>}
 
       {undo && <UndoToast message="批注已删除" onUndo={restoreAnnotation} onDismiss={() => setUndo(undefined)} />}
       {workspaceView === 'reader' && mobileDrawerOpen && <button className="mobile-scrim" type="button" tabIndex={-1} aria-hidden="true" onClick={closeMobileDrawers} aria-label="关闭侧栏" />}

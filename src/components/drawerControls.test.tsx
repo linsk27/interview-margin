@@ -266,6 +266,45 @@ describe('drawer controls', () => {
     expect(notesButton).not.toHaveClass('is-active')
   })
 
+  it('uses a stable practice-mode name and explains when notes are disabled', () => {
+    const onTogglePracticeMode = vi.fn()
+    const onToggleNotes = vi.fn()
+    const { container } = render(
+      <Topbar
+        question={question}
+        progress={progress}
+        libraryOpen={false}
+        notesOpen={false}
+        pageLayout="single"
+        spreadAvailable
+        practiceMode
+        notesDisabled
+        hasPrevious
+        hasNext
+        onPrevious={noop}
+        onNext={noop}
+        onToggleLibrary={noop}
+        onToggleNotes={onToggleNotes}
+        onPageLayoutChange={noop}
+        onTogglePracticeMode={onTogglePracticeMode}
+        onOpenSearch={noop}
+        onToggleFavorite={noop}
+      />,
+    )
+
+    const topbar = within(container)
+    const practiceButton = topbar.getByRole('button', { name: '刷题模式' })
+    const notesButton = topbar.getByRole('button', { name: '批注工作区（揭晓标准答案后可用）' })
+
+    expect(practiceButton).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(practiceButton)
+    expect(onTogglePracticeMode).toHaveBeenCalledOnce()
+    expect(notesButton).toBeDisabled()
+    expect(notesButton).toHaveAttribute('title', '揭晓标准答案后可使用批注工作区')
+    fireEvent.click(notesButton)
+    expect(onToggleNotes).not.toHaveBeenCalled()
+  })
+
   it('makes the rail inert while a mobile modal drawer is open', () => {
     const { container } = render(
       <Rail

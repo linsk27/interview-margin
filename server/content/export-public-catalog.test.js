@@ -6,7 +6,9 @@ import path from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { buildPublicCatalog, exportPublicCatalog } from './export-public-catalog.js'
+import {
+  buildPublicBankCatalog, buildPublicCatalog, buildPublicCatalogIndex, exportPublicCatalog,
+} from './export-public-catalog.js'
 
 const temporaryDirectories = []
 
@@ -55,10 +57,30 @@ describe('public catalog exporter', () => {
     for (const privateKey of [
       'users', 'sessions', 'progress', 'annotations', 'activity', 'settings',
       'passwordHash', 'tokenHash', 'createdBy', 'archivedAt', 'verifiedAt',
+      'plainText',
     ]) {
       expect(keys.has(privateKey), `unexpected private or volatile field: ${privateKey}`).toBe(false)
     }
   }, 20_000)
+
+  it('builds a lightweight index and one plainText-free payload per bank', () => {
+    const index = buildPublicCatalogIndex()
+    expect(index.version).toBe(1)
+    expect(index.banks).toHaveLength(14)
+    expect(index.banks.reduce((total, bank) => total + bank.questionCount, 0)).toBe(762)
+    const indexedQuestions = index.banks.flatMap((bank) => bank.sections.flatMap((section) => section.questions))
+    expect(indexedQuestions).toHaveLength(762)
+    expect(indexedQuestions.find((question) => question.id === 'js-q-100')).toMatchObject({ library: 'javascript' })
+    expect(JSON.stringify(index)).not.toContain('plainText')
+    expect(JSON.stringify(index)).not.toContain('"body"')
+
+    const javascript = buildPublicBankCatalog('javascript')
+    expect(javascript).toMatchObject({ version: 1, bank: { id: 'javascript' } })
+    const questions = javascript.sections.flatMap((section) => section.questions)
+    expect(questions).toHaveLength(index.banks.find((bank) => bank.id === 'javascript').questionCount)
+    expect(questions.every((question) => typeof question.body === 'string')).toBe(true)
+    expect(questions.every((question) => !Object.hasOwn(question, 'plainText'))).toBe(true)
+  }, 40_000)
 
   it('writes byte-for-byte deterministic JSON and creates the destination directory', () => {
     const directory = temporaryDirectory()
@@ -70,7 +92,15 @@ describe('public catalog exporter', () => {
 
     expect(firstResult).toMatchObject({ banks: 14, questions: 762, outputPath: first })
     expect(secondResult).toMatchObject({ banks: 14, questions: 762, outputPath: second })
+    expect(firstResult.bankFiles).toHaveLength(14)
+    expect(secondResult.bankFiles).toHaveLength(14)
     expect(fs.readFileSync(first, 'utf8')).toBe(fs.readFileSync(second, 'utf8'))
+    expect(fs.readFileSync(firstResult.indexOutputPath, 'utf8'))
+      .toBe(fs.readFileSync(secondResult.indexOutputPath, 'utf8'))
+    for (const firstBankPath of firstResult.bankFiles) {
+      const secondBankPath = path.join(secondResult.banksOutputDirectory, path.basename(firstBankPath))
+      expect(fs.readFileSync(firstBankPath, 'utf8')).toBe(fs.readFileSync(secondBankPath, 'utf8'))
+    }
     expect(JSON.parse(fs.readFileSync(first, 'utf8'))).toEqual(buildPublicCatalog())
   }, 60_000)
 })

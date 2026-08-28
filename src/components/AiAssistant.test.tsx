@@ -94,6 +94,49 @@ describe('AI learning assistant', () => {
     expect(screen.queryByText('正在组织回答…')).toBeNull()
   })
 
+  it('keeps a partial streamed answer as interrupted and offers regeneration', async () => {
+    const stream = [
+      'data: {"delta":"已经生成的半段回答。"}\n\n',
+      'data: {"delta":"\\n\\n> ⚠️ AI 回复中断，请重试。","error":"AI 回复在生成途中断开，请重试。","code":"AI_STREAM_INTERRUPTED","retryable":true}\n\n',
+      'data: [DONE]\n\n',
+    ].join('')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream, {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+    })))
+
+    render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '解释到一半会怎样' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+
+    await waitFor(() => expect(screen.getByText('已经生成的半段回答。')).toBeTruthy())
+    expect(screen.getByText('回答传输中断')).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toContain('AI 回复在生成途中断开')
+    expect(screen.getByRole('button', { name: '重新生成' })).toBeTruthy()
+    expect(screen.queryByLabelText('回答完成')).toBeNull()
+  })
+
+  it('marks a length-limited stream as truncated and offers to continue', async () => {
+    const stream = [
+      'data: {"delta":"达到长度上限前的回答。"}\n\n',
+      'data: {"done":true,"truncated":true}\n\n',
+      'data: [DONE]\n\n',
+    ].join('')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream, {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+    })))
+
+    render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '详细解释' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+
+    await waitFor(() => expect(screen.getByText('达到长度上限前的回答。')).toBeTruthy())
+    expect(screen.getByText('回答已达到长度上限')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '继续回答' })).toBeTruthy()
+    expect(screen.queryByLabelText('回答完成')).toBeNull()
+  })
+
   it('keeps the failed prompt and offers an accessible retry action', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,

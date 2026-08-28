@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, ChevronLeft, ChevronRight } from 'lucide-react'
-import { domToCanvas } from 'modern-screenshot'
 import type { Annotation, FontTheme, InterviewQuestion, PageLayout, ReadingSize, SelectionDraft } from '../types'
 import { getLearningOutline, type LearningSectionKind } from '../lib/learningSections'
+import { PracticeMode, type PracticeAssessment } from './PracticeMode'
 import { QuestionMarkdown } from './QuestionMarkdown'
 import {
   calculateSpreadGeometry,
@@ -20,6 +20,7 @@ interface ReaderProps {
   fontTheme: FontTheme
   readingSize: ReadingSize
   pageLayout: PageLayout
+  practiceMode?: boolean
   initialScrollTop: number
   initialSpreadIndex: number
   onSelection: (selection?: SelectionDraft) => void
@@ -27,6 +28,11 @@ interface ReaderProps {
   onScrollPosition: (scrollTop: number) => void
   onSpreadChange: (spreadIndex: number) => void
   onSpreadAvailabilityChange: (available: boolean) => void
+  onPracticeSchedule?: (assessment: PracticeAssessment) => boolean
+  onPracticeRevealChange?: (revealed: boolean) => void
+  practiceCanSaveReview?: boolean
+  onPracticeNext?: () => void
+  practiceNextLabel?: string
 }
 
 type TurnDirection = 'previous' | 'next'
@@ -102,6 +108,7 @@ function isSnapshotLayer(node: Node) {
 }
 
 async function captureViewport(viewport: HTMLDivElement) {
+  const { domToCanvas } = await import('modern-screenshot')
   return domToCanvas(viewport, {
     scale: 1,
     backgroundColor: window.getComputedStyle(viewport).backgroundColor,
@@ -193,6 +200,7 @@ export function Reader({
   fontTheme,
   readingSize,
   pageLayout,
+  practiceMode = false,
   initialScrollTop,
   initialSpreadIndex,
   onSelection,
@@ -200,6 +208,11 @@ export function Reader({
   onScrollPosition,
   onSpreadChange,
   onSpreadAvailabilityChange,
+  onPracticeSchedule = () => false,
+  onPracticeRevealChange = () => undefined,
+  practiceCanSaveReview = true,
+  onPracticeNext = () => undefined,
+  practiceNextLabel = '下一题',
 }: ReaderProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -326,8 +339,8 @@ export function Reader({
 
     const updateMode = () => {
       const available = canUseSpread(container.clientWidth, container.clientHeight)
-      onSpreadAvailabilityChangeRef.current(available)
-      setSpreadMode(shouldUseSpread(pageLayout, container.clientWidth, container.clientHeight))
+      onSpreadAvailabilityChangeRef.current(available && !practiceMode)
+      setSpreadMode(!practiceMode && shouldUseSpread(pageLayout, container.clientWidth, container.clientHeight))
       updateReadingProgress()
     }
 
@@ -335,7 +348,7 @@ export function Reader({
     const observer = new ResizeObserver(updateMode)
     observer.observe(container)
     return () => observer.disconnect()
-  }, [pageLayout, updateReadingProgress])
+  }, [pageLayout, practiceMode, updateReadingProgress])
 
   useLayoutEffect(() => {
     questionIdRef.current = question.id
@@ -703,7 +716,7 @@ export function Reader({
                 </div>
               </header>
 
-              {learningOutline.length > 0 && (
+              {!practiceMode && learningOutline.length > 0 && (
                 <nav className="reader__learning-outline" aria-label="跳转到本题学习段落">
                   {learningOutline.map((item, index) => (
                     <button
@@ -757,22 +770,52 @@ export function Reader({
               </div>
             </header>
 
-            <article
-              ref={articleRef}
-              className="markdown-body"
-              aria-labelledby={titleId}
-              onMouseUp={captureSelection}
-              onTouchEnd={captureSelection}
-              onClick={handleArticleClick}
-            >
-              <QuestionMarkdown
-                annotations={annotations}
-                imageLoading={spreadMode ? 'eager' : 'lazy'}
-                onDiagramSettled={handleDiagramSettled}
+            {practiceMode ? (
+              <div className="reader__practice">
+                <PracticeMode
+                  questionKey={question.id}
+                  onScheduleReview={onPracticeSchedule}
+                  onRevealChange={onPracticeRevealChange}
+                  canSaveReview={practiceCanSaveReview}
+                  onNext={onPracticeNext}
+                  nextLabel={practiceNextLabel}
+                >
+                  <article
+                    ref={articleRef}
+                    className="markdown-body reader__practice-answer"
+                    aria-labelledby={titleId}
+                    onMouseUp={captureSelection}
+                    onTouchEnd={captureSelection}
+                    onClick={handleArticleClick}
+                  >
+                    <QuestionMarkdown
+                      annotations={annotations}
+                      imageLoading="lazy"
+                      onDiagramSettled={handleDiagramSettled}
+                    >
+                      {question.body}
+                    </QuestionMarkdown>
+                  </article>
+                </PracticeMode>
+              </div>
+            ) : (
+              <article
+                ref={articleRef}
+                className="markdown-body"
+                aria-labelledby={titleId}
+                onMouseUp={captureSelection}
+                onTouchEnd={captureSelection}
+                onClick={handleArticleClick}
               >
-                {question.body}
-              </QuestionMarkdown>
-            </article>
+                <QuestionMarkdown
+                  annotations={annotations}
+                  imageLoading={spreadMode ? 'eager' : 'lazy'}
+                  onDiagramSettled={handleDiagramSettled}
+                >
+                  {question.body}
+                </QuestionMarkdown>
+              </article>
+            )}
           </div>
 
           <div className="reader__snapshot-layer" ref={snapshotLayerRef} aria-hidden="true" />

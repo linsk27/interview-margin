@@ -21,7 +21,7 @@ import {
   acceptInvitation, createInvitation, inspectInvitation, listInvitations, revokeInvitation,
 } from './invitations.js'
 import {
-  audit, createQuestion, getStudyState, listCatalog, mergeStudyState,
+  audit, createQuestion, getBankCatalog, getStudyState, listCatalog, listCatalogIndex, mergeStudyState,
   saveStudyState, updateQuestion,
 } from './repository.js'
 import {
@@ -59,6 +59,31 @@ function originGuard(allowedOrigins) {
 function noStore(_req, res, next) {
   res.setHeader('Cache-Control', 'no-store')
   return next()
+}
+
+const PUBLIC_CATALOG_CACHE = 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400'
+
+function weakJsonEtag(body) {
+  return `W/"${crypto.createHash('sha256').update(body).digest('base64url')}"`
+}
+
+function acceptsEtag(header, etag) {
+  if (!header) return false
+  const normalizedEtag = etag.replace(/^W\//, '')
+  return header.split(',').some((candidate) => {
+    const normalizedCandidate = candidate.trim()
+    return normalizedCandidate === '*' || normalizedCandidate.replace(/^W\//, '') === normalizedEtag
+  })
+}
+
+function sendCatalogJson(req, res, payload, cacheControl = PUBLIC_CATALOG_CACHE) {
+  const body = JSON.stringify(payload)
+  const etag = weakJsonEtag(body)
+  res.setHeader('Cache-Control', cacheControl)
+  res.setHeader('ETag', etag)
+  res.vary('Accept-Encoding')
+  if (acceptsEtag(req.get('if-none-match'), etag)) return res.status(304).end()
+  return res.type('application/json').send(body)
 }
 
 function requireExpectedUser(req, res, next) {
@@ -168,7 +193,9 @@ export function createApp(options = {}) {
       '/api/auth/session', '/api/auth/change-password', '/api/auth/logout', '/api/health', '/api/catalog',
       '/api/invitations/inspect', '/api/invitations/accept',
     ])
-    if (allowed.has(req.path)) return next()
+    if (allowed.has(req.path)
+      || req.path === '/api/catalog/index'
+      || req.path.startsWith('/api/catalog/banks/')) return next()
     return res.status(428).json({ error: '首次登录必须先修改一次性密码。', code: 'PASSWORD_CHANGE_REQUIRED' })
   })
 
@@ -179,9 +206,36 @@ export function createApp(options = {}) {
     res.json({ ok: true, service: 'interview-margin', storage: 'sqlite', ...counts, time: new Date().toISOString() })
   })
 
+  app.get('/api/catalog/index', (req, res) => {
+    const canEdit = req.user?.permissions.includes('banks.write') ?? false
+    if (canEdit) res.vary('Cookie')
+    const cacheControl = canEdit ? 'private, no-cache' : PUBLIC_CATALOG_CACHE
+    const index = listCatalogIndex(db, { includeArchived: false, includePrivate: canEdit })
+    return sendCatalogJson(req, res, index, cacheControl)
+  })
+
+  app.get('/api/catalog/banks/:bankId', (req, res) => {
+    const canEdit = req.user?.permissions.includes('banks.write') ?? false
+    if (canEdit) res.vary('Cookie')
+    const cacheControl = canEdit ? 'private, no-cache' : PUBLIC_CATALOG_CACHE
+    const catalog = getBankCatalog(db, req.params.bankId, {
+      includeArchived: false,
+      includePrivate: canEdit,
+      includePlainText: false,
+    })
+    if (!catalog) return res.status(404).json({ error: '题库不存在。' })
+    return sendCatalogJson(req, res, catalog, cacheControl)
+  })
+
   app.get('/api/catalog', (req, res) => {
     const canEdit = req.user?.permissions.includes('banks.write') ?? false
-    res.json(listCatalog(db, { includeArchived: false, includePrivate: canEdit }))
+    const cacheControl = canEdit ? 'private, no-cache' : PUBLIC_CATALOG_CACHE
+    res.vary('Cookie')
+    return sendCatalogJson(req, res, listCatalog(db, {
+      includeArchived: false,
+      includePrivate: canEdit,
+      includePlainText: false,
+    }), cacheControl)
   })
 
   app.post('/api/invitations/inspect', invitationInspectLimit, parseBody(invitationInspectSchema), (req, res) => {
@@ -498,24 +552,13 @@ export function createApp(options = {}) {
     limit: 20,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    message: { error: 'AI 请求过于频繁，请稍后再试。' },
+    message: {
+      error: 'AI 请求过于频繁，请稍后再试。',
+      code: 'AI_RATE_LIMITED',
+      retryable: true,
+    },
   }))
-  app.all('/api/ai-chat', async (req, res) => {
-    const fallback = process.env.AI_FALLBACK_URL?.trim()
-    if (process.env.OPENAI_API_KEY || !fallback) return aiChatHandler(req, res)
-    try {
-      const upstream = await fetch(fallback, {
-        method: req.method,
-        headers: { 'Content-Type': 'application/json' },
-        body: req.method === 'GET' || req.method === 'HEAD' ? undefined : JSON.stringify(req.body ?? {}),
-        signal: AbortSignal.timeout(60_000),
-      })
-      const payload = await upstream.text()
-      res.status(upstream.status).type(upstream.headers.get('content-type') ?? 'application/json').send(payload)
-    } catch {
-      res.status(502).json({ error: 'AI 后备服务暂时无法连接，请稍后再试。' })
-    }
-  })
+  app.all('/api/ai-chat', aiChatHandler)
 
   if (options.serveStatic !== false) {
     app.use(express.static(distDir, {

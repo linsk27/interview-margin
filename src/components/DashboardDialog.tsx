@@ -1,6 +1,7 @@
 import { BookOpen, CheckCircle2, Clock3, Download, Flame, Highlighter, RotateCcw, Upload, X } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
 import { formatDuration } from '../lib/format'
+import { isReviewDue } from '../lib/reviewSchedule'
 import { progressFor, todayKey } from '../lib/storage'
 import type { InterviewQuestion, InterviewSection, StudyState } from '../types'
 
@@ -45,16 +46,16 @@ export function DashboardDialog({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const now = new Date()
   const mastered = questions.filter((question) => progressFor(state, question.id).status === 'mastered').length
-  const review = questions.filter((question) => progressFor(state, question.id).status === 'review').length
+  const review = questions.filter((question) => isReviewDue(progressFor(state, question.id), now)).length
   const read = questions.filter((question) => progressFor(state, question.id).status !== 'unread').length
   const seconds = questions.reduce((sum, question) => sum + progressFor(state, question.id).seconds, 0)
   const days = useMemo(() => lastDays(14), [])
   const maxActivity = Math.max(1, ...days.map((day) => state.activity[day] ?? 0))
-  const reviewQueue = questions.filter((question) => {
-    const progress = progressFor(state, question.id)
-    return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
-  }).slice(0, 6)
+  const reviewQueue = questions
+    .filter((question) => isReviewDue(progressFor(state, question.id), now))
+    .slice(0, 6)
 
   useEffect(() => {
     const dialog = dialogRef.current

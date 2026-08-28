@@ -22,6 +22,7 @@ interface RailProps {
   libraryOpen: boolean
   notesOpen: boolean
   workspaceOpen?: boolean
+  notesDisabled?: boolean
   modalBlocked?: boolean
   readerMode: boolean
   bankHubActive: boolean
@@ -38,7 +39,7 @@ interface RailProps {
   onOpenAccount?: () => void
 }
 
-function RailButton({ label, onClick, active, expanded, controls, pressed, module, children }: {
+function RailButton({ label, onClick, active, expanded, controls, pressed, module, disabled, children }: {
   label: string
   onClick: () => void
   active?: boolean
@@ -46,6 +47,7 @@ function RailButton({ label, onClick, active, expanded, controls, pressed, modul
   controls?: string
   pressed?: boolean
   module?: boolean
+  disabled?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -59,6 +61,7 @@ function RailButton({ label, onClick, active, expanded, controls, pressed, modul
       title={label}
       data-tooltip={label}
       onClick={onClick}
+      disabled={disabled}
     >
       {children}
     </button>
@@ -73,6 +76,7 @@ export function Rail({
   libraryOpen,
   notesOpen,
   workspaceOpen = notesOpen,
+  notesDisabled = false,
   modalBlocked = false,
   readerMode,
   bankHubActive,
@@ -121,11 +125,12 @@ export function Rail({
         )}
         {readerMode && (
           <RailButton
-            label={notesOpen ? '收起批注工作区' : workspaceOpen ? '切换到批注' : '展开批注工作区'}
+            label={notesDisabled ? '揭晓标准答案后可使用批注工作区' : notesOpen ? '收起批注工作区' : workspaceOpen ? '切换到批注' : '展开批注工作区'}
             onClick={onToggleNotes}
             active={notesOpen}
             expanded={workspaceOpen}
             controls="notes-panel"
+            disabled={notesDisabled}
           >
             <NotebookPen aria-hidden="true" />
           </RailButton>

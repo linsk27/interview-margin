@@ -35,14 +35,14 @@ function bankFromRow(row) {
   }
 }
 
-function questionFromRow(row, sources = []) {
+function questionFromRow(row, sources = [], { includePlainText = true } = {}) {
   return {
     id: row.id,
     library: row.bank_id,
     number: row.display_number,
     title: row.title,
     body: row.body_md,
-    plainText: row.plain_text,
+    ...(includePlainText ? { plainText: row.plain_text } : {}),
     sectionId: row.section_id,
     sectionTitle: row.section_title,
     tags: parseJson(row.tags_json, []),
@@ -57,10 +57,21 @@ function questionFromRow(row, sources = []) {
   }
 }
 
-export function listCatalog(db, { includeArchived = false, includePrivate = false } = {}) {
+export function listCatalog(db, {
+  includeArchived = false,
+  includePrivate = false,
+  includePlainText = true,
+  bankId,
+} = {}) {
   const bankWhere = [includeArchived ? '1 = 1' : 'archived_at IS NULL']
+  const bankParams = []
   if (!includePrivate) bankWhere.push("visibility = 'public'")
-  const banks = db.prepare(`SELECT * FROM question_banks WHERE ${bankWhere.join(' AND ')} ORDER BY sort_order, created_at, id`).all()
+  if (bankId) {
+    bankWhere.push('id = ?')
+    bankParams.push(bankId)
+  }
+  const banks = db.prepare(`SELECT * FROM question_banks WHERE ${bankWhere.join(' AND ')} ORDER BY sort_order, created_at, id`)
+    .all(...bankParams)
     .map(bankFromRow)
   if (!banks.length) return { banks: [], sections: [] }
   const placeholders = banks.map(() => '?').join(',')
@@ -91,7 +102,7 @@ export function listCatalog(db, { includeArchived = false, includePrivate = fals
   const questionsBySection = new Map()
   for (const row of questionRows) {
     const list = questionsBySection.get(row.section_id) ?? []
-    list.push(questionFromRow(row, sourcesByQuestion.get(row.id) ?? []))
+    list.push(questionFromRow(row, sourcesByQuestion.get(row.id) ?? [], { includePlainText }))
     questionsBySection.set(row.section_id, list)
   }
   return {
@@ -102,6 +113,109 @@ export function listCatalog(db, { includeArchived = false, includePrivate = fals
       order: section.sort_order,
       questions: questionsBySection.get(section.id) ?? [],
     })).filter((section) => includeArchived || section.questions.length > 0),
+  }
+}
+
+function questionIndexFromRow(row, sources = []) {
+  return {
+    id: row.id,
+    library: row.bank_id,
+    number: row.display_number,
+    title: row.title,
+    sectionId: row.section_id,
+    sectionTitle: row.section_title,
+    tags: parseJson(row.tags_json, []),
+    difficulty: row.difficulty,
+    readMinutes: row.read_minutes,
+    order: row.sort_order,
+    version: row.version,
+    provenance: row.provenance,
+    sources,
+  }
+}
+
+export function listCatalogIndex(db, { includeArchived = false, includePrivate = false } = {}) {
+  const bankWhere = [includeArchived ? '1 = 1' : 'b.archived_at IS NULL']
+  if (!includePrivate) bankWhere.push("b.visibility = 'public'")
+  const banks = db.prepare(`
+    SELECT b.* FROM question_banks b
+    WHERE ${bankWhere.join(' AND ')}
+    ORDER BY b.sort_order, b.created_at, b.id
+  `).all().map(bankFromRow)
+  if (!banks.length) return { version: 1, banks: [] }
+
+  const placeholders = banks.map(() => '?').join(',')
+  const sectionRows = db.prepare(`
+    SELECT s.id, s.bank_id, s.title, s.sort_order
+    FROM sections s
+    JOIN question_banks b ON b.id = s.bank_id
+    WHERE s.bank_id IN (${placeholders})
+    ORDER BY b.sort_order, s.sort_order, s.id
+  `).all(...banks.map((bank) => bank.id))
+
+  const questionRows = db.prepare(`
+    SELECT q.id, q.bank_id, q.section_id, q.display_number, q.title, q.tags_json,
+      q.difficulty, q.read_minutes, q.sort_order, q.version, q.provenance,
+      s.title AS section_title
+    FROM questions q
+    JOIN sections s ON s.id = q.section_id
+    JOIN question_banks b ON b.id = q.bank_id
+    WHERE q.bank_id IN (${placeholders}) ${includeArchived ? '' : 'AND q.archived_at IS NULL'}
+    ORDER BY b.sort_order, q.sort_order
+  `).all(...banks.map((bank) => bank.id))
+
+  const sourceRows = questionRows.length
+    ? db.prepare(`SELECT * FROM source_refs WHERE question_id IN (${questionRows.map(() => '?').join(',')}) ORDER BY rowid`)
+      .all(...questionRows.map((question) => question.id))
+    : []
+  const sourcesByQuestion = new Map()
+  for (const source of sourceRows) {
+    const list = sourcesByQuestion.get(source.question_id) ?? []
+    list.push({ id: source.id, title: source.title, url: source.url, kind: source.source_kind })
+    sourcesByQuestion.set(source.question_id, list)
+  }
+  const questionsBySection = new Map()
+  for (const row of questionRows) {
+    const list = questionsBySection.get(row.section_id) ?? []
+    list.push(questionIndexFromRow(row, sourcesByQuestion.get(row.id) ?? []))
+    questionsBySection.set(row.section_id, list)
+  }
+
+  const sectionsByBank = new Map()
+  for (const row of sectionRows) {
+    const questions = questionsBySection.get(row.id) ?? []
+    if (!includeArchived && questions.length === 0) continue
+    const list = sectionsByBank.get(row.bank_id) ?? []
+    list.push({
+      id: row.id,
+      title: row.title,
+      order: row.sort_order,
+      questionCount: questions.length,
+      questions,
+    })
+    sectionsByBank.set(row.bank_id, list)
+  }
+
+  return {
+    version: 1,
+    banks: banks.map((bank) => {
+      const sections = sectionsByBank.get(bank.id) ?? []
+      return {
+        ...bank,
+        questionCount: sections.reduce((total, section) => total + section.questions.length, 0),
+        sections,
+      }
+    }),
+  }
+}
+
+export function getBankCatalog(db, bankId, options = {}) {
+  const catalog = listCatalog(db, { ...options, bankId })
+  if (!catalog.banks.length) return undefined
+  return {
+    version: 1,
+    bank: catalog.banks[0],
+    sections: catalog.sections,
   }
 }
 

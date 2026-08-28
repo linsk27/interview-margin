@@ -1,11 +1,14 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useEffect, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { InterviewQuestion } from './types'
+import { createDefaultState } from './lib/storage'
 
 const apiMocks = vi.hoisted(() => ({
-  getCatalog: vi.fn(),
+  getCatalogIndex: vi.fn(),
+  getCatalogBank: vi.fn(),
   getSession: vi.fn(),
   getMyState: vi.fn(),
   saveMyState: vi.fn(),
@@ -25,10 +28,16 @@ vi.mock('./lib/api', async (importOriginal) => ({
 vi.mock('./lib/outbox', () => outboxMocks)
 
 vi.mock('./components/AuthDialog', () => ({
-  AuthDialog: ({ open, reason, onClose }: { open: boolean; reason?: string; onClose: () => void }) => (
+  AuthDialog: ({ open, reason, onClose, onSessionChanged }: {
+    open: boolean
+    reason?: string
+    onClose: () => void
+    onSessionChanged?: () => Promise<void>
+  }) => (
     open ? (
       <section role="dialog" aria-label="登录学习账号">
         <p data-testid="auth-reason">{reason ?? ''}</p>
+        {onSessionChanged && <button type="button" onClick={() => void onSessionChanged()}>模拟登录成功</button>}
         <button type="button" onClick={onClose}>关闭登录</button>
       </section>
     ) : null
@@ -41,20 +50,46 @@ vi.mock('./components/Reader', () => ({
     onScrollPosition,
     onSpreadChange,
     onSelection,
+    practiceMode,
+    onPracticeSchedule,
+    practiceCanSaveReview = false,
   }: {
     question: InterviewQuestion
     onScrollPosition: (scrollTop: number) => void
     onSpreadChange: (spreadIndex: number) => void
     onSelection: (selection: { quote: string; x: number; y: number }) => void
-  }) => (
-    <main aria-label="题目正文">
-      <h2 data-testid="reader-question">{question.title}</h2>
-      <p>{question.body}</p>
-      <button type="button" onClick={() => onScrollPosition(480)}>模拟普通滚动</button>
-      <button type="button" onClick={() => onSpreadChange(2)}>模拟双页翻页</button>
-      <button type="button" onClick={() => onSelection({ quote: '需要批注的正文', x: 240, y: 160 })}>选择正文</button>
-    </main>
-  ),
+    practiceMode?: boolean
+    practiceCanSaveReview?: boolean
+    onPracticeSchedule?: (assessment: { rating: 'mastered'; intervalDays: 7; draftAnswer: string }) => boolean
+  }) => {
+    const [pendingReview, setPendingReview] = useState(false)
+    const assessment = { rating: 'mastered' as const, intervalDays: 7 as const, draftAnswer: '游客答案' }
+
+    useEffect(() => {
+      if (!pendingReview || !practiceCanSaveReview) return
+      if (onPracticeSchedule?.(assessment)) setPendingReview(false)
+    }, [onPracticeSchedule, pendingReview, practiceCanSaveReview])
+
+    return (
+      <main aria-label="题目正文">
+        <h2 data-testid="reader-question">{question.title}</h2>
+        <p>{question.body}</p>
+        <button type="button" onClick={() => onScrollPosition(480)}>模拟普通滚动</button>
+        <button type="button" onClick={() => onSpreadChange(2)}>模拟双页翻页</button>
+        <button type="button" onClick={() => onSelection({ quote: '需要批注的正文', x: 240, y: 160 })}>选择正文</button>
+        {practiceMode && (
+          <>
+            <output data-testid="practice-save-ready">{practiceCanSaveReview ? 'ready' : 'waiting'}</output>
+            <button type="button" onClick={() => {
+              if (!onPracticeSchedule?.(assessment)) setPendingReview(true)
+            }}>
+              模拟刷题自评
+            </button>
+          </>
+        )}
+      </main>
+    )
+  },
 }))
 
 vi.mock('./components/DashboardDialog', () => ({
@@ -127,6 +162,21 @@ const catalog = {
   }],
 }
 
+const catalogIndex = {
+  version: 1 as const,
+  banks: catalog.banks.map((bank) => ({
+    ...bank,
+    questionCount: 2,
+    sections: catalog.sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      order: section.order,
+      questionCount: section.questions.length,
+      questions: section.questions.map(({ body: _body, plainText: _plainText, ...question }) => question),
+    })),
+  })),
+}
+
 function matchMedia(matches = false): typeof window.matchMedia {
   return vi.fn().mockImplementation((query: string) => ({
     matches,
@@ -168,7 +218,8 @@ beforeEach(() => {
   window.sessionStorage.clear()
   window.history.replaceState(null, '', '/')
   Object.defineProperty(window, 'matchMedia', { configurable: true, writable: true, value: matchMedia() })
-  apiMocks.getCatalog.mockResolvedValue(catalog)
+  apiMocks.getCatalogIndex.mockResolvedValue(catalogIndex)
+  apiMocks.getCatalogBank.mockResolvedValue({ version: 1, bank: catalog.banks[0], sections: catalog.sections })
   apiMocks.getSession.mockResolvedValue({ user: null })
   outboxMocks.flushQueuedState.mockResolvedValue(undefined)
   outboxMocks.queueStudyState.mockResolvedValue('guest-must-not-queue')
@@ -229,6 +280,68 @@ describe('App guest mode', () => {
     expectNoPersonalStateCalls()
   })
 
+  it('opens the question-bank hub from index metadata without downloading an answer bank', async () => {
+    window.history.replaceState(null, '', '/#question-banks')
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '选择一个方向，继续上次学习' })).toBeInTheDocument()
+    expect(apiMocks.getCatalogIndex).toHaveBeenCalledTimes(1)
+    expect(apiMocks.getCatalogBank).not.toHaveBeenCalled()
+  })
+
+  it('keeps the question-bank hub recoverable when the public index has no questions', async () => {
+    window.history.replaceState(null, '', '/#question-banks')
+    apiMocks.getCatalogIndex.mockResolvedValueOnce({ version: 1, banks: [] })
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '选择一个方向，继续上次学习' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '没有匹配的题库包' })).toBeInTheDocument()
+    expect(apiMocks.getCatalogBank).not.toHaveBeenCalled()
+  })
+
+  it('falls back to a remaining question when a bank response no longer contains the selected item', async () => {
+    window.history.replaceState(null, '', '/#question-banks')
+    apiMocks.getCatalogBank.mockResolvedValueOnce({
+      version: 1,
+      bank: catalog.banks[0],
+      sections: [{ ...catalog.sections[0], questions: [secondQuestion] }],
+    })
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: '开始学习' }))
+
+    expect(await screen.findByTestId('reader-question')).toHaveTextContent(secondQuestion.title)
+    expect(window.location.hash).toBe('#public-q-2')
+  })
+
+  it('returns to the recoverable bank hub when the last indexed question disappears during loading', async () => {
+    window.history.replaceState(null, '', '/#question-banks')
+    const singleQuestionIndex = {
+      ...catalogIndex,
+      banks: catalogIndex.banks.map((bank) => ({
+        ...bank,
+        questionCount: 1,
+        sections: bank.sections.map((section) => ({
+          ...section,
+          questionCount: 1,
+          questions: [section.questions[0]],
+        })),
+      })),
+    }
+    apiMocks.getCatalogIndex.mockResolvedValueOnce(singleQuestionIndex)
+    apiMocks.getCatalogBank.mockResolvedValueOnce({
+      version: 1,
+      bank: catalog.banks[0],
+      sections: [{ ...catalog.sections[0], questions: [] }],
+    })
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: '开始学习' }))
+
+    expect(await screen.findByRole('heading', { name: '选择一个方向，继续上次学习' })).toBeInTheDocument()
+    expect(window.location.hash).toBe('#question-banks')
+  })
+
   it('keeps passive scrolling and spread navigation read-only without prompting or persisting', async () => {
     await renderGuest()
 
@@ -262,6 +375,56 @@ describe('App guest mode', () => {
     await renderGuest()
     fireEvent.click(screen.getByRole('radio', { name: '已掌握' }))
     await expectContextualLogin(/进度|掌握|学习记录/)
+  })
+
+  it('lets a guest enter practice mode but asks for login before saving its review plan', async () => {
+    await renderGuest()
+
+    fireEvent.click(screen.getByRole('button', { name: '刷题模式' }))
+    expect(screen.getByRole('button', { name: '批注工作区（揭晓标准答案后可用）' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: '打开 AI 学习助手' })).not.toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: '模拟刷题自评' }))
+
+    await expectContextualLogin(/复习/)
+  })
+
+  it('waits for the signed-in study state before retrying a guest practice assessment', async () => {
+    let resolveServerState!: (value: ReturnType<typeof createDefaultState>) => void
+    const serverState = createDefaultState()
+    const serverStateRequest = new Promise<ReturnType<typeof createDefaultState>>((resolve) => {
+      resolveServerState = resolve
+    })
+    const learner = {
+      id: 'learner-1',
+      username: 'linda',
+      displayName: 'Linda',
+      mustChangePassword: false,
+      roles: ['learner'],
+      permissions: [],
+    }
+    apiMocks.getSession
+      .mockReset()
+      .mockResolvedValueOnce({ user: null })
+      .mockResolvedValueOnce({ user: learner })
+    apiMocks.getMyState.mockReturnValue(serverStateRequest)
+    apiMocks.saveMyState.mockImplementation(async (_userId, state) => state)
+
+    await renderGuest()
+    fireEvent.click(screen.getByRole('button', { name: '刷题模式' }))
+    fireEvent.click(await screen.findByRole('button', { name: '模拟刷题自评' }))
+    fireEvent.click(await screen.findByRole('button', { name: '模拟登录成功' }))
+
+    await waitFor(() => expect(apiMocks.getMyState).toHaveBeenCalledWith(learner.id))
+    expect(screen.getByTestId('practice-save-ready')).toHaveTextContent('waiting')
+    expect(apiMocks.saveMyState).not.toHaveBeenCalled()
+
+    resolveServerState(serverState)
+    await waitFor(() => expect(screen.getByTestId('practice-save-ready')).toHaveTextContent('ready'))
+    await waitFor(() => expect(apiMocks.saveMyState).toHaveBeenCalled(), { timeout: 2_000 })
+
+    const savedState = apiMocks.saveMyState.mock.calls.at(-1)?.[1]
+    expect(savedState.progress[firstQuestion.id]).toMatchObject({ status: 'mastered' })
+    expect(savedState.progress[firstQuestion.id].dueAt).toBeTruthy()
   })
 
   it('gates the dashboard and review queue as personal views', async () => {

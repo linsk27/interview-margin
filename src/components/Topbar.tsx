@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, BookOpen, FileText, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Star } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Brain, FileText, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Star } from 'lucide-react'
 import type { InterviewQuestion, PageLayout, QuestionProgress } from '../types'
 
 interface TopbarProps {
@@ -9,6 +9,8 @@ interface TopbarProps {
   workspaceOpen?: boolean
   pageLayout: PageLayout
   spreadAvailable: boolean
+  practiceMode?: boolean
+  notesDisabled?: boolean
   hasPrevious: boolean
   hasNext: boolean
   onPrevious: () => void
@@ -16,6 +18,7 @@ interface TopbarProps {
   onToggleLibrary: () => void
   onToggleNotes: () => void
   onPageLayoutChange: (layout: PageLayout) => void
+  onTogglePracticeMode?: () => void
   onOpenSearch: () => void
   onToggleFavorite: () => void
 }
@@ -28,6 +31,8 @@ export function Topbar({
   workspaceOpen = notesOpen,
   pageLayout,
   spreadAvailable,
+  practiceMode = false,
+  notesDisabled = false,
   hasPrevious,
   hasNext,
   onPrevious,
@@ -35,6 +40,7 @@ export function Topbar({
   onToggleLibrary,
   onToggleNotes,
   onPageLayoutChange,
+  onTogglePracticeMode = () => undefined,
   onOpenSearch,
   onToggleFavorite,
 }: TopbarProps) {
@@ -58,7 +64,18 @@ export function Topbar({
         <strong>Q{question.number}</strong>
       </div>
       <div className="topbar__actions">
-        <div className="topbar__layout-switch" role="radiogroup" aria-label="阅读版式">
+        <button
+          className={`topbar__practice${practiceMode ? ' is-active' : ''}`}
+          type="button"
+          aria-label="刷题模式"
+          aria-pressed={practiceMode}
+          onClick={onTogglePracticeMode}
+          title={practiceMode ? '退出刷题模式，查看完整答案' : '进入刷题模式，先作答再揭晓'}
+        >
+          <Brain aria-hidden="true" />
+          <span>{practiceMode ? '刷题中' : '刷题'}</span>
+        </button>
+        {!practiceMode && <div className="topbar__layout-switch" role="radiogroup" aria-label="阅读版式">
           <button
             type="button"
             role="radio"
@@ -84,7 +101,7 @@ export function Topbar({
             <BookOpen aria-hidden="true" />
             <span>双页</span>
           </button>
-        </div>
+        </div>}
         <button className="icon-button topbar__search" type="button" onClick={onOpenSearch} aria-label="搜索全部题库" title="搜索全部题库（/）">
           <Search aria-hidden="true" /><kbd>/</kbd>
         </button>
@@ -102,10 +119,11 @@ export function Topbar({
           className={`icon-button topbar__notes${notesOpen ? ' is-active' : ''}`}
           type="button"
           onClick={onToggleNotes}
-          aria-label={notesOpen ? '收起批注工作区' : workspaceOpen ? '切换到批注' : '展开批注工作区'}
+          disabled={notesDisabled}
+          aria-label={notesDisabled ? '批注工作区（揭晓标准答案后可用）' : notesOpen ? '收起批注工作区' : workspaceOpen ? '切换到批注' : '展开批注工作区'}
           aria-controls="notes-panel"
           aria-expanded={workspaceOpen}
-          title={`${notesOpen ? '收起批注工作区' : workspaceOpen ? '切换到批注' : '展开批注工作区'}（N）`}
+          title={notesDisabled ? '揭晓标准答案后可使用批注工作区' : `${notesOpen ? '收起批注工作区' : workspaceOpen ? '切换到批注' : '展开批注工作区'}（N）`}
         >
           {notesOpen ? <PanelRightClose aria-hidden="true" /> : <PanelRightOpen aria-hidden="true" />}
         </button>

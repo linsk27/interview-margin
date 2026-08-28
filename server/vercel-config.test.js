@@ -22,6 +22,10 @@ describe('Vercel guest failover configuration', () => {
     expect(config.headers).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: '/api/:path*' }),
       expect.objectContaining({ source: '/catalog.json' }),
+      expect.objectContaining({ source: '/catalog-index.json' }),
+      expect.objectContaining({ source: '/catalog-banks/:path*' }),
+      expect.objectContaining({ source: '/api/catalog/index' }),
+      expect.objectContaining({ source: '/api/catalog/banks/:path*' }),
     ]))
   })
 

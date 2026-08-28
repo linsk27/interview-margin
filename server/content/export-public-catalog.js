@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { createDatabase } from '../database.js'
-import { listCatalog } from '../repository.js'
+import { getBankCatalog, listCatalog, listCatalogIndex } from '../repository.js'
 import { assert360PublicContentSafe } from './public-content-policy.js'
 
 const currentFile = fileURLToPath(import.meta.url)
@@ -25,7 +25,6 @@ function publicQuestion(question) {
     number: question.number,
     title: question.title,
     body: question.body,
-    plainText: question.plainText,
     sectionId: question.sectionId,
     sectionTitle: question.sectionTitle,
     tags: question.tags,
@@ -38,21 +37,43 @@ function publicQuestion(question) {
   }
 }
 
+function publicQuestionMetadata(question) {
+  return {
+    id: question.id,
+    library: question.library,
+    number: question.number,
+    title: question.title,
+    sectionId: question.sectionId,
+    sectionTitle: question.sectionTitle,
+    tags: question.tags,
+    difficulty: question.difficulty,
+    readMinutes: question.readMinutes,
+    order: question.order,
+    version: question.version,
+    provenance: question.provenance,
+    sources: question.sources.map(publicSource),
+  }
+}
+
+function publicBank(bank) {
+  return {
+    id: bank.id,
+    title: bank.title,
+    shortTitle: bank.shortTitle,
+    kicker: bank.kicker,
+    category: bank.category,
+    description: bank.description,
+    baseTags: bank.baseTags,
+    tone: bank.tone,
+    visibility: bank.visibility,
+    sortOrder: bank.sortOrder,
+    version: bank.version,
+  }
+}
+
 function deterministicPublicCatalog(catalog) {
   return {
-    banks: catalog.banks.map((bank) => ({
-      id: bank.id,
-      title: bank.title,
-      shortTitle: bank.shortTitle,
-      kicker: bank.kicker,
-      category: bank.category,
-      description: bank.description,
-      baseTags: bank.baseTags,
-      tone: bank.tone,
-      visibility: bank.visibility,
-      sortOrder: bank.sortOrder,
-      version: bank.version,
-    })),
+    banks: catalog.banks.map(publicBank),
     sections: catalog.sections.map((section) => ({
       id: section.id,
       title: section.title,
@@ -62,12 +83,37 @@ function deterministicPublicCatalog(catalog) {
   }
 }
 
-/**
- * Builds the same public, active catalog served to anonymous visitors without
- * ever opening the production database. The seeded in-memory database is
- * always closed before the catalog is returned.
- */
-export function buildPublicCatalog({ rootDir = projectRoot } = {}) {
+function deterministicPublicCatalogIndex(index) {
+  return {
+    version: 1,
+    banks: index.banks.map((bank) => ({
+      ...publicBank(bank),
+      questionCount: bank.questionCount,
+      sections: bank.sections.map((section) => ({
+        id: section.id,
+        title: section.title,
+        order: section.order,
+        questionCount: section.questionCount,
+        questions: section.questions.map(publicQuestionMetadata),
+      })),
+    })),
+  }
+}
+
+function deterministicPublicBankCatalog(catalog) {
+  return {
+    version: 1,
+    bank: publicBank(catalog.bank),
+    sections: catalog.sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      order: section.order,
+      questions: section.questions.map(publicQuestion),
+    })),
+  }
+}
+
+export function buildPublicCatalogArtifacts({ rootDir = projectRoot } = {}) {
   const { db } = createDatabase({
     filename: ':memory:',
     rootDir,
@@ -78,6 +124,19 @@ export function buildPublicCatalog({ rootDir = projectRoot } = {}) {
     const catalog = deterministicPublicCatalog(listCatalog(db, {
       includeArchived: false,
       includePrivate: false,
+      includePlainText: false,
+    }))
+    const index = deterministicPublicCatalogIndex(listCatalogIndex(db, {
+      includeArchived: false,
+      includePrivate: false,
+    }))
+    const banks = Object.fromEntries(index.banks.map((bank) => {
+      const bankCatalog = getBankCatalog(db, bank.id, {
+        includeArchived: false,
+        includePrivate: false,
+        includePlainText: false,
+      })
+      return [bank.id, deterministicPublicBankCatalog(bankCatalog)]
     }))
     const public360Content = catalog.sections
       .flatMap((section) => section.questions)
@@ -85,10 +144,27 @@ export function buildPublicCatalog({ rootDir = projectRoot } = {}) {
       .map((question) => `${question.title}\n${question.body}`)
       .join('\n')
     assert360PublicContentSafe(public360Content, '360 AI 公共目录快照')
-    return catalog
+    return { catalog, index, banks }
   } finally {
     db.close()
   }
+}
+
+/**
+ * Builds the same public, active catalog served to anonymous visitors without
+ * ever opening the production database. The seeded in-memory database is
+ * always closed before the catalog is returned.
+ */
+export function buildPublicCatalog({ rootDir = projectRoot } = {}) {
+  return buildPublicCatalogArtifacts({ rootDir }).catalog
+}
+
+export function buildPublicCatalogIndex({ rootDir = projectRoot } = {}) {
+  return buildPublicCatalogArtifacts({ rootDir }).index
+}
+
+export function buildPublicBankCatalog(bankId, { rootDir = projectRoot } = {}) {
+  return buildPublicCatalogArtifacts({ rootDir }).banks[bankId]
 }
 
 /**
@@ -97,14 +173,35 @@ export function buildPublicCatalog({ rootDir = projectRoot } = {}) {
 export function exportPublicCatalog({
   rootDir = projectRoot,
   outputPath = path.join(rootDir, 'public/catalog.json'),
+  indexOutputPath,
+  banksOutputDirectory,
 } = {}) {
-  const catalog = buildPublicCatalog({ rootDir })
+  const { catalog, index, banks } = buildPublicCatalogArtifacts({ rootDir })
   const resolvedOutput = path.resolve(outputPath)
+  const resolvedIndexOutput = path.resolve(indexOutputPath ?? path.join(path.dirname(resolvedOutput), 'catalog-index.json'))
+  const resolvedBanksOutput = path.resolve(banksOutputDirectory ?? path.join(path.dirname(resolvedOutput), 'catalog-banks'))
   fs.mkdirSync(path.dirname(resolvedOutput), { recursive: true })
+  fs.mkdirSync(path.dirname(resolvedIndexOutput), { recursive: true })
+  fs.mkdirSync(resolvedBanksOutput, { recursive: true })
   fs.writeFileSync(resolvedOutput, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8')
+  fs.writeFileSync(resolvedIndexOutput, `${JSON.stringify(index, null, 2)}\n`, 'utf8')
+
+  const bankFiles = Object.entries(banks).map(([bankId, bankCatalog]) => {
+    const bankPath = path.join(resolvedBanksOutput, `${bankId}.json`)
+    fs.writeFileSync(bankPath, `${JSON.stringify(bankCatalog, null, 2)}\n`, 'utf8')
+    return bankPath
+  })
+  const expectedBankFiles = new Set(bankFiles.map((bankPath) => path.resolve(bankPath)))
+  for (const name of fs.readdirSync(resolvedBanksOutput)) {
+    const candidate = path.resolve(resolvedBanksOutput, name)
+    if (name.endsWith('.json') && !expectedBankFiles.has(candidate)) fs.rmSync(candidate)
+  }
 
   return {
     outputPath: resolvedOutput,
+    indexOutputPath: resolvedIndexOutput,
+    banksOutputDirectory: resolvedBanksOutput,
+    bankFiles,
     banks: catalog.banks.length,
     sections: catalog.sections.length,
     questions: catalog.sections.reduce((total, section) => total + section.questions.length, 0),

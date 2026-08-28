@@ -9,6 +9,8 @@ coverage
 logs/
 .vercel
 public/catalog.json
+public/catalog-index.json
+public/catalog-banks/
 data/
 backups/
 *.db

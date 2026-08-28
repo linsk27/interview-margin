@@ -10,6 +10,8 @@ interface ParseOptions {
   baseTags?: string[]
 }
 
+const markdownParser = unified().use(remarkParse)
+
 const TAG_RULES: Array<[string, string[]]> = [
   ['Vue', ['vue', '响应式', 'computed', 'watch', 'pinia', 'vuex', 'nexttick']],
   ['TypeScript', ['typescript', '类型', '泛型']],
@@ -33,8 +35,8 @@ function slugify(value: string): string {
     .slice(0, 60)
 }
 
-function plainTextFromMarkdown(markdown: string): string {
-  const tree = unified().use(remarkParse).parse(markdown) as Root
+export function plainTextFromMarkdown(markdown: string): string {
+  const tree = markdownParser.parse(markdown) as Root
   return toString(tree).replace(/\s+/g, ' ').trim()
 }
 
@@ -49,7 +51,7 @@ function inferTags(title: string, plainText: string): string[] {
 export function parseInterviewMarkdown(source: string, options: ParseOptions = {}): InterviewSection[] {
   const library = options.library ?? 'interview'
   const idPrefix = options.idPrefix ? `${options.idPrefix}-` : ''
-  const tree = unified().use(remarkParse).parse(source) as Root
+  const tree = markdownParser.parse(source) as Root
   const children = tree.children
   const sections: InterviewSection[] = []
   let currentSection: InterviewSection | undefined

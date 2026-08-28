@@ -49,12 +49,26 @@ describe('server API', () => {
 
   afterEach(() => db.close())
 
+  it('returns the shared AI error contract when the Express rate limit is exceeded', async () => {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await request(app).post('/api/ai-chat').send({ messages: [] }).expect(400)
+    }
+
+    const limited = await request(app).post('/api/ai-chat').send({ messages: [] }).expect(429)
+    expect(limited.body).toEqual({
+      error: 'AI 请求过于频繁，请稍后再试。',
+      code: 'AI_RATE_LIMITED',
+      retryable: true,
+    })
+  })
+
   it('serves all 762 active questions while preserving the stable non-Java ids', async () => {
     const health = await request(app).get('/api/health').expect(200)
     expect(health.body).toMatchObject({ storage: 'sqlite', banks: 14, questions: 762 })
     const catalog = await request(app).get('/api/catalog').set('Accept-Encoding', 'gzip').expect(200)
     expect(health.headers['cache-control']).toBe('no-store')
-    expect(catalog.headers['cache-control']).toBe('no-store')
+    expect(catalog.headers['cache-control']).toBe('public, max-age=0, s-maxage=300, stale-while-revalidate=86400')
+    expect(catalog.headers.etag).toMatch(/^W\/["].+[\"]$/)
     expect(catalog.headers['content-encoding']).toBe('gzip')
     expect(catalog.headers.vary).toContain('Accept-Encoding')
     expect(catalog.body.banks).toHaveLength(14)
@@ -69,6 +83,7 @@ describe('server API', () => {
     expect(questions[0].id).toBe('q-1')
     expect(questions.some((question) => question.id === 'q-1')).toBe(true)
     expect(questions.some((question) => question.id === 'js-q-100')).toBe(true)
+    expect(questions.every((question) => !Object.hasOwn(question, 'plainText'))).toBe(true)
     expect(questions.find((question) => question.library === 'vue-core').id)
       .toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
     await request(app).get('/api/me/state').expect(401)
@@ -78,10 +93,43 @@ describe('server API', () => {
     await request(app).post('/api/banks').send({}).expect(401)
   })
 
+  it('serves cacheable catalog indexes and bank payloads with stable ETags', async () => {
+    const index = await request(app).get('/api/catalog/index').expect(200)
+    expect(index.headers['cache-control']).toBe('public, max-age=0, s-maxage=300, stale-while-revalidate=86400')
+    expect(index.headers.etag).toMatch(/^W\/["].+[\"]$/)
+    expect(index.body.version).toBe(1)
+    expect(index.body.banks).toHaveLength(14)
+    expect(index.body.banks.reduce((total, bank) => total + bank.questionCount, 0)).toBe(762)
+    const indexedQuestions = index.body.banks.flatMap((bank) => bank.sections.flatMap((section) => section.questions))
+    expect(indexedQuestions).toHaveLength(762)
+    expect(indexedQuestions.find((question) => question.id === 'js-q-100')).toMatchObject({ library: 'javascript' })
+    expect(JSON.stringify(index.body)).not.toContain('plainText')
+    expect(JSON.stringify(index.body)).not.toContain('"body"')
+
+    await request(app).get('/api/catalog/index')
+      .set('If-None-Match', index.headers.etag)
+      .expect(304)
+
+    const javascript = await request(app).get('/api/catalog/banks/javascript').expect(200)
+    expect(javascript.headers['cache-control']).toBe(index.headers['cache-control'])
+    expect(javascript.body).toMatchObject({ version: 1, bank: { id: 'javascript' } })
+    const questions = javascript.body.sections.flatMap((section) => section.questions)
+    expect(questions).toHaveLength(index.body.banks.find((bank) => bank.id === 'javascript').questionCount)
+    expect(questions.every((question) => typeof question.body === 'string')).toBe(true)
+    expect(questions.every((question) => !Object.hasOwn(question, 'plainText'))).toBe(true)
+
+    await request(app).get('/api/catalog/banks/javascript')
+      .set('If-None-Match', javascript.headers.etag)
+      .expect(304)
+    await request(app).get('/api/catalog/banks/not-a-bank').expect(404)
+  }, 20_000)
+
   it('requires a password change and enforces admin, editor and learner permissions', async () => {
     const admin = request.agent(app)
     await admin.post('/api/auth/login').send({ username: 'admin', password: INITIAL_PASSWORD }).expect(200)
     await admin.get('/api/users').expect(428)
+    await admin.get('/api/catalog/index').expect(200)
+    await admin.get('/api/catalog/banks/javascript').expect(200)
     await admin.post('/api/auth/change-password')
       .send({ currentPassword: INITIAL_PASSWORD, newPassword: CHANGED_PASSWORD }).expect(200)
 
@@ -117,8 +165,20 @@ describe('server API', () => {
     }).expect(201)
     const guestCatalog = await request(app).get('/api/catalog').expect(200)
     expect(guestCatalog.body.banks.some((bank) => bank.id === 'private-bank')).toBe(false)
+    const guestIndex = await request(app).get('/api/catalog/index').expect(200)
+    expect(guestIndex.body.banks.some((bank) => bank.id === 'private-bank')).toBe(false)
+    await request(app).get('/api/catalog/banks/private-bank').expect(404)
     const adminCatalog = await admin.get('/api/catalog').expect(200)
+    expect(adminCatalog.headers['cache-control']).toBe('private, no-cache')
     expect(adminCatalog.body.banks.some((bank) => bank.id === 'private-bank')).toBe(true)
+    const adminIndex = await admin.get('/api/catalog/index').expect(200)
+    expect(adminIndex.headers['cache-control']).toBe('private, no-cache')
+    expect(adminIndex.headers.vary).toContain('Cookie')
+    expect(adminIndex.body.banks.some((bank) => bank.id === 'private-bank')).toBe(true)
+    const privateBank = await admin.get('/api/catalog/banks/private-bank').expect(200)
+    expect(privateBank.headers['cache-control']).toBe('private, no-cache')
+    expect(privateBank.headers.vary).toContain('Cookie')
+    expect(privateBank.body.bank.id).toBe('private-bank')
   }, 20_000)
 
   it('accepts an existing short password and allows upgrading it', async () => {

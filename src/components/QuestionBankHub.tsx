@@ -8,6 +8,7 @@ import {
   Settings2,
   X,
 } from 'lucide-react'
+import { isReviewDue } from '../lib/reviewSchedule'
 import { progressFor } from '../lib/storage'
 import type {
   InterviewQuestion,
@@ -26,14 +27,11 @@ interface QuestionBankHubProps {
   onOpenSettings: () => void
 }
 
-function statsForBank(bank: QuestionBankDefinition, questions: InterviewQuestion[], state: StudyState) {
+function statsForBank(bank: QuestionBankDefinition, questions: InterviewQuestion[], state: StudyState, now: Date) {
   const bankQuestions = questions.filter((question) => question.library === bank.id)
   const mastered = bankQuestions.filter((question) => progressFor(state, question.id).status === 'mastered').length
   const started = bankQuestions.filter((question) => progressFor(state, question.id).status !== 'unread').length
-  const review = bankQuestions.filter((question) => {
-    const progress = progressFor(state, question.id)
-    return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
-  }).length
+  const review = bankQuestions.filter((question) => isReviewDue(progressFor(state, question.id), now)).length
 
   return {
     total: bankQuestions.length,
@@ -55,11 +53,9 @@ export function QuestionBankHub({
 }: QuestionBankHubProps) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('全部')
+  const now = new Date()
   const categories = useMemo(() => ['全部', ...new Set(banks.map((bank) => bank.category))], [banks])
-  const totalReview = questions.filter((question) => {
-    const progress = progressFor(state, question.id)
-    return progress.status === 'review' || Boolean(progress.dueAt && new Date(progress.dueAt) <= new Date())
-  }).length
+  const totalReview = questions.filter((question) => isReviewDue(progressFor(state, question.id), now)).length
   const totalStarted = questions.filter((question) => progressFor(state, question.id).status !== 'unread').length
   const needle = query.trim().toLowerCase()
   const visibleBanks = banks.filter((bank) => {
@@ -143,7 +139,7 @@ export function QuestionBankHub({
         {visibleBanks.length ? (
           <section className="bank-package-grid" aria-label="题库包列表" aria-live="polite">
             {visibleBanks.map((bank, index) => {
-              const stats = statsForBank(bank, questions, state)
+              const stats = statsForBank(bank, questions, state, now)
               const isCurrent = bank.id === currentBankId
               return (
                 <article className="bank-package" data-tone={bank.tone} data-current={isCurrent || undefined} key={bank.id}>
