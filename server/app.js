@@ -16,6 +16,9 @@ import {
 import { backupDatabase, listBackups, resolveBackup } from './backup-service.js'
 import { parseQuestionMarkdown, renderBankMarkdown } from './content/markdown.js'
 import { inspectMarkdownDiagrams } from './content/diagram-policy.js'
+import {
+  createContactRequest, deleteContactRequest, listContactRequests, updateContactRequest,
+} from './contact-requests.js'
 import { createDatabase, passwordHash, randomPassword } from './database.js'
 import {
   acceptInvitation, createInvitation, inspectInvitation, listInvitations, revokeInvitation,
@@ -26,6 +29,7 @@ import {
 } from './repository.js'
 import {
   bankCreateSchema, bankPatchSchema, loginSchema, parseBody, passwordSchema,
+  contactRequestCreateSchema, contactRequestPatchSchema,
   invitationAcceptSchema, invitationCreateSchema, invitationInspectSchema,
   questionCreateSchema, questionPatchSchema, studyStateSchema, userCreateSchema, userPatchSchema,
 } from './validation.js'
@@ -171,6 +175,13 @@ export function createApp(options = {}) {
     legacyHeaders: false,
     message: { error: '邀请注册尝试过于频繁，请稍后再试。' },
   })
+  const contactRequestLimit = rateLimit({
+    windowMs: 60 * 60_000,
+    limit: 5,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { error: '提交次数较多，请稍后再试。' },
+  })
   const allowedOrigins = new Set((process.env.APP_ORIGINS ?? 'https://interview.linsk27.dpdns.org,http://127.0.0.1:4173,http://localhost:5173')
     .split(',').map((item) => item.trim()).filter(Boolean))
 
@@ -191,7 +202,7 @@ export function createApp(options = {}) {
     if (!req.user?.mustChangePassword) return next()
     const allowed = new Set([
       '/api/auth/session', '/api/auth/change-password', '/api/auth/logout', '/api/health', '/api/catalog',
-      '/api/invitations/inspect', '/api/invitations/accept',
+      '/api/invitations/inspect', '/api/invitations/accept', '/api/contact-requests',
     ])
     if (allowed.has(req.path)
       || req.path === '/api/catalog/index'
@@ -212,6 +223,14 @@ export function createApp(options = {}) {
     const cacheControl = canEdit ? 'private, no-cache' : PUBLIC_CATALOG_CACHE
     const index = listCatalogIndex(db, { includeArchived: false, includePrivate: canEdit })
     return sendCatalogJson(req, res, index, cacheControl)
+  })
+
+  app.post('/api/contact-requests', contactRequestLimit, parseBody(contactRequestCreateSchema), (req, res) => {
+    const data = req.validatedBody
+    // A hidden honeypot field absorbs simple form bots without confirming detection.
+    if (data.website) return res.status(202).json({ ok: true })
+    const created = createContactRequest(db, data)
+    return res.status(201).json({ ok: true, ...created })
   })
 
   app.get('/api/catalog/banks/:bankId', (req, res) => {
@@ -318,6 +337,22 @@ export function createApp(options = {}) {
   })
 
   app.get('/api/users', requirePermission('users.manage'), (_req, res) => res.json({ users: listUsers(db) }))
+
+  app.get('/api/admin/contact-requests', requirePermission('users.manage'), (req, res) => {
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100))
+    return res.json({ requests: listContactRequests(db, limit) })
+  })
+  app.patch('/api/admin/contact-requests/:id', requirePermission('users.manage'), parseBody(contactRequestPatchSchema), (req, res) => {
+    const item = updateContactRequest(db, req.params.id, req.validatedBody.status)
+    if (!item) return res.status(404).json({ error: '反馈或申请不存在。' })
+    audit(db, req, 'contact-request.update', 'contact_request', req.params.id, { status: item.status })
+    return res.json({ request: item })
+  })
+  app.delete('/api/admin/contact-requests/:id', requirePermission('users.manage'), (req, res) => {
+    if (!deleteContactRequest(db, req.params.id)) return res.status(404).json({ error: '反馈或申请不存在。' })
+    audit(db, req, 'contact-request.delete', 'contact_request', req.params.id)
+    return res.json({ ok: true })
+  })
   app.post('/api/users', requirePermission('users.manage'), parseBody(userCreateSchema), (req, res) => {
     const data = req.validatedBody
     if (db.prepare('SELECT 1 FROM users WHERE username = ? COLLATE NOCASE').get(data.username)) {

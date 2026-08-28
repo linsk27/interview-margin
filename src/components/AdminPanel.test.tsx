@@ -123,3 +123,40 @@ describe('AdminPanel bank restore flow', () => {
     expect(screen.getByText('已归档')).toBeTruthy()
   })
 })
+
+describe('AdminPanel contact request inbox', () => {
+  it('loads private contact details only after an authorized admin opens the inbox', async () => {
+    const managingUser = { ...user, permissions: ['banks.write', 'banks.delete', 'users.manage'] } satisfies SessionUser
+    const fetchMock = vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/admin/catalog') return Promise.resolve(jsonResponse({ banks: [archivedBank], sections: [] }))
+      if (url === '/api/users') return Promise.resolve(jsonResponse({ users: [] }))
+      if (url === '/api/admin/contact-requests') return Promise.resolve(jsonResponse({ requests: [{
+        id: 'request-1', kind: 'account', name: 'Linda', contact: 'linda@example.com',
+        message: '正在准备前端面试，希望保存批注和复习计划。', status: 'new',
+        createdAt: '2026-08-29T01:00:00.000Z', updatedAt: '2026-08-29T01:00:00.000Z',
+      }] }))
+      if (url === '/api/admin/contact-requests/request-1' && options?.method === 'PATCH') {
+        return Promise.resolve(jsonResponse({ request: {
+          id: 'request-1', kind: 'account', name: 'Linda', contact: 'linda@example.com',
+          message: '正在准备前端面试，希望保存批注和复习计划。', status: 'reviewing',
+          createdAt: '2026-08-29T01:00:00.000Z', updatedAt: '2026-08-29T01:05:00.000Z',
+        } }))
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AdminPanel user={managingUser} onExit={vi.fn()} onCatalogChanged={vi.fn().mockResolvedValue(undefined)} />)
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === '/api/admin/contact-requests')).toBe(false)
+    const contentTab = screen.getByRole('tab', { name: '题库内容' })
+    contentTab.focus()
+    fireEvent.keyDown(contentTab, { key: 'ArrowRight' })
+
+    expect(await screen.findByText('linda@example.com')).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: /反馈申请/ }))
+    expect(screen.getByText('正在准备前端面试，希望保存批注和复习计划。')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Linda 的处理状态'), { target: { value: 'reviewing' } })
+    expect(await screen.findByText('处理状态已更新。')).toBeTruthy()
+  })
+})

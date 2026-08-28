@@ -1,0 +1,19 @@
+{
+  "name": "面试边注",
+  "short_name": "面试边注",
+  "description": "技术面试阅读、批注与复习工作台",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#f1f4f7",
+  "theme_color": "#15202d",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

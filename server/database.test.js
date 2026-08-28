@@ -53,6 +53,15 @@ describe('database bootstrap administrator', () => {
     expect(verifyPassword(user.password_hash, database.bootstrap.password)).toBe(true)
     expect(verifyPassword(user.password_hash, '')).toBe(false)
   })
+
+  it('installs the contact request migration exactly once', () => {
+    database = createDatabase({ filename: ':memory:', seed: false, bootstrap: false })
+    expect(database.db.prepare('SELECT version FROM schema_migrations ORDER BY version').all())
+      .toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }])
+    expect(database.db.pragma('table_info(contact_requests)').map((column) => column.name)).toEqual([
+      'id', 'kind', 'name', 'contact', 'message', 'status', 'created_at', 'updated_at',
+    ])
+  })
 })
 
 describe('built-in question seed synchronization', () => {

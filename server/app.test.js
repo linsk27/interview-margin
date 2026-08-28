@@ -62,6 +62,59 @@ describe('server API', () => {
     })
   })
 
+  it('accepts privacy-conscious public feedback and lets only admins manage it', async () => {
+    const feedback = {
+      kind: 'feedback', name: '访客', contact: '', message: '移动端打开申请弹窗时，希望标题再紧凑一点。', consent: true, website: '',
+    }
+    const created = await request(app).post('/api/contact-requests').send(feedback).expect(201)
+    expect(created.body).toMatchObject({ ok: true, id: expect.any(String), createdAt: expect.any(String) })
+    expect(JSON.stringify(created.body)).not.toContain(feedback.message)
+
+    await request(app).post('/api/contact-requests').send({
+      ...feedback, kind: 'account', message: '正在准备前端面试，希望保存复习进度。',
+    }).expect(400)
+
+    await request(app).post('/api/contact-requests').send({ ...feedback, website: 'https://spam.example' }).expect(202)
+    expect(db.prepare('SELECT COUNT(*) AS count FROM contact_requests').get().count).toBe(1)
+    await request(app).get('/api/admin/contact-requests').expect(401)
+
+    const admin = request.agent(app)
+    await loginAndChangePassword(admin, 'admin', INITIAL_PASSWORD)
+    const inbox = await admin.get('/api/admin/contact-requests').expect(200)
+    expect(inbox.body.requests).toEqual([expect.objectContaining({
+      id: created.body.id, kind: 'feedback', name: '访客', contact: '', status: 'new',
+    })])
+
+    const updated = await admin.patch(`/api/admin/contact-requests/${created.body.id}`)
+      .send({ status: 'resolved' }).expect(200)
+    expect(updated.body.request.status).toBe('resolved')
+    const auditLog = db.prepare("SELECT metadata_json FROM audit_logs WHERE action = 'contact-request.update'").get()
+    expect(auditLog.metadata_json).toBe('{"status":"resolved"}')
+    expect(auditLog.metadata_json).not.toContain('移动端')
+
+    db.prepare('UPDATE contact_requests SET updated_at = ? WHERE id = ?').run('2020-01-01T00:00:00.000Z', created.body.id)
+    const afterRetentionCleanup = await admin.get('/api/admin/contact-requests').expect(200)
+    expect(afterRetentionCleanup.body.requests).toEqual([])
+
+    const disposable = await request(app).post('/api/contact-requests').send({
+      ...feedback, message: '这是一条用于验证管理员永久删除能力的反馈。',
+    }).expect(201)
+    await admin.delete(`/api/admin/contact-requests/${disposable.body.id}`).expect(200)
+    await admin.delete(`/api/admin/contact-requests/${disposable.body.id}`).expect(404)
+  })
+
+  it('limits public contact submissions and rejects cross-origin writes', async () => {
+    const payload = {
+      kind: 'account', name: '申请者', contact: 'candidate@example.com',
+      message: '正在准备 Java 后端面试，希望保存批注和复习计划。', consent: true, website: '',
+    }
+    await request(app).post('/api/contact-requests').set('Origin', 'https://evil.example').send(payload).expect(403)
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await request(app).post('/api/contact-requests').send({ ...payload, message: `${payload.message}${attempt}` }).expect(201)
+    }
+    await request(app).post('/api/contact-requests').send(payload).expect(429)
+  })
+
   it('serves all 762 active questions while preserving the stable non-Java ids', async () => {
     const health = await request(app).get('/api/health').expect(200)
     expect(health.body).toMatchObject({ storage: 'sqlite', banks: 14, questions: 762 })
@@ -146,6 +199,7 @@ describe('server API', () => {
     await learner.get('/api/admin/invitations').expect(403)
     await learner.get('/api/backups').expect(403)
     await learner.get('/api/audit').expect(403)
+    await learner.get('/api/admin/contact-requests').expect(403)
     await learner.post('/api/banks').send({}).expect(403)
 
     const editor = request.agent(app)
@@ -154,6 +208,7 @@ describe('server API', () => {
     await editor.get('/api/admin/invitations').expect(403)
     await editor.get('/api/backups').expect(403)
     await editor.get('/api/audit').expect(403)
+    await editor.get('/api/admin/contact-requests').expect(403)
     await editor.post('/api/banks').send({
       id: 'test-bank', title: '测试题库', shortTitle: '测试', kicker: 'TEST BANK',
       category: '测试', description: '集成测试题库', baseTags: ['Test'], tone: 'green', visibility: 'public',

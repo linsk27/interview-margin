@@ -269,6 +269,27 @@ function migrate(db) {
       db.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES(?, ?)').run(4, now)
     })()
   }
+
+  const contactRequestMigration = db.prepare('SELECT 1 FROM schema_migrations WHERE version = 5').get()
+  if (!contactRequestMigration) {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE contact_requests (
+          id TEXT PRIMARY KEY,
+          kind TEXT NOT NULL CHECK(kind IN ('feedback', 'account')),
+          name TEXT NOT NULL,
+          contact TEXT NOT NULL,
+          message TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new', 'reviewing', 'resolved')),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_contact_requests_status_created
+          ON contact_requests(status, created_at DESC);
+      `)
+      db.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES(?, ?)').run(5, now)
+    })()
+  }
 }
 
 function seedRoles(db) {

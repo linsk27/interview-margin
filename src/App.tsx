@@ -71,6 +71,8 @@ import type {
   StudyState,
   StudyStatus,
 } from './types'
+import './fonts.css'
+import './styles.css'
 
 const AdminPanel = lazy(() => import('./components/AdminPanel').then((module) => ({ default: module.AdminPanel })))
 const AuthDialog = lazy(() => import('./components/AuthDialog').then((module) => ({ default: module.AuthDialog })))

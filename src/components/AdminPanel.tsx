@@ -1,6 +1,6 @@
 import {
-  Archive, Ban, BookCopy, Check, ChevronRight, Clock3, Copy, DatabaseBackup, Download, Eye, FilePlus2, History,
-  Import, LoaderCircle, PencilLine, Plus, RefreshCcw, RotateCcw, Save, Send, ShieldCheck, Trash2, UserPlus, Users, X,
+  Archive, Ban, BookCopy, Check, CheckCircle2, ChevronRight, Clock3, Copy, DatabaseBackup, Download, Eye, FilePlus2, History,
+  Import, Inbox, LoaderCircle, PencilLine, Plus, RefreshCcw, RotateCcw, Save, Send, ShieldCheck, Trash2, UserPlus, Users, X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -22,7 +22,17 @@ interface ManagedUser {
 }
 
 interface BackupRecord { filename: string; size: number; createdAt: string }
-type AdminTab = 'content' | 'users' | 'backups'
+interface ManagedContactRequest {
+  id: string
+  kind: 'feedback' | 'account'
+  name: string
+  contact: string
+  message: string
+  status: 'new' | 'reviewing' | 'resolved'
+  createdAt: string
+  updatedAt: string
+}
+type AdminTab = 'content' | 'requests' | 'users' | 'backups'
 type ContentLoadState = 'loading' | 'ready' | 'error'
 
 interface QuestionDraft {
@@ -68,6 +78,8 @@ export function AdminPanel({ user, onExit, onCatalogChanged, initialCatalog = { 
   const [contentLoadState, setContentLoadState] = useState<ContentLoadState>(initialCatalog.banks.length ? 'ready' : 'loading')
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [backups, setBackups] = useState<BackupRecord[]>([])
+  const [contactRequests, setContactRequests] = useState<ManagedContactRequest[]>([])
+  const [contactRequestsLoaded, setContactRequestsLoaded] = useState(false)
   const [selectedBankId, setSelectedBankId] = useState(initialCatalog.banks[0]?.id ?? '')
   const [selectedQuestionId, setSelectedQuestionId] = useState('')
   const [question, setQuestion] = useState<QuestionDraft>(EMPTY_QUESTION)
@@ -120,11 +132,37 @@ export function AdminPanel({ user, onExit, onCatalogChanged, initialCatalog = { 
     const result = await api<{ backups: BackupRecord[] }>('/api/backups')
     setBackups(result.backups)
   }
+  const loadContactRequests = async () => {
+    if (!canManageUsers) return
+    const result = await api<{ requests: ManagedContactRequest[] }>('/api/admin/contact-requests')
+    setContactRequests(result.requests)
+    setContactRequestsLoaded(true)
+  }
 
   useEffect(() => {
     Promise.all([loadContent({ showLoading: initialCatalog.banks.length === 0, retry: true }), loadUsers(), loadBackups()])
       .catch((reason) => setError(reason instanceof Error ? reason.message : '题库目录加载失败。'))
   }, [])
+
+  useEffect(() => {
+    if (tab !== 'requests' || contactRequestsLoaded) return
+    loadContactRequests().catch((reason) => setError(reason instanceof Error ? reason.message : '反馈申请加载失败。'))
+  }, [tab, contactRequestsLoaded])
+
+  const updateContactRequestStatus = async (id: string, status: ManagedContactRequest['status']) => {
+    const result = await api<{ request: ManagedContactRequest }>(`/api/admin/contact-requests/${id}`, {
+      method: 'PATCH', body: JSON.stringify({ status }),
+    })
+    setContactRequests((current) => current.map((item) => item.id === id ? result.request : item))
+    setFeedback('处理状态已更新。')
+  }
+
+  const removeContactRequest = async (item: ManagedContactRequest) => {
+    if (!window.confirm(`永久删除${item.kind === 'account' ? '账号申请' : '反馈'}“${item.name}”？此操作不可恢复。`)) return
+    await api(`/api/admin/contact-requests/${item.id}`, { method: 'DELETE' })
+    setContactRequests((current) => current.filter((request) => request.id !== item.id))
+    setFeedback('记录已永久删除。')
+  }
 
   useEffect(() => {
     const found = bankQuestions.find((item) => item.id === selectedQuestionId)
@@ -271,6 +309,19 @@ export function AdminPanel({ user, onExit, onCatalogChanged, initialCatalog = { 
     await loadContent(); await onCatalogChanged()
   }
 
+  const moveAdminTab = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+    const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+    const current = tabs.indexOf(document.activeElement as HTMLButtonElement)
+    if (current < 0 || !tabs.length) return
+    event.preventDefault()
+    const nextIndex = event.key === 'Home' ? 0
+      : event.key === 'End' ? tabs.length - 1
+        : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
+    tabs[nextIndex].focus()
+    tabs[nextIndex].click()
+  }
+
   return (
     <main className="admin-panel">
       <header className="admin-panel__topbar">
@@ -281,10 +332,11 @@ export function AdminPanel({ user, onExit, onCatalogChanged, initialCatalog = { 
         </div>
         <button className="icon-button" type="button" onClick={onExit} aria-label="退出管理"><X aria-hidden="true" /></button>
       </header>
-      <div className="admin-panel__tabs" role="tablist">
-        <button id="admin-tab-content" aria-controls="admin-panel-content" type="button" role="tab" aria-selected={tab === 'content'} className={tab === 'content' ? 'is-active' : ''} onClick={() => setTab('content')}><BookCopy aria-hidden="true" />题库内容</button>
-        {canManageUsers && <button id="admin-tab-users" aria-controls="admin-panel-users" type="button" role="tab" aria-selected={tab === 'users'} className={tab === 'users' ? 'is-active' : ''} onClick={() => setTab('users')}><Users aria-hidden="true" />账号权限</button>}
-        {canBackup && <button id="admin-tab-backups" aria-controls="admin-panel-backups" type="button" role="tab" aria-selected={tab === 'backups'} className={tab === 'backups' ? 'is-active' : ''} onClick={() => setTab('backups')}><DatabaseBackup aria-hidden="true" />备份审计</button>}
+      <div className="admin-panel__tabs" role="tablist" aria-label="管理工作区" onKeyDown={moveAdminTab}>
+        <button id="admin-tab-content" aria-controls="admin-panel-content" type="button" role="tab" aria-selected={tab === 'content'} tabIndex={tab === 'content' ? 0 : -1} className={tab === 'content' ? 'is-active' : ''} onClick={() => setTab('content')}><BookCopy aria-hidden="true" />题库内容</button>
+        {canManageUsers && <button id="admin-tab-requests" aria-controls="admin-panel-requests" type="button" role="tab" aria-selected={tab === 'requests'} tabIndex={tab === 'requests' ? 0 : -1} className={tab === 'requests' ? 'is-active' : ''} onClick={() => setTab('requests')}><Inbox aria-hidden="true" />反馈申请{contactRequests.some((item) => item.status === 'new') && <span className="admin-tab-badge" aria-label={`${contactRequests.filter((item) => item.status === 'new').length} 条新记录`}>{contactRequests.filter((item) => item.status === 'new').length}</span>}</button>}
+        {canManageUsers && <button id="admin-tab-users" aria-controls="admin-panel-users" type="button" role="tab" aria-selected={tab === 'users'} tabIndex={tab === 'users' ? 0 : -1} className={tab === 'users' ? 'is-active' : ''} onClick={() => setTab('users')}><Users aria-hidden="true" />账号权限</button>}
+        {canBackup && <button id="admin-tab-backups" aria-controls="admin-panel-backups" type="button" role="tab" aria-selected={tab === 'backups'} tabIndex={tab === 'backups' ? 0 : -1} className={tab === 'backups' ? 'is-active' : ''} onClick={() => setTab('backups')}><DatabaseBackup aria-hidden="true" />备份审计</button>}
       </div>
       {error && <div className="admin-alert" role="alert"><span>{error}</span><button type="button" onClick={() => setError('')} aria-label="关闭错误提示"><X aria-hidden="true" /></button></div>}
       {feedback && <div className="admin-feedback" role="status" aria-live="polite"><Check aria-hidden="true" /><span>{feedback}</span><button type="button" onClick={() => setFeedback('')} aria-label="关闭成功提示"><X aria-hidden="true" /></button></div>}
@@ -381,6 +433,7 @@ export function AdminPanel({ user, onExit, onCatalogChanged, initialCatalog = { 
       )}
 
       {tab === 'users' && canManageUsers && <div className="admin-account-management" id="admin-panel-users" role="tabpanel" aria-labelledby="admin-tab-users"><div className="admin-account-management__inner"><InvitationManager /><UserManager users={users} onReload={loadUsers} onTemporaryPassword={setTemporaryPassword} /></div></div>}
+      {tab === 'requests' && canManageUsers && <ContactRequestManager requests={contactRequests} loaded={contactRequestsLoaded} onReload={loadContactRequests} onStatusChange={updateContactRequestStatus} onDelete={removeContactRequest} onOpenUsers={() => setTab('users')} />}
       {tab === 'backups' && canBackup && <div className="admin-tab-panel" id="admin-panel-backups" role="tabpanel" aria-labelledby="admin-tab-backups"><BackupManager backups={backups} onReload={loadBackups} /></div>}
 
       {bankFormOpen && <div className="admin-overlay" role="presentation"><form className="admin-form-card admin-bank-form" onSubmit={createBank} role="dialog" aria-modal="true" aria-labelledby="create-bank-title">
@@ -405,6 +458,42 @@ export function AdminPanel({ user, onExit, onCatalogChanged, initialCatalog = { 
       {temporaryPassword && <div className="admin-overlay" role="presentation"><section className="admin-form-card temporary-password" role="dialog" aria-modal="true" aria-labelledby="temporary-password-title"><header className="admin-form-card__header"><div><span>ONE-TIME CREDENTIAL</span><h2 id="temporary-password-title">一次性密码</h2><p>密码仅显示一次，请通过可信渠道发送给用户。</p></div><button className="icon-button" type="button" onClick={() => setTemporaryPassword('')} aria-label="关闭一次性密码"><X aria-hidden="true" /></button></header><div className="admin-form-card__body"><code>{temporaryPassword}</code></div><footer className="admin-form-card__footer"><span>用户首次登录后必须修改密码。</span><button className="primary-button" type="button" onClick={() => navigator.clipboard.writeText(temporaryPassword)}><Copy aria-hidden="true" />复制密码</button></footer></section></div>}
     </main>
   )
+}
+
+function ContactRequestManager({ requests, loaded, onReload, onStatusChange, onDelete, onOpenUsers }: {
+  requests: ManagedContactRequest[]
+  loaded: boolean
+  onReload: () => Promise<void>
+  onStatusChange: (id: string, status: ManagedContactRequest['status']) => Promise<void>
+  onDelete: (item: ManagedContactRequest) => Promise<void>
+  onOpenUsers: () => void
+}) {
+  const [filter, setFilter] = useState<'all' | ManagedContactRequest['kind']>('all')
+  const [pendingId, setPendingId] = useState('')
+  const visible = requests.filter((item) => filter === 'all' || item.kind === filter)
+  const newCount = requests.filter((item) => item.status === 'new').length
+
+  const update = async (id: string, status: ManagedContactRequest['status']) => {
+    setPendingId(id)
+    try { await onStatusChange(id, status) } finally { setPendingId('') }
+  }
+
+  return <section className="admin-contact-requests" id="admin-panel-requests" role="tabpanel" aria-labelledby="admin-tab-requests">
+    <header className="admin-contact-requests__header">
+      <div><span className="admin-section-heading__icon"><Inbox aria-hidden="true" /></span><p><small>INBOX</small><strong>反馈与账号申请</strong><span>访客提交后进入这里；申请不会自动创建账号。</span></p></div>
+      <div className="admin-contact-requests__summary"><span><strong>{newCount}</strong> 待处理</span><button type="button" onClick={() => onReload()}><RefreshCcw aria-hidden="true" />刷新</button></div>
+    </header>
+    <div className="admin-contact-requests__filters" role="group" aria-label="筛选记录">
+      {([['all', '全部'], ['feedback', '产品反馈'], ['account', '账号申请']] as const).map(([value, label]) => <button type="button" key={value} className={filter === value ? 'is-active' : ''} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}<span>{value === 'all' ? requests.length : requests.filter((item) => item.kind === value).length}</span></button>)}
+    </div>
+    {!loaded ? <div className="admin-contact-requests__empty" role="status"><LoaderCircle className="admin-action-spinner" aria-hidden="true" />正在读取记录…</div>
+      : visible.length === 0 ? <div className="admin-contact-requests__empty"><CheckCircle2 aria-hidden="true" /><strong>当前没有记录</strong><span>新的反馈或账号申请会显示在这里。</span></div>
+        : <div className="admin-contact-requests__list">{visible.map((item) => <article key={item.id} className={`admin-contact-request is-${item.status}`}>
+          <header><div><span className={`admin-request-kind is-${item.kind}`}>{item.kind === 'account' ? '账号申请' : '产品反馈'}</span><strong>{item.name}</strong>{item.status === 'new' && <em>NEW</em>}</div><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time></header>
+          <p>{item.message}</p>
+          <footer><div>{item.contact ? (item.contact.includes('@') ? <a href={`mailto:${item.contact}`}>{item.contact}</a> : <span>{item.contact}</span>) : <span>未留联系方式</span>}</div><div><select aria-label={`${item.name} 的处理状态`} value={item.status} disabled={pendingId === item.id} onChange={(event) => update(item.id, event.target.value as ManagedContactRequest['status'])}><option value="new">待处理</option><option value="reviewing">处理中</option><option value="resolved">已完成</option></select>{item.kind === 'account' && <button type="button" onClick={onOpenUsers}><UserPlus aria-hidden="true" />账号权限</button>}<button className="is-danger" type="button" onClick={() => onDelete(item)}><Trash2 aria-hidden="true" />删除</button></div></footer>
+        </article>)}</div>}
+  </section>
 }
 
 function UserManager({ users, onReload, onTemporaryPassword }: { users: ManagedUser[]; onReload: () => Promise<void>; onTemporaryPassword: (password: string) => void }) {

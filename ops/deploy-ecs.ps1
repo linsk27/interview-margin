@@ -30,7 +30,34 @@ function Get-PublicSmoke {
   if ($page.StatusCode -ne 200 -or $health.ok -ne $true) {
     throw 'Public page or API health check failed.'
   }
-  return [pscustomobject]@{ PageStatus = $page.StatusCode; Health = $health }
+
+  $assetChecks = @(
+    @{ Path = 'robots.txt'; Types = @('text/plain') },
+    @{ Path = 'sitemap.xml'; Types = @('application/xml', 'text/xml') },
+    @{ Path = 'site.webmanifest'; Types = @('application/manifest+json', 'application/json') },
+    @{ Path = 'favicon.svg'; Types = @('image/svg+xml') },
+    @{ Path = 'assets/interview-margin-share.png'; Types = @('image/png') }
+  )
+  $assetStatus = [ordered]@{}
+  $cacheBuster = [Guid]::NewGuid().ToString('N')
+  foreach ($asset in $assetChecks) {
+    $assetUri = [UriBuilder][Uri]::new($BaseUri, $asset.Path)
+    $assetUri.Query = "deploy-smoke=$cacheBuster"
+    $response = Invoke-WebRequest -Uri $assetUri.Uri.AbsoluteUri -Method Get -TimeoutSec 20 -UseBasicParsing -Headers @{
+      'Cache-Control' = 'no-cache'
+      'Pragma' = 'no-cache'
+    }
+    $contentType = [string]$response.Headers['Content-Type']
+    $mediaType = $contentType.Split(';')[0].Trim()
+    $hasExpectedType = $asset.Types -contains $mediaType
+    if ($response.StatusCode -ne 200 -or -not $hasExpectedType -or
+        ([string]$response.Content) -match '(?i)<!doctype\s+html|<html(?:\s|>)') {
+      throw "Public asset verification failed for $($asset.Path): status=$($response.StatusCode), content-type=$contentType"
+    }
+    $assetStatus[$asset.Path] = $mediaType
+  }
+
+  return [pscustomobject]@{ PageStatus = $page.StatusCode; Health = $health; Assets = $assetStatus }
 }
 
 function Get-RemoteDeploymentObservation {
@@ -218,6 +245,7 @@ if ($initialObservation.Pending -eq 'present') {
     publicUrl = $publicUri.AbsoluteUri
     pageStatus = $recoveredSmoke.PageStatus
     health = $recoveredSmoke.Health
+    assets = $recoveredSmoke.Assets
   } | ConvertTo-Json -Depth 5
   return
 }
@@ -237,6 +265,7 @@ if ($initialObservation.Current -eq $expectedRelease) {
     publicUrl = $publicUri.AbsoluteUri
     pageStatus = $currentSmoke.PageStatus
     health = $currentSmoke.Health
+    assets = $currentSmoke.Assets
   } | ConvertTo-Json -Depth 5
   return
 }
@@ -313,6 +342,7 @@ try {
     publicUrl = $publicUri.AbsoluteUri
     pageStatus = $smoke.PageStatus
     health = $smoke.Health
+    assets = $smoke.Assets
   } | ConvertTo-Json -Depth 5
 }
 catch {

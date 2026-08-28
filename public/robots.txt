@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://interview.linsk27.dpdns.org/sitemap.xml

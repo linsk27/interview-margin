@@ -85,6 +85,27 @@ export const invitationAcceptSchema = z.object({
   password: z.string().min(12).max(256),
 }).strict()
 
+export const contactRequestCreateSchema = z.object({
+  kind: z.enum(['feedback', 'account']),
+  name: z.string().trim().min(1).max(80),
+  contact: z.string().trim().max(160).default(''),
+  message: z.string().trim().min(10).max(2_000),
+  consent: z.literal(true),
+  website: z.string().max(200).default(''),
+}).strict().superRefine((value, context) => {
+  if (value.kind === 'account' && value.contact.length < 3) {
+    context.addIssue({
+      code: 'custom',
+      path: ['contact'],
+      message: '申请账号时请留下可联系到你的方式。',
+    })
+  }
+})
+
+export const contactRequestPatchSchema = z.object({
+  status: z.enum(['new', 'reviewing', 'resolved']),
+}).strict()
+
 export const bankCreateSchema = z.object({
   id: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,63}$/),
   title: z.string().trim().min(1).max(120),
