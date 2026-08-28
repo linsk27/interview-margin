@@ -2,20 +2,22 @@
 
 ## Q1：typeof null 的结果是什么？
 
-- A. null
-- B. object
-- C. undefined
-- D. number
+- A. `'null'`
+- B. `'object'`
+- C. `'undefined'`
+- D. `'number'`
 
 **答案：B**
 
 **短回答：**
 
-这是 JavaScript 早期实现遗留问题。null 是空值，但 typeof null 会返回 object，判断 null 应直接使用 value === null。
+这是 JavaScript 早期实现遗留问题。`null` 是空值，但 `typeof null` 会返回字符串 `'object'`；判断 `null` 应直接使用 `value === null`。
 
 **原理：**
 
-结果是字符串 object。ECMAScript 对 typeof 运算符规定：操作数值为 Null 时返回 object，这是一项为兼容早期网页而保留的历史行为，并不表示 null 真的是普通对象。null 是独立的原始值，表示“有意的空值”；它没有可读取的对象属性，也不能作为 Object.keys 等对象操作的有效输入。typeof 更适合粗分函数、字符串、数字等类型，判断 null 应使用 value === null；若要判断非空对象，应同时检查 value !== null && typeof value === object，数组还需再使用 Array.isArray 区分。这种分层判断能避免空引用进入属性访问，并让类型分支与运行时事实保持一致。
+- 结果是字符串 'object'。ECMAScript 对 typeof 运算符规定：操作数值为 Null 时返回 'object'，这是一项为兼容早期网页而保留的历史行为，并不表示 null 真的是普通对象。null 是独立的原始值，表示“有意的空值”；
+- 它没有可读取的对象属性，也不能作为 Object.keys 等对象操作的有效输入。typeof 更适合粗分函数、字符串、数字等类型，判断 null 应使用 value === null；
+- 若要判断非空对象，应同时检查 value !== null && typeof value === 'object'，数组还需再使用 Array.isArray 区分。这种分层判断能避免空引用进入属性访问，并让类型分支与运行时事实保持一致。
 
 **代码 / 场景：**
 
@@ -31,13 +33,13 @@ try { Object.keys(value) } catch (error) {
 }
 ~~~
 
-因此不能只用 typeof value === object 就断言 value 可安全当作对象使用。
+因此不能只用 typeof value === 'object' 就断言 value 可安全当作对象使用。
 
 **递进追问：**
 
 1. **如何同时排除 null 并判断普通对象？**
 
-   先检查 value !== null 与 typeof value === object，再根据业务排除数组、日期等对象；若要求精确原型，还应结合 Object.getPrototypeOf 或专用类型守卫。
+   先检查 value !== null 与 typeof value === 'object'，再根据业务排除数组、日期等对象；若要求精确原型，还应结合 Object.getPrototypeOf 或专用类型守卫。
 
 2. **为什么不能修正 typeof null 的返回值？**
 
@@ -45,8 +47,8 @@ try { Object.keys(value) } catch (error) {
 
 **易错点：**
 
-- 把 typeof null 等于 object 解释成 null 继承 Object.prototype 是错误的，它仍是原始值。
-- typeof 对数组也返回 object，数组判断必须使用 Array.isArray，而不是继续猜测对象标签。
+- 把 typeof null 返回字符串 'object' 解释成 null 继承 Object.prototype 是错误的，它仍是原始值。
+- typeof 对数组也返回 'object'，数组判断必须使用 Array.isArray，而不是继续猜测对象标签。
 
 **参考来源：**
 
@@ -70,7 +72,9 @@ NaN 与任何值都不相等，包括它自己。判断 NaN 优先使用 Number.
 
 **原理：**
 
-结果是 false。严格相等比较先处理类型，再按 Number 的比较规则判断；NaN 是一种特殊数值，规范明确规定只要任一参与比较的数是 NaN，严格相等就返回 false，所以它连自己也不严格相等。这个设计使 NaN 能传播“无有效数值结果”的状态，但意味着不能用 x === NaN 检测它。应优先使用 Number.isNaN(x)，它只在参数本身为 Number 类型且值为 NaN 时返回 true；若还要把无法转换的输入视为无效，应先按业务规则显式转换，再检查结果。Object.is 使用 SameValue 语义，会把两个 NaN 视为相同。
+- 结果是 false。严格相等比较先处理类型，再按 Number 的比较规则判断；NaN 是一种特殊数值，规范明确规定只要任一参与比较的数是 NaN，严格相等就返回 false，所以它连自己也不严格相等。
+- 这个设计使 NaN 能传播“无有效数值结果”的状态，但意味着不能用 x === NaN 检测它。应优先使用 Number.isNaN(x)，它只在参数本身为 Number 类型且值为 NaN 时返回 true；若还要把无法转换的输入视为无效，应先按业务规则显式转换，再检查结果。
+- Object.is 使用 SameValue 语义，会把两个 NaN 视为相同。
 
 **代码 / 场景：**
 
@@ -123,7 +127,9 @@ Number.isNaN 不进行隐式类型转换，字符串不是数值 NaN，所以返
 
 **原理：**
 
-结果是 false。Number.isNaN 执行的是不带强制类型转换的精确检查：只有参数的 ECMAScript 类型是 Number，并且该数值满足 NaN 判定时才返回 true。字符串 hello 虽然通过 Number 转换会得到 NaN，但原参数仍是字符串，因此在第一步类型检查就返回 false。这个 API 适合验证某个计算结果是否已经成为 NaN，避免全局 isNaN 把空字符串、布尔值或其他可转换输入先改成数字而产生歧义。若接口接收文本数字，应先明确是否允许空白、指数形式等格式，再执行 Number(text) 并对转换后的结果使用 Number.isNaN。
+- 结果是 false。Number.isNaN 执行的是不带强制类型转换的精确检查：只有参数的 ECMAScript 类型是 Number，并且该数值满足 NaN 判定时才返回 true。
+- 字符串 hello 虽然通过 Number 转换会得到 NaN，但原参数仍是字符串，因此在第一步类型检查就返回 false。这个 API 适合验证某个计算结果是否已经成为 NaN，避免全局 isNaN 把空字符串、布尔值或其他可转换输入先改成数字而产生歧义。
+- 若接口接收文本数字，应先明确是否允许空白、指数形式等格式，再执行 Number(text) 并对转换后的结果使用 Number.isNaN。
 
 **代码 / 场景：**
 
@@ -164,20 +170,22 @@ console.log(Number.isNaN(Number('')))   // false，因为 Number('') 是 0
 
 ## Q4：typeof 一个从未声明的变量会得到什么？
 
-- A. null
-- B. undefined
-- C. ReferenceError
-- D. object
+- A. `'null'`
+- B. `'undefined'`
+- C. 抛出 `ReferenceError`
+- D. `'object'`
 
 **答案：B**
 
 **短回答：**
 
-typeof 对未声明标识符会安全返回字符串 undefined；直接读取该变量才会抛出 ReferenceError。
+`typeof` 对未声明标识符会安全返回字符串 `'undefined'`；直接读取该变量才会抛出 `ReferenceError`。
 
 **原理：**
 
-对真正从未声明、在任何可见环境记录中都没有绑定的简单标识符执行 typeof，会返回字符串 undefined，而不会像直接读取那样抛 ReferenceError。typeof 的求值算法会识别未解析的引用并给出这个特殊结果，这使旧代码能在不触发异常的情况下探测可选全局变量。但该豁免不是通用的：如果名称由 let、const 或 class 声明且当前仍在暂时性死区，绑定是存在但未初始化，typeof 仍会抛 ReferenceError；写成 typeof missing.prop 时，也必须先直接读取 missing，因而会报错。现代代码更适合用 globalThis 上的属性或显式能力检测。
+- 对真正从未声明、在任何可见环境记录中都没有绑定的简单标识符执行 typeof，会返回字符串 'undefined'，而不会像直接读取那样抛 ReferenceError。
+- typeof 的求值算法会识别未解析的引用并给出这个特殊结果，这使旧代码能在不触发异常的情况下探测可选全局变量。但该豁免不是通用的：如果名称由 let、const 或 class 声明且当前仍在暂时性死区，绑定是存在但未初始化，typeof 仍会抛 ReferenceError；
+- 写成 typeof missing.prop 时，也必须先直接读取 missing，因而会报错。现代代码更适合用 globalThis 上的属性或显式能力检测。
 
 **代码 / 场景：**
 
@@ -203,13 +211,13 @@ temporal 已有词法绑定但尚未初始化，因此不享受未解析引用�
 
 **递进追问：**
 
-1. **typeof undeclared === undefined 的写法有什么问题？**
+1. **typeof undeclared === 'undefined' 的写法有什么含义？**
 
-   typeof 的结果总是字符串，必须与字符串 undefined 比较；若省略引号，右侧标识符 undefined 虽通常可用，但表达含义不清且容易误写。
+   typeof 的结果总是字符串，因此必须与字符串 'undefined' 比较。该写法可安全检测真正未声明的标识符，但对暂时性死区中的绑定仍会抛错。
 
 2. **探测浏览器能力时有什么更明确的方式？**
 
-   可检查 globalThis 上的属性，例如 typeof globalThis.SomeAPI === function，或使用 in、特性方法调用与异常兜底，避免依赖隐式全局名称。
+   可检查 globalThis 上的属性，例如 typeof globalThis.SomeAPI === 'function'，或使用 in、特性方法调用与异常兜底，避免依赖隐式全局名称。
 
 **易错点：**
 
@@ -238,7 +246,9 @@ temporal 已有词法绑定但尚未初始化，因此不享受未解析引用�
 
 **原理：**
 
-结果是 false。每次调用 Symbol(description) 都创建一个新的、全局唯一的 Symbol 原始值；description 只是用于调试显示的可选文字，不参与身份计算，所以两个描述都为 id 的 Symbol 仍是不同键。严格相等比较 Symbol 时比较身份，只有保存并复用同一个 Symbol 值才相等。若确实需要跨模块或同一 realm 内按字符串名称取得共享 Symbol，应显式使用 Symbol.for(key)，它查询全局 Symbol 注册表并在不存在时登记；Symbol() 创建的普通 Symbol 不会自动进入该注册表。Symbol 适合作为避免普通字符串冲突的属性键，但并不等于真正的私有字段。
+- 结果是 false。每次调用 Symbol(description) 都创建一个新的、全局唯一的 Symbol 原始值；description 只是用于调试显示的可选文字，不参与身份计算，所以两个描述都为 id 的 Symbol 仍是不同键。
+- 严格相等比较 Symbol 时比较身份，只有保存并复用同一个 Symbol 值才相等。若确实需要跨模块或同一 realm 内按字符串名称取得共享 Symbol，应显式使用 Symbol.for(key)，它查询全局 Symbol 注册表并在不存在时登记；
+- Symbol() 创建的普通 Symbol 不会自动进入该注册表。Symbol 适合作为避免普通字符串冲突的属性键，但并不等于真正的私有字段。
 
 **代码 / 场景：**
 
@@ -295,7 +305,9 @@ BigInt 与 Number 不能直接参与算术运算，需要先把两边转换成�
 
 **原理：**
 
-表达式会抛出 TypeError。加法先对两侧执行 ToPrimitive；若没有进入字符串拼接分支，就分别执行 ToNumeric。1n 得到 BigInt，1 得到 Number，规范随后要求两个数值操作数属于同一种数值类型，否则拒绝运算，而不会像部分语言那样隐式把一侧提升。原因是 BigInt 表示任意精度整数，Number 使用 IEEE 754 双精度浮点；自动互转可能静默丢失大整数精度，或无法表达小数。调用方必须根据领域显式选择 1n + BigInt(1) 或 Number(1n) + 1，并在转为 Number 前验证值是否处于安全整数范围。
+- 表达式会抛出 TypeError。加法先对两侧执行 ToPrimitive；若没有进入字符串拼接分支，就分别执行 ToNumeric。1n 得到 BigInt，1 得到 Number，规范随后要求两个数值操作数属于同一种数值类型，否则拒绝运算，而不会像部分语言那样隐式把一侧提升。
+- 原因是 BigInt 表示任意精度整数，Number 使用 IEEE 754 双精度浮点；自动互转可能静默丢失大整数精度，或无法表达小数。
+- 调用方必须根据领域显式选择 1n + BigInt(1) 或 Number(1n) + 1，并在转为 Number 前验证值是否处于安全整数范围。
 
 **代码 / 场景：**
 
@@ -353,7 +365,9 @@ console.log(Number(huge)) // 9007199254740992，已经丢失精度
 
 **原理：**
 
-null 与 undefined 是两个不同的原始值和语言类型。undefined 通常表示绑定尚未赋值、对象缺少属性、函数没有返回值或参数未传；null 通常由程序显式写入，表达“已知这里目前没有对象或值”。这些是常见 API 语义，不是引擎强制的业务含义。严格相等会因为类型不同返回 false，宽松相等有一条专门规则让二者彼此相等。默认参数与解构默认值只在值为 undefined 时生效，不会替换 null。序列化也不同：对象属性值为 undefined 时 JSON.stringify 通常省略该属性，而 null 会被保留为 JSON 的 null。
+- null 与 undefined 是两个不同的原始值和语言类型。undefined 通常表示绑定尚未赋值、对象缺少属性、函数没有返回值或参数未传；null 通常由程序显式写入，表达“已知这里目前没有对象或值”。这些是常见 API 语义，不是引擎强制的业务含义。
+- 严格相等会因为类型不同返回 false，宽松相等有一条专门规则让二者彼此相等。默认参数与解构默认值只在值为 undefined 时生效，不会替换 null。
+- 序列化也不同：对象属性值为 undefined 时 JSON.stringify 通常省略该属性，而 null 会被保留为 JSON 的 null。
 
 **代码 / 场景：**
 
@@ -411,7 +425,8 @@ JavaScript Number 使用 IEEE 754 双精度浮点数，部分十进制小数无�
 
 **原理：**
 
-结果是 false。JavaScript 的普通 Number 采用 IEEE 754 binary64：一个符号位、有限精度的有效数和指数共同表示二进制浮点值。0.1、0.2 与 0.3 的二进制展开都不能在有限位数内精确结束，存入 Number 时各自被舍入；前两个近似值做加法后得到约 0.30000000000000004，与 0.3 所保存的另一个近似值位模式不同，所以严格相等失败。比较测量结果时应使用与数值尺度相关的容差；货币等要求确定十进制规则的领域可使用最小货币单位整数或可靠十进制库，而不是简单到处调用 toFixed。
+- 结果是 false。JavaScript 的普通 Number 采用 IEEE 754 binary64：一个符号位、有限精度的有效数和指数共同表示二进制浮点值。0.1、0.2 与 0.3 的二进制展开都不能在有限位数内精确结束，存入 Number 时各自被舍入；
+- 前两个近似值做加法后得到约 0.30000000000000004，与 0.3 所保存的另一个近似值位模式不同，所以严格相等失败。比较测量结果时应使用与数值尺度相关的容差；货币等要求确定十进制规则的领域可使用最小货币单位整数或可靠十进制库，而不是简单到处调用 toFixed。
 
 **代码 / 场景：**
 
@@ -467,7 +482,9 @@ Object.is 使用 SameValue 语义，能认为两个 NaN 相同。
 
 **原理：**
 
-结果是 true。Object.is 使用规范中的 SameValue 比较语义：类型不同返回 false；对大多数原始值和对象身份，其结果与严格相等相同，但它对两个特殊数字有意采用不同规则。SameValue 把 NaN 与 NaN 视为相同，同时区分 +0 与 -0。严格相等则相反地让 NaN 不等于自身、让两个带不同符号的零相等。Object.is 不做类型强制转换，所以字符串数字不会等于 Number。它常用于判断某个值是否真的变化，但对集合查找还应注意 Map、Set 与 includes 使用的是 SameValueZero，会合并正负零同时识别 NaN。
+- 结果是 true。Object.is 使用规范中的 SameValue 比较语义：类型不同返回 false；对大多数原始值和对象身份，其结果与严格相等相同，但它对两个特殊数字有意采用不同规则。SameValue 把 NaN 与 NaN 视为相同，同时区分 +0 与 -0。
+- 严格相等则相反地让 NaN 不等于自身、让两个带不同符号的零相等。Object.is 不做类型强制转换，所以字符串数字不会等于 Number。
+- 它常用于判断某个值是否真的变化，但对集合查找还应注意 Map、Set 与 includes 使用的是 SameValueZero，会合并正负零同时识别 NaN。
 
 **代码 / 场景：**
 
@@ -520,7 +537,8 @@ Object.is 能区分正零和负零，而 +0 === -0 的结果是 true。
 
 **原理：**
 
-结果是 false。IEEE 754 浮点数保留零的符号位，因此 JavaScript Number 中存在 +0 与 -0；它们在加法、普通显示和严格相等中大多表现相同，但某些运算能观察符号，例如 1 / +0 得到 Infinity，1 / -0 得到 -Infinity。Object.is 采用 SameValue，规范在两个操作数都为零时进一步比较它们是否具有相同符号，所以返回 false。严格相等与 SameValueZero 则把正负零视为相等。负零常来自向零舍入或带符号计算；只有当符号影响方向、数值算法或序列化决策时才需要特别保留。
+- 结果是 false。IEEE 754 浮点数保留零的符号位，因此 JavaScript Number 中存在 +0 与 -0；它们在加法、普通显示和严格相等中大多表现相同，但某些运算能观察符号，例如 1 / +0 得到 Infinity，1 / -0 得到 -Infinity。
+- Object.is 采用 SameValue，规范在两个操作数都为零时进一步比较它们是否具有相同符号，所以返回 false。严格相等与 SameValueZero 则把正负零视为相等。负零常来自向零舍入或带符号计算；只有当符号影响方向、数值算法或序列化决策时才需要特别保留。
 
 **代码 / 场景：**
 
@@ -578,7 +596,9 @@ console.log([positive].includes(negative)) // true，includes 使用 SameValueZe
 
 **原理：**
 
-结果是 true。Boolean 转换字符串时只检查字符串长度，不解析其中的自然语言含义；唯一的假值字符串是空字符串，包含字符的 false、0、空格与 no 都是真值。规范的 ToBoolean 对 undefined、null、+0、-0、NaN、0n 和空字符串返回 false，其他原始值以及所有对象返回 true。因而表单、查询参数和环境变量中的文本布尔值不能直接交给 Boolean 判断，应先定义接受的词法，例如只允许 true 与 false，再显式比较或解析。new Boolean(false) 还会创建对象，对象本身同样是真值，更不适合作为布尔值容器。
+- 结果是 true。Boolean 转换字符串时只检查字符串长度，不解析其中的自然语言含义；唯一的假值字符串是空字符串，包含字符的 false、0、空格与 no 都是真值。
+- 规范的 ToBoolean 对 undefined、null、+0、-0、NaN、0n 和空字符串返回 false，其他原始值以及所有对象返回 true。
+- 因而表单、查询参数和环境变量中的文本布尔值不能直接交给 Boolean 判断，应先定义接受的词法，例如只允许 true 与 false，再显式比较或解析。new Boolean(false) 还会创建对象，对象本身同样是真值，更不适合作为布尔值容器。
 
 **代码 / 场景：**
 
@@ -637,9 +657,11 @@ console.log(parseBoolean('false')) // false
 
 **原理：**
 
-结果是 true，但来自多步抽象相等转换，不表示数组在条件中是假值。比较对象 [] 与布尔值 false 时，Abstract Equality Comparison 先把 false 转成 Number 0；随后因另一侧是对象，对空数组执行 ToPrimitive。数组先尝试 valueOf 得到的仍是对象，再通过 toString 得到空字符串；空字符串与数字比较时又执行 ToNumber，结果是 +0。最终变成 0 与 0 的数值比较，因此返回 true。若写 if ([])，走的是 ToBoolean，所有数组对象都是真值。宽松相等的转换路径依赖双方类型，工程代码通常应使用严格相等并显式转换。
+- 结果是 true，但来自多步抽象相等转换，不表示数组在条件中是假值。比较对象 [] 与布尔值 false 时，Abstract Equality Comparison 先把 false 转成 Number 0；随后因另一侧是对象，对空数组执行 ToPrimitive。
+- 数组先尝试 valueOf 得到的仍是对象，再通过 toString 得到空字符串；空字符串与数字比较时又执行 ToNumber，结果是 +0。最终变成 0 与 0 的数值比较，因此返回 true。若写 if ([])，走的是 ToBoolean，所有数组对象都是真值。
+- 宽松相等的转换路径依赖双方类型，工程代码通常应使用严格相等并显式转换。
 
-![宽松相等比较中的 JavaScript 类型转换步骤图](/content/diagrams/javascript/type-coercion-v1.svg "先做 ToPrimitive 与数值转换，再比较最终值；不要凭表面类型猜结果。")
+![宽松相等比较中的 JavaScript 类型转换步骤图](/content/diagrams/javascript/type-coercion-v1.svg "false 先转为 0，空数组再经 ToPrimitive 和 ToNumber 转为 0；这与 if ([]) 的 ToBoolean 不是同一套规则。")
 
 **代码 / 场景：**
 
@@ -694,7 +716,9 @@ console.log(0 === 0) // true
 
 **原理：**
 
-结果是空字符串。二元加号先分别对两个操作数执行 ToPrimitive；空数组的默认原始值转换会先尝试 valueOf，但它仍返回数组对象，于是继续调用数组的 toString，空数组连接零个元素得到空字符串。加号只要发现任一原始操作数是字符串，就选择字符串拼接，而不是数值加法，因此两个空字符串拼接后仍是空字符串。这里没有数组连接语义；数组拼接应使用 concat 或展开语法。若数组含元素，它的字符串转换采用逗号连接，嵌套、null 和 undefined 还会产生容易误判的文本，所以不应依赖加号序列化数组。
+- 结果是空字符串。二元加号先分别对两个操作数执行 ToPrimitive；空数组的默认原始值转换会先尝试 valueOf，但它仍返回数组对象，于是继续调用数组的 toString，空数组连接零个元素得到空字符串。
+- 加号只要发现任一原始操作数是字符串，就选择字符串拼接，而不是数值加法，因此两个空字符串拼接后仍是空字符串。这里没有数组连接语义；数组拼接应使用 concat 或展开语法。
+- 若数组含元素，它的字符串转换采用逗号连接，嵌套、null 和 undefined 还会产生容易误判的文本，所以不应依赖加号序列化数组。
 
 **代码 / 场景：**
 
@@ -750,7 +774,9 @@ console.log([1, 2].concat([3, 4])) // [1, 2, 3, 4]
 
 **原理：**
 
-在题目明确作为表达式求值时，结果通常是字符串 [object Object]。加号先将空数组转为原始值空字符串；普通对象按默认提示转换时，valueOf 仍返回对象本身，随后继承的 Object.prototype.toString 返回 [object Object]。任一操作数是字符串后，加号执行字符串拼接，因而得到该文本。需要留意语法上下文：旧示例常写 {} + [] 作为一条语句，开头花括号可能被解析为空块，后面的 +[] 则是一元加号，结果变成 0；而 [] + {} 从数组表达式开始没有这项歧义。在控制台或压缩代码中讨论结果时应明确括号与上下文。
+- 在题目明确作为表达式求值时，结果通常是字符串 [object Object]。加号先将空数组转为原始值空字符串；普通对象按默认提示转换时，valueOf 仍返回对象本身，随后继承的 Object.prototype.toString 返回 [object Object]。
+- 任一操作数是字符串后，加号执行字符串拼接，因而得到该文本。需要留意语法上下文：旧示例常写 {} + [] 作为一条语句，开头花括号可能被解析为空块，后面的 +[] 则是一元加号，结果变成 0；而 [] + {} 从数组表达式开始没有这项歧义。
+- 在控制台或压缩代码中讨论结果时应明确括号与上下文。
 
 **代码 / 场景：**
 
@@ -806,7 +832,9 @@ Number 会先处理空白，空字符串转换为数值 0。
 
 **原理：**
 
-结果是正零。Number 作为转换函数时对字符串执行 StringToNumber：先按数值字符串语法处理前后空白；空字符串或只含空白的字符串在该转换中产生 +0，而不是 NaN。若有非空内容，则必须整体符合受支持的数值文本语法，例如十进制、指数或特定进制前缀，否则结果为 NaN。这个行为意味着仅用 Number.isNaN(Number(input)) 验证必填数字会错误接受空白输入，表单层必须先检查修剪后的字符串是否为空。Number 与 parseInt 也不同，后者解析允许的整数前缀并在无效字符处停止，不能随意互换。
+- 结果是正零。Number 作为转换函数时对字符串执行 StringToNumber：先按数值字符串语法处理前后空白；空字符串或只含空白的字符串在该转换中产生 +0，而不是 NaN。
+- 若有非空内容，则必须整体符合受支持的数值文本语法，例如十进制、指数或特定进制前缀，否则结果为 NaN。这个行为意味着仅用 Number.isNaN(Number(input)) 验证必填数字会错误接受空白输入，表单层必须先检查修剪后的字符串是否为空。
+- Number 与 parseInt 也不同，后者解析允许的整数前缀并在无效字符处停止，不能随意互换。
 
 **代码 / 场景：**
 
@@ -867,7 +895,9 @@ parseInt 从左向右解析整数，遇到无法解析的字符时停止。
 
 **原理：**
 
-结果是数值 12。parseInt 先把输入转换为字符串并去掉开头空白，再处理正负号和 radix。radix 明确为 10 时，只接受十进制数字；它从左到右累积合法数字，遇到第一个不属于该进制的字符 p 就停止，只要此前至少解析到一个数字便返回该整数。若第一个有效位置就是非法字符，则返回 NaN。parseInt 的职责是读取整数前缀，不是验证整个字符串是否为纯整数，所以 12px 能成功并不表示输入格式完全合法。严格表单校验可先用正则或专门解析器验证完整文本，再调用 Number；处理小数时也不应依赖 parseInt 截断。
+- 结果是数值 12。parseInt 先把输入转换为字符串并去掉开头空白，再处理正负号和 radix。radix 明确为 10 时，只接受十进制数字；它从左到右累积合法数字，遇到第一个不属于该进制的字符 p 就停止，只要此前至少解析到一个数字便返回该整数。
+- 若第一个有效位置就是非法字符，则返回 NaN。parseInt 的职责是读取整数前缀，不是验证整个字符串是否为纯整数，所以 12px 能成功并不表示输入格式完全合法。严格表单校验可先用正则或专门解析器验证完整文本，再调用 Number；
+- 处理小数时也不应依赖 parseInt 截断。
 
 **代码 / 场景：**
 
@@ -925,7 +955,9 @@ console.log(parseWholeInteger('-42')) // -42
 
 **原理：**
 
-结果是 true。全局 isNaN 的算法先对参数执行 ToNumber，再检查转换结果是否为 NaN；字符串 hello 不符合数值字符串语法，ToNumber 得到 NaN，于是最终返回 true。该 API 回答的更接近“这个值经过数值强制转换后是否会成为 NaN”，而不是“这个值本身是否就是数值 NaN”。因此它会对空字符串返回 false，因为空字符串转为 0，也会对某些布尔值返回 false。需要检查计算结果时应使用 Number.isNaN；需要接收文本数字时，应先验证输入类型和格式、显式 Number 转换，再用 Number.isFinite 或 Number.isNaN 判断。
+- 结果是 true。全局 isNaN 的算法先对参数执行 ToNumber，再检查转换结果是否为 NaN；字符串 hello 不符合数值字符串语法，ToNumber 得到 NaN，于是最终返回 true。
+- 该 API 回答的更接近“这个值经过数值强制转换后是否会成为 NaN”，而不是“这个值本身是否就是数值 NaN”。因此它会对空字符串返回 false，因为空字符串转为 0，也会对某些布尔值返回 false。需要检查计算结果时应使用 Number.isNaN；
+- 需要接收文本数字时，应先验证输入类型和格式、显式 Number 转换，再用 Number.isFinite 或 Number.isNaN 判断。
 
 **代码 / 场景：**
 
@@ -981,7 +1013,9 @@ console.log(Number.isNaN(converted)) // true
 
 **原理：**
 
-结果是数值 3。减法运算没有字符串拼接分支，它会对两个操作数执行 ToNumeric。字符串 5 先通过 ToPrimitive 保持字符串，再按 Number 数值语法转换为 5；右侧本来就是 Number 2，两个数值类型一致，于是执行 Number 减法得到 3。若字符串不能完整转换为数字，结果通常为 NaN；空字符串则会转换为 0。对象操作数还可能通过 Symbol.toPrimitive、valueOf 或 toString 参与转换。BigInt 与 Number 不能混合减法，会抛 TypeError，因此“减号总能把任何东西变成数字”也不是准确结论。
+- 结果是数值 3。减法运算没有字符串拼接分支，它会对两个操作数执行 ToNumeric。字符串 5 先通过 ToPrimitive 保持字符串，再按 Number 数值语法转换为 5；右侧本来就是 Number 2，两个数值类型一致，于是执行 Number 减法得到 3。
+- 若字符串不能完整转换为数字，结果通常为 NaN；空字符串则会转换为 0。对象操作数还可能通过 Symbol.toPrimitive、valueOf 或 toString 参与转换。
+- BigInt 与 Number 不能混合减法，会抛 TypeError，因此“减号总能把任何东西变成数字”也不是准确结论。
 
 **代码 / 场景：**
 
@@ -1039,7 +1073,9 @@ try {
 
 **原理：**
 
-结果是字符串 52。二元加号是算术加法与字符串拼接共用的运算符：先按从左到右顺序求值两侧并执行 ToPrimitive；只要任一原始结果是 String，就把另一侧也执行 ToString 后拼接。左侧已经是字符串 5，所以右侧 Number 2 被转换为字符串 2，最终产生 52，而不会先把 5 转成数字。若两侧都不是字符串，则执行 ToNumeric，并要求 Number 与 BigInt 类型匹配。连续加号还受左结合影响，例如 1 + 2 + 3 先得到数值 3 再拼接为 33，而 1 + (2 + 3) 会先得到字符串 23 再变成 123。
+- 结果是字符串 52。二元加号是算术加法与字符串拼接共用的运算符：先按从左到右顺序求值两侧并执行 ToPrimitive；只要任一原始结果是 String，就把另一侧也执行 ToString 后拼接。
+- 左侧已经是字符串 5，所以右侧 Number 2 被转换为字符串 2，最终产生 52，而不会先把 5 转成数字。若两侧都不是字符串，则执行 ToNumeric，并要求 Number 与 BigInt 类型匹配。
+- 连续加号还受左结合影响，例如 1 + 2 + 3 先得到数值 3 再拼接为 33，而 1 + (2 + 3) 会先得到字符串 23 再变成 123。
 
 **代码 / 场景：**
 
@@ -1092,7 +1128,9 @@ console.log(Number('5') + 2) // 7
 
 **原理：**
 
-结果分别是 true 与 false。抽象相等比较对 null 和 undefined 设有明确的专门分支：一侧为 null、另一侧为 undefined 时直接返回 true，不会先把它们都转换成数字或布尔值；同时 null 与其他类型一般不会通过这条规则相等，例如 null == 0 为 false。严格相等不执行类型转换，Null 与 Undefined 是不同 ECMAScript 类型，因此立即返回 false。这个差异让 value == null 成为少数可控的宽松相等惯用法，用于一次匹配两种空值；若接口需要区分“显式为空”和“缺失”，则必须分别使用 === null 与 === undefined。
+- 结果分别是 true 与 false。抽象相等比较对 null 和 undefined 设有明确的专门分支：一侧为 null、另一侧为 undefined 时直接返回 true，不会先把它们都转换成数字或布尔值；
+- 同时 null 与其他类型一般不会通过这条规则相等，例如 null == 0 为 false。严格相等不执行类型转换，Null 与 Undefined 是不同 ECMAScript 类型，因此立即返回 false。
+- 这个差异让 value == null 成为少数可控的宽松相等惯用法，用于一次匹配两种空值；若接口需要区分“显式为空”和“缺失”，则必须分别使用 === null 与 === undefined。
 
 **代码 / 场景：**
 
@@ -1153,7 +1191,9 @@ var 不受普通代码块限制，但会受到函数边界限制；let 和 const
 
 **原理：**
 
-var 主要具有函数作用域：在普通函数体中的任意 var 声明都归属于该函数的 VariableEnvironment，if、for、while 等普通花括号块不会为它创建新绑定；因此块内声明可在同一函数的块外访问。执行函数体前，var 绑定已在声明实例化阶段创建并初始化为 undefined，赋值仍要等控制流到达。若 var 位于浏览器经典脚本顶层，它属于全局环境并通常形成全局对象属性；位于 ES 模块顶层则受模块作用域约束。catch 参数与函数参数等名称冲突还有专门规则，所以“var 永远是全局变量”是错误说法。
+- var 主要具有函数作用域：在普通函数体中的任意 var 声明都归属于该函数的 VariableEnvironment，if、for、while 等普通花括号块不会为它创建新绑定；因此块内声明可在同一函数的块外访问。
+- 执行函数体前，var 绑定已在声明实例化阶段创建并初始化为 undefined，赋值仍要等控制流到达。若 var 位于浏览器经典脚本顶层，它属于全局环境并通常形成全局对象属性；位于 ES 模块顶层则受模块作用域约束。
+- catch 参数与函数参数等名称冲突还有专门规则，所以“var 永远是全局变量”是错误说法。
 
 **代码 / 场景：**
 
@@ -1212,7 +1252,9 @@ try { console.log(local) } catch (error) {
 
 **原理：**
 
-在同一词法作用域中、执行到 let 声明初始化之前读取该变量，会抛出 ReferenceError。进入作用域时，引擎已经在声明式环境记录中创建这个绑定，所以名称解析会命中它而不会回退到外层同名变量；但绑定状态仍是 uninitialized，GetBindingValue 必须拒绝读取。从作用域开始到初始化完成的区间称为暂时性死区。let 的“提升”若仅指绑定提前创建是存在的，但它不像 var 那样立即初始化为 undefined。typeof 对处于暂时性死区的绑定也会抛错，因为这是已解析但未初始化的引用，不属于“从未声明变量”的安全特例。
+- 在同一词法作用域中、执行到 let 声明初始化之前读取该变量，会抛出 ReferenceError。进入作用域时，引擎已经在声明式环境记录中创建这个绑定，所以名称解析会命中它而不会回退到外层同名变量；
+- 但绑定状态仍是 uninitialized，GetBindingValue 必须拒绝读取。从作用域开始到初始化完成的区间称为暂时性死区。let 的“提升”若仅指绑定提前创建是存在的，但它不像 var 那样立即初始化为 undefined。
+- typeof 对处于暂时性死区的绑定也会抛错，因为这是已解析但未初始化的引用，不属于“从未声明变量”的安全特例。
 
 **代码 / 场景：**
 
@@ -1270,7 +1312,9 @@ const value = 'outer'
 
 **原理：**
 
-闭包是一个函数与其创建时可访问的词法环境之间的组合。创建函数对象时，内部 [[Environment]] 槽保存当前环境记录；函数以后即使在另一个调用位置执行，标识符仍沿该保存的环境链解析。若外层函数已经返回，但内部函数仍可达，相关环境和其中被捕获的绑定会继续存活，因此可以实现私有状态、函数工厂和回调上下文。闭包捕获的是绑定而不是创建瞬间的值快照：多个函数可以共享同一绑定，并观察后续修改。引擎可能优化未使用变量，但语义上仍必须保持所有可观察结果一致。
+闭包是一个函数与其创建时可访问的词法环境之间的组合。创建函数对象时，内部 [[Environment]] 槽保存当前环境记录；函数以后即使在另一个调用位置执行，标识符仍沿该保存的环境链解析。若外层函数已经返回，但内部函数仍可达，相关环境和其中被捕获的绑定会继续存活，因此可以实现私有状态、函数工厂和回调上下文。
+
+闭包捕获的是绑定而不是创建瞬间的值快照：多个函数可以共享同一绑定，并观察后续修改。引擎可能优化未使用变量，但语义上仍必须保持所有可观察结果一致。
 
 **代码 / 场景：**
 
@@ -1330,7 +1374,9 @@ for 循环中的 let 会为每次迭代创建新的块级绑定，定时器分�
 
 **原理：**
 
-通常依次输出 0、1、2。for 语句的初始化若使用 let，规范会为迭代变量建立词法绑定，并在每轮继续下一次迭代前创建新的 per-iteration environment，把上一轮值复制后再执行更新表达式。每次定时器回调创建时保存当轮环境，因此三个回调分别解析到三个不同的 i 绑定。同步循环会先完成，定时器任务之后才有机会运行，但绑定不会因此都变成最终值。实际延迟时间只规定最早可调度时机，页面任务队列可能让回调更晚执行；在同一来源、同一延迟下通常保持注册顺序，不过核心答案是捕获值分别为 0、1、2。
+- 通常依次输出 0、1、2。for 语句的初始化若使用 let，规范会为迭代变量建立词法绑定，并在每轮继续下一次迭代前创建新的 per-iteration environment，把上一轮值复制后再执行更新表达式。
+- 每次定时器回调创建时保存当轮环境，因此三个回调分别解析到三个不同的 i 绑定。同步循环会先完成，定时器任务之后才有机会运行，但绑定不会因此都变成最终值。实际延迟时间只规定最早可调度时机，页面任务队列可能让回调更晚执行；
+- 在同一来源、同一延迟下通常保持注册顺序，不过核心答案是捕获值分别为 0、1、2。
 
 **代码 / 场景：**
 
@@ -1384,7 +1430,9 @@ var 只有一个函数级绑定，定时器执行时循环已经结束，变量�
 
 **原理：**
 
-通常输出 3、3、3。var i 在所在函数或全局环境中只建立一个共享绑定，普通 for 循环不会为每轮创建新的词法环境。三次执行循环体时生成的箭头函数都闭包引用这同一个 i。同步循环完成后更新表达式已把 i 增加到 3，条件检查失败才退出；定时器回调随后作为任务执行，每次沿相同环境链读取 i，得到的都是当前值 3。这个结果同时依赖闭包捕获绑定和定时器异步调度，而不是 var 把 3 复制给每个回调。修复可改用 let，或显式创建函数调用来产生每轮独立参数绑定。
+通常输出 3、3、3。var i 在所在函数或全局环境中只建立一个共享绑定，普通 for 循环不会为每轮创建新的词法环境。三次执行循环体时生成的箭头函数都闭包引用这同一个 i。同步循环完成后更新表达式已把 i 增加到 3，条件检查失败才退出；定时器回调随后作为任务执行，每次沿相同环境链读取 i，得到的都是当前值 3。
+
+这个结果同时依赖闭包捕获绑定和定时器异步调度，而不是 var 把 3 复制给每个回调。修复可改用 let，或显式创建函数调用来产生每轮独立参数绑定。
 
 **代码 / 场景：**
 
@@ -1444,7 +1492,9 @@ for (var j = 0; j < 3; j += 1) {
 
 **原理：**
 
-JavaScript 采用词法作用域，也称静态作用域。函数创建时会保存定义位置对应的外层词法环境；执行代码时，let、const、参数、函数声明等绑定被放入环境记录，并通过 Outer 指针连成作用域链。求值一个标识符时，引擎从当前环境记录向外逐层查询，找到后停止，链尾仍未找到才抛出 ReferenceError。把函数传到另一个函数中调用并不会改写它保存的定义环境，所以调用者的同名局部变量不能动态接管该标识符。with 和直接 eval 会增加解析复杂度，但不代表语言改用动态作用域。
+- JavaScript 采用词法作用域，也称静态作用域。函数创建时会保存定义位置对应的外层词法环境；执行代码时，let、const、参数、函数声明等绑定被放入环境记录，并通过 Outer 指针连成作用域链。
+- 求值一个标识符时，引擎从当前环境记录向外逐层查询，找到后停止，链尾仍未找到才抛出 ReferenceError。把函数传到另一个函数中调用并不会改写它保存的定义环境，所以调用者的同名局部变量不能动态接管该标识符。
+- with 和直接 eval 会增加解析复杂度，但不代表语言改用动态作用域。
 
 **代码 / 场景：**
 
@@ -1499,7 +1549,9 @@ let 具有块级作用域，离开花括号对应的作用域后不可访问。
 
 **原理：**
 
-let 声明属于其所在的词法块作用域。进入花括号块时，引擎为该块建立新的声明式环境记录，预先创建绑定但保持未初始化；执行到声明语句后才初始化并赋值。块内读取会命中这个绑定，离开块后当前环境恢复到外层，外层作用域链中没有该绑定，因此再次按标识符访问会抛出 ReferenceError，而不是得到 undefined。块内在声明之前访问也会因为暂时性死区抛出 ReferenceError，这与离开块后的“绑定不可见”原因不同。var 不创建同样的块级绑定，所以行为不能类推。
+let 声明属于其所在的词法块作用域。进入花括号块时，引擎为该块建立新的声明式环境记录，预先创建绑定但保持未初始化；执行到声明语句后才初始化并赋值。块内读取会命中这个绑定，离开块后当前环境恢复到外层，外层作用域链中没有该绑定，因此再次按标识符访问会抛出 ReferenceError，而不是得到 undefined。
+
+块内在声明之前访问也会因为暂时性死区抛出 ReferenceError，这与离开块后的“绑定不可见”原因不同。var 不创建同样的块级绑定，所以行为不能类推。
 
 **代码 / 场景：**
 
@@ -1556,7 +1608,9 @@ const 限制的是变量绑定不能重新赋值，并不会自动冻结对象�
 
 **原理：**
 
-const 约束的是词法环境中“变量名到值”的绑定不可重新赋值，并不递归改变该值所指对象的属性描述符。声明 const user = object 后，绑定 user 始终保存同一个对象引用，因此执行 user.name = value、delete user.name 或调用会修改对象的方法，是否成功仍由该属性的 writable、configurable、访问器以及对象是否可扩展决定；直接执行 user = other 才会在赋值绑定阶段抛出 TypeError。若业务要求对象第一层不可修改，应显式使用 Object.freeze；若要求深层不可变，还需递归冻结或采用不可变数据更新策略。
+- const 约束的是词法环境中“变量名到值”的绑定不可重新赋值，并不递归改变该值所指对象的属性描述符。
+- 声明 const user = object 后，绑定 user 始终保存同一个对象引用，因此执行 user.name = value、delete user.name 或调用会修改对象的方法，是否成功仍由该属性的 writable、configurable、访问器以及对象是否可扩展决定；
+- 直接执行 user = other 才会在赋值绑定阶段抛出 TypeError。若业务要求对象第一层不可修改，应显式使用 Object.freeze；若要求深层不可变，还需递归冻结或采用不可变数据更新策略。
 
 **代码 / 场景：**
 
@@ -1611,7 +1665,9 @@ try { user = {} } catch (error) {
 
 **原理：**
 
-这种现象称为变量遮蔽。每个词法作用域拥有独立环境记录；解析同名标识符时，引擎总从当前环境开始查询，内层记录一旦存在该名称就停止向外搜索，因此外层绑定在该区域内暂时不可直接通过同一标识符访问，但外层值没有被删除或覆盖。离开内层作用域后，解析起点回到外层，原绑定仍然存在。若内层用 let 或 const 声明，同名绑定从块开始就参与解析，声明前会处于暂时性死区，不能因为尚未初始化便回退读取外层变量。参数、catch 绑定和导入绑定也可能形成遮蔽。
+这种现象称为变量遮蔽。每个词法作用域拥有独立环境记录；解析同名标识符时，引擎总从当前环境开始查询，内层记录一旦存在该名称就停止向外搜索，因此外层绑定在该区域内暂时不可直接通过同一标识符访问，但外层值没有被删除或覆盖。离开内层作用域后，解析起点回到外层，原绑定仍然存在。
+
+若内层用 let 或 const 声明，同名绑定从块开始就参与解析，声明前会处于暂时性死区，不能因为尚未初始化便回退读取外层变量。参数、catch 绑定和导入绑定也可能形成遮蔽。
 
 **代码 / 场景：**
 
@@ -1666,7 +1722,9 @@ inspect 内第一次查询就在函数环境中命中 status；函数返回后�
 
 **原理：**
 
-在浏览器经典 script 的全局代码中，全局环境记录由对象记录与声明式记录组合而成。符合条件的顶层 var 声明进入对象记录，通常在 WindowProxy 所代表的全局对象上形成同名属性，所以既可用标识符读取，也常可用 window.name 读取；顶层 let 则进入全局声明式记录，只能通过标识符解析，不会创建 window 的自有属性。两者都可能供同一 realm 后续经典脚本解析，但属性删除、重复声明和与既有全局属性冲突的规则不同。若代码运行在 ES 模块中，顶层声明属于模块作用域，var 也不会自动成为 window 属性。
+- 在浏览器经典 script 的全局代码中，全局环境记录由对象记录与声明式记录组合而成。符合条件的顶层 var 声明进入对象记录，通常在 WindowProxy 所代表的全局对象上形成同名属性，所以既可用标识符读取，也常可用 window.name 读取；
+- 顶层 let 则进入全局声明式记录，只能通过标识符解析，不会创建 window 的自有属性。两者都可能供同一 realm 后续经典脚本解析，但属性删除、重复声明和与既有全局属性冲突的规则不同。
+- 若代码运行在 ES 模块中，顶层声明属于模块作用域，var 也不会自动成为 window 属性。
 
 **代码 / 场景：**
 
@@ -1724,7 +1782,9 @@ window.lexical 为 undefined 只说明没有对应对象属性，不代表词法
 
 **原理：**
 
-在函数体、模块或全局代码开始逐条求值前，会先执行声明实例化。可提升的函数声明在这一阶段创建函数对象并初始化同名绑定，所以在同一有效作用域内，通常可以在源码声明语句之前调用它；这不同于 var 函数表达式只把变量初始化为 undefined。需要限定“同一有效作用域”：块内函数声明受块级作用域约束，浏览器非严格经典脚本还存在 Annex B 兼容行为；跨模块调用则必须等待模块链接与求值规则。工程代码可以先调用后声明，但仍应按可读性组织，不能把提升理解成源代码真的被移动。
+在函数体、模块或全局代码开始逐条求值前，会先执行声明实例化。可提升的函数声明在这一阶段创建函数对象并初始化同名绑定，所以在同一有效作用域内，通常可以在源码声明语句之前调用它；这不同于 var 函数表达式只把变量初始化为 undefined。
+
+需要限定“同一有效作用域”：块内函数声明受块级作用域约束，浏览器非严格经典脚本还存在 Annex B 兼容行为；跨模块调用则必须等待模块链接与求值规则。工程代码可以先调用后声明，但仍应按可读性组织，不能把提升理解成源代码真的被移动。
 
 **代码 / 场景：**
 
@@ -1777,7 +1837,9 @@ var 声明会提升，但函数值不会提升。赋值前 fn 的值是 undefine
 
 **原理：**
 
-var fn = function() {} 同时包含变量声明与运行时赋值。进入当前函数或全局代码时，声明实例化只创建 fn 的 var 绑定并把它初始化为 undefined；匿名或具名函数表达式要等执行流到达右侧时才求值为函数对象，再由赋值把该对象写入 fn。因此提前执行 fn() 时，标识符解析是成功的，不会因找不到变量而抛 ReferenceError，但 Call 求值发现被调用值是 undefined、没有 [[Call]] 内部方法，于是抛 TypeError。若改用 let 或 const，声明前访问会先命中未初始化绑定，错误则是 ReferenceError。
+- var fn = function() {} 同时包含变量声明与运行时赋值。进入当前函数或全局代码时，声明实例化只创建 fn 的 var 绑定并把它初始化为 undefined；匿名或具名函数表达式要等执行流到达右侧时才求值为函数对象，再由赋值把该对象写入 fn。
+- 因此提前执行 fn() 时，标识符解析是成功的，不会因找不到变量而抛 ReferenceError，但 Call 求值发现被调用值是 undefined、没有 [[Call]] 内部方法，于是抛 TypeError。
+- 若改用 let 或 const，声明前访问会先命中未初始化绑定，错误则是 ReferenceError。
 
 **代码 / 场景：**
 
@@ -1833,7 +1895,8 @@ console.log(fn()) // 'ready'
 
 **原理：**
 
-函数调用建立参数环境时，会按形参从左到右初始化绑定。某个形参没有对应实参，或实参值严格为 undefined，且该形参写有初始化器时，才在本次调用中求值默认表达式；null、false、0、NaN 与空字符串都是明确传入的值，不会触发默认值。默认表达式每次需要时才执行，可以引用已经初始化的左侧参数，却不能安全引用尚未初始化的右侧参数。非简单参数列表还会使用独立参数环境，因此默认表达式不能读取稍后才在函数体内建立的 var 变量。对象或数组作为默认值时也是每次触发都重新创建，不会天然跨调用共享。
+- 函数调用建立参数环境时，会按形参从左到右初始化绑定。某个形参没有对应实参，或实参值严格为 undefined，且该形参写有初始化器时，才在本次调用中求值默认表达式；null、false、0、NaN 与空字符串都是明确传入的值，不会触发默认值。
+- 默认表达式每次需要时才执行，可以引用已经初始化的左侧参数，却不能安全引用尚未初始化的右侧参数。非简单参数列表还会使用独立参数环境，因此默认表达式不能读取稍后才在函数体内建立的 var 变量。对象或数组作为默认值时也是每次触发都重新创建，不会天然跨调用共享。
 
 **代码 / 场景：**
 
@@ -1888,7 +1951,9 @@ console.log(calls)            // 2
 
 **原理：**
 
-剩余参数会把没有被前面具名形参匹配的实参，按原顺序收集到一个新建的真正 Array 中。函数每次调用都会创建自己的数组，因此 args 具有 Array.prototype，可直接使用 map、filter、reduce 和迭代协议；这与历史 arguments 对象不同，arguments 是类数组、包含全部实参，并且在部分非严格简单参数场景还可能与形参发生别名关联。语法要求剩余参数必须是最后一个形参，不能再带默认初始化器，且一个参数列表只能有一个。箭头函数没有自己的 arguments，却可以通过剩余参数显式接收实参。
+- 剩余参数会把没有被前面具名形参匹配的实参，按原顺序收集到一个新建的真正 Array 中。函数每次调用都会创建自己的数组，因此 args 具有 Array.prototype，可直接使用 map、filter、reduce 和迭代协议；
+- 这与历史 arguments 对象不同，arguments 是类数组、包含全部实参，并且在部分非严格简单参数场景还可能与形参发生别名关联。语法要求剩余参数必须是最后一个形参，不能再带默认初始化器，且一个参数列表只能有一个。
+- 箭头函数没有自己的 arguments，却可以通过剩余参数显式接收实参。
 
 **代码 / 场景：**
 
@@ -1942,7 +2007,9 @@ rest 不含已经匹配 first 的第一个实参，这一点与 arguments 的内
 
 **原理：**
 
-函数调用参数位置的展开语法会先求值 arr，取得它的同步迭代器，然后按迭代顺序逐个取值，把每个迭代结果加入本次 ArgumentList，最后与其他普通实参一起调用 fn。它要求值可迭代，并不限于真正数组，所以字符串、Set、生成器结果等也可展开；普通仅有 length 的类数组若没有 Symbol.iterator 则不能直接展开。这个过程既不是深拷贝，也不会把 arr 永久改写。每个元素仍按 JavaScript 传参规则传递，对象元素保持共享引用。超大集合还可能超过引擎允许的最大实参数量，应改用循环或接受数组的 API。
+- 函数调用参数位置的展开语法会先求值 arr，取得它的同步迭代器，然后按迭代顺序逐个取值，把每个迭代结果加入本次 ArgumentList，最后与其他普通实参一起调用 fn。它要求值可迭代，并不限于真正数组，所以字符串、Set、生成器结果等也可展开；
+- 普通仅有 length 的类数组若没有 Symbol.iterator 则不能直接展开。这个过程既不是深拷贝，也不会把 arr 永久改写。每个元素仍按 JavaScript 传参规则传递，对象元素保持共享引用。
+- 超大集合还可能超过引擎允许的最大实参数量，应改用循环或接受数组的 API。
 
 **代码 / 场景：**
 
@@ -1995,7 +2062,9 @@ fn.call(obj, a, b) 会让函数执行时的 this 指向 obj，并立即传入 a�
 
 **原理：**
 
-Function.prototype.call 会立即调用目标函数，并把第一个参数作为本次调用的 thisArgument，后续参数按当前位置逐个组成实参列表。对于普通可调用函数，严格模式会原样保留 thisArgument；非严格函数会把 null 或 undefined 替换为全局 this 值，并可能把原始值装箱。箭头函数没有自己的 this 绑定，call 无法覆盖它从外层捕获的 this。call 也不能把只能通过 new 构造的 class 当作普通函数执行。它适合在明确接收者上复用普通函数或调用脱离对象的方法，但若长期作为回调，应考虑 bind 或包装函数以保存调用上下文。
+- Function.prototype.call 会立即调用目标函数，并把第一个参数作为本次调用的 thisArgument，后续参数按当前位置逐个组成实参列表。对于普通可调用函数，严格模式会原样保留 thisArgument；
+- 非严格函数会把 null 或 undefined 替换为全局 this 值，并可能把原始值装箱。箭头函数没有自己的 this 绑定，call 无法覆盖它从外层捕获的 this。call 也不能把只能通过 new 构造的 class 当作普通函数执行。
+- 它适合在明确接收者上复用普通函数或调用脱离对象的方法，但若长期作为回调，应考虑 bind 或包装函数以保存调用上下文。
 
 **代码 / 场景：**
 
@@ -2051,7 +2120,9 @@ apply 与 call 都立即调用函数；call 逐个传参，apply 使用数组或
 
 **原理：**
 
-apply 与 call 都会立即调用目标函数，并允许显式提供 thisArgument；主要区别在实参列表的构造方式。call 从第二个位置开始把参数逐个传入，apply 的第二参数则是数组或类数组对象，算法读取其 length 与连续索引并生成实参列表；传入 null 或 undefined 表示空参数列表。apply 并不通用消费任意 iterable，例如只有迭代器但没有 length 的 Set 不是可靠的 apply 参数容器，而展开语法可以消费 iterable。现代底层代码还可用 Reflect.apply，它以独立函数形式接收 target、thisArgument 和 argumentsList，避免属性被覆盖等问题。
+- apply 与 call 都会立即调用目标函数，并允许显式提供 thisArgument；主要区别在实参列表的构造方式。call 从第二个位置开始把参数逐个传入，apply 的第二参数则是数组或类数组对象，算法读取其 length 与连续索引并生成实参列表；
+- 传入 null 或 undefined 表示空参数列表。apply 并不通用消费任意 iterable，例如只有迭代器但没有 length 的 Set 不是可靠的 apply 参数容器，而展开语法可以消费 iterable。
+- 现代底层代码还可用 Reflect.apply，它以独立函数形式接收 target、thisArgument 和 argumentsList，避免属性被覆盖等问题。
 
 **代码 / 场景：**
 
@@ -2107,7 +2178,9 @@ bind 不会立即执行，而是返回新函数，常用于事件回调、定时
 
 **原理：**
 
-bind 不会立即执行目标函数，而是创建并返回一个绑定函数异域对象。该对象内部保存原目标函数、boundThis 以及零个或多个预置参数；以后普通调用绑定函数时，规范把预置参数放在新实参之前，并以保存的 boundThis 调用目标。再次对该绑定函数调用 call 或 bind，不能覆盖第一次保存的 this，但可继续预置更多参数。绑定函数的 name 与 length 会按规则派生，它通常没有自己的 prototype 数据属性；若目标可构造，绑定函数仍可被 new，构造路径会忽略 boundThis 并保留预置参数。箭头函数的词法 this 也不会因 bind 改变。
+- bind 不会立即执行目标函数，而是创建并返回一个绑定函数异域对象。该对象内部保存原目标函数、boundThis 以及零个或多个预置参数；以后普通调用绑定函数时，规范把预置参数放在新实参之前，并以保存的 boundThis 调用目标。
+- 再次对该绑定函数调用 call 或 bind，不能覆盖第一次保存的 this，但可继续预置更多参数。绑定函数的 name 与 length 会按规则派生，它通常没有自己的 prototype 数据属性；
+- 若目标可构造，绑定函数仍可被 new，构造路径会忽略 boundThis 并保留预置参数。箭头函数的词法 this 也不会因 bind 改变。
 
 **代码 / 场景：**
 
@@ -2163,7 +2236,9 @@ console.log(formatKg.call(other, 5)) // 'mass=kg:5'
 
 **原理：**
 
-箭头函数不会创建自己的 this 绑定；求值箭头函数时，它保存当前词法环境，函数体中的 this 像普通自由变量一样向外解析，最终取自最近一个拥有 this 绑定的外层执行上下文。因此箭头函数被作为对象属性调用、传给定时器，或经 call、apply、bind 调用，都不会根据新接收者改写 this。箭头还没有自己的 arguments、super 和 new.target，并且不可作为构造函数使用。常见正确场景是在普通方法内部创建回调，让回调捕获该方法调用时的实例 this；不适合把箭头直接用作需要动态接收者的对象方法。
+- 箭头函数不会创建自己的 this 绑定；求值箭头函数时，它保存当前词法环境，函数体中的 this 像普通自由变量一样向外解析，最终取自最近一个拥有 this 绑定的外层执行上下文。
+- 因此箭头函数被作为对象属性调用、传给定时器，或经 call、apply、bind 调用，都不会根据新接收者改写 this。箭头还没有自己的 arguments、super 和 new.target，并且不可作为构造函数使用。
+- 常见正确场景是在普通方法内部创建回调，让回调捕获该方法调用时的实例 this；不适合把箭头直接用作需要动态接收者的对象方法。
 
 **代码 / 场景：**
 
@@ -2221,7 +2296,10 @@ new 的构造绑定优先级高于 bind 的 this 绑定，但 bind 预设的参�
 
 **原理：**
 
-若原目标函数具有 [[Construct]]，对其绑定函数使用 new 会进入绑定函数的构造内部方法。该路径忽略 bind 保存的 boundThis，转而调用目标构造器并让 this 指向按构造规则创建的新实例；bind 预置的参数仍会放在 new 调用参数之前。为保持继承与 instanceof 语义，当 newTarget 就是绑定函数时，规范会把实际 newTarget 调整为原目标函数。绑定函数通常没有自己的 prototype 属性，但 new Bound() 创建的对象仍沿目标构造函数的 prototype 链，因此通常同时满足 instance instanceof Target 和 instance instanceof Bound。若目标构造器显式返回对象，普通构造返回规则仍可能以该对象作为结果。
+- 若原目标函数具有 [[Construct]]，对其绑定函数使用 new 会进入绑定函数的构造内部方法。该路径忽略 bind 保存的 boundThis，转而调用目标构造器并让 this 指向按构造规则创建的新实例；bind 预置的参数仍会放在 new 调用参数之前。
+- 为保持继承与 instanceof 语义，当 newTarget 就是绑定函数时，规范会把实际 newTarget 调整为原目标函数。
+- 绑定函数通常没有自己的 prototype 属性，但 new Bound() 创建的对象仍沿目标构造函数的 prototype 链，因此通常同时满足 instance instanceof Target 和 instance instanceof Bound。
+- 若目标构造器显式返回对象，普通构造返回规则仍可能以该对象作为结果。
 
 **代码 / 场景：**
 
@@ -2283,7 +2361,9 @@ Object.assign 只复制源对象自身可枚举属性的当前值，嵌套对象
 
 **原理：**
 
-Object.assign 只执行浅层属性复制。它先把 target 转成对象，再按源对象出现顺序枚举每个源的自身可枚举字符串键与 Symbol 键；对每个键从源执行 [[Get]] 取得当前值，再对目标执行 [[Set]] 写入，因此 getter 和目标 setter 都可能运行，属性描述符本身不会被原样复制。若值是对象或数组，写入的只是同一引用，嵌套修改会被两边观察。assign 会直接修改并返回 target，后来的源可覆盖先前同名键；复制过程中抛错时，之前已写入的属性不会自动回滚。它不是深拷贝、事务，也不复制原型与不可枚举属性。
+- Object.assign 只执行浅层属性复制。它先把 target 转成对象，再按源对象出现顺序枚举每个源的自身可枚举字符串键与 Symbol 键；
+- 对每个键从源执行 [[Get]] 取得当前值，再对目标执行 [[Set]] 写入，因此 getter 和目标 setter 都可能运行，属性描述符本身不会被原样复制。若值是对象或数组，写入的只是同一引用，嵌套修改会被两边观察。
+- assign 会直接修改并返回 target，后来的源可覆盖先前同名键；复制过程中抛错时，之前已写入的属性不会自动回滚。它不是深拷贝、事务，也不复制原型与不可枚举属性。
 
 **代码 / 场景：**
 
@@ -2339,7 +2419,9 @@ console.log(clone.profile === source.profile) // true
 
 **原理：**
 
-对象展开默认也是浅拷贝。对象字面量求值时，...source 通过 CopyDataProperties 收集源对象的自身可枚举字符串键与 Symbol 键，读取每个当前值，并在新对象上创建对应数据属性；嵌套对象仍只复制引用，所以后续深层修改会共享。它不复制源原型、不可枚举属性或原始 getter/setter 描述符，getter 会在展开时求值，结果成为普通值属性。虽然常见结果与 Object.assign({}, source) 接近，两者写入语义不完全相同：对象展开在新对象上创建自有数据属性，而 assign 对既有 target 使用 Set，可能触发目标继承的 setter。后出现的同名属性会覆盖前面的值。
+- 对象展开默认也是浅拷贝。对象字面量求值时，...source 通过 CopyDataProperties 收集源对象的自身可枚举字符串键与 Symbol 键，读取每个当前值，并在新对象上创建对应数据属性；嵌套对象仍只复制引用，所以后续深层修改会共享。
+- 它不复制源原型、不可枚举属性或原始 getter/setter 描述符，getter 会在展开时求值，结果成为普通值属性。
+- 虽然常见结果与 Object.assign({}, source) 接近，两者写入语义不完全相同：对象展开在新对象上创建自有数据属性，而 assign 对既有 target 使用 Set，可能触发目标继承的 setter。后出现的同名属性会覆盖前面的值。
 
 **代码 / 场景：**
 
@@ -2399,7 +2481,9 @@ Object.keys 不包含继承属性、不可枚举属性和 Symbol 键。
 
 **原理：**
 
-Object.keys 返回 obj 自身的、可枚举的字符串属性键组成的新数组。它不沿原型链查找，不包含 enumerable 为 false 的自有属性，也不包含任何 Symbol 键。属性键中的数组索引仍以字符串形式返回。顺序遵循规范的自有属性键次序：非负整数索引类键按数值升序排列，其他字符串键按创建顺序排列，Symbol 本来就被该 API 排除。参数会先执行 ToObject，因此字符串原始值可暴露字符索引，而 null 与 undefined 无法转换并会抛 TypeError。若需要全部自有键，应使用 Reflect.ownKeys；若要连同描述符检查，则使用 Object.getOwnPropertyDescriptors。
+- Object.keys 返回 obj 自身的、可枚举的字符串属性键组成的新数组。它不沿原型链查找，不包含 enumerable 为 false 的自有属性，也不包含任何 Symbol 键。属性键中的数组索引仍以字符串形式返回。
+- 顺序遵循规范的自有属性键次序：非负整数索引类键按数值升序排列，其他字符串键按创建顺序排列，Symbol 本来就被该 API 排除。参数会先执行 ToObject，因此字符串原始值可暴露字符索引，而 null 与 undefined 无法转换并会抛 TypeError。
+- 若需要全部自有键，应使用 Reflect.ownKeys；若要连同描述符检查，则使用 Object.getOwnPropertyDescriptors。
 
 **代码 / 场景：**
 
@@ -2459,7 +2543,9 @@ in 操作符会检查对象自身以及原型链，普通对象可从 Object.pro
 
 **原理：**
 
-结果是 true。in 运算符右侧必须是对象，它调用对象的 [[HasProperty]] 内部方法：先检查对象自身是否存在该属性键，未找到时沿 [[Prototype]] 链继续查询。普通对象字面量默认以 Object.prototype 为原型，而该原型拥有 toString，因此即使空对象没有自己的 toString，in 仍返回 true。属性值是否为 undefined 不影响“是否存在”的判断；只要属性描述存在就为 true。若对象由 Object.create(null) 创建，没有 Object.prototype，结果会是 false。若只想判断自身属性，应使用 Object.hasOwn，而不是 in 或可能被覆盖的 hasOwnProperty 方法。
+- 结果是 true。in 运算符右侧必须是对象，它调用对象的 [[HasProperty]] 内部方法：先检查对象自身是否存在该属性键，未找到时沿 [[Prototype]] 链继续查询。
+- 普通对象字面量默认以 Object.prototype 为原型，而该原型拥有 toString，因此即使空对象没有自己的 toString，in 仍返回 true。属性值是否为 undefined 不影响“是否存在”的判断；只要属性描述存在就为 true。
+- 若对象由 Object.create(null) 创建，没有 Object.prototype，结果会是 false。若只想判断自身属性，应使用 Object.hasOwn，而不是 in 或可能被覆盖的 hasOwnProperty 方法。
 
 **代码 / 场景：**
 
@@ -2516,7 +2602,10 @@ Object.hasOwn 只检查对象自身属性，比直接调用 obj.hasOwnProperty �
 
 **原理：**
 
-Object.hasOwn 检查指定属性键是否直接存在于 obj 自身，而不沿原型链查找。算法把 obj 转为对象、把 key 转为属性键，然后调用 HasOwnProperty；它不要求属性可枚举、值为真或可写，所以不可枚举属性、值为 undefined 的属性和自身 Symbol 属性都能返回 true。相比 obj.hasOwnProperty(key)，静态方法不会受对象自有同名方法覆盖影响，也能处理 Object.create(null) 创建的无原型字典。它只回答所有权，不验证值类型与描述符；若需要 writable、enumerable 等信息，应继续读取 Object.getOwnPropertyDescriptor。对 null 或 undefined 调用会因无法转换对象而抛 TypeError。
+- Object.hasOwn 检查指定属性键是否直接存在于 obj 自身，而不沿原型链查找。算法把 obj 转为对象、把 key 转为属性键，然后调用 HasOwnProperty；
+- 它不要求属性可枚举、值为真或可写，所以不可枚举属性、值为 undefined 的属性和自身 Symbol 属性都能返回 true。
+- 相比 obj.hasOwnProperty(key)，静态方法不会受对象自有同名方法覆盖影响，也能处理 Object.create(null) 创建的无原型字典。它只回答所有权，不验证值类型与描述符；
+- 若需要 writable、enumerable 等信息，应继续读取 Object.getOwnPropertyDescriptor。对 null 或 undefined 调用会因无法转换对象而抛 TypeError。
 
 **代码 / 场景：**
 
@@ -2574,7 +2663,9 @@ delete 删除属性本身，而不是简单赋值 undefined；不可配置属性
 
 **原理：**
 
-delete 对属性引用执行对象的 [[Delete]] 内部操作，目标是移除属性描述符本身，而不是把值写成 undefined。普通自有属性若 configurable 为 true 可被删除，之后 hasOwn 返回 false；不可配置属性在非严格代码中删除返回 false，在严格模式中会抛 TypeError。若对象没有该自有属性，delete 通常返回 true，即使同名属性可从原型继承；删除一个遮蔽原型的自有属性后，后续读取还可能重新暴露原型值。对数组索引使用 delete 会留下空洞且通常不改变 length，若要移除并移动元素应使用 splice。词法变量和函数参数也不是可通过对象属性 delete 删除的对象状态。
+- delete 对属性引用执行对象的 [[Delete]] 内部操作，目标是移除属性描述符本身，而不是把值写成 undefined。普通自有属性若 configurable 为 true 可被删除，之后 hasOwn 返回 false；
+- 不可配置属性在非严格代码中删除返回 false，在严格模式中会抛 TypeError。若对象没有该自有属性，delete 通常返回 true，即使同名属性可从原型继承；删除一个遮蔽原型的自有属性后，后续读取还可能重新暴露原型值。
+- 对数组索引使用 delete 会留下空洞且通常不改变 length，若要移除并移动元素应使用 splice。词法变量和函数参数也不是可通过对象属性 delete 删除的对象状态。
 
 **代码 / 场景：**
 
@@ -2634,7 +2725,9 @@ Object.freeze 是浅冻结。若要深冻结，需要自行递归处理嵌套对
 
 **原理：**
 
-不会，Object.freeze 是浅冻结。它先阻止目标对象继续扩展，再把对象自身现有数据属性改为不可写且不可配置，把访问器属性改为不可配置；对象的 [[Prototype]] 也不能再更改。但属性值若引用另一个对象，该嵌套对象拥有独立的内部槽与属性描述符，不会被自动处理，仍可修改。访问器的 getter 或 setter 函数也不会消失，冻结对象的某些可观察状态仍可能来自外部可变数据。实现深冻结需要递归遍历对象图、处理 Symbol 键与循环引用，并评估 Date、Map、TypedArray、私有字段等特殊对象；业务上常更适合采用不可变更新和只读接口。
+- 不会，Object.freeze 是浅冻结。它先阻止目标对象继续扩展，再把对象自身现有数据属性改为不可写且不可配置，把访问器属性改为不可配置；对象的 [[Prototype]] 也不能再更改。
+- 但属性值若引用另一个对象，该嵌套对象拥有独立的内部槽与属性描述符，不会被自动处理，仍可修改。访问器的 getter 或 setter 函数也不会消失，冻结对象的某些可观察状态仍可能来自外部可变数据。
+- 实现深冻结需要递归遍历对象图、处理 Symbol 键与循环引用，并评估 Date、Map、TypedArray、私有字段等特殊对象；业务上常更适合采用不可变更新和只读接口。
 
 **代码 / 场景：**
 
@@ -2694,7 +2787,10 @@ freeze 只改变 user 自身描述符，没有递归访问 profile。
 
 **原理：**
 
-Object.create(proto) 创建一个新对象，并把它的 [[Prototype]] 直接设置为传入的对象或 null；它不会复制 proto 的属性，也不会调用某个构造函数。读取新对象缺少的键时，普通属性查找才会沿原型链访问 proto。可选的第二参数是属性描述符映射，规则与 Object.defineProperties 相同，省略 writable、enumerable、configurable 时默认都是 false。传入 Object.create(null) 可得到没有 Object.prototype 的纯字典，避免 toString 等继承键干扰，但该对象也没有 hasOwnProperty 和常见对象方法。proto 必须是对象或 null，否则会抛 TypeError。创建后若修改 proto 的可见属性，新对象也可能立即通过委托观察到变化，因为两者始终保持原型关联。
+- Object.create(proto) 创建一个新对象，并把它的 [[Prototype]] 直接设置为传入的对象或 null；它不会复制 proto 的属性，也不会调用某个构造函数。读取新对象缺少的键时，普通属性查找才会沿原型链访问 proto。
+- 可选的第二参数是属性描述符映射，规则与 Object.defineProperties 相同，省略 writable、enumerable、configurable 时默认都是 false。
+- 传入 Object.create(null) 可得到没有 Object.prototype 的纯字典，避免 toString 等继承键干扰，但该对象也没有 hasOwnProperty 和常见对象方法。proto 必须是对象或 null，否则会抛 TypeError。
+- 创建后若修改 proto 的可见属性，新对象也可能立即通过委托观察到变化，因为两者始终保持原型关联。
 
 ![JavaScript 实例、构造函数与原型链关系图](/content/diagrams/javascript/prototype-chain-v1.svg "属性查找沿 [[Prototype]] 链向上进行，prototype 与对象的原型不是同一个概念。")
 
@@ -2741,26 +2837,29 @@ console.log('toString' in dict) // false
 
 校验日期：2026-07-20
 
-## Q49：不可枚举属性会出现在 Object.keys 中吗？
+## Q49：Object.keys、Object.getOwnPropertyNames 与 Reflect.ownKeys 的覆盖范围有何不同？
 
-- A. 会
-- B. 不会
-- C. 只在数组中会
-- D. 只在严格模式中会
+- A. 三者都只返回可枚举字符串键
+- B. Object.keys 取可枚举字符串键，getOwnPropertyNames 取全部字符串键，Reflect.ownKeys 再加上 Symbol 键
+- C. getOwnPropertyNames 只返回不可枚举键
+- D. Reflect.ownKeys 还会返回原型链上的键
 
 **答案：B**
 
 **短回答：**
 
-Object.keys 只返回自身可枚举字符串属性；可用 Object.getOwnPropertyNames 查看不可枚举字符串属性。
+三者都只查自有属性。Object.keys 只取可枚举字符串键；Object.getOwnPropertyNames 取全部字符串键；Reflect.ownKeys 还会纳入 Symbol 键。
 
 **原理：**
 
-不会。Object.keys 的筛选条件要求属性是目标对象自身拥有、属性键类型为 String，并且属性描述符的 enumerable 为 true；不可枚举自有属性虽然仍可被直接读取、用 in 或 Object.hasOwn 检测，却会被 Object.keys 排除。Object.getOwnPropertyNames 可取得全部自有字符串键，包括不可枚举键；Object.getOwnPropertySymbols 取得自有 Symbol 键；Reflect.ownKeys 则合并两类而不按 enumerable 过滤。for...in 只遍历可枚举字符串键但会沿原型链，JSON.stringify 对普通对象通常也只考虑可枚举字符串自有属性，几个 API 不应混为一谈。设计反射逻辑时应先明确需要的所有权、键类型与枚举性，再选择对应接口。
+- 三者都只查目标对象的自有属性，不沿原型链查找，但覆盖范围逐级扩大。Object.keys 只返回自有、可枚举的字符串键；Object.getOwnPropertyNames 返回全部自有字符串键，不论是否可枚举；
+- Reflect.ownKeys 则返回全部自有字符串键和 Symbol 键，同样不按 enumerable 过滤。
+- 因此列表可展示数据选 Object.keys，检查全部字符串属性选 Object.getOwnPropertyNames，完整反射自有键才选 Reflect.ownKeys。“能列出键”不等于保留 getter、writable 等属性特征；
+- 需要描述符时还应使用 Object.getOwnPropertyDescriptors。
 
 **代码 / 场景：**
 
-hidden 可直接读取且确实自有，但只有更全面的键 API 才会列出它。
+同一对象中放入可枚举字符串键、不可枚举字符串键与 Symbol 键，可直接看到三个 API 的范围差异。
 
 ~~~js
 const obj = { visible: 1 }
@@ -2768,36 +2867,36 @@ Object.defineProperty(obj, 'hidden', {
   value: 2,
   enumerable: false
 })
+const token = Symbol('token')
+obj[token] = 'secret'
 
-console.log(obj.hidden) // 2
-console.log(Object.hasOwn(obj, 'hidden')) // true
 console.log(Object.keys(obj)) // ['visible']
 console.log(Object.getOwnPropertyNames(obj)) // ['visible', 'hidden']
-console.log(JSON.stringify(obj)) // '{"visible":1}'
+console.log(Reflect.ownKeys(obj)) // ['visible', 'hidden', Symbol(token)]
 ~~~
 
-不可枚举只影响特定枚举机制，不等于私有或无法访问。
+Reflect.ownKeys 覆盖最全，但仍只返回自有键，不包含原型链属性。
 
 **递进追问：**
 
-1. **不可枚举属性是否具有安全保密性？**
+1. **哪个 API 能同时取得不可枚举键和 Symbol 键？**
 
-   没有。调用方仍可直接读取已知键，或通过 getOwnPropertyNames、Reflect.ownKeys 和属性描述符发现它；真正私有状态应使用 #字段或闭包。
+   Reflect.ownKeys。Object.getOwnPropertyNames 虽不过滤不可枚举属性，却仍只返回字符串键；Symbol 键要用 Object.getOwnPropertySymbols 或 Reflect.ownKeys 取得。
 
-2. **for...in 会列出不可枚举属性吗？**
+2. **这三个 API 会返回原型链上的键吗？**
 
-   不会，但它会沿原型链列出可枚举字符串属性；因此与 Object.keys 的“仅自身”范围不同，处理数据对象时应明确是否过滤继承键。
+   都不会。它们都限定为 own keys；for...in 才会沿原型链遍历可枚举字符串键，但通常需配合 Object.hasOwn 避免把继承键当成数据字段。
 
 **易错点：**
 
-- enumerable 为 false 只控制枚举可见性，不会自动禁止读取、修改或删除属性。
-- Object.getOwnPropertyNames 仍不含 Symbol 键；需要完整自有键集合应使用 Reflect.ownKeys。
+- 不要把 Object.getOwnPropertyNames 误记成“只取不可枚举键”；它会同时返回可枚举和不可枚举的自有字符串键。
+- Reflect.ownKeys 不会暴露 class 私有字段或内部槽；“全部自有属性键”仍有语言边界。
 
 **参考来源：**
 
-- [ECMAScript：Object.keys](https://tc39.es/ecma262/multipage/fundamental-objects.html#sec-object.keys)
+- [ECMAScript：Reflect.ownKeys](https://tc39.es/ecma262/multipage/reflection.html#sec-reflect.ownkeys)
 - [MDN：Enumerability and ownership of properties](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Enumerability_and_ownership_of_properties)
-- [MDN：Object.getOwnPropertyNames](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertyNames)
+- [MDN：Reflect.ownKeys()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect/ownKeys)
 
 校验日期：2026-07-20
 
@@ -2816,7 +2915,10 @@ console.log(JSON.stringify(obj)) // '{"visible":1}'
 
 **原理：**
 
-不会。对象或数组解构中带初始化器的绑定，只有取得的属性值严格为 undefined 时才求值并采用默认表达式；属性缺失也会先得到 undefined，所以同样触发。null 是明确存在的另一种原始值，会原样绑定，不会被默认值替换。默认表达式是惰性的，只有触发时才执行，可引用已经初始化的前置绑定。还要区分嵌套模式：若写 const { profile: { name } = {} } = data，profile 为 undefined 时使用空对象，但 profile 为 null 时会保留 null，随后尝试从 null 解构并抛 TypeError。若业务把 null 与 undefined 都视为空值，应在解构后使用 ??，或先规范化输入。
+- 不会。对象或数组解构中带初始化器的绑定，只有取得的属性值严格为 undefined 时才求值并采用默认表达式；属性缺失也会先得到 undefined，所以同样触发。null 是明确存在的另一种原始值，会原样绑定，不会被默认值替换。
+- 默认表达式是惰性的，只有触发时才执行，可引用已经初始化的前置绑定。
+- 还要区分嵌套模式：若写 const { profile: { name } = {} } = data，profile 为 undefined 时使用空对象，但 profile 为 null 时会保留 null，随后尝试从 null 解构并抛 TypeError。
+- 若业务把 null 与 undefined 都视为空值，应在解构后使用 ??，或先规范化输入。
 
 **代码 / 场景：**
 
@@ -2878,7 +2980,9 @@ map 对每个已有元素执行映射函数，并把返回值组成新数组，�
 
 **原理：**
 
-map 会创建并返回一个新数组，新数组的长度在调用开始时就按原数组长度确定。它依次处理原数组中实际存在的索引，把回调函数的返回值写到新数组的对应位置；回调接收当前元素、索引和原数组三个参数。map 不会自动修改原数组，但回调仍可能主动修改对象或原数组，因此“使用 map”并不等于没有副作用。稀疏数组中的空槽不会执行回调，结果中对应位置仍为空槽。它是浅层映射：若返回的是原对象引用，新旧数组仍会共享该对象。
+map 会创建并返回一个新数组，新数组的长度在调用开始时就按原数组长度确定。它依次处理原数组中实际存在的索引，把回调函数的返回值写到新数组的对应位置；回调接收当前元素、索引和原数组三个参数。map 不会自动修改原数组，但回调仍可能主动修改对象或原数组，因此“使用 map”并不等于没有副作用。
+
+稀疏数组中的空槽不会执行回调，结果中对应位置仍为空槽。它是浅层映射：若返回的是原对象引用，新旧数组仍会共享该对象。
 
 **代码 / 场景：**
 
@@ -2928,7 +3032,9 @@ forEach 用于遍历副作用，不会收集回调返回值。
 
 **原理：**
 
-forEach 的规范返回值始终是 undefined，不会收集回调的返回值。它按升序访问调用开始时已确定长度范围内实际存在的元素，并把元素、索引和原数组交给回调。除非回调抛出异常，否则没有内建的 break 或提前返回机制；在回调中写 return 只结束本次回调。forEach 本身是同步算法，不会等待回调返回的 Promise，因此把 async 回调直接传入时，外层 forEach 会在异步工作完成前返回，也无法自然汇总拒绝结果。
+forEach 的规范返回值始终是 undefined，不会收集回调的返回值。它按升序访问调用开始时已确定长度范围内实际存在的元素，并把元素、索引和原数组交给回调。除非回调抛出异常，否则没有内建的 break 或提前返回机制；在回调中写 return 只结束本次回调。
+
+forEach 本身是同步算法，不会等待回调返回的 Promise，因此把 async 回调直接传入时，外层 forEach 会在异步工作完成前返回，也无法自然汇总拒绝结果。
 
 **代码 / 场景：**
 
@@ -2981,7 +3087,9 @@ console.log(total)  // 6
 
 **原理：**
 
-filter 用于按谓词筛选元素，并返回一个新的浅拷贝数组。算法按原顺序访问实际存在的索引，只有回调结果经 ToBoolean 转换为 true 的元素才会被追加到结果中，因此结果长度可能从零到原长度不等。它不会直接改变原数组，入选元素却仍是原来的值或对象引用，并非深拷贝。调用开始时会固定遍历长度上限；空槽不会调用回调，也不会在结果中保留占位，所以稀疏数组经过 filter 后通常变为紧凑数组。
+filter 用于按谓词筛选元素，并返回一个新的浅拷贝数组。算法按原顺序访问实际存在的索引，只有回调结果经 ToBoolean 转换为 true 的元素才会被追加到结果中，因此结果长度可能从零到原长度不等。它不会直接改变原数组，入选元素却仍是原来的值或对象引用，并非深拷贝。调用开始时会固定遍历长度上限；
+
+空槽不会调用回调，也不会在结果中保留占位，所以稀疏数组经过 filter 后通常变为紧凑数组。
 
 **代码 / 场景：**
 
@@ -3032,7 +3140,9 @@ reduce 让累计值依次处理每个元素，可用于求和、分组、构建�
 
 **原理：**
 
-reduce 的核心是把一列元素按顺序折叠成一个累加结果。每轮回调接收 accumulator、currentValue、currentIndex 和原数组，并把本轮返回值作为下一轮的 accumulator。显式提供 initialValue 时，第一项从索引零开始参与；未提供时会把第一个实际存在的元素当初值，从下一项开始，并且空数组会抛出 TypeError。累加结果可以是数字、对象、Map、Promise 链等任意值，但每轮都应返回与设计一致的累加器，才能保持状态转换可推理。稀疏数组的空槽不会进入回调；选择原地修改累加器还是每轮返回新值，也应在整个归约中保持一致。
+- reduce 的核心是把一列元素按顺序折叠成一个累加结果。每轮回调接收 accumulator、currentValue、currentIndex 和原数组，并把本轮返回值作为下一轮的 accumulator。显式提供 initialValue 时，第一项从索引零开始参与；
+- 未提供时会把第一个实际存在的元素当初值，从下一项开始，并且空数组会抛出 TypeError。累加结果可以是数字、对象、Map、Promise 链等任意值，但每轮都应返回与设计一致的累加器，才能保持状态转换可推理。稀疏数组的空槽不会进入回调；
+- 选择原地修改累加器还是每轮返回新值，也应在整个归约中保持一致。
 
 **代码 / 场景：**
 
@@ -3084,11 +3194,13 @@ console.log(totals) // { book: 50, food: 20 }
 
 **短回答：**
 
-find 返回第一个匹配元素的值；findIndex 才会在未找到时返回 -1。
+`find` 没找到匹配元素时返回 `undefined`；找到时返回第一个匹配元素的值。需要用位置区分“没找到”时可使用 `findIndex`，它会返回 `-1`。
 
 **原理：**
 
-find 会按索引升序调用谓词，并在第一次得到真值时立即返回该元素；遍历结束仍未匹配则返回 undefined。这个返回协议有歧义：如果数组本来就包含 undefined 且它满足条件，仅看结果无法判断是“找到 undefined”还是“没找到”。需要判断存在性时可使用 findIndex，未找到会返回 -1。与 map、filter 不同，find 会对长度范围内每个索引执行读取，稀疏数组的空槽会被当作 undefined 传给回调；算法同样在开始时确定长度上限。
+find 会按索引升序调用谓词，并在第一次得到真值时立即返回该元素；遍历结束仍未匹配则返回 undefined。这个返回协议有歧义：如果数组本来就包含 undefined 且它满足条件，仅看结果无法判断是“找到 undefined”还是“没找到”。需要判断存在性时可使用 findIndex，未找到会返回 -1。
+
+与 map、filter 不同，find 会对长度范围内每个索引执行读取，稀疏数组的空槽会被当作 undefined 传给回调；算法同样在开始时确定长度上限。
 
 **代码 / 场景：**
 
@@ -3137,7 +3249,9 @@ some 遇到第一个真值就短路返回 true，适合判断“是否存在”�
 
 **原理：**
 
-some 用来回答“是否至少有一个元素满足条件”。它按升序检查数组中实际存在的元素，只要某次回调结果转为布尔值后为 true，就立即停止并返回 true；全部不满足或数组为空则返回 false。因此它体现存在量词，适合权限命中、校验失败检测等场景。调用开始时读取并固定长度，之后追加到该范围外的元素不会参与；尚未访问的删除项会被跳过。回调接收元素、索引和原数组，稀疏数组的空槽不会被调用。
+some 用来回答“是否至少有一个元素满足条件”。它按升序检查数组中实际存在的元素，只要某次回调结果转为布尔值后为 true，就立即停止并返回 true；全部不满足或数组为空则返回 false。因此它体现存在量词，适合权限命中、校验失败检测等场景。调用开始时读取并固定长度，之后追加到该范围外的元素不会参与；尚未访问的删除项会被跳过。
+
+回调接收元素、索引和原数组，稀疏数组的空槽不会被调用。
 
 **代码 / 场景：**
 
@@ -3190,7 +3304,9 @@ console.log(visited) // 3
 
 **原理：**
 
-结果是 true。every 表达“所有被检查元素都满足条件”，空数组没有反例，所以按数学上的空真原则返回 true，回调一次也不会执行。算法遇到第一个假值就短路返回 false；只有遍历完仍无反例才返回 true。它只访问实际存在的索引，稀疏数组的空槽会跳过，因此一个只有空槽、没有实际元素的数组也可能得到 true。Boolean 作为谓词会对元素做真值转换，并不是检查值的类型是否为 boolean。
+结果是 true。every 表达“所有被检查元素都满足条件”，空数组没有反例，所以按数学上的空真原则返回 true，回调一次也不会执行。算法遇到第一个假值就短路返回 false；只有遍历完仍无反例才返回 true。它只访问实际存在的索引，稀疏数组的空槽会跳过，因此一个只有空槽、没有实际元素的数组也可能得到 true。
+
+Boolean 作为谓词会对元素做真值转换，并不是检查值的类型是否为 boolean。
 
 **代码 / 场景：**
 
@@ -3241,7 +3357,9 @@ sort 默认按字符串的 UTF-16 顺序比较。数值升序应传入比较函�
 
 **原理：**
 
-默认结果是 [1, 10, 2]。sort 在没有 compareFn 时，会把非 undefined 元素转换为字符串，再按 UTF-16 码元序列升序比较，因此字符串 "10" 排在 "2" 前面。sort 会原地重排并返回同一个数组引用，不是纯函数；现代 ECMAScript 还要求排序稳定，即比较结果为零的元素保持原相对顺序。数值升序必须提供 (a, b) => a - b。undefined 会排到数组末尾，稀疏数组的空槽则被保留并移动到 undefined 之后。比较器返回负数、零或正数来表达相对顺序，而不是必须返回固定的负一、零和正一。
+- 默认结果是 [1, 10, 2]。sort 在没有 compareFn 时，会把非 undefined 元素转换为字符串，再按 UTF-16 码元序列升序比较，因此字符串 "10" 排在 "2" 前面。sort 会原地重排并返回同一个数组引用，不是纯函数；
+- 现代 ECMAScript 还要求排序稳定，即比较结果为零的元素保持原相对顺序。数值升序必须提供 (a, b) => a - b。undefined 会排到数组末尾，稀疏数组的空槽则被保留并移动到 undefined 之后。
+- 比较器返回负数、零或正数来表达相对顺序，而不是必须返回固定的负一、零和正一。
 
 **代码 / 场景：**
 
@@ -3292,7 +3410,9 @@ splice 可删除、插入或替换原数组元素；slice 返回指定区间的�
 
 **原理：**
 
-splice 是原地编辑方法，可从 start 开始删除 deleteCount 个元素并插入新元素，返回值是由被删除元素组成的新数组，因此会改变原数组长度和内容。slice 是读取方法，按左闭右开区间提取元素，返回新的浅拷贝数组而不修改原数组；省略 end 时复制到末尾。两者都支持负索引，都只复制元素引用而不会深克隆对象。要在不可变状态管理中替代 splice，可使用 toSpliced，或组合 slice 与展开语法创建新数组。
+splice 是原地编辑方法，可从 start 开始删除 deleteCount 个元素并插入新元素，返回值是由被删除元素组成的新数组，因此会改变原数组长度和内容。slice 是读取方法，按左闭右开区间提取元素，返回新的浅拷贝数组而不修改原数组；省略 end 时复制到末尾。两者都支持负索引，都只复制元素引用而不会深克隆对象。
+
+要在不可变状态管理中替代 splice，可使用 toSpliced，或组合 slice 与展开语法创建新数组。
 
 **代码 / 场景：**
 
@@ -3345,7 +3465,9 @@ includes 使用 SameValueZero 比较，可以识别 NaN；indexOf(NaN) 则找不
 
 **原理：**
 
-结果是 true，因为 includes 使用 SameValueZero 比较，而不是严格相等。SameValueZero 把 NaN 与 NaN 视为相同，同时把 +0 与 -0 也视为相同，所以它比 indexOf 更适合判断 NaN 是否存在。includes 从可选的 fromIndex 开始线性读取，找到即返回 true；负索引会相对数组长度换算。它会读取稀疏数组的空槽并把空槽当作 undefined，因此 new Array(1).includes(undefined) 也为 true。该方法只返回存在性，不返回索引位置。对于对象、数组和函数仍采用引用身份比较，两个结构相同但独立创建的值不会互相命中。
+- 结果是 true，因为 includes 使用 SameValueZero 比较，而不是严格相等。SameValueZero 把 NaN 与 NaN 视为相同，同时把 +0 与 -0 也视为相同，所以它比 indexOf 更适合判断 NaN 是否存在。
+- includes 从可选的 fromIndex 开始线性读取，找到即返回 true；负索引会相对数组长度换算。它会读取稀疏数组的空槽并把空槽当作 undefined，因此 new Array(1).includes(undefined) 也为 true。
+- 该方法只返回存在性，不返回索引位置。对于对象、数组和函数仍采用引用身份比较，两个结构相同但独立创建的值不会互相命中。
 
 **代码 / 场景：**
 
@@ -3397,7 +3519,9 @@ Promise 构造函数的执行器同步执行，但 then、catch、finally 注册
 
 **原理：**
 
-executor 会在 Promise 构造函数被调用时同步执行，而且发生在 new Promise 返回之前。构造器把只能生效一次的 resolve 和 reject 函数传给 executor；首次解决会锁定状态，后续再次调用不会改写结果。executor 同步抛出的异常会被构造器捕获并用于拒绝该 Promise，但如果状态此前已经解决，之后的抛错也不能反转它。真正异步的是 then、catch、finally 注册的反应回调：即使 Promise 已经兑现，它们也会通过 Promise Jobs 队列在当前调用栈结束后运行。
+- executor 会在 Promise 构造函数被调用时同步执行，而且发生在 new Promise 返回之前。构造器把只能生效一次的 resolve 和 reject 函数传给 executor；首次解决会锁定状态，后续再次调用不会改写结果。
+- executor 同步抛出的异常会被构造器捕获并用于拒绝该 Promise，但如果状态此前已经解决，之后的抛错也不能反转它。
+- 真正异步的是 then、catch、finally 注册的反应回调：即使 Promise 已经兑现，它们也会通过 Promise Jobs 队列在当前调用栈结束后运行。
 
 **代码 / 场景：**
 
@@ -3452,7 +3576,8 @@ console.log('end')
 
 **原理：**
 
-then 注册的兑现或拒绝反应通过 ECMAScript 的 Promise Jobs 调度；在浏览器事件循环中，这类 Job 通常作为微任务执行。回调不会在 then 调用的同一调用栈里同步运行，即使原 Promise 已经兑现也一样。当前任务的 JavaScript 栈清空后，事件循环会持续清空微任务队列，再进入渲染机会或下一个任务。每次 then 都立即返回一个新的 Promise，其状态由回调返回值、抛错或返回的 thenable 决定；连续 then 因此前后形成异步链，而不是复用原 Promise。
+- then 注册的兑现或拒绝反应通过 ECMAScript 的 Promise Jobs 调度；在浏览器事件循环中，这类 Job 通常作为微任务执行。回调不会在 then 调用的同一调用栈里同步运行，即使原 Promise 已经兑现也一样。
+- 当前任务的 JavaScript 栈清空后，事件循环会持续清空微任务队列，再进入渲染机会或下一个任务。每次 then 都立即返回一个新的 Promise，其状态由回调返回值、抛错或返回的 thenable 决定；连续 then 因此前后形成异步链，而不是复用原 Promise。
 
 **代码 / 场景：**
 
@@ -3506,7 +3631,9 @@ next.then((value) => console.log(value))
 
 **原理：**
 
-在浏览器中，setTimeout 到期后会把回调加入定时器任务源对应的任务队列，通常口语称为宏任务；HTML 标准使用的正式术语是 task。delay 表示回调在至少等待这段时间后才有资格排队，并不是准确执行时刻。只有当前任务结束、微任务检查点完成且事件循环选择到该任务时，回调才会运行。嵌套定时器会受到最小延迟钳制，后台页面还可能被更强地节流。清除定时器只需把 handle 传给 clearTimeout，不会影响已经开始执行的回调。
+在浏览器中，setTimeout 到期后会把回调加入定时器任务源对应的任务队列，通常口语称为宏任务；HTML 标准使用的正式术语是 task。delay 表示回调在至少等待这段时间后才有资格排队，并不是准确执行时刻。只有当前任务结束、微任务检查点完成且事件循环选择到该任务时，回调才会运行。
+
+嵌套定时器会受到最小延迟钳制，后台页面还可能被更强地节流。清除定时器只需把 handle 传给 clearTimeout，不会影响已经开始执行的回调。
 
 **代码 / 场景：**
 
@@ -3558,7 +3685,8 @@ console.log('sync')
 
 **原理：**
 
-典型浏览器脚本中，先执行当前任务里的全部同步代码；调用 then 只登记 Promise 反应微任务，setTimeout(0) 则登记后续定时器任务。当前调用栈清空后，事件循环执行微任务检查点，按队列顺序清空已就绪的 Promise 回调；之后才可能进行渲染并选择下一个任务，所以常见顺序是同步日志、then 回调、定时器回调。这个结论依赖它们在同一轮中登记且 Promise 已解决；若代码嵌套、Promise 尚未解决，或运行在 Node 等宿主，具体先后还要结合各自宿主的事件循环阶段分析。
+- 典型浏览器脚本中，先执行当前任务里的全部同步代码；调用 then 只登记 Promise 反应微任务，setTimeout(0) 则登记后续定时器任务。当前调用栈清空后，事件循环执行微任务检查点，按队列顺序清空已就绪的 Promise 回调；
+- 之后才可能进行渲染并选择下一个任务，所以常见顺序是同步日志、then 回调、定时器回调。这个结论依赖它们在同一轮中登记且 Promise 已解决；若代码嵌套、Promise 尚未解决，或运行在 Node 等宿主，具体先后还要结合各自宿主的事件循环阶段分析。
 
 ![浏览器任务、微任务与渲染机会的事件循环顺序图](/content/diagrams/javascript/event-loop-v1.svg "当前任务结束后先清空微任务，再进入渲染机会和下一个任务。")
 
@@ -3614,7 +3742,9 @@ console.log(4)
 
 **原理：**
 
-async 函数每次调用一定返回一个 Promise。函数体正常 return 普通值时，返回的 Promise 以该值兑现；执行到末尾没有 return 时以 undefined 兑现；同步 throw 或 await 到拒绝值时则以相同原因拒绝。若 return 另一个 Promise 或 thenable，外层 Promise 会采用其最终状态，但 async 调用创建的 Promise 通常不是传入 Promise 的同一个对象引用。async 只改变返回与暂停语义，不会把函数体开头的同步计算移到后台；函数会同步执行到首次 await 或结束。调用方因此应统一按异步失败通道处理结果，而不是期待同步抛错直接穿过调用语句。
+- async 函数每次调用一定返回一个 Promise。函数体正常 return 普通值时，返回的 Promise 以该值兑现；执行到末尾没有 return 时以 undefined 兑现；同步 throw 或 await 到拒绝值时则以相同原因拒绝。
+- 若 return 另一个 Promise 或 thenable，外层 Promise 会采用其最终状态，但 async 调用创建的 Promise 通常不是传入 Promise 的同一个对象引用。async 只改变返回与暂停语义，不会把函数体开头的同步计算移到后台；
+- 函数会同步执行到首次 await 或结束。调用方因此应统一按异步失败通道处理结果，而不是期待同步抛错直接穿过调用语句。
 
 **代码 / 场景：**
 
@@ -3665,7 +3795,8 @@ await 会暂停当前 async 函数，把后续部分安排到微任务中执行�
 
 **原理：**
 
-即使 await 的 Promise 已经兑现，await 之后的代码也不会在当前调用栈中立即继续。async 函数先暂停，把函数其余部分安排为 Promise 反应 Job；当前同步代码执行完后，它通常在微任务检查点恢复，并取得兑现值。await 会先把表达式结果转换或吸收为 Promise：普通值同样产生一次异步让出；若结果拒绝，恢复时会在 await 位置抛出该拒绝原因，可由函数内 try/catch 捕获。每次 await 都可能引入新的调度边界，因此不应在可并行任务间无意串行等待。
+- 即使 await 的 Promise 已经兑现，await 之后的代码也不会在当前调用栈中立即继续。async 函数先暂停，把函数其余部分安排为 Promise 反应 Job；当前同步代码执行完后，它通常在微任务检查点恢复，并取得兑现值。
+- await 会先把表达式结果转换或吸收为 Promise：普通值同样产生一次异步让出；若结果拒绝，恢复时会在 await 位置抛出该拒绝原因，可由函数内 try/catch 捕获。每次 await 都可能引入新的调度边界，因此不应在可并行任务间无意串行等待。
 
 **代码 / 场景：**
 
@@ -3721,21 +3852,25 @@ Promise.all 具有快速失败语义，但其他已经启动的异步任务不�
 
 **原理：**
 
-Promise.all 返回的新 Promise 会在任一输入首先拒绝时立即以该原因拒绝，不再等待其他结果来决定外层状态；若全部兑现，则按输入迭代顺序返回值数组，而不是按完成顺序排列。所谓“快速失败”不等于取消：已启动的请求、定时器或计算仍会继续，除非任务本身支持 AbortSignal 等取消协议并由调用方主动触发。非 Promise 输入会按兑现值处理，空迭代对象返回一个已兑现的空数组 Promise。迭代、thenable 访问等过程自身抛错也会导致拒绝。
+Promise.all 返回的新 Promise 会在任一输入首先拒绝时立即以该原因拒绝，不再等待其他结果来决定外层状态；若全部兑现，则按输入迭代顺序返回值数组，而不是按完成顺序排列。所谓“快速失败”不等于取消：已启动的请求、定时器或计算仍会继续，除非任务本身支持 AbortSignal 等取消协议并由调用方主动触发。
+
+非 Promise 输入会按兑现值处理，空迭代对象返回一个已兑现的空数组 Promise。迭代、thenable 访问等过程自身抛错也会导致拒绝。
 
 **代码 / 场景：**
 
-fast 在十毫秒后拒绝，all 进入 catch 并输出 fail；slow 定时器仍继续运行并输出 slow finished，证明 Promise.all 不会自动取消其他任务。
+fast 在 10 毫秒后拒绝，all 进入 catch 并输出 fail；slow 定时器仍继续运行并输出 slow finished，证明 Promise.all 不会自动取消其他任务。
 
 ~~~js
 const slow = new Promise((resolve) => setTimeout(() => {
   console.log('slow finished')
   resolve('slow')
 }, 50))
-const fast = Promise.reject(new Error('fail'))
+const fast = new Promise((_, reject) => {
+  setTimeout(() => reject(new Error('fail')), 10)
+})
 Promise.all([slow, fast]).catch((error) => console.log(error.message))
-// fail
-// slow finished
+// 10 ms 左右：fail
+// 50 ms 左右：slow finished
 ~~~
 
 **递进追问：**
@@ -3775,7 +3910,9 @@ allSettled 会等待所有输入结束，并返回带 status 的结果数组。
 
 **原理：**
 
-通常使用 Promise.allSettled。它等待输入中的每一项都结束，并返回一个按输入顺序排列的结果数组：兑现项是 { status: 'fulfilled', value }，拒绝项是 { status: 'rejected', reason }。正常的单项拒绝不会让外层 Promise 拒绝，因此适合批量任务报告、部分成功上传或并行健康检查。它与逐项 catch 后再 Promise.all 的手写方案相比，结果结构统一且不会误把业务失败伪装成普通值。allSettled 同样不会取消任务，也不会替你重试、记录或吞掉 reason 中的敏感信息。调用方必须逐项解释状态，才能计算真正的成功率和补偿范围。
+- 通常使用 Promise.allSettled。它等待输入中的每一项都结束，并返回一个按输入顺序排列的结果数组：兑现项是 { status: 'fulfilled', value }，拒绝项是 { status: 'rejected', reason }。
+- 正常的单项拒绝不会让外层 Promise 拒绝，因此适合批量任务报告、部分成功上传或并行健康检查。它与逐项 catch 后再 Promise.all 的手写方案相比，结果结构统一且不会误把业务失败伪装成普通值。
+- allSettled 同样不会取消任务，也不会替你重试、记录或吞掉 reason 中的敏感信息。调用方必须逐项解释状态，才能计算真正的成功率和补偿范围。
 
 **代码 / 场景：**
 
@@ -3827,7 +3964,9 @@ console.log(results[1].status, results[1].reason.message) // rejected offline
 
 **原理：**
 
-Promise.race 返回的 Promise 由输入中最先解决的那一项决定：最先兑现就以其值兑现，最先拒绝就以其原因拒绝，之后其他输入的结果不再改变外层状态。这里比较的是 settle 而不是只比较成功。非 Promise 值会被 Promise.resolve 式吸收，因而也可很快成为胜者；但 race 的外层仍异步解决，不会在调用栈内同步执行回调。空可迭代对象没有任何竞争者，返回的 Promise 会永久保持 pending。race 不会取消输家，所以用它实现超时还必须显式中止底层请求。
+- Promise.race 返回的 Promise 由输入中最先解决的那一项决定：最先兑现就以其值兑现，最先拒绝就以其原因拒绝，之后其他输入的结果不再改变外层状态。这里比较的是 settle 而不是只比较成功。
+- 非 Promise 值会被 Promise.resolve 式吸收，因而也可很快成为胜者；但 race 的外层仍异步解决，不会在调用栈内同步执行回调。空可迭代对象没有任何竞争者，返回的 Promise 会永久保持 pending。
+- race 不会取消输家，所以用它实现超时还必须显式中止底层请求。
 
 **代码 / 场景：**
 
@@ -3878,11 +4017,13 @@ try {
 
 **短回答：**
 
-finally 用于不依赖结果的清理。若它不抛错或返回拒绝 Promise，原状态和值会继续向后传递。
+finally 用于不依赖结果的清理。只有当它既不抛错，也不返回最终会拒绝的 Promise 时，原状态和原结果才会继续向后传递。
 
 **原理：**
 
-finally 的 onFinally 通常不接收原兑现值或拒绝原因，因为同一清理逻辑应同时服务两条路径。若回调正常完成或返回一个最终兑现的 Promise，finally 返回的新 Promise 会透明保留原状态与原结果；若回调抛错或返回拒绝的 Promise，则新的拒绝原因会覆盖原结果。finally 回调的返回普通值不会像 then 那样替换原兑现值。它适合关闭加载状态、释放锁或清理临时资源，但若清理失败确实重要，就应允许新拒绝传播并保留必要的原错误上下文。
+finally 的 onFinally 通常不接收原兑现值或拒绝原因，因为同一清理逻辑应同时服务两条路径。若回调正常完成或返回一个最终兑现的 Promise，finally 返回的新 Promise 会透明保留原状态与原结果；若回调抛错或返回拒绝的 Promise，则新的拒绝原因会覆盖原结果。
+
+finally 回调的返回普通值不会像 then 那样替换原兑现值。它适合关闭加载状态、释放锁或清理临时资源，但若清理失败确实重要，就应允许新拒绝传播并保留必要的原错误上下文。
 
 **代码 / 场景：**
 
@@ -3936,7 +4077,9 @@ Promise.resolve(42)
 
 **原理：**
 
-事件传播通常先沿事件路径从 Window、Document 和祖先元素向目标移动，这是捕获阶段；到达目标后再进入目标阶段；若事件的 bubbles 为 true，随后从目标的父元素逐级向外返回到更高祖先，这一段就是冒泡。event.target 表示原始或经 Shadow DOM 重定向后的目标，event.currentTarget 则是当前正在执行监听器的节点。并非所有事件都会冒泡，例如 mouseenter 不冒泡，focus 本身不冒泡但可使用会冒泡的 focusin。传播路径在派发开始时确定，具体还受 composed 与 Shadow DOM 边界影响。
+- 事件传播通常先沿事件路径从 Window、Document 和祖先元素向目标移动，这是捕获阶段；到达目标后再进入目标阶段；若事件的 bubbles 为 true，随后从目标的父元素逐级向外返回到更高祖先，这一段就是冒泡。
+- event.target 表示原始或经 Shadow DOM 重定向后的目标，event.currentTarget 则是当前正在执行监听器的节点。并非所有事件都会冒泡，例如 mouseenter 不冒泡，focus 本身不冒泡但可使用会冒泡的 focusin。
+- 传播路径在派发开始时确定，具体还受 composed 与 Shadow DOM 边界影响。
 
 **代码 / 场景：**
 
@@ -3990,7 +4133,9 @@ capture 为 true 时，监听器在事件从外向内传播的捕获阶段执行
 
 **原理：**
 
-capture: true 表示该监听器在事件沿路径向目标传播的捕获阶段被调用，而不是等冒泡阶段从目标返回时调用。祖先捕获监听器通常按从外到内的路径运行；同一目标节点上，捕获监听器也会在非捕获监听器之前参与目标阶段。capture 只改变监听器所处阶段，不会让原本不可穿过 Shadow DOM 的事件越界，也不会改变事件是否具有默认动作。移除监听器时，removeEventListener 至少要使用相同的事件类型、回调引用和 capture 标志，否则匹配不到原注册记录。
+capture: true 表示该监听器在事件沿路径向目标传播的捕获阶段被调用，而不是等冒泡阶段从目标返回时调用。祖先捕获监听器通常按从外到内的路径运行；同一目标节点上，捕获监听器也会在非捕获监听器之前参与目标阶段。
+
+capture 只改变监听器所处阶段，不会让原本不可穿过 Shadow DOM 的事件越界，也不会改变事件是否具有默认动作。移除监听器时，removeEventListener 至少要使用相同的事件类型、回调引用和 capture 标志，否则匹配不到原注册记录。
 
 **代码 / 场景：**
 
@@ -4039,7 +4184,8 @@ button.addEventListener('click', () => console.log('button target'))
 
 **原理：**
 
-preventDefault 用来请求取消事件关联的默认动作，例如链接导航、表单提交或复选框切换，但它不会停止事件继续捕获或冒泡。只有 event.cancelable 为 true 时调用才可能生效，成功取消后 defaultPrevented 会变为 true。对 passive: true 的监听器，浏览器会忽略 preventDefault，因为注册者已经承诺不阻止默认动作，并可能给出控制台警告。取消默认动作不等于撤销监听器里已经执行的 JavaScript 副作用；表单校验、路由拦截等逻辑仍需自行保证状态一致。
+- preventDefault 用来请求取消事件关联的默认动作，例如链接导航、表单提交或复选框切换，但它不会停止事件继续捕获或冒泡。只有 event.cancelable 为 true 时调用才可能生效，成功取消后 defaultPrevented 会变为 true。
+- 对 passive: true 的监听器，浏览器会忽略 preventDefault，因为注册者已经承诺不阻止默认动作，并可能给出控制台警告。取消默认动作不等于撤销监听器里已经执行的 JavaScript 副作用；表单校验、路由拦截等逻辑仍需自行保证状态一致。
 
 **代码 / 场景：**
 
@@ -4090,7 +4236,9 @@ document.addEventListener('click', () => console.log('document click'))
 
 **原理：**
 
-stopPropagation 会设置停止传播标志，使事件不再沿传播路径前往后续节点；在捕获阶段调用可阻止它继续到达更内层节点，在目标或冒泡阶段调用则阻止它继续到祖先。它不会取消元素的默认动作，也不会阻止当前节点上其他符合条件的监听器继续执行。若连同一节点后注册的监听器也要停止，应使用 stopImmediatePropagation。过度停止传播会破坏页面级快捷键、埋点和可访问性逻辑，组件通常应优先通过明确状态或目标过滤避免冲突。
+stopPropagation 会设置停止传播标志，使事件不再沿传播路径前往后续节点；在捕获阶段调用可阻止它继续到达更内层节点，在目标或冒泡阶段调用则阻止它继续到祖先。它不会取消元素的默认动作，也不会阻止当前节点上其他符合条件的监听器继续执行。
+
+若连同一节点后注册的监听器也要停止，应使用 stopImmediatePropagation。过度停止传播会破坏页面级快捷键、埋点和可访问性逻辑，组件通常应优先通过明确状态或目标过滤避免冲突。
 
 **代码 / 场景：**
 
@@ -4143,7 +4291,9 @@ parent.addEventListener('click', () => console.log('parent'))
 
 **原理：**
 
-事件委托的核心是利用事件传播，在稳定的祖先节点注册少量监听器，再根据 event.target 或 composedPath 判断真正触发交互的后代并执行对应逻辑。这样动态新增的子节点无需逐个绑定，长列表也能降低监听器注册与清理成本。实际实现通常用 target.closest(selector) 找到可能被图标、文本等深层节点包裹的业务元素，并确认匹配节点仍位于委托容器内部。它依赖事件能够传播到容器；focus、mouseenter 等不冒泡事件应改用 focusin、mouseover 或捕获监听器，并考虑 Shadow DOM 的重定向边界。
+- 事件委托的核心是利用事件传播，在稳定的祖先节点注册少量监听器，再根据 event.target 或 composedPath 判断真正触发交互的后代并执行对应逻辑。这样动态新增的子节点无需逐个绑定，长列表也能降低监听器注册与清理成本。
+- 实际实现通常用 target.closest(selector) 找到可能被图标、文本等深层节点包裹的业务元素，并确认匹配节点仍位于委托容器内部。它依赖事件能够传播到容器；
+- focus、mouseenter 等不冒泡事件应改用 focusin、mouseover 或捕获监听器，并考虑 Shadow DOM 的重定向边界。
 
 **代码 / 场景：**
 
@@ -4195,7 +4345,8 @@ list.insertAdjacentHTML('beforeend', '<button data-id="42"><span>删除</span></
 
 **原理：**
 
-localStorage 的键和值都通过 DOMString 接口保存为字符串；赋入数字、布尔值或普通对象时会先发生字符串转换，对象直接写入通常得到 "[object Object]"，因此结构化数据要显式 JSON.stringify，并在读取时 JSON.parse。存储按源隔离，数据通常跨页面重载和浏览器会话保留，但用户清理站点数据、隐私模式策略或配额限制都可能让它不可用。API 是同步的，大对象序列化和频繁写入会阻塞主线程；StorageEvent 通常通知同源的其他文档，不会在发起写入的当前文档自身触发。
+- localStorage 的键和值都通过 DOMString 接口保存为字符串；赋入数字、布尔值或普通对象时会先发生字符串转换，对象直接写入通常得到 "[object Object]"，因此结构化数据要显式 JSON.stringify，并在读取时 JSON.parse。
+- 存储按源隔离，数据通常跨页面重载和浏览器会话保留，但用户清理站点数据、隐私模式策略或配额限制都可能让它不可用。API 是同步的，大对象序列化和频繁写入会阻塞主线程；StorageEvent 通常通知同源的其他文档，不会在发起写入的当前文档自身触发。
 
 **代码 / 场景：**
 
@@ -4246,7 +4397,9 @@ sessionStorage 与标签页会话关联，关闭标签页后通常清除，不�
 
 **原理：**
 
-sessionStorage 按“源 + 顶层浏览上下文”划分，一个标签页中的同源文档共享该页会话数据，但另一个独立标签页通常拥有不同存储区。数据在刷新、同标签页导航和恢复页面时一般仍存在，关闭对应标签页或窗口后页面会话通常结束，数据随之清除。通过带 opener 的方式打开新页面时，新页面的初始 sessionStorage 可能从 opener 复制一份，但之后两边独立变化；使用 noopener 可避免这种初始复制与反向引用。它与 localStorage 一样只保存字符串、使用同步 API，并受隐私与存储策略约束。
+- sessionStorage 按“源 + 顶层浏览上下文”划分，一个标签页中的同源文档共享该页会话数据，但另一个独立标签页通常拥有不同存储区。数据在刷新、同标签页导航和恢复页面时一般仍存在，关闭对应标签页或窗口后页面会话通常结束，数据随之清除。
+- 通过带 opener 的方式打开新页面时，新页面的初始 sessionStorage 可能从 opener 复制一份，但之后两边独立变化；使用 noopener 可避免这种初始复制与反向引用。
+- 它与 localStorage 一样只保存字符串、使用同步 API，并受隐私与存储策略约束。
 
 **代码 / 场景：**
 
@@ -4295,7 +4448,9 @@ Cookie 可用于会话，但应正确设置 HttpOnly、Secure、SameSite 等属�
 
 **原理：**
 
-Cookie 的核心用途是让浏览器按 Domain、Path、Secure、SameSite、过期时间等规则随匹配的 HTTP 请求自动携带少量状态，服务端也可通过 Set-Cookie 写入；HttpOnly Cookie 还能禁止 JavaScript 读取。localStorage 是同源页面脚本主动读写的持久字符串存储，不会自动进入请求头，容量通常更大但 API 同步。二者安全边界不同：Cookie 的自动发送带来 CSRF 考量，localStorage 中的令牌则容易被 XSS 直接读取。现代浏览器还会按站点、第三方上下文或隐私策略进一步分区和限制存储。
+- Cookie 的核心用途是让浏览器按 Domain、Path、Secure、SameSite、过期时间等规则随匹配的 HTTP 请求自动携带少量状态，服务端也可通过 Set-Cookie 写入；HttpOnly Cookie 还能禁止 JavaScript 读取。
+- localStorage 是同源页面脚本主动读写的持久字符串存储，不会自动进入请求头，容量通常更大但 API 同步。二者安全边界不同：Cookie 的自动发送带来 CSRF 考量，localStorage 中的令牌则容易被 XSS 直接读取。
+- 现代浏览器还会按站点、第三方上下文或隐私策略进一步分区和限制存储。
 
 **代码 / 场景：**
 
@@ -4347,7 +4502,8 @@ console.log(localStorage.getItem('theme')) // dark
 
 **原理：**
 
-对普通 HTTP(S) URL，源由协议、主机和端口三元组组成，三者都相同才是同源；路径、查询参数和片段不参与。省略端口时按协议默认端口规范化，因此 https://example.com 与显式 443 通常同源，但 http 与 https、不同子域或不同端口均不是同源。同源策略限制一个源的脚本读取另一个源的 DOM 和响应数据，但网络写请求仍可能被发送，所以它不能替代 CSRF 防护。data: 等 URL 可能产生不透明源，file: 的处理还存在浏览器实现差异，不应依赖它构建安全模型。
+- 对普通 HTTP(S) URL，源由协议、主机和端口三元组组成，三者都相同才是同源；路径、查询参数和片段不参与。省略端口时按协议默认端口规范化，因此 https://example.com 与显式 443 通常同源，但 http 与 https、不同子域或不同端口均不是同源。
+- 同源策略限制一个源的脚本读取另一个源的 DOM 和响应数据，但网络写请求仍可能被发送，所以它不能替代 CSRF 防护。data: 等 URL 可能产生不透明源，file: 的处理还存在浏览器实现差异，不应依赖它构建安全模型。
 
 **代码 / 场景：**
 
@@ -4397,7 +4553,8 @@ https://app.example.com:8443/profile  不同源：端口
 
 **原理：**
 
-CORS 响应头应由目标资源的服务端或代表它的受信反向代理配置，浏览器负责依据 Fetch/CORS 协议执行检查；前端 JavaScript 不能自行添加 Access-Control-Allow-Origin 来获得读取权限。跨源请求中，浏览器会发送 Origin；对非简单方法或头部可能先发 OPTIONS 预检，服务端必须明确允许来源、方法和请求头。携带凭据时，响应不能用通配符来源，必须返回与请求匹配的具体来源并允许 credentials。CORS 只控制浏览器脚本能否读取响应，不是认证、授权或阻止非浏览器客户端调用的机制。
+- CORS 响应头应由目标资源的服务端或代表它的受信反向代理配置，浏览器负责依据 Fetch/CORS 协议执行检查；前端 JavaScript 不能自行添加 Access-Control-Allow-Origin 来获得读取权限。跨源请求中，浏览器会发送 Origin；
+- 对非简单方法或头部可能先发 OPTIONS 预检，服务端必须明确允许来源、方法和请求头。携带凭据时，响应不能用通配符来源，必须返回与请求匹配的具体来源并允许 credentials。CORS 只控制浏览器脚本能否读取响应，不是认证、授权或阻止非浏览器客户端调用的机制。
 
 **代码 / 场景：**
 
@@ -4450,7 +4607,9 @@ let 和 const 不允许在同一词法作用域重复声明同名绑定。
 
 **原理：**
 
-不能。在同一个词法作用域内，两个同名 let 声明会构成早期语法错误，代码在执行前就无法实例化；let 与同作用域的 const、class，或与会冲突的 var、函数声明组合，也可能产生同名绑定冲突。原因是词法环境必须为该标识符建立唯一绑定，并从作用域开始到初始化前处于暂时性死区。内外两个嵌套块拥有不同词法环境，因此内层可重新声明并遮蔽外层变量；两个先后但不嵌套的独立块也各有自己的绑定。是否“同一作用域”必须按语法块、模块或函数环境判断，不能只看源码行距。
+不能。在同一个词法作用域内，两个同名 let 声明会构成早期语法错误，代码在执行前就无法实例化；let 与同作用域的 const、class，或与会冲突的 var、函数声明组合，也可能产生同名绑定冲突。原因是词法环境必须为该标识符建立唯一绑定，并从作用域开始到初始化前处于暂时性死区。
+
+内外两个嵌套块拥有不同词法环境，因此内层可重新声明并遮蔽外层变量；两个先后但不嵌套的独立块也各有自己的绑定。是否“同一作用域”必须按语法块、模块或函数环境判断，不能只看源码行距。
 
 **代码 / 场景：**
 
@@ -4505,7 +4664,9 @@ console.log(x)   // outer
 
 **原理：**
 
-若模块通过 export const foo、export function foo 或 export { foo } 提供命名导出，导入语法是 import { foo } from './module.js'。花括号中的名字必须匹配导出名，也可写 import { foo as localFoo } 为当前模块建立别名。导入得到的是指向导出绑定的只读实时视图：导出模块更新其绑定后，读取方能看到新值，但导入方不能给该绑定重新赋值。静态 import 只能出现在模块顶层，并在模块求值前完成解析和链接；浏览器相对说明符通常还需要明确扩展名或由打包器解析。
+- 若模块通过 export const foo、export function foo 或 export { foo } 提供命名导出，导入语法是 import { foo } from './module.js'。
+- 花括号中的名字必须匹配导出名，也可写 import { foo as localFoo } 为当前模块建立别名。导入得到的是指向导出绑定的只读实时视图：导出模块更新其绑定后，读取方能看到新值，但导入方不能给该绑定重新赋值。
+- 静态 import 只能出现在模块顶层，并在模块求值前完成解析和链接；浏览器相对说明符通常还需要明确扩展名或由打包器解析。
 
 **代码 / 场景：**
 
@@ -4559,7 +4720,9 @@ console.log(count) // 1
 
 **原理：**
 
-默认导出使用 import localName from './module.js' 导入，不写花括号，而且 localName 可由导入方自行命名。源模块可写 export default expression，或默认导出函数、类；每个模块最多只有一个 default 导出。默认导出在模块记录中对应名为 default 的特殊导出项，不是“自动导入模块中唯一变量”。它可与命名导出一起导入，例如 import client, { timeout } from './api.js'。静态导入仍是实时模块链接的一部分，但默认导出表达式与导出已有绑定在细节上可能不同，不应依赖重新赋值技巧。
+- 默认导出使用 import localName from './module.js' 导入，不写花括号，而且 localName 可由导入方自行命名。源模块可写 export default expression，或默认导出函数、类；每个模块最多只有一个 default 导出。
+- 默认导出在模块记录中对应名为 default 的特殊导出项，不是“自动导入模块中唯一变量”。它可与命名导出一起导入，例如 import client, { timeout } from './api.js'。
+- 静态导入仍是实时模块链接的一部分，但默认导出表达式与导出已有绑定在细节上可能不同，不应依赖重新赋值技巧。
 
 **代码 / 场景：**
 
@@ -4613,7 +4776,8 @@ console.log(version)   // 1
 
 **原理：**
 
-静态 import 的模块说明符和导入列表在语法上固定，只能写在 ECMAScript 模块的顶层。宿主可在执行模块代码前解析完整依赖图，完成加载、链接和循环依赖绑定，因此导入声明看起来具有提升效果，导入绑定也具有实时只读语义。这种静态结构让浏览器预加载、打包器 tree shaking 和依赖审计成为可能。它不能放进 if、函数或 try 块来按运行条件选择模块；需要运行时条件或变量说明符时应调用 import()，后者返回 Promise。静态可分析不代表依赖一定同步下载，加载策略由宿主决定。
+- 静态 import 的模块说明符和导入列表在语法上固定，只能写在 ECMAScript 模块的顶层。宿主可在执行模块代码前解析完整依赖图，完成加载、链接和循环依赖绑定，因此导入声明看起来具有提升效果，导入绑定也具有实时只读语义。
+- 这种静态结构让浏览器预加载、打包器 tree shaking 和依赖审计成为可能。它不能放进 if、函数或 try 块来按运行条件选择模块；需要运行时条件或变量说明符时应调用 import()，后者返回 Promise。静态可分析不代表依赖一定同步下载，加载策略由宿主决定。
 
 **代码 / 场景：**
 
@@ -4651,7 +4815,7 @@ if (location.hash === '#admin') {
 
 校验日期：2026-07-20
 
-## Q85：typeof class User {} 的 User 是什么？
+## Q85：执行 `class User {}; typeof User` 会得到什么？
 
 - A. object
 - B. function
@@ -4666,7 +4830,9 @@ class 提供更严格、更清晰的构造与继承语法，但其构造器在�
 
 **原理：**
 
-对已经完成声明初始化的 class User {} 执行 typeof User，结果是字符串 "function"。类在运行时由特殊的函数对象表示，具有 prototype，可作为 new 的构造目标；但它与传统 function 声明并不完全等同：类构造器不能不带 new 直接调用，类体代码按严格模式执行，类声明存在暂时性死区，且原型方法默认不可枚举。typeof 反映的是运行时可调用对象类别，不会告诉你这是 class 语法创建的，也不能据此断言它可像普通函数那样直接调用。检查类来源通常不应依赖 toString 文本。
+- 对已经完成声明初始化的 class User {} 执行 typeof User，结果是字符串 "function"。类在运行时由特殊的函数对象表示，具有 prototype，可作为 new 的构造目标；
+- 但它与传统 function 声明并不完全等同：类构造器不能不带 new 直接调用，类体代码按严格模式执行，类声明存在暂时性死区，且原型方法默认不可枚举。typeof 反映的是运行时可调用对象类别，不会告诉你这是 class 语法创建的，也不能据此断言它可像普通函数那样直接调用。
+- 检查类来源通常不应依赖 toString 文本。
 
 **代码 / 场景：**
 
@@ -4720,7 +4886,8 @@ try {
 
 **原理：**
 
-class 体中以 method() {} 语法定义的普通实例方法会创建在构造器的 prototype 对象上，而不是为每个实例复制一份。实例读取方法时沿原型链找到同一个函数，因此不同实例的 user1.method === user2.method 通常为 true。方法描述符默认可写、可配置但不可枚举。static 方法则定义在类构造器对象本身；实例字段和箭头函数字段在构造时为每个实例创建，后者常用于固定 this，但也意味着每个实例拥有独立函数并增加分配。私有方法还有独立的私有名称访问规则，不能简单当作字符串属性读取。
+- class 体中以 method() {} 语法定义的普通实例方法会创建在构造器的 prototype 对象上，而不是为每个实例复制一份。实例读取方法时沿原型链找到同一个函数，因此不同实例的 user1.method === user2.method 通常为 true。
+- 方法描述符默认可写、可配置但不可枚举。static 方法则定义在类构造器对象本身；实例字段和箭头函数字段在构造时为每个实例创建，后者常用于固定 this，但也意味着每个实例拥有独立函数并增加分配。私有方法还有独立的私有名称访问规则，不能简单当作字符串属性读取。
 
 **代码 / 场景：**
 
@@ -4775,7 +4942,9 @@ extends 创建的派生类需要先执行父类构造逻辑，super() 返回后�
 
 **原理：**
 
-派生类构造器在读取或写入 this 之前必须先调用 super()。与基类构造器不同，派生构造器进入时尚未创建并绑定 this；super() 会以当前 new.target 调用父类构造器，由父类完成实例初始化并把结果绑定给派生构造器。提前访问 this、调用引用 this 的实例逻辑，或在 super() 前普通 return，都会触发 ReferenceError；super() 也只能调用一次。例外是派生构造器显式返回一个对象，此时可用该对象作为构造结果而不使用 this，但这种写法罕见且会破坏常规类初始化预期。
+- 派生类构造器在读取或写入 this 之前必须先调用 super()。与基类构造器不同，派生构造器进入时尚未创建并绑定 this；super() 会以当前 new.target 调用父类构造器，由父类完成实例初始化并把结果绑定给派生构造器。
+- 提前访问 this、调用引用 this 的实例逻辑，或在 super() 前普通 return，都会触发 ReferenceError；super() 也只能调用一次。
+- 例外是派生构造器显式返回一个对象，此时可用该对象作为构造结果而不使用 this，但这种写法罕见且会破坏常规类初始化预期。
 
 **代码 / 场景：**
 
@@ -4831,7 +5000,9 @@ console.log(new Admin('Linda')) // Admin { name: 'Linda', role: 'admin' }
 
 **原理：**
 
-调用 generator function 不会立即执行函数体，而是返回一个 Generator 对象。该对象同时遵循迭代器和可迭代协议：next() 推进执行到下一个 yield 或 return，并得到 { value, done }；它的 Symbol.iterator 方法通常返回自身，所以可被 for...of 消费。第一次 next 传入的参数没有可恢复的 yield 接收位置，通常会被忽略；后续 next(value) 的参数成为上一个 yield 表达式的结果。return(value) 可提前结束，throw(error) 则在暂停位置注入异常。Generator 是有状态、一次性推进的流程，不是可随意并发复用的数组。
+- 调用 generator function 不会立即执行函数体，而是返回一个 Generator 对象。该对象同时遵循迭代器和可迭代协议：next() 推进执行到下一个 yield 或 return，并得到 { value, done }；
+- 它的 Symbol.iterator 方法通常返回自身，所以可被 for...of 消费。第一次 next 传入的参数没有可恢复的 yield 接收位置，通常会被忽略；后续 next(value) 的参数成为上一个 yield 表达式的结果。
+- return(value) 可提前结束，throw(error) 则在暂停位置注入异常。Generator 是有状态、一次性推进的流程，不是可随意并发复用的数组。
 
 **代码 / 场景：**
 
@@ -4887,7 +5058,9 @@ Symbol.iterator 方法应返回迭代器，for...of 会不断调用 next 读取�
 
 **原理：**
 
-对象需要在 Symbol.iterator 键上提供一个无参数方法，该方法返回迭代器；迭代器的 next() 每次返回形如 { value, done } 的对象，done 为 true 表示序列结束。for...of 会先取得 iterable[Symbol.iterator]()，再反复调用 next，并在循环提前退出时尝试调用迭代器的 return() 进行清理。数组、字符串、Map、Set 已内建该协议，普通对象默认不可迭代。常见实现是把 Symbol.iterator 写成 generator 方法，因为 generator 自动满足 next 和可迭代迭代器协议。可迭代不等于类数组，length 与数字索引不是 for...of 的必要条件。
+- 对象需要在 Symbol.iterator 键上提供一个无参数方法，该方法返回迭代器；迭代器的 next() 每次返回形如 { value, done } 的对象，done 为 true 表示序列结束。
+- for...of 会先取得 iterable[Symbol.iterator]()，再反复调用 next，并在循环提前退出时尝试调用迭代器的 return() 进行清理。数组、字符串、Map、Set 已内建该协议，普通对象默认不可迭代。
+- 常见实现是把 Symbol.iterator 写成 generator 方法，因为 generator 自动满足 next 和可迭代迭代器协议。可迭代不等于类数组，length 与数字索引不是 for...of 的必要条件。
 
 **代码 / 场景：**
 
@@ -4941,7 +5114,9 @@ Map 不会像普通对象那样把键统一转成字符串，对象、函数、N
 
 **原理：**
 
-Map 的键可以是任意 ECMAScript 值，包括字符串、数字、Symbol、对象、函数，甚至 NaN。键匹配使用 SameValueZero：NaN 可与自身匹配，+0 与 -0 视为同一键；对象和函数则按引用身份比较，内容相同但分别创建的两个对象是不同键。Map 按首次插入顺序迭代键值；对已有键 set 新值不会把它移到末尾，删除后重新插入才形成新的顺序位置。与普通对象相比，Map 不会把键强制转成字符串，也不会混入原型属性，并直接提供 size、迭代和清空能力。
+Map 的键可以是任意 ECMAScript 值，包括字符串、数字、Symbol、对象、函数，甚至 NaN。键匹配使用 SameValueZero：NaN 可与自身匹配，+0 与 -0 视为同一键；对象和函数则按引用身份比较，内容相同但分别创建的两个对象是不同键。Map 按首次插入顺序迭代键值；
+
+对已有键 set 新值不会把它移到末尾，删除后重新插入才形成新的顺序位置。与普通对象相比，Map 不会把键强制转成字符串，也不会混入原型属性，并直接提供 size、迭代和清空能力。
 
 **代码 / 场景：**
 
@@ -4997,7 +5172,8 @@ Set 使用 SameValueZero 判断唯一性，两个 NaN 被视为同一个值。
 
 **原理：**
 
-结果是 1。Set 保证集合中的值唯一，判断已有值时使用 SameValueZero；该比较把 NaN 与 NaN 视为相同，因此第二个 NaN 不会新增元素。SameValueZero 也把 +0 与 -0 视为相同。Set 按成功插入的先后顺序迭代，并可存放任意类型；对象仍按引用身份去重，两个内容相同但独立创建的对象会同时存在。重复 add 已存在的值不会改变 size 或插入顺序。Set 适合成员关系与去重，但数组转 Set 只按这套相等语义处理，不能按对象字段自动合并记录。
+- 结果是 1。Set 保证集合中的值唯一，判断已有值时使用 SameValueZero；该比较把 NaN 与 NaN 视为相同，因此第二个 NaN 不会新增元素。SameValueZero 也把 +0 与 -0 视为相同。Set 按成功插入的先后顺序迭代，并可存放任意类型；
+- 对象仍按引用身份去重，两个内容相同但独立创建的对象会同时存在。重复 add 已存在的值不会改变 size 或插入顺序。Set 适合成员关系与去重，但数组转 Set 只按这套相等语义处理，不能按对象字段自动合并记录。
 
 **代码 / 场景：**
 
@@ -5049,7 +5225,8 @@ console.log(values.has(NaN)) // true
 
 **原理：**
 
-WeakMap 不会因为自身持有键而阻止该键被垃圾回收，适合把缓存、私有元数据或状态关联到对象生命周期。当前规范允许可垃圾回收的键，即对象或非注册 Symbol；传统和许多旧运行环境主要只支持对象键，字符串、数字以及 Symbol.for 创建的注册 Symbol 不能作为键。值可以是任意类型。为了不暴露垃圾回收这种不可预测行为，WeakMap 没有 size、keys、entries 和整体遍历能力，只提供 get、set、has、delete 等按已知键操作。它不是“会自动删除所有数据的 Map”，只是在没有其他强引用时允许键值关联被回收。
+- WeakMap 不会因为自身持有键而阻止该键被垃圾回收，适合把缓存、私有元数据或状态关联到对象生命周期。当前规范允许可垃圾回收的键，即对象或非注册 Symbol；传统和许多旧运行环境主要只支持对象键，字符串、数字以及 Symbol.for 创建的注册 Symbol 不能作为键。
+- 值可以是任意类型。为了不暴露垃圾回收这种不可预测行为，WeakMap 没有 size、keys、entries 和整体遍历能力，只提供 get、set、has、delete 等按已知键操作。它不是“会自动删除所有数据的 Map”，只是在没有其他强引用时允许键值关联被回收。
 
 **代码 / 场景：**
 
@@ -5100,7 +5277,9 @@ user = null // 若再无强引用，键及关联数据现在具备被回收资�
 
 **原理：**
 
-可选链会逐段检查链左侧是否为 null 或 undefined；user 为 nullish 时，整个连续链直接得到 undefined，user 存在但 profile 为 nullish 时也得到 undefined，否则正常读取 name。它不会把 0、false、空字符串当作缺失，也不会吞掉 getter 内抛出的异常。短路只沿同一个连续可选链传播，使用括号把中间结果分组后再普通取属性会重新可能抛错。根标识符若根本未声明，undeclared?.x 仍会产生 ReferenceError。可选链还支持 obj.method?.() 和 obj?.[expression]，后者短路时不会求值 expression。方法存在但不是可调用值时，使用可选调用仍会抛出 TypeError，而不是悄悄返回 undefined。
+- 可选链会逐段检查链左侧是否为 null 或 undefined；user 为 nullish 时，整个连续链直接得到 undefined，user 存在但 profile 为 nullish 时也得到 undefined，否则正常读取 name。
+- 它不会把 0、false、空字符串当作缺失，也不会吞掉 getter 内抛出的异常。短路只沿同一个连续可选链传播，使用括号把中间结果分组后再普通取属性会重新可能抛错。根标识符若根本未声明，undeclared?.x 仍会产生 ReferenceError。
+- 可选链还支持 obj.method?.() 和 obj?.[expression]，后者短路时不会求值 expression。方法存在但不是可调用值时，使用可选调用仍会抛出 TypeError，而不是悄悄返回 undefined。
 
 **代码 / 场景：**
 
@@ -5151,7 +5330,9 @@ console.log(user?.missing?.name ?? 'anonymous') // anonymous
 
 **原理：**
 
-空值合并运算符只在左操作数为 null 或 undefined 时才求值并返回 fallback；数字 0、空字符串、false 和 NaN 都会原样保留。这使它适合为“缺失值”提供默认值，而不会像逻辑或运算符那样误覆盖合法假值。该运算符具有短路性质：左侧非 nullish 时，右侧表达式不会执行。为避免与 &&、|| 的优先级产生歧义，语法禁止在没有括号时直接混用这些运算符。对应的 ??= 只在当前属性为 nullish 时赋值，并且目标引用只求值一次。
+空值合并运算符只在左操作数为 null 或 undefined 时才求值并返回 fallback；数字 0、空字符串、false 和 NaN 都会原样保留。这使它适合为“缺失值”提供默认值，而不会像逻辑或运算符那样误覆盖合法假值。该运算符具有短路性质：左侧非 nullish 时，右侧表达式不会执行。
+
+为避免与 &&、|| 的优先级产生歧义，语法禁止在没有括号时直接混用这些运算符。对应的 ??= 只在当前属性为 nullish 时赋值，并且目标引用只求值一次。
 
 **代码 / 场景：**
 
@@ -5202,7 +5383,10 @@ finally 中显式 return 会覆盖 try 或 catch 的返回结果，因此实践�
 
 **原理：**
 
-最终返回 2。执行 try 的 return 1 时，函数先形成一个待完成的 return Completion，但在真正离开函数前必须执行 finally。finally 中若正常结束，原来的 return 1 会继续生效；本题 finally 又执行 return 2，产生新的 abrupt completion，并覆盖之前保存的返回结果。相同规则也意味着 finally 中的 throw 可覆盖 try 中的 return 或原异常，break、continue 在相应上下文中也可能改变完成方式。因为这种覆盖会隐藏控制流和错误，finally 通常只做不改变完成状态的资源清理，不应从中 return。只有 finally 正常结束时，进入它之前保存的完成记录才会继续向外传播。
+- 最终返回 2。执行 try 的 return 1 时，函数先形成一个待完成的 return Completion，但在真正离开函数前必须执行 finally。finally 中若正常结束，原来的 return 1 会继续生效；
+- 本题 finally 又执行 return 2，产生新的 abrupt completion，并覆盖之前保存的返回结果。
+- 相同规则也意味着 finally 中的 throw 可覆盖 try 中的 return 或原异常，break、continue 在相应上下文中也可能改变完成方式。因为这种覆盖会隐藏控制流和错误，finally 通常只做不改变完成状态的资源清理，不应从中 return。
+- 只有 finally 正常结束时，进入它之前保存的完成记录才会继续向外传播。
 
 **代码 / 场景：**
 
@@ -5256,7 +5440,9 @@ console.log(answer()) // 2
 
 **原理：**
 
-对象中值为 undefined 的可枚举自有字符串键属性通常会被省略，所以 JSON.stringify({ a: 1, b: undefined }) 得到 {"a":1}。数组必须保持索引位置，undefined、函数或 Symbol 元素会序列化为 null；若顶层值本身是 undefined、函数或 Symbol，JSON.stringify 返回 JavaScript 的 undefined 而不是字符串。replacer 函数可把这些值显式转换为 null 或其他协议值。JSON 还不支持 BigInt，默认会抛 TypeError；循环引用同样会失败。序列化只处理约定的数据模型，原型、方法、undefined 与部分数值语义不会完整往返。Date 通常会先通过 toJSON 转成字符串，自定义对象也可能用 toJSON 改写最终表示。
+- 对象中值为 undefined 的可枚举自有字符串键属性通常会被省略，所以 JSON.stringify({ a: 1, b: undefined }) 得到 {"a":1}。数组必须保持索引位置，undefined、函数或 Symbol 元素会序列化为 null；
+- 若顶层值本身是 undefined、函数或 Symbol，JSON.stringify 返回 JavaScript 的 undefined 而不是字符串。replacer 函数可把这些值显式转换为 null 或其他协议值。
+- JSON 还不支持 BigInt，默认会抛 TypeError；循环引用同样会失败。序列化只处理约定的数据模型，原型、方法、undefined 与部分数值语义不会完整往返。Date 通常会先通过 toJSON 转成字符串，自定义对象也可能用 toJSON 改写最终表示。
 
 **代码 / 场景：**
 
@@ -5305,7 +5491,9 @@ structuredClone 比 JSON 序列化支持更多类型和循环引用，但函数�
 
 **原理：**
 
-structuredClone 使用浏览器结构化克隆算法创建深层副本，能处理循环引用，并原生支持 Array、Map、Set、Date、RegExp、ArrayBuffer、TypedArray 等许多 JSON 无法正确往返的类型。它还支持 transfer 选项：可把 ArrayBuffer 等可转移对象的底层资源移交给副本，原对象随即被分离，避免大块内存复制。它并非任意 JavaScript 对象的完美克隆：Function、DOM 节点会抛 DataCloneError，属性描述符、访问器和自定义原型链通常不会原样保留，私有字段也不在克隆范围。能克隆数据不代表适合保存行为对象或领域实体。
+- structuredClone 使用浏览器结构化克隆算法创建深层副本，能处理循环引用，并原生支持 Array、Map、Set、Date、RegExp、ArrayBuffer、TypedArray 等许多 JSON 无法正确往返的类型。
+- 它还支持 transfer 选项：可把 ArrayBuffer 等可转移对象的底层资源移交给副本，原对象随即被分离，避免大块内存复制。
+- 它并非任意 JavaScript 对象的完美克隆：Function、DOM 节点会抛 DataCloneError，属性描述符、访问器和自定义原型链通常不会原样保留，私有字段也不在克隆范围。能克隆数据不代表适合保存行为对象或领域实体。
 
 **代码 / 场景：**
 
@@ -5359,7 +5547,9 @@ console.log(source.map.get('count'))     // 1
 
 **原理：**
 
-主要风险是 DOM 型 XSS。不可信字符串会被 HTML 解析器当作标记，而不是普通文本；攻击者可注入带事件处理器、危险 URL、SVG 等可执行能力的节点，在站点源权限下读取页面数据、冒充用户发请求或篡改界面。仅认为 innerHTML 中插入的 script 标签常不执行并不能消除风险，其他活跃内容仍可触发。首选 textContent 显示纯文本；确需富文本时应采用经过维护的白名单净化器、限制输入语法，并配合严格 CSP 与 Trusted Types 降低危险 sink 的使用。输出编码必须与 HTML 属性、URL、脚本等具体上下文匹配。
+- 主要风险是 DOM 型 XSS。不可信字符串会被 HTML 解析器当作标记，而不是普通文本；攻击者可注入带事件处理器、危险 URL、SVG 等可执行能力的节点，在站点源权限下读取页面数据、冒充用户发请求或篡改界面。
+- 仅认为 innerHTML 中插入的 script 标签常不执行并不能消除风险，其他活跃内容仍可触发。首选 textContent 显示纯文本；确需富文本时应采用经过维护的白名单净化器、限制输入语法，并配合严格 CSP 与 Trusted Types 降低危险 sink 的使用。
+- 输出编码必须与 HTML 属性、URL、脚本等具体上下文匹配。
 
 **代码 / 场景：**
 
@@ -5409,7 +5599,9 @@ preview.textContent = untrusted
 
 **原理：**
 
-防抖把一串密集触发合并为一次调用：典型 trailing 模式每次触发都取消旧定时器并重新计时，只有连续 wait 毫秒没有新事件后才执行最新调用。它适合搜索建议、输入校验、窗口尺寸稳定后的计算等“关心最终状态”的场景。成熟实现还需明确 leading、trailing、maxWait、cancel、flush，以及如何保留最后一次 this 和参数；组件卸载时要清除定时器。防抖不会取消已经发出的网络请求，搜索场景仍需 AbortController 或序列号防止旧响应覆盖新结果。持续不断的事件在纯 trailing 且无 maxWait 时可能永远不执行。
+- 防抖把一串密集触发合并为一次调用：典型 trailing 模式每次触发都取消旧定时器并重新计时，只有连续 wait 毫秒没有新事件后才执行最新调用。它适合搜索建议、输入校验、窗口尺寸稳定后的计算等“关心最终状态”的场景。
+- 成熟实现还需明确 leading、trailing、maxWait、cancel、flush，以及如何保留最后一次 this 和参数；组件卸载时要清除定时器。防抖不会取消已经发出的网络请求，搜索场景仍需 AbortController 或序列号防止旧响应覆盖新结果。
+- 持续不断的事件在纯 trailing 且无 maxWait 时可能永远不执行。
 
 **代码 / 场景：**
 
@@ -5467,7 +5659,8 @@ search('abc')
 
 **原理：**
 
-节流限制函数在连续事件期间最多每隔 wait 时间执行一次，不要求事件先停止，因此适合滚动位置采样、拖拽更新和限频上报。常见实现支持 leading：窗口开始立即执行，以及 trailing：窗口结束用最后一次参数补执行；具体第一次与最后一次是否发生必须由 API 约定。与防抖相比，节流能在持续输入中周期性给出中间结果。基于时间戳的实现和基于定时器的实现，在边界、系统时钟变化、this 与参数保留方面行为可能不同。视觉更新常用 requestAnimationFrame 把调用限制为每个绘制帧一次，但它是按帧对齐，不等价于任意毫秒间隔节流。
+- 节流限制函数在连续事件期间最多每隔 wait 时间执行一次，不要求事件先停止，因此适合滚动位置采样、拖拽更新和限频上报。常见实现支持 leading：窗口开始立即执行，以及 trailing：窗口结束用最后一次参数补执行；具体第一次与最后一次是否发生必须由 API 约定。
+- 与防抖相比，节流能在持续输入中周期性给出中间结果。基于时间戳的实现和基于定时器的实现，在边界、系统时钟变化、this 与参数保留方面行为可能不同。视觉更新常用 requestAnimationFrame 把调用限制为每个绘制帧一次，但它是按帧对齐，不等价于任意毫秒间隔节流。
 
 **代码 / 场景：**
 

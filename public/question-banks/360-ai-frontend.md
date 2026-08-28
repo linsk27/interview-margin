@@ -34,8 +34,8 @@ RAG 把频繁变化的知识与模型参数解耦。离线链路负责解析、�
 **参考来源：**
 
 - [RAG 原始论文](https://arxiv.org/abs/2005.11401)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
-- [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
+- [OpenAI：Retrieval 指南](https://platform.openai.com/docs/guides/retrieval)
+- [OpenAI：Fine-tuning 指南](https://platform.openai.com/docs/guides/fine-tuning)
 
 # AI 编程工具安全
 
@@ -70,9 +70,9 @@ AI 编程代理的输入、外部文档和生成结果都应按不可信数据�
 
 **参考来源：**
 
+- [GitHub：Responsible use of Copilot code review](https://docs.github.com/en/copilot/responsible-use/copilot-code-review)
 - [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
 - [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
-- [MCP 官方 Tools 规范](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
 
 # 项目技术原理
 
@@ -80,7 +80,7 @@ AI 编程代理的输入、外部文档和生成结果都应按不可信数据�
 
 **短回答：**
 
-BLE ATT 默认 MTU 常见为 23 byte，写操作还需要约 3 byte 的 ATT 协议开销，所以很多环境下单次有效载荷是 20 byte。但 20 byte 不是永恒固定值，实际还要看 MTU 协商、平台 API 和设备固件。可靠分片还需要考虑序号、ACK、超时重试、发送节奏以及 UTF-8 字符边界。
+常见的 20 byte 来自默认 ATT MTU 为 23 byte，再扣除写入或通知通常占用的 3 byte 协议头；它不是 BLE 永久固定上限。实际分片必须读取协商后的 MTU，并继续处理序号、重试和 UTF-8 字节边界。
 
 **原理：**
 
@@ -115,15 +115,14 @@ version | messageId | seq | total | payload | checksum
 
 **参考来源：**
 
+- [Bluetooth Core Specification](https://www.bluetooth.com/specifications/specs/core-specification/)
 - [MDN：Web Bluetooth API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API)
-- [360 官方岗位 J12343](https://360campus.zhiye.com/campus/detail?jobAdId=d28994e2-194e-42a6-9d89-608796e0edef)
-- [360 AI 浏览器](https://browser.360.cn/se/help/information-detail_AIwd_AIllqsx360.html)
 
 ## Q14：配置流程为什么适合状态机？
 
 **短回答：**
 
-多步骤配网不是简单的 step 数字，它包含状态、允许事件、守卫条件和副作用。状态机可以把“当前状态下允许做什么、成功后去哪、失败怎么回退”集中管理，避免页面中散落大量 if/else。
+状态机就是一张“流程交通图”：状态表示当前走到哪一步，事件表示刚发生了什么，守卫条件决定这次能不能跳转，副作用才负责连接设备或调用接口。它把合法路径集中定义，能直接排除“同时成功又失败”等非法组合，也让超时、取消和重试可以逐条测试。
 
 **原理：**
 
@@ -172,23 +171,16 @@ idle
 
 **参考来源：**
 
-- [360 官方岗位 J12343](https://360campus.zhiye.com/campus/detail?jobAdId=d28994e2-194e-42a6-9d89-608796e0edef)
-- [360 AI 浏览器](https://browser.360.cn/se/help/information-detail_AIwd_AIllqsx360.html)
-- [360 AI 企业知识库](https://aiplus.360.cn/ai)
+- [Stately：State machines](https://stately.ai/docs/machines)
+- [W3C：SCXML State Machine Recommendation](https://www.w3.org/TR/scxml/)
 
 ## Q15：配置化表单应该如何设计？
 
 **短回答：**
 
-schema 只保存可序列化配置，复杂函数通过受控注册表引用。
-联动关系建成依赖图，避免任意深层 watch。
-异步校验需要请求序号或 AbortController，防止旧结果覆盖新输入。
-schema 要有版本，历史单据要明确使用旧规则还是迁移。
-前端显隐是体验控制，最终权限和业务合法性必须由后端校验。
+schema 可以先理解为一份“表单说明书”，它描述每个字段的类型、默认值、校验、显隐和权限，而不是把规则散落在组件里。字段联动用依赖关系只重算受影响项；异步校验要取消旧请求或忽略旧结果；后端仍要做最终权限与业务校验。
 
 **原理：**
-
-核心模型：
 
 ```ts
 type FieldSchema = {
@@ -231,9 +223,9 @@ type FieldSchema = {
 
 **参考来源：**
 
-- [360 官方岗位 J12343](https://360campus.zhiye.com/campus/detail?jobAdId=d28994e2-194e-42a6-9d89-608796e0edef)
-- [360 AI 浏览器](https://browser.360.cn/se/help/information-detail_AIwd_AIllqsx360.html)
-- [360 AI 企业知识库](https://aiplus.360.cn/ai)
+- [JSON Schema：Creating your first schema](https://json-schema.org/learn/getting-started-step-by-step)
+- [MDN：AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
+- [Vue：Watchers](https://vuejs.org/guide/essentials/watchers.html)
 
 ## Q16：`Promise.allSettled` 为什么适合批量上传？
 
@@ -280,10 +272,7 @@ Promise.allSettled 会为每个输入建立独立的成功和失败处理，直�
 
 **短回答：**
 
-取对象世界坐标。
-用相机的 view-projection 矩阵投影到 NDC。
-将 `[-1, 1]` 的 NDC 映射到容器像素。
-叠加容器相对视口偏移。
+先把模型中的世界坐标交给相机投影，得到范围为 `-1` 到 `1` 的标准化设备坐标（NDC），再按画布宽高换算成页面像素。标签仍可能位于相机后方或被物体遮挡，所以投影坐标只解决“画在哪里”，不等于“应该显示”。
 
 **原理：**
 
@@ -330,8 +319,7 @@ y = (1 - ndc.y) / 2 * height + containerTop
 **参考来源：**
 
 - [Three.js：Vector3.project](https://threejs.org/docs/#api/en/math/Vector3.project)
-- [Three.js：How to dispose of objects](https://threejs.org/manual/en/how-to-dispose-of-objects.html)
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
+- [Three.js：Cameras](https://threejs.org/manual/en/cameras.html)
 
 # RAG、Agent 与模型原理
 
@@ -385,7 +373,7 @@ AI 知识工作台 项目映射与边界：
 
 **短回答：**
 
-切块是在召回粒度和上下文完整性之间做权衡。块太大，命中后会带入大量噪声并浪费 Token；块太小，语义和前后关系会断裂。常见方法有固定 Token、按标题段落等结构切分、以及语义切分，再配合少量重叠保留边界信息。具体大小和重叠没有通用最优值，要结合文档类型、Embedding 模型、问题粒度和评测结果确定。
+切块就是把长文档拆成可检索的证据单元。块太大时无关内容会稀释检索信号，块太小时答案前提会被拆散；应先沿标题、段落、表格或函数等自然边界切，再用真实问题验证命中率和答案完整度。
 
 **原理：**
 
@@ -419,15 +407,14 @@ AI 知识工作台 项目映射与边界：
 
 **参考来源：**
 
+- [OpenAI：Retrieval 指南](https://platform.openai.com/docs/guides/retrieval)
 - [RAG 原始论文](https://arxiv.org/abs/2005.11401)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
-- [MCP 官方架构](https://modelcontextprotocol.io/docs/learn/architecture)
 
 ## Q20：什么是 Hybrid Retrieval？为什么关键词和向量要结合？
 
 **短回答：**
 
-Hybrid Retrieval 是把稀疏检索和稠密向量检索结合起来。关键词检索对错误码、产品名、编号和精确短语更稳定；向量检索能覆盖同义表达和自然语言改写。通常先分别召回候选，再做融合或重排。关键点是两路原始分数不在同一量纲，不能未经校准就认为可以直接相加。
+Hybrid Retrieval 就是让两种“找资料的方法”合作：关键词检索擅长错误码、编号和原句，向量检索擅长同义表达。两路先各自找候选，再按排名融合或统一重排，能互相补漏；但效果必须用同一批问题做对照评测，不能默认混合一定更好。
 
 **原理：**
 
@@ -462,17 +449,17 @@ AI 知识工作台 项目映射与边界：
 
 **参考来源：**
 
+- [Weaviate：Hybrid search](https://docs.weaviate.io/weaviate/concepts/search/hybrid-search)
+- [RRF 原论文](https://doi.org/10.1145/1571941.1572114)
 - [RAG 原始论文](https://arxiv.org/abs/2005.11401)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
-- [MCP 官方架构](https://modelcontextprotocol.io/docs/learn/architecture)
 
 ## Q21：RRF 是什么？公式和参数怎么解释？
 
 **短回答：**
 
-RRF，也就是 Reciprocal Rank Fusion，是用候选在各检索列表中的名次来融合，而不是直接相加不同检索器的原始分数。文档的融合分数是各列表 `1 / (k + rank)` 的总和。它简单、对分数量纲不敏感，适合关键词和向量检索融合；但它会丢掉原始分差信息，而且参数和候选窗口仍需评测。
+RRF 是“只看名次的合榜方法”。同一段资料在关键词榜和向量榜越靠前，累加得到的分数越高；它不直接相加两种含义不同的原始分数。`k` 控制榜首与后续名次的差距，常见的 60 只是实验起点，候选窗口和参数仍要按业务评测。
 
-公式：
+**原理：**
 
 ```text
 RRF(d) = Σ 1 / (k + rank_i(d))
@@ -483,7 +470,6 @@ RRF(d) = Σ 1 / (k + rank_i(d))
 - 原论文实验中常见 `k=60`，这是经验起点，不是所有业务的固定最优值。
 - 若不同检索器可靠性不同，可扩展成 `Σ w_i / (k + rank_i)`，但要说明这是加权扩展，而非原始无权公式。
 
-**原理：**
 
 1. 分别取关键词和向量 TopN。
 2. 用稳定 Chunk ID 合并候选。
@@ -511,29 +497,14 @@ AI 知识工作台 项目边界：
 
 **参考来源：**
 
-- [RAG 原始论文](https://arxiv.org/abs/2005.11401)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
-- [MCP 官方架构](https://modelcontextprotocol.io/docs/learn/architecture)
+- [RRF 原论文](https://doi.org/10.1145/1571941.1572114)
+- [Weaviate：Hybrid search](https://docs.weaviate.io/weaviate/concepts/search/hybrid-search)
 
 ## Q22：MMR 是什么？如何减少重复上下文？
 
 **短回答：**
 
-MMR，也就是 Maximal Marginal Relevance，会在“和问题相关”与“和已选结果不重复”之间做权衡。它每次从剩余候选里选一个，使查询相关度高，同时对已选片段的最大相似度较低。它适合在召回以后做多样化选择，但不会找回召回阶段已经漏掉的资料。
-
-公式：
-
-```text
-argmax(d ∈ R \ S) [
-  λ · Sim1(d, query)
-  - (1 - λ) · max(s ∈ S) Sim2(d, s)
-]
-```
-
-- `R` 是候选集，`S` 是已选集合。
-- `λ` 越接近 1 越重视相关性，越接近 0 越重视多样性。
-- 第一个结果还没有已选项，冗余项可视为 0。
-- `Sim1` 与 `Sim2` 若尺度不同，需要先校准，否则 `λ` 没有直观意义。
+MMR 是“边选相关资料，边避免重复”。它每轮选择一段既贴近问题、又不太像已选内容的候选，`λ` 越大越看重相关性，越小越看重多样性。它只能整理已经召回的候选，不能把第一阶段漏掉的证据重新找回来。
 
 **原理：**
 
@@ -566,40 +537,14 @@ AI 知识工作台 项目边界：
 
 **参考来源：**
 
-- [RAG 原始论文](https://arxiv.org/abs/2005.11401)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
-- [MCP 官方架构](https://modelcontextprotocol.io/docs/learn/architecture)
+- [MMR 原论文](https://www.cs.cmu.edu/~jgc/publication/The_Use_MMR_Diversity_Based_LTMIR_1998.pdf)
+- [Qdrant：Maximal Marginal Relevance](https://qdrant.tech/documentation/search/search-relevance/#maximal-marginal-relevance-mmr)
 
 ## Q23：RAG 应该如何评测？
 
 **短回答：**
 
-我会把 RAG 拆成检索、生成和系统三层评测。检索看 Recall@K、MRR、nDCG 和重复率；生成看答案正确性、证据忠实度、引用精确率与无答案时的拒答；系统看 p95 延迟、首 Token 时间、Token 成本和失败率。先建立带相关 Chunk ID、参考答案和可引用证据的版本化测试集，再在相同模型、Prompt 和候选数下做关键词、向量、Hybrid、RRF、MMR 的消融比较。
-
-核心指标：
-
-```text
-Recall@K = TopK 中相关结果数 / 全部相关结果数
-MRR = 平均(1 / 第一个相关结果的名次)
-DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
-nDCG@K = DCG@K / IDCG@K
-```
-
-- **Hit@K**：TopK 是否至少包含一个相关结果，适合单证据问答。
-- **Recall@K**：相关证据是否被找全，适合多证据问题。
-- **MRR**：第一个相关结果是否靠前。
-- **nDCG**：相关性有等级时，评价整体排序质量。
-- **Faithfulness**：回答中的主张能否由给定证据支持。
-- **Citation precision/recall**：引用是否真的支持主张、关键主张是否都有引用。
-- **拒答正确率**：测试集中必须包含库内无答案、越权和过期资料问题。
-
-评测设计：
-
-- 测试集覆盖精确编号、罕见名词、同义改写、跨段多跳、冲突资料和无答案问题。
-- 固定数据快照、索引版本、Embedding 版本、模型、Prompt 与随机参数。
-- 分开记录“检索正确但生成错误”和“检索已漏掉证据”，否则无法定位瓶颈。
-- LLM Judge 可以提高评测效率，但不是绝对真值，应抽样做人工校准。
-- 有足够样本时报告置信区间，避免用几个演示问题下结论。
+评测 RAG 不能只看最后答对没有：先检查正确资料有没有被找回、排得是否靠前；再检查回答是否覆盖要点、是否忠于证据、引用是否指对；最后看延迟、成本、失败率和越权风险。测试集和文档、索引、模型、Prompt 版本都要固定，才能知道改动究竟改善了哪一层。
 
 **原理：**
 
@@ -632,15 +577,14 @@ AI 知识工作台 项目边界：
 
 **参考来源：**
 
+- [RAGAS 评测论文](https://arxiv.org/abs/2309.15217)
 - [RAG 原始论文](https://arxiv.org/abs/2005.11401)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
-- [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
 
 ## Q24：Embedding 为什么必须做版本管理？如何无损迁移？
 
 **短回答：**
 
-Embedding 向量只有在同一模型和同一处理配置生成的语义空间中才可比较。即使两个模型输出维度相同，也不代表坐标含义一致，所以不能把新查询向量直接检索旧模型文档向量。正确做法是把模型、维度、规范化、切块和预处理版本绑定成一个索引版本，后台构建新索引，校验覆盖率和效果后原子切换别名，并保留旧索引用于回滚。
+Embedding 是模型给文本建立的一套“坐标”。换模型就像换了一张坐标系，即使向量长度相同，新查询也不能拿去和旧文档向量直接比较。迁移时应并行重建新索引，验证数量和检索效果后一次切换查询入口，并暂留旧索引以便回滚。
 
 **原理：**
 
@@ -689,15 +633,14 @@ AI 知识工作台 项目映射与边界：
 
 **参考来源：**
 
-- [RAG 原始论文](https://arxiv.org/abs/2005.11401)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
-- [MCP 官方架构](https://modelcontextprotocol.io/docs/learn/architecture)
+- [Qdrant：Collections 与向量参数](https://qdrant.tech/documentation/concepts/collections/)
+- [Qdrant：Collection aliases](https://qdrant.tech/documentation/concepts/collections/#collection-aliases)
 
 ## Q25：`content_hash` 能做什么？如何做安全去重？
 
 **短回答：**
 
-`content_hash` 是对规范化内容计算的稳定指纹，例如 SHA-256。它适合判断内容是否变化、复用已计算的 Embedding 和辅助幂等，但它不是语义相似度，也不应直接把所有同哈希 Chunk 全局合并，因为不同来源可能有不同权限、版本和引用关系。更稳妥的做法是把内容实体与来源引用分开，并把预处理、切块和模型版本纳入缓存键。
+`content_hash` 是内容的数字指纹：规范化后的字节完全相同，哈希通常相同，可用于判断是否变化和复用计算结果。它不能证明两段话语义相同，更不能证明租户、权限和引用关系相同；缓存键仍要包含内容处理版本、模型版本和权限边界。
 
 **原理：**
 
@@ -739,9 +682,8 @@ AI 知识工作台 项目映射与边界：
 
 **参考来源：**
 
-- [RAG 原始论文](https://arxiv.org/abs/2005.11401)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
-- [MCP 官方架构](https://modelcontextprotocol.io/docs/learn/architecture)
+- [NIST FIPS 180-4：Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/upd1/final)
+- [Qdrant：Collections 与向量参数](https://qdrant.tech/documentation/concepts/collections/)
 
 ## Q26：如何防御 Prompt Injection 和 RAG 投毒？
 
@@ -791,7 +733,7 @@ AI 知识工作台 项目边界：
 
 **短回答：**
 
-普通聊天通常是一次或多次模型对话，但没有外部行动闭环；Workflow 的步骤和分支主要由代码预先定义，可预测、好测试；Agent 则由模型根据目标和当前观察动态决定下一步、选择工具，并在执行结果后继续规划。我的原则是优先使用最简单可控的结构：固定业务流程用 Workflow，开放性强且步骤无法预先确定的任务才引入受约束 Agent。
+普通聊天主要生成回答；Workflow 是程序预先写好的固定流程；Agent 则让模型根据当前结果动态选择下一步。步骤越确定、写操作风险越高，越应使用 Workflow；只有路径确实无法预先确定时才增加受约束的 Agent 自主性。
 
 **原理：**
 
@@ -831,16 +773,14 @@ AI 知识工作台 项目边界：
 **参考来源：**
 
 - [社区题源｜牛客：23 个 Agent 连续追问](https://www.nowcoder.com/discuss/864153617182355456)
-- [社区题源｜小红书：AI 应用开发一面](https://www.xiaohongshu.com/explore/6a342fec00000000210215bc)
-- [MCP 官方 Tools 规范](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
-- [MCP 官方架构](https://modelcontextprotocol.io/docs/learn/architecture)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
+- [LangGraph：Workflows and agents](https://docs.langchain.com/oss/javascript/langgraph/workflows-agents)
+- [OpenAI Agents SDK：Guardrails](https://openai.github.io/openai-agents-js/guides/guardrails/)
 
 ## Q28：Function Calling 的完整链路是什么？
 
 **短回答：**
 
-Function Calling 不是模型直接执行函数，而是模型根据工具的名称、描述和 JSON Schema 生成结构化调用请求。应用收到后仍要校验权限和参数，真正执行本地或远程函数，再把带 call ID 的结果返回给模型，模型才生成最终回答或继续请求工具。`strict` 模式能提高结构匹配，但不能替代业务校验、鉴权和人工审批。
+Function Calling 不是模型直接执行函数。模型只返回工具名和结构化参数，应用负责校验权限与参数、执行真实函数，再把带调用 ID 的结果交回模型继续回答；结构严格不等于业务安全。
 
 **原理：**
 
@@ -875,11 +815,9 @@ AI 知识工作台 项目边界：
 
 **参考来源：**
 
-- [社区题源｜牛客：23 个 Agent 连续追问](https://www.nowcoder.com/discuss/864153617182355456)
 - [社区题源｜小红书：AI 应用开发一面](https://www.xiaohongshu.com/explore/6a342fec00000000210215bc)
+- [OpenAI：Function Calling 指南](https://platform.openai.com/docs/guides/function-calling)
 - [MCP 官方 Tools 规范](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
-- [MCP 官方架构](https://modelcontextprotocol.io/docs/learn/architecture)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
 
 ## Q29：MCP 是什么？与 Function Calling 有什么关系？
 
@@ -937,7 +875,7 @@ AI 知识工作台 项目边界：
 
 **短回答：**
 
-我不会把执行权直接交给模型。模型只负责提出下一步，真正的权限、状态、预算和终止条件由编排器掌握。每次运行限制最大步骤、工具次数、Token、耗时和金额；对相同工具、规范化参数及状态结果做指纹，连续无状态变化就停止。写操作使用幂等键和对象级鉴权，高风险操作绑定参数进行人工确认，同时保留完整但脱敏的调用审计。
+防失控的关键是让模型只能“建议下一步”，由编排器掌握权限、状态和停止条件。每次运行限制步骤、工具次数、时间与费用；重复无进展就停止，写操作使用幂等键，高风险动作必须由人确认。
 
 **原理：**
 
@@ -973,10 +911,8 @@ AI 知识工作台 项目边界：
 **参考来源：**
 
 - [社区题源｜牛客：23 个 Agent 连续追问](https://www.nowcoder.com/discuss/864153617182355456)
-- [社区题源｜小红书：AI 应用开发一面](https://www.xiaohongshu.com/explore/6a342fec00000000210215bc)
-- [MCP 官方 Tools 规范](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)
-- [MCP 官方架构](https://modelcontextprotocol.io/docs/learn/architecture)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
+- [OpenAI Agents SDK：Guardrails](https://openai.github.io/openai-agents-js/guides/guardrails/)
+- [LangGraph：Persistence](https://docs.langchain.com/oss/javascript/langgraph/persistence)
 
 ## Q31：Transformer 的整体架构是什么？
 
@@ -1026,27 +962,6 @@ AI 知识工作台 项目边界：
 
 Q、K、V 都是隐藏状态经过不同可学习线性映射得到的矩阵。可以把 Query 理解为当前位置在寻找什么，Key 表示每个位置可被怎样匹配，Value 是匹配后真正被聚合的内容。先计算 `QKᵀ / √d_k`，经过 Softmax 得到权重，再对 V 加权求和。它们不是字面上的用户问题、数据库关键字和值，只是帮助理解的类比。
 
-公式：
-
-```text
-Q = XW_Q
-K = XW_K
-V = XW_V
-
-Attention(Q, K, V)
-  = softmax(QK^T / sqrt(d_k))V
-```
-
-为什么除以 `sqrt(d_k)`：
-
-维度增大时，点积的数值幅度通常也会增大，Softmax 容易进入饱和区，梯度变小；缩放可以让数值范围更稳定。
-
-补充：
-
-- Self-Attention 中 Q、K、V 来自同一序列的不同投影。
-- Encoder—Decoder Cross-Attention 中，Q 来自 Decoder 当前表示，K、V 来自 Encoder 输出。
-- 多头注意力为每个 Head 使用不同投影，学习语法、指代、位置等不同关系；并不保证每个 Head 都有固定的人类可解释语义。
-
 **原理：**
 
 Q、K、V 是同一批 token 表示经不同线性投影得到的三组向量，不是三份原文数据：
@@ -1085,7 +1000,7 @@ AI 知识工作台 项目边界：
 
 **短回答：**
 
-Encoder 并没有消失。Encoder-only 仍适合 Embedding、分类和部分重排，Encoder—Decoder 仍适合翻译、摘要等输入输出映射。Decoder-only 在通用大模型中流行，是因为它把提示和答案统一为一个因果序列，用同一个下一 Token 预测目标就能在海量无标注文本上扩展，并自然支持续写、对话和上下文学习。代价是生成必须自回归进行，长上下文的标准注意力成本也较高。
+Decoder-only 模型把提示和答案放在同一条序列里，统一用“预测下一个 Token”训练，因此容易扩展到续写、对话和上下文学习。Encoder 并没有消失：它仍常用于分类和向量表示，Encoder–Decoder 仍适合输入到输出的转换任务。
 
 **原理：**
 
@@ -1122,8 +1037,7 @@ AI 知识工作台 项目边界：
 **参考来源：**
 
 - [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
-- [RAG 原始论文](https://arxiv.org/abs/2005.11401)
-- [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
+- [GPT-3：Language Models are Few-Shot Learners](https://arxiv.org/abs/2005.14165)
 
 # SSE、AI 前端与 React
 
@@ -1222,7 +1136,7 @@ AI 知识工作台 项目边界：
 
 **短回答：**
 
-用户点击发送后，Vue 先创建用户消息和空的助手消息，并生成 runId、messageId 和 AbortController；随后 fetch POST 到 Flask。Flask 完成鉴权、参数校验和上下文构造后，用生成器消费模型上游流，把每个业务事件编码成 `delta`、`citation`、`error`、`done` 等 SSE 或 NDJSON 帧并 `yield`。响应经过 WSGI 和 Nginx 时要避免缓冲。浏览器读取 `response.body`，用流式 TextDecoder 解码，再通过残留缓冲区拆出完整事件，按 runId 路由到目标消息，并批量更新 Vue 状态。最终 `done` 事件携带结束原因和 token 用量。
+完整链路分四层：Vue 发起请求并建立空消息，Flask 鉴权后消费模型流，WSGI/Nginx 立即转发事件，浏览器再增量解码、分帧并合并到指定消息。每层都要传递同一个运行 ID、取消和错误状态，任何一层缓冲都会让页面最后一次性显示。
 
 **原理：**
 
@@ -1291,37 +1205,15 @@ def chat_stream():
 
 **参考来源：**
 
-- [社区题源｜牛客：字节 SSE 与 WebSocket 追问](https://www.nowcoder.com/discuss/888046680824639488)
-- [社区题源｜牛客：网易互娱 SSE、长连接与鉴权](https://www.nowcoder.com/feed/main/detail/fcdbf2d6868347bc8256068c60dd70a0)
-- [MDN：Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
+- [Flask：Streaming Contents](https://flask.palletsprojects.com/en/stable/patterns/streaming/)
+- [Nginx：proxy_buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering)
+- [MDN：TextDecoder.decode()](https://developer.mozilla.org/en-US/docs/Web/API/TextDecoder/decode)
 
 ## Q37：UTF-8 分片为什么会导致中文乱码？
 
 **短回答：**
 
-网络分片边界与字符、JSON 和 SSE 消息边界都没有关系。一个中文字符可能占三个 UTF-8 字节，而一次 `read()` 可能只拿到前一部分；如果每个 chunk 单独 decode，就可能出现替换字符。同样，一个 JSON 对象也可能被拆成两段。正确做法是复用同一个 TextDecoder，中间块使用 `stream: true`，结束时再 flush，或者使用 TextDecoderStream；解码后还要保留文本 remainder，只在收到完整的 SSE 双换行或 NDJSON 换行后解析。
-
-```ts
-const reader = response.body!.getReader()
-const decoder = new TextDecoder("utf-8")
-let pending = ""
-
-while (true) {
-  const { value, done } = await reader.read()
-  pending += decoder.decode(value, { stream: !done })
-
-  let boundary: number
-  while ((boundary = pending.indexOf("\n\n")) >= 0) {
-    const frame = pending.slice(0, boundary)
-    pending = pending.slice(boundary + 2)
-    handleCompleteFrame(frame)
-  }
-
-  if (done) break
-}
-```
+网络分片按字节发生，不认识中文字符或 JSON 边界；一个 UTF-8 中文字符可能被拆到两块。必须复用同一个流式解码器保留半个字符，再把解码后的残留文本按 SSE 空行或 NDJSON 换行拼成完整事件，不能逐块直接 `JSON.parse`。
 
 **原理：**
 
@@ -1352,26 +1244,14 @@ while (true) {
 
 **参考来源：**
 
-- [社区题源｜牛客：字节 SSE 与 WebSocket 追问](https://www.nowcoder.com/discuss/888046680824639488)
-- [社区题源｜牛客：网易互娱 SSE、长连接与鉴权](https://www.nowcoder.com/feed/main/detail/fcdbf2d6868347bc8256068c60dd70a0)
-- [MDN：Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
+- [MDN：TextDecoder.decode()](https://developer.mozilla.org/en-US/docs/Web/API/TextDecoder/decode)
 - [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
 
 ## Q38：后端一直 `yield`，为什么浏览器最后一次性显示？
 
 **短回答：**
 
-最常见原因不是前端，而是链路中的某层在缓冲。Nginx 的 `proxy_buffering` 默认开启，会先把上游响应读进缓冲区，再向客户端发送；WSGI 中间件、压缩层、CDN 和 API 网关也可能聚合小块。流式接口应局部设置 `proxy_buffering off`，或让上游返回 `X-Accel-Buffering: no`，并检查压缩、缓存和空闲超时。排障时我会用 `curl -N`，分别直连 Flask 和经过 Nginx 测试，定位是哪一层没有即时转发。
-
-```nginx
-location /api/chat/stream {
-    proxy_pass http://flask_upstream;
-    proxy_buffering off;
-    proxy_cache off;
-    proxy_read_timeout 300s;
-}
-```
+后端持续 `yield` 但页面最后才显示，通常是 Flask、压缩层、Nginx、网关或 CDN 中某层把小块攒起来了。先用 `curl -N` 直连应用，再逐层经过代理测试；确认出问题的层后，只对流式路由关闭缓冲或压缩，并检查缓存和空闲超时，不能只改前端。
 
 **原理：**
 
@@ -1402,35 +1282,15 @@ location /api/chat/stream {
 
 **参考来源：**
 
+- [Nginx：proxy_buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering)
 - [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [React 官方文档](https://react.dev/learn)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [MDN：Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 
 ## Q39：怎样实现“停止生成”的全链路取消？
 
 **短回答：**
 
-前端调用 AbortController 只能保证 fetch 和响应体读取被中止，不自动等于模型任务停止。完整取消要给每次生成分配 runId：前端 abort、关闭 reader 并把 UI 状态设为 cancelled；服务端感知断连或接收一个幂等取消接口，把取消信号继续传给模型 SDK、后台任务和上游 HTTP 请求，最后关闭迭代器并释放 worker、数据库连接等资源。仅仅不再渲染 token，服务端仍可能继续生成并计费，所以要分别验证“停止接收”和“停止计算”。
-
-```ts
-const controller = new AbortController()
-
-try {
-  const response = await fetch(url, {
-    method: "POST",
-    body: JSON.stringify(payload),
-    signal: controller.signal,
-  })
-  // consume response.body
-} catch (error) {
-  if (error instanceof DOMException && error.name === "AbortError") {
-    markCancelled(runId)
-  }
-}
-
-// 用户点击停止
-controller.abort("user_cancelled")
-```
+“停止生成”要沿整条链路传递：前端中止读取并标记本次运行，服务端收到断连或取消请求后继续取消模型、工具和后台任务，最后释放连接。只让页面不再显示文字，服务端仍可能继续计算和计费。
 
 **原理：**
 
@@ -1462,23 +1322,15 @@ controller.abort("user_cancelled")
 
 **参考来源：**
 
+- [MDN：AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
 - [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [React 官方文档](https://react.dev/learn)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [Flask：Streaming Contents](https://flask.palletsprojects.com/en/stable/patterns/streaming/)
 
 ## Q40：多会话并发时怎样防止流式内容串台？
 
 **短回答：**
 
-典型竞态是旧请求比新请求晚返回，然后写入了当前页面的全局变量。我的做法是让每个事件携带 conversationId、runId、messageId 和递增 seq，前端按 run 保存独立的 controller、buffer 和状态；处理事件时验证它仍属于目标消息，而不是只看当前选中的会话。替换请求时可以 abort 旧请求，但仍需 ID 门禁，因为已缓冲事件可能继续到达。服务端再用幂等键和 seq 去重，避免重试时重复追加。
-
-事件处理规则：
-
-1. `runId`、`messageId` 必须匹配目标对象。
-2. `seq <= lastSeq` 的事件直接丢弃，防止重复消费。
-3. 非 `running` 状态拒绝新的 `delta`。
-4. 完成、取消和失败由 reducer 做原子状态转换。
-5. 同一会话是否允许多个 run，要由产品规则明确；可以排队，也可以并发但按 messageId 分流。
+防串台要让每个事件携带会话 ID、消息 ID、运行 ID 和递增序号；前端按运行 ID 保存独立的解码器、缓冲区和取消器。切换页面只改变显示对象，旧请求晚到也只能更新它原来的消息。
 
 **原理：**
 
@@ -1514,34 +1366,14 @@ controller.abort("user_cancelled")
 
 **参考来源：**
 
-- [社区题源｜牛客：字节 SSE 与 WebSocket 追问](https://www.nowcoder.com/discuss/888046680824639488)
-- [社区题源｜牛客：网易互娱 SSE、长连接与鉴权](https://www.nowcoder.com/feed/main/detail/fcdbf2d6868347bc8256068c60dd70a0)
-- [MDN：Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
+- [WHATWG HTML：Server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html)
+- [React：Queueing a Series of State Updates](https://react.dev/learn/queueing-a-series-of-state-updates)
 
 ## Q41：为什么不能每收到一个 token 就立即更新 UI？
 
 **短回答：**
 
-模型 token 到达频率可能高于屏幕刷新率。如果每个 token 都修改响应式状态，会造成大量组件调度、Markdown 全量解析、虚拟 DOM diff 和滚动计算。我会先把 delta 放到非响应式缓冲区，每个 animation frame 或每 20 到 50 毫秒合并一次，再做一次状态更新；结束时强制 flush。这样仍然有流式感，但把数十次更新压成一次。自动滚动还要判断用户是否接近底部，不能把正在阅读历史内容的用户强制拉回去。
-
-```ts
-let pending = ""
-let scheduled = false
-
-function onDelta(text: string) {
-  pending += text
-  if (scheduled) return
-
-  scheduled = true
-  requestAnimationFrame(() => {
-    message.value += pending
-    pending = ""
-    scheduled = false
-  })
-}
-```
+模型片段到达速度可能快于屏幕刷新。若每个 token 都更新状态，就会重复触发 Markdown 解析、组件渲染和滚动；应先放入普通缓冲区，每帧或每几十毫秒合并一次，结束时再强制提交最后一批。
 
 **原理：**
 
@@ -1573,24 +1405,14 @@ function onDelta(text: string) {
 
 **参考来源：**
 
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [React 官方文档](https://react.dev/learn)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [MDN：requestAnimationFrame()](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame)
+- [React：Queueing a Series of State Updates](https://react.dev/learn/queueing-a-series-of-state-updates)
 
 ## Q42：流式 Markdown 怎样正确且安全地渲染？
 
 **短回答：**
 
-流式 Markdown 的难点是当前文本可能不是完整语法，例如只收到一半代码围栏、表格或链接。我会始终保存完整 raw text，它是唯一真相；简单方案是节流后重新解析完整文本，回答较短时可靠，但总成本可能接近 O(n²)。更大文本可以只提交已经闭合的 block，把不稳定尾部暂时按纯文本显示，结束后再全量解析一次。模型输出、RAG 文档和工具结果都属于不可信输入，所以会禁用 raw HTML，并在写入 `v-html` 或 `dangerouslySetInnerHTML` 前使用 DOMPurify 清洗。
-
-安全链路：
-
-```text
-模型 / 检索文本
-  -> Markdown 解析器（raw HTML disabled）
-  -> DOMPurify.sanitize
-  -> v-html / dangerouslySetInnerHTML
-```
+流式 Markdown 的尾部可能只有半个代码块或链接。应保存完整原文，把已经闭合的块安全渲染，不稳定尾部暂时按纯文本显示；模型与检索内容始终是不可信输入，原生 HTML 要禁用或经白名单清洗。
 
 **原理：**
 
@@ -1622,17 +1444,15 @@ function onDelta(text: string) {
 
 **参考来源：**
 
-- [社区题源｜牛客：字节 SSE 与 WebSocket 追问](https://www.nowcoder.com/discuss/888046680824639488)
-- [社区题源｜牛客：网易互娱 SSE、长连接与鉴权](https://www.nowcoder.com/feed/main/detail/fcdbf2d6868347bc8256068c60dd70a0)
-- [MDN：Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
+- [CommonMark：规范与测试用例](https://spec.commonmark.org/)
+- [DOMPurify 官方仓库](https://github.com/cure53/DOMPurify)
+- [OWASP：XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
 
 ## Q43：断网或刷新后怎样恢复未完成回答？
 
 **短回答：**
 
-要区分连接恢复和任务恢复。原生 EventSource 在同一实例断线时可以自动重连，并用服务端发送的 `id` 形成 Last-Event-ID；但页面刷新会销毁内存状态。真正可恢复的设计要让生成任务独立于当前 HTTP 连接：服务端创建 runId，把带 seq 的事件或最终快照保存到 Redis 或数据库；前端保存 runId 和 lastSeq，重连时请求 `after=lastSeq`，服务端先回放缺失事件，再继续 tail。消费端按 seq 去重，用“至少一次投递 + 幂等处理”代替不现实的简单 exactly-once 承诺。
+恢复要分两件事：重新连上数据流，以及让原生成任务仍能继续。服务端应让任务脱离单次 HTTP 连接，按 `runId + seq` 保存事件和最终快照；前端在 IndexedDB 保存运行游标与未发送 outbox。重连后先查任务状态，再回放 `lastSeq` 之后的事件并去重，任务已终止则明确提示重试。
 
 **原理：**
 
@@ -1640,9 +1460,9 @@ function onDelta(text: string) {
 
 1. 服务端先创建独立 runId，生成任务不以某条 HTTP 连接的存活作为唯一生命周期。
 2. 所有事件按 seq 追加到有界日志或快照，并记录 running、completed、failed、cancelled 等终态。
-3. 前端保存 runId 和 lastSeq，重连时先请求 after=lastSeq 的缺失事件，再继续 tail 新事件，消费端按 runId+seq 幂等去重。
+3. 前端可在 IndexedDB 保存 runId、lastSeq 与尚未确认发送的 outbox；刷新后先查询任务状态，再请求 after=lastSeq 的缺失事件并继续 tail，消费端按 runId+seq 幂等去重。
 
-原生 EventSource 的 Last-Event-ID 只能帮助同一流重连，无法自动让被服务器终止的模型任务继续。实现还必须限定日志 TTL、校验会话归属、设置最大回放量，并在无法恢复时明确告知用户需要重试。
+原生 EventSource 的 Last-Event-ID 只能帮助连接重试，无法自动让已终止的模型任务继续。outbox 也只能防止用户输入因刷新丢失，服务端是否已接收仍要靠幂等键确认。实现还必须限定日志 TTL、校验会话归属、设置最大回放量，并在无法恢复时明确告知用户需要重试。
 
 **代码 / 场景：**
 
@@ -1651,10 +1471,11 @@ function onDelta(text: string) {
 3. 客户端订阅 `/runs/{id}/events?after=17`。
 4. 服务端先回放 `seq > 17`，然后继续实时推送。
 5. 完成后保存最终 message snapshot。
-6. 页面刷新后查询 run 状态：已完成则加载快照，仍运行则续订。
+6. 页面刷新后从 IndexedDB 恢复 run 游标和 outbox，再查询 run 状态：已完成则加载快照，仍运行则续订。
 
 
 - `conversationId`、`runId` 和 `lastSeq` 可放 sessionStorage 或 IndexedDB，但服务端记录才是权威。
+- outbox 只负责保存未确认的用户操作，重发时仍要携带幂等键，避免服务端已经接收却重复创建任务。
 - 如果模型生成直接绑在 Flask generator 上，连接断开后任务可能一起结束，不能真正恢复；需要拆成独立 job。
 - “重新建立连接”不等于“模型从断点继续计算”。
 - 事件日志可设短 TTL，最终消息长期保存；恢复接口必须重新鉴权并校验 run 所有权。
@@ -1676,15 +1497,15 @@ function onDelta(text: string) {
 
 **参考来源：**
 
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [React 官方文档](https://react.dev/learn)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [WHATWG HTML：Server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html)
+- [MDN：IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+- [MDN：Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 
 ## Q44：React 和 Vue 的核心差异是什么？
 
 **短回答：**
 
-两者都以组件、单向数据流和虚拟 DOM 为主要模型，差异集中在表达方式和响应式机制。React 更像 UI 库，常用函数组件和 JSX；每次 render 读取的是当次 state snapshot，状态变化触发组件重新执行，再由 reconciliation 决定真实 DOM 更新，开发者要显式处理 Hook 依赖和不可变更新。Vue 是渐进式框架，常用 SFC 模板和 Composition API；Vue 3 通过 Proxy 和 ref 的 getter/setter 跟踪依赖，编译器还会利用模板静态信息优化更新。不能简单说谁绝对更快，要看团队生态和业务约束。
+React 和 Vue 都用组件描述界面，主要差别在更新模型：React 状态变化后重新执行组件并比较结果；Vue 通过 `ref`、`reactive` 等追踪具体依赖，再更新使用这些依赖的部分。选型应看团队、生态和业务约束，不能简单断言谁绝对更快。
 
 **原理：**
 
@@ -1719,9 +1540,8 @@ function onDelta(text: string) {
 
 **参考来源：**
 
-- [React 官方文档](https://react.dev/learn)
-- [React：Synchronizing with Effects](https://react.dev/learn/synchronizing-with-effects)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [React：State as a Snapshot](https://react.dev/learn/state-as-a-snapshot)
+- [Vue：Reactivity in Depth](https://vuejs.org/guide/extras/reactivity-in-depth.html)
 
 ## Q45：React Hooks 有哪些常见陷阱？
 
@@ -1877,7 +1697,7 @@ Webpack 是高度可配置的静态模块打包器，会从 entry 构建依赖�
 
 **短回答：**
 
-浏览器缓存可分为新鲜缓存和协商缓存。资源仍在 `max-age` 新鲜期时可以直接复用，不发请求；过期或设置 `no-cache` 时，浏览器携带 `If-None-Match` 或 `If-Modified-Since` 向服务器验证，未变化返回 304。`no-cache` 不是“不存储”，而是“复用前必须验证”；真正禁止存储是 `no-store`。部署时 HTML 使用 `no-cache` 并配 ETag，内容 hash 的 JS/CSS 使用一年 `max-age` 加 `immutable`，敏感会话接口使用 `no-store`。
+`no-cache` 不是“不缓存”，而是缓存副本每次复用前都要向服务器验证；`no-store` 才是不应保存。带内容哈希的 JS/CSS 可长期缓存，入口 HTML 适合重新验证，聊天和鉴权响应适合 `no-store`。是否命中还受 `Vary`、ETag、共享缓存和 Service Worker 影响。
 
 **原理：**
 
@@ -1910,9 +1730,8 @@ Webpack 是高度可配置的静态模块打包器，会从 entry 构建依赖�
 
 **参考来源：**
 
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [React 官方文档](https://react.dev/learn)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [RFC 9111：HTTP Caching](https://www.rfc-editor.org/info/rfc9111)
+- [MDN：HTTP caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching)
 
 ## Q49：CORS 与预检请求是如何工作的？
 
@@ -1973,7 +1792,7 @@ CORS 是浏览器对脚本跨源读响应的约束，不是服务端身份认证
 
 **短回答：**
 
-XSS 的本质是不可信数据被浏览器当作 HTML 或 JavaScript 执行，可分为存储型、反射型和 DOM 型。核心防御是按输出上下文编码，优先使用框架默认的文本插值，避免 `v-html` 和 `dangerouslySetInnerHTML`。确实要渲染 Markdown HTML 时，先禁用 raw HTML，再使用 DOMPurify 清洗，并限制 URL 协议；CSP 和 Trusted Types 作为纵深防御。AI 输出、RAG 文档和工具结果都可能携带恶意内容，所以“模型生成”不等于可信。
+XSS 是不可信内容被浏览器当成代码执行。AI 输出、检索文档和工具结果都必须按外部输入处理：优先以文本渲染；需要富文本时禁用原始 HTML，并用维护良好的 sanitizer 按白名单清洗和限制 URL 协议。CSP、Trusted Types 和 HttpOnly Cookie 只能做纵深防御，不能代替安全输出。
 
 **原理：**
 
@@ -2005,15 +1824,14 @@ XSS 的本质是不可信数据被浏览器当作 HTML 或 JavaScript 执行，�
 
 **参考来源：**
 
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [React 官方文档](https://react.dev/learn)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [OWASP：XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
+- [DOMPurify 官方仓库](https://github.com/cure53/DOMPurify)
 
 ## Q51：CSRF、CORS 与认证方式有什么关系？
 
 **短回答：**
 
-CSRF 利用的是浏览器会自动携带目标站点 Cookie。攻击者诱导已登录用户向目标站点发状态变更请求，服务器只看到有效 Cookie，误以为是用户真实操作。防御包括 CSRF token 或会话绑定的签名 double-submit token、SameSite Cookie、校验 Origin、Referer 或 Fetch Metadata，并保证 GET 不改变状态。CORS 主要控制响应能否被跨源脚本读取，不是 CSRF 防线。若 Bearer token 只由前端显式放入 Authorization 头而不会被浏览器自动附带，经典 CSRF 风险较低，但 XSS 风险更突出。
+CSRF 利用浏览器自动携带登录 Cookie，诱导用户执行并非本人发起的操作；CORS 主要限制跨源脚本能否读取响应，不是身份认证，也不能单独阻止 CSRF。防护要用 SameSite、CSRF Token、Origin 校验和正确的请求语义。
 
 **原理：**
 
@@ -2045,15 +1863,14 @@ CSRF 利用的是浏览器会自动携带目标站点 Cookie。攻击者诱导�
 
 **参考来源：**
 
+- [OWASP：CSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
 - [MDN：CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS)
-- [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
-- [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
 
 ## Q52：JWT 的原理、存储方式与安全边界是什么？
 
 **短回答：**
 
-JWT 通常由 Base64URL 编码的 header、payload 和 signature 三段组成。签名用于发现篡改并确认签发方，并不加密 payload，所以不能把密码或隐私数据放进去。服务端不能只 decode，必须固定算法白名单，并验证 signature、iss、aud、exp、nbf 等字段。Access token 应短期有效，refresh token 要有轮换和撤销机制。浏览器端优先考虑 BFF 或 HttpOnly、Secure、SameSite Cookie，避免把长期凭证放 localStorage；若用内存中的 Bearer token，经典 CSRF 较低，但要更重视 XSS、泄漏和刷新恢复。
+JWT 是一段带签名的声明，不是加密保险箱。服务端必须固定允许的算法并验证签名、签发方、受众和有效期；payload 对持有者可读，不能放密码或隐私。短期 access token 仍需配合 refresh token 轮换、撤销和重放控制，浏览器存储方式要同时权衡 XSS 与 CSRF。
 
 **原理：**
 
@@ -2087,17 +1904,16 @@ JWT 通常由 Base64URL 编码的 header、payload 和 signature 三段组成。
 
 **参考来源：**
 
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [React 官方文档](https://react.dev/learn)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [RFC 7519：JSON Web Token](https://www.rfc-editor.org/info/rfc7519)
+- [OWASP：JSON Web Token Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html)
 
-# 计算机基础与浏览器
+# 计算机与后端基础
 
 ## Q53：从输入 URL 到页面渲染发生了什么？
 
 **短回答：**
 
-我会把它分成六段。第一，浏览器解析 URL，确定协议、域名、端口和路径，并检查 HSTS、浏览器缓存、Service Worker 等是否能直接命中。第二，如果需要访问网络，就进行 DNS 解析，把域名转换成 IP。第三，建立传输连接，HTTP/1.1 和 HTTP/2 通常基于 TCP，HTTPS 还要完成 TLS 握手，HTTP/3 则基于 QUIC。第四，浏览器发送 HTTP 请求，请求可能经过代理、CDN 和网关，服务器返回状态码、响应头和响应体。第五，浏览器流式解析 HTML 生成 DOM，解析 CSS 生成 CSSOM；普通同步脚本可能暂停 HTML 解析，预加载扫描器会提前发现 CSS、JS、图片等资源。第六，DOM 和 CSSOM 形成渲染树，再进行样式计算、布局、绘制、分层与合成，最终显示到屏幕。JavaScript 后续修改 DOM 或样式，可能触发重新布局、重绘或只重新合成。
+浏览器先解析 URL 和缓存策略，再做 DNS、连接与 TLS，发送 HTTP 请求；收到 HTML 后并行构建 DOM、CSSOM 和加载资源，最后经过样式、布局、绘制与合成显示页面。能看到页面不等于可交互，长脚本仍可能占住主线程。
 
 **原理：**
 
@@ -2139,15 +1955,16 @@ URL 解析
 
 **参考来源：**
 
+- [MDN：How browsers work](https://developer.mozilla.org/en-US/docs/Web/Performance/Guides/How_browsers_work)
+- [RFC 1034：Domain Names - Concepts and Facilities](https://www.rfc-editor.org/info/rfc1034)
+- [RFC 8446：TLS 1.3](https://www.rfc-editor.org/rfc/rfc8446)
 - [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
-- [RFC 9293：TCP](https://www.rfc-editor.org/rfc/rfc9293)
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
 
 ## Q54：DNS 解析的完整过程是什么？
 
 **短回答：**
 
-DNS 的作用是把域名解析成 IP。浏览器会先检查浏览器 DNS 缓存，再检查操作系统缓存和 hosts 文件；未命中时，把请求交给本地递归 DNS。递归 DNS 如果也没有缓存，会依次询问根 DNS、顶级域 DNS 和该域名的权威 DNS。根服务器告诉它顶级域服务器在哪里，顶级域服务器告诉它权威服务器在哪里，权威服务器最终返回 A、AAAA 或 CNAME 等记录。递归 DNS 按 TTL 缓存结果，再把 IP 返回给客户端。
+DNS 把域名逐步解析成地址。客户端通常把请求交给递归解析器；缓存未命中时，递归解析器依次询问根、顶级域和权威服务器，最终得到 A、AAAA、CNAME 等记录并按 TTL 缓存。DNS 只负责找到目标地址，之后还要单独建立 TCP、TLS 和 HTTP 连接。
 
 **原理：**
 
@@ -2174,9 +1991,8 @@ DNS 的作用是把域名解析成 IP。浏览器会先检查浏览器 DNS 缓�
 
 **参考来源：**
 
-- [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
-- [RFC 9293：TCP](https://www.rfc-editor.org/rfc/rfc9293)
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
+- [RFC 1034：Domain Names - Concepts and Facilities](https://www.rfc-editor.org/info/rfc1034)
+- [RFC 1035：Domain Names - Implementation and Specification](https://www.rfc-editor.org/info/rfc1035)
 
 ## Q55：TCP 为什么需要三次握手、四次挥手和 TIME_WAIT？
 
@@ -2267,7 +2083,7 @@ TCP 与 UDP：
 
 **短回答：**
 
-HTTP 是应用层的请求响应协议，本身不提供传输加密和服务端身份认证。HTTPS 可以理解为 HTTP 运行在 TLS 保护之上，提供机密性、完整性和身份认证。以 TLS 1.3 为例，客户端在 ClientHello 中发送支持的算法和密钥交换参数；服务端返回选择结果、自己的密钥参数和证书。客户端验证证书链、有效期、域名和可信 CA，双方通过 ECDHE 得到共享秘密并派生会话密钥。握手完成后，HTTP 数据主要用高效的对称加密传输。
+HTTP 定义请求、响应、方法和状态码；HTTPS 是由 TLS 保护的 HTTP，增加加密、完整性和服务端身份校验。状态码中 2xx 表示成功，3xx 表示重定向或缓存协商，4xx 表示请求需修正，5xx 表示服务端未能完成请求。
 
 **原理：**
 
@@ -2342,32 +2158,23 @@ HTTP 版本追问：
 **参考来源：**
 
 - [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
-- [RFC 9293：TCP](https://www.rfc-editor.org/rfc/rfc9293)
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
+- [RFC 8446：TLS 1.3](https://www.rfc-editor.org/rfc/rfc8446)
 
 ## Q57：进程、线程与协程有什么区别？
 
 **短回答：**
 
-进程是资源分配和隔离的基本单位，每个进程通常有独立虚拟地址空间、文件描述符等资源。线程是 CPU 调度的基本单位，同一进程内的线程共享代码、堆和打开的文件，但各自有栈、寄存器和程序计数器。协程通常是运行在用户态的轻量级执行单元，由运行时调度，在 await 或 IO 等位置主动挂起。协程创建和切换成本低，但单个线程上的多个协程只是并发，不会自动得到多核并行能力。
-
-| 维度 | 进程 | 线程 | 协程 |
-|---|---|---|---|
-| 资源隔离 | 强 | 共享进程资源 | 通常共享所在进程/线程资源 |
-| 切换成本 | 较高 | 中等 | 较低 |
-| 通信方式 | 管道、Socket、共享内存等 IPC | 共享内存与同步原语 | 事件循环、通道、共享状态 |
-| 多核并行 | 可以 | 可以 | 需要落到多个线程或进程 |
-| 故障影响 | 通常相互隔离 | 可能影响整个进程 | 取决于运行时与异常处理 |
+进程强调资源与地址空间隔离；操作系统线程是在进程内可被调度的执行流，共享进程资源但各有栈和寄存器；协程则是语言或运行时提供的可挂起任务。协程没有统一实现：JavaScript、Python asyncio 和 Go goroutine 的调度方式并不相同，能否利用多核也取决于具体运行时。
 
 **原理：**
 
-三者的核心区别是资源边界和调度方式：
+三者的核心区别是资源边界和调度责任；“协程”必须结合具体语言运行时解释：
 
 - **进程**：通常拥有独立虚拟地址空间和资源引用，隔离强；跨进程交换数据需要管道、套接字、共享内存等 IPC。
 - **线程**：共享进程地址空间和文件等资源，但拥有独立寄存器、栈和调度上下文；共享数据必须通过锁、原子操作或消息传递保护不变量。
-- **协程**：是运行时管理的轻量任务，通常在 await、yield 或明确调度点让出；它适合高并发 I/O，但不会让 CPU 密集代码自动并行。
+- **协程/运行时任务**：由语言或运行时调度，可在 await、yield 或运行时安排的安全点挂起。JavaScript async 函数、Python asyncio Task 和 Go goroutine 的调度、抢占与多核能力不同，不能套用同一实现结论。
 
-协程最终仍在一个或多个系统线程上执行。选型应同时看故障隔离、共享状态、CPU/I/O 比例、取消传递和调试成本，不能只比“谁更轻”。
+这些任务最终仍在系统线程上执行。选型应同时看故障隔离、共享状态、CPU/I/O 比例、运行时调度、取消传递和调试成本，不能只比“谁更轻”。
 
 **代码 / 场景：**
 
@@ -2388,32 +2195,15 @@ HTTP 版本追问：
 
 **参考来源：**
 
-- [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
-- [RFC 9293：TCP](https://www.rfc-editor.org/rfc/rfc9293)
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
+- [Linux man-pages：clone(2)](https://man7.org/linux/man-pages/man2/clone.2.html)
+- [Python：asyncio Task](https://docs.python.org/3/library/asyncio-task.html)
+- [Go 语言规范：Go statements](https://go.dev/ref/spec#Go_statements)
 
 ## Q58：虚拟内存如何映射到硬件内存？
 
 **短回答：**
 
-虚拟内存让每个进程看到一套连续、独立的虚拟地址空间。CPU 访问虚拟地址时，会用虚拟页号先查 TLB；未命中时通过多级页表找到物理页框，再加页内偏移得到物理地址。如果页表项显示该页不在物理内存，就触发缺页异常，由操作系统从文件或交换区加载该页，必要时淘汰其他页，更新页表后重新执行原指令。
-
-```text
-CPU 生成虚拟地址
-  -> TLB 命中？
-       -> 是：得到物理页框
-       -> 否：页表遍历
-              -> 页面在内存：更新 TLB
-              -> 页面不在内存：Page Fault -> OS 调页
-  -> 物理地址
-  -> CPU Cache / 主存
-```
-
-
-- 进程隔离，防止一个进程任意读写另一个进程内存。
-- 给程序提供连续地址视图，实际物理内存不必连续。
-- 支持按需分页、共享库、内存映射文件和写时复制。
-- 地址空间可以大于当前物理内存，但不能把它理解为性能上“拥有无限内存”。
+虚拟内存让程序使用虚拟地址，而不是直接操作物理内存。CPU 先查保存常用映射的 TLB，未命中再查页表；页尚未驻留时触发缺页异常，由操作系统装入或分配物理页后重试。它提供隔离、按需加载和共享能力，但频繁缺页会明显拖慢程序。
 
 **原理：**
 
@@ -2444,22 +2234,14 @@ CPU 生成虚拟地址
 
 **参考来源：**
 
-- [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
-- [RFC 9293：TCP](https://www.rfc-editor.org/rfc/rfc9293)
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
+- [Linux Kernel：Memory Management Concepts](https://docs.kernel.org/admin-guide/mm/concepts.html)
+- [Linux Kernel：Page Tables](https://docs.kernel.org/mm/page_tables.html)
 
 ## Q59：数组、链表、栈和队列应该如何选择？
 
 **短回答：**
 
-数组通过索引访问，因此随机访问是 O(1)，缓存局部性也好；但中间插入和删除通常要移动后续元素，是 O(n)。动态数组尾部追加通常是均摊 O(1)，扩容那一次是 O(n)。链表通过指针连接，访问第 k 个节点要从头遍历，所以是 O(n)；已经拿到前驱或目标节点时，插入删除可以是 O(1)，代价是额外指针和较差的缓存局部性。栈是后进先出，适合函数调用、括号匹配、DFS 和撤销；队列是先进先出，适合 BFS、任务调度和消息缓冲。
-
-| 结构 | 随机访问 | 头部插删 | 尾部插删 | 已知位置插删 |
-|---|---:|---:|---:|---:|
-| 动态数组 | `O(1)` | `O(n)` | 均摊 `O(1)` | `O(n)` |
-| 单链表 | `O(n)` | `O(1)` | 无尾指针时 `O(n)` | 已知前驱时 `O(1)` |
-| 栈 | 不强调 | — | `push/pop O(1)` | — |
-| 队列 | 不强调 | `dequeue O(1)` | `enqueue O(1)` | — |
+先按操作选择结构：频繁按下标读取和顺序遍历优先动态数组；已经拿到节点并频繁插删时链表才可能占优；栈表达后进先出，队列表达先进先出。复杂度成立有前提，例如动态数组尾插是均摊 `O(1)`，单链表删除是“已知前驱”时 `O(1)`。
 
 **原理：**
 
@@ -2489,9 +2271,8 @@ CPU 生成虚拟地址
 
 **参考来源：**
 
-- [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
-- [RFC 9293：TCP](https://www.rfc-editor.org/rfc/rfc9293)
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
+- [Open Data Structures：Array-Based Lists](https://opendatastructures.org/ods-python/2_Array_Based_Lists.html)
+- [Open Data Structures：Linked Lists](https://opendatastructures.org/ods-python/3_Linked_Lists.html)
 
 # 高频手写题
 
@@ -2563,20 +2344,16 @@ function detectCycle(head: ListNode | null): ListNode | null {
 
 **参考来源：**
 
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
-- [MDN：Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [LeetCode 142：Linked List Cycle II](https://leetcode.com/problems/linked-list-cycle-ii/)
+- [Open Data Structures：Linked Lists](https://opendatastructures.org/ods-python/3_Linked_Lists.html)
 
 ## Q61：如何实现链表形式的两数相加？
 
 **短回答：**
 
-先确认数字的存储方向。下面假设逆序存储，例如 `2 -> 4 -> 3` 表示 342。
+先确认数字是否按低位在前存储。若是，就同步遍历两个链表：每一位计算 `sum = x + y + carry`，写入 `sum % 10`，再把 `Math.floor(sum / 10)` 留给下一位。循环必须覆盖两条链表和最后进位，时间为 `O(max(m,n))`。
 
 **原理：**
-
-先确认数字的存储方向。下面假设逆序存储，例如 `2 -> 4 -> 3` 表示 342。
-
 
 > 同时遍历两条链表，模拟小学加法。当前位等于 `(x + y + carry) % 10`，新进位等于向下取整除以 10。用虚拟头节点统一首节点创建，循环条件必须包含 carry，避免漏掉最后的进位。
 
@@ -2629,16 +2406,14 @@ function addTwoNumbers(
 
 **参考来源：**
 
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
-- [MDN：Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [LeetCode 2：Add Two Numbers](https://leetcode.com/problems/add-two-numbers/)
+- [Open Data Structures：Linked Lists](https://opendatastructures.org/ods-python/3_Linked_Lists.html)
 
 ## Q62：数组去重有哪些实现与复杂度差异？
 
 **短回答：**
 
-平均时间 `O(n)`，空间 `O(n)`。
-`Set` 能将 `NaN` 视为相同值；对象按引用判断，内容相同但引用不同仍是两个元素。
+去重方式取决于输入和“相等”的定义：无序基本类型数组要保序可用 `Set`，平均时间 `O(n)`、空间 `O(n)`；已排序数组可用快慢指针原地压缩，时间 `O(n)`、额外空间 `O(1)`；对象数组应先明确按哪个 key 去重，以及保留第一次还是最后一次。
 
 **原理：**
 
@@ -2700,9 +2475,8 @@ function removeDuplicates(nums: number[]): number {
 
 **参考来源：**
 
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
-- [MDN：Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [MDN：Set](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set)
+- [LeetCode 26：Remove Duplicates from Sorted Array](https://leetcode.com/problems/remove-duplicates-from-sorted-array/)
 
 ## Q63：如何反转单链表？
 
@@ -2713,6 +2487,16 @@ function removeDuplicates(nums: number[]): number {
 **原理：**
 
 > 维护 `prev`、`curr`、`next` 三个指针。`prev` 指向已经反转的部分，`curr` 指向待处理节点；先保存 `next`，再把 `curr.next` 指向 `prev`，最后整体前移。保存 next 是为了避免修改指针后丢失后半段链表。
+
+每轮指针变化：
+
+```text
+反转前：prev <- 已反转部分    curr -> next -> 未处理部分
+改指向：prev <- curr          next -> 未处理部分
+向前走：        prev = curr   curr = next
+```
+
+循环不变量是：`prev` 始终是已经反转好的链表头，`curr` 始终是尚未处理部分的第一个节点。
 
 ```ts
 function reverseList(head: ListNode | null): ListNode | null {
@@ -2753,9 +2537,8 @@ function reverseList(head: ListNode | null): ListNode | null {
 
 **参考来源：**
 
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
-- [MDN：Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [LeetCode 206：Reverse Linked List](https://leetcode.com/problems/reverse-linked-list/)
+- [Open Data Structures：Linked Lists](https://opendatastructures.org/ods-python/3_Linked_Lists.html)
 
 ## Q64：如何实现 Promise 并发限制器？
 
@@ -2842,77 +2625,7 @@ function limitAll<T>(
 
 **短回答：**
 
-防抖是连续触发时不断重新计时，只有停止触发一段时间才执行，适合搜索输入和表单校验。节流是在一个时间窗口内最多执行一次，适合滚动、拖拽和高频位置上报。一句话区别是：防抖关心最后一次，节流关心固定频率。
-
-防抖：
-
-```ts
-function debounce<T extends (...args: any[]) => void>(
-  fn: T,
-  wait: number
-) {
-  let timer: ReturnType<typeof setTimeout> | undefined
-
-  function wrapped(
-    this: ThisParameterType<T>,
-    ...args: Parameters<T>
-  ) {
-    const context = this
-
-    if (timer !== undefined) clearTimeout(timer)
-
-    timer = setTimeout(() => {
-      timer = undefined
-      fn.apply(context, args)
-    }, wait)
-  }
-
-  wrapped.cancel = () => {
-    if (timer !== undefined) clearTimeout(timer)
-    timer = undefined
-  }
-
-  return wrapped
-}
-```
-
-节流，下面实现首触发和尾触发：
-
-```ts
-function throttle<T extends (...args: any[]) => void>(
-  fn: T,
-  wait: number
-) {
-  let lastTime = 0
-  let timer: ReturnType<typeof setTimeout> | undefined
-  let latestArgs: Parameters<T>
-  let latestContext: ThisParameterType<T>
-
-  function invoke() {
-    lastTime = Date.now()
-    timer = undefined
-    fn.apply(latestContext, latestArgs)
-  }
-
-  return function (
-    this: ThisParameterType<T>,
-    ...args: Parameters<T>
-  ) {
-    latestArgs = args
-    latestContext = this
-
-    const remaining = wait - (Date.now() - lastTime)
-
-    if (remaining <= 0) {
-      if (timer !== undefined) clearTimeout(timer)
-      timer = undefined
-      invoke()
-    } else if (timer === undefined) {
-      timer = setTimeout(invoke, remaining)
-    }
-  }
-}
-```
+防抖是在连续触发时重新计时，只保留停止后的最后一次，适合搜索输入；节流是在持续触发期间按固定频率执行，适合滚动和拖拽。实现时还要明确首次、末次执行以及取消行为。
 
 **原理：**
 
@@ -2943,15 +2656,26 @@ function throttle<T extends (...args: any[]) => void>(
 
 **参考来源：**
 
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
-- [MDN：Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [MDN：Debounce](https://developer.mozilla.org/en-US/docs/Glossary/Debounce)
+- [MDN：Throttle](https://developer.mozilla.org/en-US/docs/Glossary/Throttle)
 
 ## Q66：如何实现 LRU 缓存？
 
 **短回答：**
 
-LRU 在容量满时淘汰最久没有被访问的元素。通用实现是哈希表加双向链表：哈希表用于 O(1) 定位节点，双向链表维护访问顺序；get 或更新后把节点移到最新端，超容量时删除最旧端。JavaScript Map 保留插入顺序，所以手写时可以通过 delete 再 set，把元素移动到最新位置。
+LRU 在容量满时淘汰“最久没被访问”的条目。哈希表负责按 key 平均 `O(1)` 找到节点，双向链表维护新旧顺序；每次 get 或 put 命中都要把节点移到最新端，超容量则删最旧端。JavaScript 面试实现也可利用 `Map` 的插入顺序完成同样规则。
+
+**原理：**
+
+LRU 要同时满足“按 key 常数时间定位”和“常数时间找到最久未使用项”：
+
+- 哈希表从 key 直接定位缓存节点，避免 get 时遍历。
+- 双向链表按最近使用顺序排列；get 命中或 put 更新时把节点移到最新端，超容量时从最旧端删除。
+- 链表节点保存前后指针与 key/value，哈希表和链表删除必须在同一操作中保持一致。
+
+JavaScript Map 保留插入顺序，因此可用 delete 再 set 将命中 key 移到末尾，用第一个迭代键淘汰。这个实现对面试和单线程小缓存足够清楚；生产环境还要处理容量为零、值为 undefined、TTL、并发、存储成本和淘汰回调，不能把访问次数最少的 LFU 与 LRU 混淆。
+
+**代码 / 场景：**
 
 ```ts
 class LRUCache<K, V> {
@@ -2993,20 +2717,6 @@ class LRUCache<K, V> {
 }
 ```
 
-**原理：**
-
-LRU 要同时满足“按 key 常数时间定位”和“常数时间找到最久未使用项”：
-
-- 哈希表从 key 直接定位缓存节点，避免 get 时遍历。
-- 双向链表按最近使用顺序排列；get 命中或 put 更新时把节点移到最新端，超容量时从最旧端删除。
-- 链表节点保存前后指针与 key/value，哈希表和链表删除必须在同一操作中保持一致。
-
-JavaScript Map 保留插入顺序，因此可用 delete 再 set 将命中 key 移到末尾，用第一个迭代键淘汰。这个实现对面试和单线程小缓存足够清楚；生产环境还要处理容量为零、值为 undefined、TTL、并发、存储成本和淘汰回调，不能把访问次数最少的 LFU 与 LRU 混淆。
-
-**代码 / 场景：**
-
-用 Map 实现容量为 3 的 LRU：get 命中后 delete 再 set 使键移动到末尾，put 超容量时删除迭代器首键。按 A、B、C、访问 A、加入 D 走读淘汰 B，并测试更新已有键、容量为零和存储 undefined；再说明严格 O(1) 的经典哈希表加双向链表结构。
-
 **递进追问：**
 
 1. **为什么普通对象加时间戳不一定是 O(1) 淘汰？**
@@ -3028,9 +2738,8 @@ JavaScript Map 保留插入顺序，因此可用 delete 再 set 将命中 key �
 
 **参考来源：**
 
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
-- [MDN：Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [LeetCode 146：LRU Cache](https://leetcode.com/problems/lru-cache/)
+- [MDN：Map](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map)
 
 # 前端与全栈基础速答
 
@@ -3099,14 +2808,7 @@ console.log("F")
 
 **短回答：**
 
-每个普通对象都有内部 `[[Prototype]]` 链，属性在自身找不到时会沿链向上找。构造函数的 `prototype` 是一个普通属性；执行 `new Foo()` 时，新对象的 `[[Prototype]]` 会指向 `Foo.prototype`。`obj instanceof Foo` 的核心是检查 `Foo.prototype` 是否出现在 `obj` 的原型链上。`__proto__` 是访问内部原型的历史访问器，代码中更推荐 `Object.getPrototypeOf` 和 `Object.setPrototypeOf`。
-
-`new Foo()` 的概念步骤：
-
-1. 创建新对象。
-2. 把其原型设为 `Foo.prototype`。
-3. 以新对象为 `this` 调用 `Foo`。
-4. 若构造函数显式返回对象则使用该对象，否则返回新对象。
+对象找不到自身属性时，会沿内部原型链继续查找。构造函数的 `prototype` 用来成为新实例的原型；`instanceof` 检查这个对象是否出现在实例的原型链上；`__proto__` 只是访问内部原型的历史接口。
 
 **原理：**
 
@@ -3140,9 +2842,8 @@ console.log("F")
 
 **参考来源：**
 
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
-- [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
+- [MDN：Inheritance and the prototype chain](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Inheritance_and_the_prototype_chain)
+- [MDN：instanceof](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/instanceof)
 
 ## Q69：any、unknown、never、type 与 interface 如何选择？
 
@@ -3191,7 +2892,7 @@ console.log("F")
 
 **短回答：**
 
-注册流程使用 sessionStorage 的理由是状态只需在当前标签页刷新后恢复，不希望长期留下虚拟资料。生产实现仍要处理 schema version、TTL、异常 JSON、敏感字段清理和服务端最终校验；如果需要跨设备草稿，就改为服务端草稿，而不是继续扩大浏览器存储。
+Cookie 会按作用域随 HTTP 请求发送，适合服务端需要且体积很小的会话信息；`sessionStorage` 只服务当前标签页，`localStorage` 适合少量非敏感偏好，两者都是同步 API；IndexedDB 是异步结构化数据库，适合较大的离线数据。敏感令牌、容量和跨设备同步不能只靠浏览器存储解决。
 
 **原理：**
 
@@ -3204,7 +2905,7 @@ console.log("F")
 
 **代码 / 场景：**
 
-为登录会话、主题设置和离线题库分别选存储：会话用 HttpOnly Cookie，主题可用 localStorage，结构化题库与 outbox 用 IndexedDB。用 DevTools 观察容量、同步阻塞、事务和请求是否自动携带；再清除站点数据，验证应用对缺失或旧 schema 能恢复。
+> 注册流程使用 sessionStorage 的理由是状态只需在当前标签页刷新后恢复，不希望长期留下虚拟资料。生产实现仍要处理 schema version、TTL、异常 JSON、敏感字段清理和服务端最终校验；如果需要跨设备草稿，就改为服务端草稿，而不是继续扩大浏览器存储。
 
 **递进追问：**
 
@@ -3224,37 +2925,15 @@ console.log("F")
 
 **参考来源：**
 
-- [RAG 原始论文](https://arxiv.org/abs/2005.11401)
-- [OWASP：Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
-- [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
+- [MDN：HTTP Cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies)
+- [MDN：Web Storage API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API)
+- [MDN：IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 
 ## Q71：MySQL 为什么常用 B+ 树？联合索引怎么用？
 
 **短回答：**
 
-B+ 树分支多、树高低，非叶子节点主要保存键和子指针，叶子节点按顺序连接，既适合等值查询，也适合范围扫描；较少的树高意味着较少的磁盘页访问。InnoDB 聚簇索引的叶子保存整行，二级索引叶子保存主键，因此通过二级索引查非覆盖字段通常还要回表。
-
-联合索引 `(a, b, c)` 的常用判断：
-
-- 可以有效支持以 `a`、`a+b`、`a+b+c` 为左侧连续前缀的查询。
-- 不是“出现范围条件后索引完全失效”；范围列本身仍可用于定位，但其右侧列通常难以继续缩小扫描区间。是否能继续用于过滤要看执行计划与数据库版本。
-- 覆盖索引能直接从索引得到查询字段，减少回表。
-- 索引会增加写入成本和空间，并非越多越好。
-
-RAG 数据模型可以这样画：
-
-```text
-user / tenant
-  -> pack
-     -> source(document/url/note, version, content_hash)
-        -> chunk(position, text, token_count)
-           -> embedding(model, dimension, index_version)
-
-conversation -> message -> citation(chunk_id)
-run -> run_event(seq, type, payload)
-```
-
-权限条件应在召回候选之前进入检索查询；先跨租户召回再过滤，不仅浪费 Top-K，还可能通过分数、缓存或日志造成信息侧漏。
+B+ 树扇出大、层级低，叶子节点又按键有序，因此既能少读磁盘页完成等值查找，也适合范围扫描。联合索引按定义列依次排序，查询通常要从最左列连续使用；是否真正生效仍应看 `EXPLAIN`，不能只背“最左前缀”。
 
 **原理：**
 
@@ -3287,9 +2966,9 @@ B+ 树适合数据库，关键不只是 O(log n)，而是它以页为单位降�
 
 **参考来源：**
 
+- [MySQL：InnoDB Index Types](https://dev.mysql.com/doc/refman/8.4/en/innodb-index-types.html)
+- [MySQL：Multiple-Column Indexes](https://dev.mysql.com/doc/refman/8.4/en/multiple-column-indexes.html)
 - [MySQL：How MySQL Uses Indexes](https://dev.mysql.com/doc/refman/8.4/en/mysql-indexes.html)
-- [MySQL：InnoDB Transaction Model](https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-model.html)
-- [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
 
 ## Q72：事务隔离级别分别会出现哪些并发异常？
 
@@ -3337,23 +3016,7 @@ ACID 描述事务契约，隔离级别则决定并发事务能观察到哪些中
 
 **短回答：**
 
-PUT 通常表示用给定表示整体替换目标资源，PATCH 表示部分修改。幂等是同一个请求执行一次和多次对目标资源的效果相同，不等于响应一定相同。GET、PUT、DELETE 在语义上应幂等，POST 通常不保证；创建 run、上传或支付这类 POST 可以通过 Idempotency-Key 实现业务幂等。
-
-推荐错误结构：
-
-```json
-{
-  "code": "RUN_NOT_FOUND",
-  "message": "任务不存在或已过期",
-  "requestId": "req_xxx",
-  "details": []
-}
-```
-
-分页选择：
-
-- 页码/offset：实现简单，适合小规模后台；深页扫描慢，数据变动时容易重复或遗漏。
-- cursor：使用稳定排序键加唯一键继续扫描，更适合消息、事件和大数据列表。
+PUT 通常表示整体替换，PATCH 表示部分修改；幂等是同一请求重复执行后资源效果与执行一次相同。小列表可用页码，持续变化或深翻页数据更适合稳定游标；错误响应应包含机器可判断的错误码和请求追踪 ID。
 
 **原理：**
 
@@ -3386,15 +3049,15 @@ REST 设计先确定资源身份和 HTTP 语义，再定义重试、并发与列
 
 **参考来源：**
 
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
 - [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
+- [RFC 9457：Problem Details for HTTP APIs](https://www.rfc-editor.org/rfc/rfc9457)
+- [IETF：Idempotency-Key Header 草案](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header-07)
 
 ## Q74：Flask 请求生命周期与流式上下文如何工作？
 
 **短回答：**
 
-请求进入后，Flask 建立 application context 和 request context，执行 `before_request`，匹配路由并调用 view；响应阶段执行 `after_request`，最后 teardown 回调负责清理。异常会进入错误处理路径。流式 generator 的迭代发生在 view 已返回之后，若仍要访问 `request`，需要 `stream_with_context`；数据库 session、日志 trace 和取消信号也要明确跟随整个流生命周期。
+Flask 为每个请求建立应用上下文和请求上下文，执行路由与响应钩子后再清理。流式生成器是在视图返回后继续迭代的，若还要读取 `request`，需用 `stream_with_context` 保持上下文，并让数据库连接、追踪和取消覆盖整个流生命周期。
 
 **原理：**
 
@@ -3428,27 +3091,14 @@ Flask 把 WSGI 请求绑定到两层上下文，再通过 LocalProxy 让代码�
 
 **参考来源：**
 
-- [社区题源｜牛客：字节 SSE 与 WebSocket 追问](https://www.nowcoder.com/discuss/888046680824639488)
-- [社区题源｜牛客：网易互娱 SSE、长连接与鉴权](https://www.nowcoder.com/feed/main/detail/fcdbf2d6868347bc8256068c60dd70a0)
-- [MDN：Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
-- [MDN：Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
-- [OWASP：Improper Output Handling](https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/)
+- [Flask：The Request Context](https://flask.palletsprojects.com/en/stable/reqcontext/)
+- [Flask：Streaming Contents](https://flask.palletsprojects.com/en/stable/patterns/streaming/)
 
 ## Q75：Go 的 goroutine、channel 与 context 分别解决什么问题？
 
 **短回答：**
 
-goroutine 是 Go 运行时调度的轻量并发执行单元；channel 用于 goroutine 之间传递数据和同步，但共享状态也可以用 mutex，不能为了使用 channel 而使用；context 用于跨调用链传递截止时间、取消信号和请求级元数据。context 应由上游传入并在函数间显式传播，不应用来存任意业务参数。
-
-把 Flask 流式接口迁到 Go 的拆分思路：
-
-1. Handler 负责鉴权、校验、创建 `runId`。
-2. Retrieval service 构造上下文。
-3. Model client 持续返回结构化事件。
-4. Stream writer 写 SSE，并在每帧后 `Flush`。
-5. 监听 `r.Context().Done()`，向检索、模型调用和后台任务传播取消。
-6. 独立 run store 保存状态与 seq，支持断线恢复和多实例部署。
-7. 用并发上限、超时和背压保护模型与数据库，不能为每个请求无限创建 goroutine。
+goroutine 是 Go 运行时调度的并发任务；channel 用来传值并建立同步关系；context 沿调用链传递截止时间和取消信号。三者不是固定搭配：共享计数可能更适合 mutex，channel 必须有明确发送、接收和关闭责任，所有 goroutine 都要能在请求取消或超时后退出。
 
 **原理：**
 
@@ -3482,25 +3132,14 @@ goroutine、channel 和 context 分别负责执行、通信和生命周期传递
 
 **参考来源：**
 
+- [Go 语言规范：Go statements](https://go.dev/ref/spec#Go_statements)
 - [Go：context package](https://pkg.go.dev/context)
-- [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
-- [MDN：Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 
 ## Q76：SSR、SSG、CSR 与 hydration mismatch 有什么关系？
 
 **短回答：**
 
-CSR 在浏览器拿到 JavaScript 后构建页面，交互灵活，但首屏和 SEO 依赖资源执行；SSR 每次请求在服务端生成 HTML，首屏和动态 SEO 较好，但服务端成本和 hydration 复杂度更高；SSG 在构建时生成 HTML，访问快、容易缓存，适合内容较稳定的页面。Nuxt 可以按路由混合选择，不是全站只能使用一种模式。
-
-hydration mismatch 表示客户端首次渲染树与服务端 HTML 不一致，常见原因包括：
-
-- render 阶段使用 `Date.now()`、`Math.random()`。
-- 直接读取 `window`、localStorage 或依赖浏览器尺寸。
-- 服务端与客户端的数据、时区或语言环境不同。
-- 非法 HTML 被浏览器自动修正。
-- 条件渲染和异步数据时序不同。
-
-修复原则是让首轮输出确定且一致；仅客户端数据放到 mounted/effect 后更新，不能靠忽略 warning 掩盖问题。
+CSR 在浏览器生成页面，SSR 每次请求由服务端生成 HTML，SSG 在构建时预生成 HTML。服务端生成的页面通常还要 hydration，即客户端接管已有 HTML。若客户端首轮渲染与服务端 HTML 不一致，就会 hydration mismatch；应让数据、时区和随机值等首屏输入确定，不能隐藏警告。
 
 **原理：**
 
@@ -3533,35 +3172,15 @@ hydration 要求客户端首次 render 与服务端 HTML 在结构和内容上�
 
 **参考来源：**
 
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
-- [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
+- [React：hydrateRoot](https://react.dev/reference/react-dom/client/hydrateRoot)
+- [Vue：SSR Hydration Mismatch](https://vuejs.org/guide/scaling-up/ssr.html#hydration-mismatch)
+- [Nuxt：Rendering Modes](https://nuxt.com/docs/guide/concepts/rendering)
 
 ## Q77：如何做前后端与 AI 链路监控？
 
 **短回答：**
 
-我会让一次生成具有统一的 `requestId、conversationId、messageId、runId`，前后端日志和事件都带这些关联字段。指标至少拆成请求排队、检索、模型首 token、流传输、前端首帧与最终渲染，不能只报一个总耗时。
-
-建议指标：
-
-```text
-TTFT = 首个 delta 到达客户端 - 用户发起请求
-retrieval_latency
-model_first_token_latency
-generation_duration
-stream_disconnect_rate
-cancel_success_rate
-error_rate by stage
-tokens / cost per run
-frontend long tasks / dropped frames
-```
-
-隐私边界：
-
-- 日志默认不记录完整 Prompt、文档正文、JWT 和用户隐私。
-- 标识符需要最小化、脱敏并做访问控制。
-- 采样错误响应时也要清洗模型输出和工具参数。
+链路监控的关键不是多记日志，而是让一次回答从点击、检索、模型、传输到渲染共享 `traceId/runId`。指标要分阶段记录首字延迟、总时长、错误、取消、token 成本和前端卡顿；出现异常时用 trace 定位究竟慢在排队、检索、模型、代理还是渲染，同时避免记录完整 Prompt、令牌和隐私。
 
 **原理：**
 
@@ -3594,9 +3213,9 @@ frontend long tasks / dropped frames
 
 **参考来源：**
 
-- [MDN：JavaScript execution model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
-- [RFC 9110：HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
+- [OpenTelemetry：Traces](https://opentelemetry.io/docs/concepts/signals/traces/)
+- [OpenTelemetry：Generative AI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
+- [GoogleChrome：web-vitals](https://github.com/GoogleChrome/web-vitals)
 
 # Agent 工程：MCP、Skill 与 Tool
 

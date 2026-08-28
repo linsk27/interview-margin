@@ -84,7 +84,9 @@ AOP 把日志、鉴权、事务等横切逻辑从业务方法中抽离。Spring 
 
 **原理：**
 
-容器先按 BeanDefinition 实例化并注入依赖，再执行 BeanNameAware 等感知接口。BeanPostProcessor 可在初始化前后修改或包装对象，随后执行 @PostConstruct、InitializingBean 或自定义 init 方法。单例 Bean 由容器管理销毁；prototype Bean 创建后通常不再跟踪完整销毁过程。
+容器先按 BeanDefinition 实例化并注入依赖，再执行 BeanNameAware 等感知接口。BeanPostProcessor 可在初始化前后修改或包装对象，随后执行 @PostConstruct、InitializingBean 或自定义 init 方法。单例 Bean 由容器管理销毁；
+
+prototype Bean 创建后通常不再跟踪完整销毁过程。
 
 **代码 / 场景：**
 
@@ -195,7 +197,9 @@ AOP 把日志、鉴权、事务等横切逻辑从业务方法中抽离。Spring 
 
 **原理：**
 
-前端控制器统一协调请求，但不直接承担业务。HandlerMapping 依据路径、方法和条件匹配处理器；HandlerAdapter 完成参数解析、校验和方法调用；异常可交给 HandlerExceptionResolver；@ResponseBody 返回值通常由 HttpMessageConverter 序列化。Filter 属于 Servlet 链，Interceptor 位于 MVC 处理器链，两者作用层次不同。
+前端控制器统一协调请求，但不直接承担业务。HandlerMapping 依据路径、方法和条件匹配处理器；HandlerAdapter 完成参数解析、校验和方法调用；异常可交给 HandlerExceptionResolver；@ResponseBody 返回值通常由 HttpMessageConverter 序列化。
+
+Filter 属于 Servlet 链，Interceptor 位于 MVC 处理器链，两者作用层次不同。
 
 **代码 / 场景：**
 
@@ -232,7 +236,9 @@ Spring Boot 根据类路径、已有 Bean、配置属性和应用类型等条件
 
 **原理：**
 
-启动注解开启自动配置导入，候选配置来自 Boot 约定的导入清单。每个自动配置类再用 @ConditionalOnClass、@ConditionalOnMissingBean、@ConditionalOnProperty 等条件决定是否创建 Bean。配置属性把外部配置绑定为类型安全对象。自动配置不是扫描并实例化所有依赖，而是一组可解释、可排除的条件配置。
+启动注解开启自动配置导入，候选配置来自 Boot 约定的导入清单。每个自动配置类再用 @ConditionalOnClass、@ConditionalOnMissingBean、@ConditionalOnProperty 等条件决定是否创建 Bean。配置属性把外部配置绑定为类型安全对象。
+
+自动配置不是扫描并实例化所有依赖，而是一组可解释、可排除的条件配置。
 
 **代码 / 场景：**
 
@@ -269,7 +275,9 @@ Spring Boot 根据类路径、已有 Bean、配置属性和应用类型等条件
 
 **原理：**
 
-单例创建过程中，容器可在对象实例化后、完整初始化前暴露工厂或早期引用，使另一个 Bean 完成属性注入，再回到原 Bean 继续初始化。构造器注入必须先拿到完整依赖，双方都无法开始实例化；prototype 也没有同样的单例缓存协作。即使底层机制能够处理，Spring Boot 的 `spring.main.allow-circular-references` 默认值为 false，不应把开启它当作设计方案。
+单例创建过程中，容器可在对象实例化后、完整初始化前暴露工厂或早期引用，使另一个 Bean 完成属性注入，再回到原 Bean 继续初始化。构造器注入必须先拿到完整依赖，双方都无法开始实例化；prototype 也没有同样的单例缓存协作。
+
+即使底层机制能够处理，Spring Boot 的 `spring.main.allow-circular-references` 默认值为 false，不应把开启它当作设计方案。
 
 **代码 / 场景：**
 
@@ -344,7 +352,9 @@ Spring Framework 提供 IoC、AOP、事务等基础能力；Spring MVC 是其 We
 
 **原理：**
 
-三者不是互相替代的框架。Spring MVC 构建在 Spring 容器上，负责 HTTP 请求映射、参数绑定和响应渲染；Spring Boot 仍使用 Spring Framework，只是把常见依赖、配置和嵌入式服务器组合成可快速启动的应用，并提供 Actuator 等生产支持。理解层次后才能定位问题属于容器、Web 层还是自动配置。
+三者不是互相替代的框架。Spring MVC 构建在 Spring 容器上，负责 HTTP 请求映射、参数绑定和响应渲染；Spring Boot 仍使用 Spring Framework，只是把常见依赖、配置和嵌入式服务器组合成可快速启动的应用，并提供 Actuator 等生产支持。
+
+理解层次后才能定位问题属于容器、Web 层还是自动配置。
 
 **代码 / 场景：**
 
@@ -1648,7 +1658,7 @@ GET、PUT、DELETE 在规范语义上通常幂等，POST 通常不保证；但�
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：Java 后端高频八股清单（小红书，2026-02-20）](https://www.xiaohongshu.com/explore/6997db890000000015023a49)
+- [真实面经线索（题目已改写）：20 篇 Java 后端面经汇总（牛客）](https://www.nowcoder.com/discuss/353155591071801344)
 - [高频题库参考（内容已重写）：小林 Coding：图解网络](https://xiaolincoding.com/network/)
 - [技术校准：RFC 9110：HTTP 语义](https://www.rfc-editor.org/rfc/rfc9110)
 
@@ -1685,7 +1695,7 @@ GET、PUT、DELETE 在规范语义上通常幂等，POST 通常不保证；但�
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：Java 后端高频八股清单（小红书，2026-02-20）](https://www.xiaohongshu.com/explore/6997db890000000015023a49)
+- [真实面经线索（题目已改写）：20 篇 Java 后端面经汇总（牛客）](https://www.nowcoder.com/discuss/353155591071801344)
 - [高频题库参考（内容已重写）：小林 Coding：图解网络](https://xiaolincoding.com/network/)
 - [技术校准：RFC 9293：TCP](https://www.rfc-editor.org/rfc/rfc9293)
 
@@ -1722,7 +1732,7 @@ BIO 的线程会阻塞等待读写；Java NIO 提供非阻塞 Channel、Buffer �
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：Java 后端高频八股清单（小红书，2026-02-20）](https://www.xiaohongshu.com/explore/6997db890000000015023a49)
+- [真实面经线索（题目已改写）：20 篇 Java 后端面经汇总（牛客）](https://www.nowcoder.com/discuss/353155591071801344)
 - [高频题库参考（内容已重写）：小林 Coding：图解系统](https://xiaolincoding.com/os/)
 - [技术校准：Java 21：NIO Selector API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/channels/Selector.html)
 
@@ -1759,7 +1769,7 @@ BIO 的线程会阻塞等待读写；Java NIO 提供非阻塞 Channel、Buffer �
 
 **参考来源：**
 
-- [真实面经线索（题目已改写）：Java 后端高频八股清单（小红书，2026-02-20）](https://www.xiaohongshu.com/explore/6997db890000000015023a49)
+- [真实面经线索（题目已改写）：20 篇 Java 后端面经汇总（牛客）](https://www.nowcoder.com/discuss/353155591071801344)
 - [高频题库参考（内容已重写）：小林 Coding：图解系统](https://xiaolincoding.com/os/)
 - [技术校准：JDK 21：jcmd 工具](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html)
 
@@ -1861,7 +1871,9 @@ Mapper 接口由动态代理实现。调用时先定位映射语句，再经会�
 
 **代码 / 场景：**
 
-调用 userMapper.findById(7) 时，代理定位 namespace 为 UserMapper、id 为 findById 的语句；#{id} 被绑定为 PreparedStatement 参数。查询返回后，ResultSetHandler 根据 resultMap 将 user_id、user_name 映射到 User 字段，SqlSessionTemplate 再按当前 Spring 事务复用或关闭会话。
+调用 userMapper.findById(7) 时，代理定位 namespace 为 UserMapper、id 为 findById 的语句；#{id} 被绑定为 PreparedStatement 参数。
+
+查询返回后，ResultSetHandler 根据 resultMap 将 user_id、user_name 映射到 User 字段，SqlSessionTemplate 再按当前 Spring 事务复用或关闭会话。
 
 **递进追问：**
 
@@ -1902,7 +1914,9 @@ Mapper 接口由动态代理实现。调用时先定位映射语句，再经会�
 
 **代码 / 场景：**
 
-按用户名查询写成 WHERE username = #{username}。排序接口接收 sortKey 枚举，服务端通过 Map.of("createdAt", "created_at", "name", "user_name") 选择固定列，再交给 ${column}；order 也只允许 ASC/DESC 两个常量。绝不能把请求中的 orderBy 原样放进 ${}。
+按用户名查询写成 WHERE username = #{username}。排序接口接收 sortKey 枚举，服务端通过 Map.of("createdAt", "created_at", "name", "user_name") 选择固定列，再交给 ${column}；order 也只允许 ASC/DESC 两个常量。
+
+绝不能把请求中的 orderBy 原样放进 ${}。
 
 **递进追问：**
 

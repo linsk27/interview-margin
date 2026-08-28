@@ -2,7 +2,7 @@ export default [
   {
     number: 1,
     title: 'typeof null 的结果是什么？',
-    mechanism: '结果是字符串 object。ECMAScript 对 typeof 运算符规定：操作数值为 Null 时返回 object，这是一项为兼容早期网页而保留的历史行为，并不表示 null 真的是普通对象。null 是独立的原始值，表示“有意的空值”；它没有可读取的对象属性，也不能作为 Object.keys 等对象操作的有效输入。typeof 更适合粗分函数、字符串、数字等类型，判断 null 应使用 value === null；若要判断非空对象，应同时检查 value !== null && typeof value === object，数组还需再使用 Array.isArray 区分。这种分层判断能避免空引用进入属性访问，并让类型分支与运行时事实保持一致。',
+    mechanism: '结果是字符串 \'object\'。ECMAScript 对 typeof 运算符规定：操作数值为 Null 时返回 \'object\'，这是一项为兼容早期网页而保留的历史行为，并不表示 null 真的是普通对象。null 是独立的原始值，表示“有意的空值”；它没有可读取的对象属性，也不能作为 Object.keys 等对象操作的有效输入。typeof 更适合粗分函数、字符串、数字等类型，判断 null 应使用 value === null；若要判断非空对象，应同时检查 value !== null && typeof value === \'object\'，数组还需再使用 Array.isArray 区分。这种分层判断能避免空引用进入属性访问，并让类型分支与运行时事实保持一致。',
     example: [
       '三个检查展示 typeof 的历史结果、null 的真实分类，以及稳妥的非空对象守卫。',
       '',
@@ -16,12 +16,12 @@ export default [
       '}',
       '~~~',
       '',
-      '因此不能只用 typeof value === object 就断言 value 可安全当作对象使用。'
+      '因此不能只用 typeof value === \'object\' 就断言 value 可安全当作对象使用。'
     ].join('\n'),
     followUps: [
       {
         question: '如何同时排除 null 并判断普通对象？',
-        answer: '先检查 value !== null 与 typeof value === object，再根据业务排除数组、日期等对象；若要求精确原型，还应结合 Object.getPrototypeOf 或专用类型守卫。'
+        answer: '先检查 value !== null 与 typeof value === \'object\'，再根据业务排除数组、日期等对象；若要求精确原型，还应结合 Object.getPrototypeOf 或专用类型守卫。'
       },
       {
         question: '为什么不能修正 typeof null 的返回值？',
@@ -29,8 +29,8 @@ export default [
       }
     ],
     pitfalls: [
-      '把 typeof null 等于 object 解释成 null 继承 Object.prototype 是错误的，它仍是原始值。',
-      'typeof 对数组也返回 object，数组判断必须使用 Array.isArray，而不是继续猜测对象标签。'
+      '把 typeof null 返回字符串 \'object\' 解释成 null 继承 Object.prototype 是错误的，它仍是原始值。',
+      'typeof 对数组也返回 \'object\'，数组判断必须使用 Array.isArray，而不是继续猜测对象标签。'
     ],
     sources: [
       { label: 'ECMAScript：The typeof Operator', url: 'https://tc39.es/ecma262/multipage/ecmascript-language-expressions.html#sec-typeof-operator' },
@@ -113,7 +113,7 @@ export default [
   {
     number: 4,
     title: 'typeof 一个从未声明的变量会得到什么？',
-    mechanism: '对真正从未声明、在任何可见环境记录中都没有绑定的简单标识符执行 typeof，会返回字符串 undefined，而不会像直接读取那样抛 ReferenceError。typeof 的求值算法会识别未解析的引用并给出这个特殊结果，这使旧代码能在不触发异常的情况下探测可选全局变量。但该豁免不是通用的：如果名称由 let、const 或 class 声明且当前仍在暂时性死区，绑定是存在但未初始化，typeof 仍会抛 ReferenceError；写成 typeof missing.prop 时，也必须先直接读取 missing，因而会报错。现代代码更适合用 globalThis 上的属性或显式能力检测。',
+    mechanism: '对真正从未声明、在任何可见环境记录中都没有绑定的简单标识符执行 typeof，会返回字符串 \'undefined\'，而不会像直接读取那样抛 ReferenceError。typeof 的求值算法会识别未解析的引用并给出这个特殊结果，这使旧代码能在不触发异常的情况下探测可选全局变量。但该豁免不是通用的：如果名称由 let、const 或 class 声明且当前仍在暂时性死区，绑定是存在但未初始化，typeof 仍会抛 ReferenceError；写成 typeof missing.prop 时，也必须先直接读取 missing，因而会报错。现代代码更适合用 globalThis 上的属性或显式能力检测。',
     example: [
       '第一个表达式安全返回字符串；第二个直接读取同名标识符会抛异常，二者不能互换。',
       '',
@@ -137,12 +137,12 @@ export default [
     ].join('\n'),
     followUps: [
       {
-        question: 'typeof undeclared === undefined 的写法有什么问题？',
-        answer: 'typeof 的结果总是字符串，必须与字符串 undefined 比较；若省略引号，右侧标识符 undefined 虽通常可用，但表达含义不清且容易误写。'
+        question: 'typeof undeclared === \'undefined\' 的写法有什么含义？',
+        answer: 'typeof 的结果总是字符串，因此必须与字符串 \'undefined\' 比较。该写法可安全检测真正未声明的标识符，但对暂时性死区中的绑定仍会抛错。'
       },
       {
         question: '探测浏览器能力时有什么更明确的方式？',
-        answer: '可检查 globalThis 上的属性，例如 typeof globalThis.SomeAPI === function，或使用 in、特性方法调用与异常兜底，避免依赖隐式全局名称。'
+        answer: '可检查 globalThis 上的属性，例如 typeof globalThis.SomeAPI === \'function\'，或使用 in、特性方法调用与异常兜底，避免依赖隐式全局名称。'
       }
     ],
     pitfalls: [
@@ -1914,10 +1914,10 @@ export default [
   },
   {
     number: 49,
-    title: '不可枚举属性会出现在 Object.keys 中吗？',
-    mechanism: '不会。Object.keys 的筛选条件要求属性是目标对象自身拥有、属性键类型为 String，并且属性描述符的 enumerable 为 true；不可枚举自有属性虽然仍可被直接读取、用 in 或 Object.hasOwn 检测，却会被 Object.keys 排除。Object.getOwnPropertyNames 可取得全部自有字符串键，包括不可枚举键；Object.getOwnPropertySymbols 取得自有 Symbol 键；Reflect.ownKeys 则合并两类而不按 enumerable 过滤。for...in 只遍历可枚举字符串键但会沿原型链，JSON.stringify 对普通对象通常也只考虑可枚举字符串自有属性，几个 API 不应混为一谈。设计反射逻辑时应先明确需要的所有权、键类型与枚举性，再选择对应接口。',
+    title: 'Object.keys、Object.getOwnPropertyNames 与 Reflect.ownKeys 的覆盖范围有何不同？',
+    mechanism: '三者都只查目标对象的自有属性，不沿原型链查找，但覆盖范围逐级扩大。Object.keys 只返回自有、可枚举的字符串键；Object.getOwnPropertyNames 返回全部自有字符串键，不论是否可枚举；Reflect.ownKeys 则返回全部自有字符串键和 Symbol 键，同样不按 enumerable 过滤。因此列表可展示数据选 Object.keys，检查全部字符串属性选 Object.getOwnPropertyNames，完整反射自有键才选 Reflect.ownKeys。“能列出键”不等于保留 getter、writable 等属性特征；需要描述符时还应使用 Object.getOwnPropertyDescriptors。',
     example: [
-      'hidden 可直接读取且确实自有，但只有更全面的键 API 才会列出它。',
+      '同一对象中放入可枚举字符串键、不可枚举字符串键与 Symbol 键，可直接看到三个 API 的范围差异。',
       '',
       '~~~js',
       'const obj = { visible: 1 }',
@@ -1925,34 +1925,34 @@ export default [
       '  value: 2,',
       '  enumerable: false',
       '})',
+      "const token = Symbol('token')",
+      "obj[token] = 'secret'",
       '',
-      'console.log(obj.hidden) // 2',
-      "console.log(Object.hasOwn(obj, 'hidden')) // true",
       "console.log(Object.keys(obj)) // ['visible']",
       "console.log(Object.getOwnPropertyNames(obj)) // ['visible', 'hidden']",
-      "console.log(JSON.stringify(obj)) // '{\"visible\":1}'",
+      "console.log(Reflect.ownKeys(obj)) // ['visible', 'hidden', Symbol(token)]",
       '~~~',
       '',
-      '不可枚举只影响特定枚举机制，不等于私有或无法访问。'
+      'Reflect.ownKeys 覆盖最全，但仍只返回自有键，不包含原型链属性。'
     ].join('\n'),
     followUps: [
       {
-        question: '不可枚举属性是否具有安全保密性？',
-        answer: '没有。调用方仍可直接读取已知键，或通过 getOwnPropertyNames、Reflect.ownKeys 和属性描述符发现它；真正私有状态应使用 #字段或闭包。'
+        question: '哪个 API 能同时取得不可枚举键和 Symbol 键？',
+        answer: 'Reflect.ownKeys。Object.getOwnPropertyNames 虽不过滤不可枚举属性，却仍只返回字符串键；Symbol 键要用 Object.getOwnPropertySymbols 或 Reflect.ownKeys 取得。'
       },
       {
-        question: 'for...in 会列出不可枚举属性吗？',
-        answer: '不会，但它会沿原型链列出可枚举字符串属性；因此与 Object.keys 的“仅自身”范围不同，处理数据对象时应明确是否过滤继承键。'
+        question: '这三个 API 会返回原型链上的键吗？',
+        answer: '都不会。它们都限定为 own keys；for...in 才会沿原型链遍历可枚举字符串键，但通常需配合 Object.hasOwn 避免把继承键当成数据字段。'
       }
     ],
     pitfalls: [
-      'enumerable 为 false 只控制枚举可见性，不会自动禁止读取、修改或删除属性。',
-      'Object.getOwnPropertyNames 仍不含 Symbol 键；需要完整自有键集合应使用 Reflect.ownKeys。'
+      '不要把 Object.getOwnPropertyNames 误记成“只取不可枚举键”；它会同时返回可枚举和不可枚举的自有字符串键。',
+      'Reflect.ownKeys 不会暴露 class 私有字段或内部槽；“全部自有属性键”仍有语言边界。'
     ],
     sources: [
-      { label: 'ECMAScript：Object.keys', url: 'https://tc39.es/ecma262/multipage/fundamental-objects.html#sec-object.keys' },
+      { label: 'ECMAScript：Reflect.ownKeys', url: 'https://tc39.es/ecma262/multipage/reflection.html#sec-reflect.ownkeys' },
       { label: 'MDN：Enumerability and ownership of properties', url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Enumerability_and_ownership_of_properties' },
-      { label: 'MDN：Object.getOwnPropertyNames', url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertyNames' }
+      { label: 'MDN：Reflect.ownKeys()', url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect/ownKeys' }
     ]
   },
   {

@@ -23,7 +23,7 @@ const EXPECTED_GROUP_COUNTS = {
   'java-foundations': [14, 11, 14, 21],
   'java-backend-interviews': [10, 21, 12, 11],
   'java-ai-applications': [11, 12, 4, 8],
-  '360-ai-frontend': [23, 26, 18, 5],
+  '360-ai-frontend': [23, 19, 25, 5],
 }
 
 describe('built-in section groups', () => {
@@ -48,5 +48,22 @@ describe('built-in section groups', () => {
       expect(groupedQuestions.map((question) => question.order), bank.id)
         .toEqual(rawQuestions.map((question) => question.order))
     }
+  })
+
+  it('places systems, algorithms and Go outside the AI frontend group', () => {
+    const bank = BUILTIN_BANKS.find(({ id }) => id === '360-ai-frontend')
+    const source = fs.readFileSync(path.resolve(bank.source), 'utf8')
+    const grouped = groupBuiltinSections(bank.id, parseQuestionMarkdown(source, {
+      idPrefix: bank.idPrefix,
+      baseTags: bank.baseTags,
+      preserveIds: bank.preserveIds,
+    }))
+    const aiFrontend = grouped.find(({ title }) => title === 'AI 前端与浏览器')
+    const foundations = grouped.find(({ title }) => title === '计算机、算法与全栈基础')
+    const foundationNumbers = foundations.questions.map(({ number }) => Number(number))
+
+    expect(foundationNumbers).toEqual(expect.arrayContaining([57, 58, 59, 75]))
+    expect(aiFrontend.questions.map(({ number }) => Number(number)))
+      .not.toEqual(expect.arrayContaining([57, 58, 59, 75]))
   })
 })

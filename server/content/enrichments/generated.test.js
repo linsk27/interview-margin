@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { parseQuestionMarkdown } from '../markdown.js'
+import { denseProseBlocks } from '../readability.js'
 import { GENERATED_BANKS } from '../question-data.js'
 import { GENERATED_ENRICHMENTS } from './index.js'
 import { assertEnrichmentEntries } from './format.js'
@@ -52,6 +53,7 @@ describe('generated bank enrichments', () => {
       questions.forEach((question) => {
         expect(question.body.length).toBeGreaterThan(1_000)
         expect(question.sources.length).toBeGreaterThanOrEqual(2)
+        expect(denseProseBlocks(question.body)).toEqual([])
       })
     }
   }, 15_000)

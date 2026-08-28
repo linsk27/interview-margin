@@ -82,7 +82,7 @@ export const JAVA_FOUNDATION_V2_CONCURRENCY = {
     }, GUIDE.xiaolinJuc, OFFICIAL.lock, OFFICIAL.jlsThreads),
     withSources({
       title: '什么是 Java 内存模型和 happens-before？',
-      summary: 'JMM 定义共享内存下读写、同步与允许重排序的规则；happens-before 用来判断一个动作的结果是否必须对另一个动作可见。',
+      summary: 'Java 内存模型（JMM）规定多个线程读写同一份数据时，哪些结果必须彼此可见，以及编译器和 CPU 可以怎样调整执行顺序。happens-before 是其中的判断规则：如果动作 A 先于动作 B，那么 B 必须看见 A 已保证发布的结果；没有这条关系，就不能仅凭代码书写顺序推断线程间可见性。',
       mechanism: 'happens-before 不是墙钟时间，而是内存可见性与排序关系。常见规则包括：同一线程程序次序；监视器解锁先于后续对同一监视器加锁；volatile 写先于后续读；Thread.start 之前动作先于新线程动作；线程中动作先于其他线程成功 join 返回；关系可传递。若两个冲突访问之间没有这样的关系，程序可能存在数据竞争，观察结果不能用单线程直觉推导。JMM 允许编译器和处理器优化，只要不违反既定同步语义。',
       example: '主线程先写入配置对象，再调用 worker.start，工作线程可依据 start 规则看到此前写入。任务线程完成计算后退出，主线程 join 成功返回后可看到结果。单纯 sleep 一段时间不建立这种确定关系，不能用于发布共享数据。',
       followUps: [

@@ -4,7 +4,6 @@ const COMMUNITY = {
   baidu: { label: '百度 Java 后端面经（牛客，2025）', url: 'https://www.nowcoder.com/discuss/795247127986245632', kind: 'community-interview' },
   boss: { label: 'BOSS 直聘 Java 后端面经（牛客，2025）', url: 'https://www.nowcoder.com/discuss/801379399596535808', kind: 'community-interview' },
   digitalHorse: { label: '数字马力 Java 后端秋招面经（牛客，2025）', url: 'https://www.nowcoder.com/discuss/826171566831517696', kind: 'community-interview' },
-  xhsHighFrequency: { label: 'Java 后端高频八股清单（小红书，2026-02-20）', url: 'https://www.xiaohongshu.com/explore/6997db890000000015023a49', kind: 'community-interview' },
   xhsRole: { label: '小红书 Java 后端岗位面经转载（牛客）', url: 'https://www.nowcoder.com/feed/main/detail/b9a57fd0856149ef87a55f80ade7f8fc', kind: 'community-interview' },
   multiCompany: { label: '阿里、腾讯、VIVO、OPPO Java 面经复盘（牛客）', url: 'https://www.nowcoder.com/discuss/422046', kind: 'community-interview' },
   twentyInterviews: { label: '20 篇 Java 后端面经汇总（牛客）', url: 'https://www.nowcoder.com/discuss/353155591071801344', kind: 'community-interview' },
@@ -645,7 +644,7 @@ const operationsQuestions = [
       { question: '502、503 和 504 有什么区别？', answer: '502 常表示网关收到无效上游响应，503 表示服务暂不可用，504 表示网关等待上游超时，重试应结合方法与预算。' },
     ],
     pitfalls: ['把幂等理解成每次响应字节完全相同，忽略它描述的是重复执行副作用。', '接口发生任何异常都返回 HTTP 200，只在 JSON 里放错误，破坏网关和监控语义。'],
-    community: COMMUNITY.xhsHighFrequency, guide: GUIDE.network, official: OFFICIAL.rfcHttp,
+    community: COMMUNITY.twentyInterviews, guide: GUIDE.network, official: OFFICIAL.rfcHttp,
   }),
   q({
     title: 'TCP 为什么要三次握手和四次挥手？',
@@ -657,7 +656,7 @@ const operationsQuestions = [
       { question: 'TIME_WAIT 为什么通常在主动关闭方？', answer: '它需要确保最终 ACK 可重传，并让旧连接中的重复报文在网络中过期，避免影响相同四元组的新连接。' },
     ],
     pitfalls: ['只画报文箭头，无法说明序列号同步、旧报文与双向关闭。', '看到 TIME_WAIT 就调内核参数，没有确认连接复用、主动关闭方和实际端口压力。'],
-    community: COMMUNITY.xhsHighFrequency, guide: GUIDE.network, official: OFFICIAL.rfcTcp,
+    community: COMMUNITY.twentyInterviews, guide: GUIDE.network, official: OFFICIAL.rfcTcp,
   }),
   q({
     title: 'BIO、NIO 和 I/O 多路复用有什么区别？',
@@ -669,7 +668,7 @@ const operationsQuestions = [
       { question: '多路复用等于异步 I/O 吗？', answer: '不等同。多路复用通常通知通道已经就绪，应用再执行读写；异步 I/O 是系统完成操作后通知结果。' },
     ],
     pitfalls: ['把 NIO 直接解释成异步 I/O，混淆非阻塞、就绪通知和完成通知。', '在 Netty/Reactor 事件线程里做长阻塞调用，导致该线程负责的连接整体卡顿。'],
-    community: COMMUNITY.xhsHighFrequency, guide: GUIDE.os, official: OFFICIAL.nio,
+    community: COMMUNITY.twentyInterviews, guide: GUIDE.os, official: OFFICIAL.nio,
   }),
   q({
     title: 'Linux 上怎样排查 Java 接口变慢？',
@@ -681,7 +680,7 @@ const operationsQuestions = [
       { question: '线程转储应该怎样看？', answer: '连续采样并按线程状态与相同栈聚类，关注持锁者、BLOCKED、线程池队列和热点调用，单次快照只是一瞬间证据。' },
     ],
     pitfalls: ['只会报出 top、jstack 命令列表，却没有从现象到假设再到验证的顺序。', '同时修改线程池、JVM 和数据库参数，结果改善后无法确认真正根因。'],
-    community: COMMUNITY.xhsHighFrequency, guide: GUIDE.os, official: OFFICIAL.jcmd,
+    community: COMMUNITY.twentyInterviews, guide: GUIDE.os, official: OFFICIAL.jcmd,
   }),
   q({
     title: '线上 CPU 飙高或内存增长怎样定位？',

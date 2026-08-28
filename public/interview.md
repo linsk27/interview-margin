@@ -296,18 +296,28 @@ function canEnter(step: StepState) {
 
 ---
 
-## Q13：RBAC 和 CORS 分别是什么？
+## Q13：RBAC 如何落到前后端权限校验，而不只是隐藏按钮？
 
-**先背答案：** RBAC 是“用户拥有角色、角色拥有权限”的授权模型，用来决定谁能做什么；CORS 是浏览器跨域访问的安全协商机制，服务端通过响应头允许指定网页来源访问。两者完全不是同一件事。
+**先背答案：** RBAC 把权限授给角色，再把角色分配给用户。前端根据权限结果控制入口和操作提示，只负责体验；后端必须重新校验当前用户是否有该动作权限，并继续检查资源归属和业务状态，才是真正的安全边界。
 
 **关键词翻译：**
 
-- **认证 authentication**：你是谁，例如登录后验证 token。
-- **授权 authorization**：你能做什么，例如能否删除资料库。
-- **同源**：协议、域名、端口都相同；任一不同就可能跨域。
-- **预检 OPTIONS**：浏览器对复杂跨域请求先问服务器“我能不能用这个方法和请求头发正式请求”。
+- **认证 authentication**：确认“你是谁”，例如校验登录会话或 token。
+- **授权 authorization**：确认“你能做什么”，例如是否允许审批供应商资料。
+- **资源归属**：有相同角色也不代表能操作所有数据，还要限制组织、租户或负责人范围。
 
-**项目落点：** 前端按权限码隐藏 SRM 按钮是体验；后端仍要按用户、角色、资源归属和流程状态拦截。Postman 能请求而浏览器报跨域，常见原因是浏览器执行 CORS，而 Postman 不执行。
+**项目 / 场景：** 以“审批供应商资料”为例，前端可以根据 `supplier:approve` 隐藏按钮；用户即使绕过页面直接调用接口，后端仍需依次验证身份、权限码、供应商归属和当前流程状态。任一步失败都应拒绝并记录审计信息。
+
+**可验证边界：** 面试时只有在能指出后端鉴权入口、权限数据来源和至少一个越权测试时，才能说“实现了 RBAC”。如果项目只有前端路由或按钮控制，应如实称为“界面级权限展示”，不能说已完成安全授权。
+
+**继续追问：为什么只判断角色名不够？**
+
+答：角色是权限集合，不是最终业务条件。同为“采购员”的两个用户可能分属不同组织；同一用户在“草稿”和“审批中”状态下也允许不同动作。因此后端判断通常是 `身份 + 权限 + 资源归属 + 业务状态`。
+
+**参考来源：**
+
+- [NIST：Role Based Access Control](https://csrc.nist.gov/projects/role-based-access-control)
+- [OWASP：Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)
 
 ---
 
@@ -328,19 +338,29 @@ function canEnter(step: StepState) {
 
 ---
 
-## Q15：SSE 和 WebSocket 怎么选？
+## Q15：AI 对话为什么常用 `fetch` 流，而不是直接上 WebSocket？
 
-**先背答案：** SSE 适合服务端向浏览器单向、持续推送文本，例如 AI 逐字回复；WebSocket 建立后双方都能主动发消息，适合 IM、协同编辑、实时对战。AI 聊天的“用户发一次请求，服务端持续回内容”用 SSE 更简单。
+**先背答案：** AI 对话通常是“一次提问，服务端持续返回一条答案”，通信方向主要是服务端到浏览器。`fetch POST` 能携带完整提问和鉴权信息，并让前端逐块读取响应；只有双方都要频繁、主动发送消息时，WebSocket 的全双工连接才更合适。
 
-**关键词翻译：**
+**先区分三种方案：**
 
-- **单向推送**：主要是服务端 -> 客户端。
-- **全双工**：客户端和服务端可以在同一条连接上随时互相发消息。
-- **长连接**：请求建立后不马上关闭，持续一段时间传输数据。
+- 原生 `EventSource`：浏览器发 GET，服务端持续推送文本，并自带断线重连语义。
+- `fetch` 响应流：可以 POST；前端读取 `response.body`，但取消、重试和续传要自己设计。
+- WebSocket：连接建立后双方随时发消息，适合协同编辑、语音控制或多人实时状态。
 
-**继续追问：SSE 能不能 POST？**
+**项目增量：** 如果对话接口需要提交问题、会话 ID、资料范围和模型参数，`fetch POST + ReadableStream` 通常比把所有参数塞进 EventSource URL 更自然。它也复用现有 HTTP 鉴权、限流和网关链路；代价是前端必须处理半包、取消和重连后的重复内容。
 
-答：浏览器原生 `EventSource` 只支持 GET；但 AI 场景常用 `fetch POST` 发 payload，再读取 `response.body` 流。此时传输格式仍可按 SSE 的 `data:` 约定解析。
+**选择判据：** 不以“哪个更先进”判断，而是看消息方向、是否需要二进制、客户端主动发送频率、代理支持和恢复语义。仅用于逐段输出答案时，WebSocket 会额外引入心跳、连接状态和消息协议治理成本。
+
+**继续追问：为什么 `fetch` 流也可以采用 SSE 的 `data:` 格式？**
+
+答：SSE 的事件文本格式与浏览器的 `EventSource` API 是两层概念。服务端可在 POST 响应中按 `data:` 和空行组织事件，前端用流读取器自行解析；但此时不会自动获得 EventSource 的重连行为。
+
+**参考来源：**
+
+- [WHATWG HTML：Server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html)
+- [MDN：Using readable streams](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams)
+- [MDN：WebSocket API](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)
 
 ---
 
@@ -387,24 +407,34 @@ function canEnter(step: StepState) {
 
 ---
 
-## Q18：Embedding 是什么？为什么模型变了要重建索引？
+## Q18：Embedding 是什么，语义相近为什么仍可能检索错误？
 
-**先背答案：** Embedding 是把文本映射为一串数字向量，让语义相近的文本在向量空间里更接近。检索时把问题也转向量，按余弦相似度或距离找近邻。不同 embedding 模型的向量维度和语义空间可能不同，旧向量不能随意和新向量混搜，因此要记录模型名、维度和内容 hash，必要时重建。
-
-**当前项目事实：** ContextForge 会记录模型名、维度和内容 hash；其中 hash 当前是内容指纹，不是数据库去重约束。模型变更后重建缺失或旧模型的向量索引。
+**先背答案：** Embedding 把一段文本转换成固定长度的数字向量，使含义相近的文本通常靠得更近。检索时把问题和资料放进同一个模型的向量空间，再按距离找候选；它只是在估计“像不像”，并不知道权限、时效、事实真假和用户真正意图，所以语义接近不等于答案正确。
 
 **关键词翻译：**
 
 - **向量**：如 `[0.12, -0.08, ...]` 的数字数组，不是“关键词列表”。
-- **维度**：数组长度；不同模型可能是 768、1024、1536 等。
+- **维度**：向量数组的长度；具体长度由模型决定。
 - **余弦相似度**：比较两个向量方向是否接近，常用于语义相似度。
-- **overlap**：相邻 chunk 重复少量文本，减少一句话被切断造成语义丢失。
+- **候选片段**：相似度较高、准备交给后续过滤或重排的资料，不等于最终答案。
 
-**继续追问：Embedding 服务不可用怎么办？**
+**为什么会搜错：**
 
-答：检索能力不要拖垮主流程。可降级到关键词检索/BM25，告知当前资料匹配能力下降；恢复后对缺失或模型不一致的数据重建索引。
+- 文档切块切断了条件或结论，单个片段语义不完整。
+- 问题包含编号、人名、错误码等精确词，纯向量检索反而弱于关键词检索。
+- 多个片段主题相似，但版本、租户或有效期不同。
+- 只按相似度取前几条，没有权限过滤、去重和重排。
 
-**当前项目事实：** ContextForge 当前只回退到关键词检索，BM25 是可以继续补的通用优化，不要说已实现。
+**项目 / 场景：** 排查时同时保存查询文本、候选片段、分数、过滤条件和索引版本。若正确片段根本没进入候选，调整切块、关键词/向量召回和过滤；若正确片段已在候选却排得太后，再优化重排，而不是先改生成 prompt。
+
+**继续追问：为什么本题不再讲模型切换？**
+
+答：模型版本、维度和索引迁移属于运维状态管理，统一放在 Q75。本题只建立 Embedding 的概念、能力和失效边界，避免同一答案背两遍。
+
+**参考来源：**
+
+- [Google Machine Learning：Embeddings](https://developers.google.com/machine-learning/crash-course/embeddings)
+- [Google Machine Learning：Vector search](https://developers.google.com/machine-learning/crash-course/embeddings/vector-search)
 
 ---
 
@@ -489,6 +519,8 @@ function canEnter(step: StepState) {
 
 答：可以写成“开发中的 RAG 能力/MVP”，但必须说明上线状态。面试重点讲资料入库、分块、检索、回退和流式输出这些已完成的工程能力，不拿不存在的业务指标背书。
 
+**可验证边界：** 本题提供的是陈述方法，不替任何候选人证明具体项目已经上线。每次回答前都应重新核对当前分支、可运行测试、部署状态和已知缺陷；无法现场复现或给出仓库证据的能力，应降级为“设计过”“学习过”或“正在开发”。
+
 **机制拆解：** 项目陈述要形成“主张—证据—边界—复现”闭环。主张先分级：已上线、已在本地/测试环境完成、仅设计未实现；证据再落到仓库路径、提交记录、测试、运行截图和可重复命令。例如 ContextForge 可以陈述已完成文本规范化、分块、关键词检索、可选向量检索、检索回退与 SSE，但 RRF、MMR、文件自动解析、脱敏、Agent 工具闭环和生产监控仍是边界。指标只能来自保留了数据集、环境、基线和采样方法的测量；“快了 50%”“服务很多用户”如果无法说明口径，就不应出现。面试回答也要区分“我负责”“我参与”和“团队已有”，防止把阅读过的代码说成自己的实现。
 
 **排查 / 场景：** 面试前可给每条简历描述建立证据表：`描述 -> 代码入口 -> 一次请求的调用链 -> 测试/命令 -> 已知限制`。若被问“RAG 是否已生产落地”，先明确它是开发分支 MVP，再从资料入库到检索、回退、流式输出走一遍真实链路，并主动说明目前没有线上召回率、并发量与成本数据。若对方要求演示，使用固定样本文档和问题，展示成功命中、无命中回退、客户端中断 SSE 三条路径；演示失败时按日志和提交定位，不临时编造结果。这样既能证明技术深度，也让面试官知道哪些结论可以被独立验证。
@@ -520,15 +552,30 @@ function canEnter(step: StepState) {
 
 ---
 
-## Q24：你这个不就是 CRUD 吗？
+## Q24：行为面试｜如何回应“这个项目不就是 CRUD”？
 
-**先背答案：** CRUD 是增删改查的基础操作，不是项目复杂度的唯一标准。我的难点在状态一致性、规则组合、权限边界、性能控制和设备/AI 链路：SRM 的配置化表单和流程权限，AMZ123 的长流程恢复，STEMM 的蓝牙配网，ContextForge 的 RAG/SSE。
+**先背答案：** 先承认数据增删改查是业务系统的基础，再用一个可验证场景说明额外复杂度。有效回答不是罗列框架名，而是交代业务约束、失败后果、自己的决策以及怎样验证结果。
 
-**关键词翻译：** **状态一致性**是页面、缓存、URL、后端状态对同一业务事实不互相矛盾；**规则组合**是角色、流程阶段、资质条件同时决定页面行为。
+**推荐结构：**
 
-**继续追问：举一个不是 CRUD 的例子。**
+1. **事实**：这个模块确实包含 CRUD，不回避。
+2. **约束**：补充状态一致性、权限、并发、恢复或外部设备等具体约束。
+3. **行动**：说明自己设计或实现的边界，不把团队成果都归到个人。
+4. **证据**：给出代码入口、测试、故障记录或可重复演示。
 
-答：供应商类型变化后，SRM 不只是保存一个字段，而要根据 schema 只更新受影响证照字段的显隐、必填、字典和校验，并避免全表单重新执行。这里的重点是依赖建模和性能边界。
+**中性示例：** “保存供应商资料本身是 CRUD；难点是字段可见性、必填规则和允许动作同时受供应商类型、角色与流程状态影响。若项目确实把规则收口到 schema、权限函数或状态转移，可以展示一个规则变化前后的测试；若没有这些实现，就不应把通用方案说成项目成果。”
+
+**为什么这样回答：** 面试官通常不是否定 CRUD，而是在确认候选人是否理解业务不变量、失败路径和个人贡献。用证据解释一个真实决策，比列举‘高并发、微服务、AI’更可信。
+
+**易错点：**
+
+- 贬低 CRUD 或与面试官争辩，却说不出一个具体约束。
+- 把框架自带能力当作个人设计。
+- 用未经测量的性能百分比证明复杂度。
+
+**参考来源：**
+
+- [IEEE Code of Ethics：诚实、可信与专业责任](https://www.ieee.org/about/corporate/governance/p7-8.html)
 
 ---
 
@@ -545,6 +592,15 @@ function canEnter(step: StepState) {
 **继续追问：为什么不直接在每个按钮写 `if`？**
 
 答：少量判断可以。大量页面分别写会出现同一规则不一致，后续状态扩展也容易漏改。将“允许什么动作”收口到状态转移和权限判断函数，页面只消费结果，才能保持一致。
+
+**可验证边界：** “拆成配置化表单、状态机、权限、字典和性能五层”只有在实际代码中能分别找到入口和测试时才能作为项目事实。若当前实现仍是分散条件判断，应改口为“识别到了这五类约束，下一步准备收口”，不能把目标架构说成已完成。
+
+**建议证据：** 选择一个真实动作，展示 `输入角色/状态/数据归属 -> 允许或拒绝 -> 后端再次校验`；再给出一个非法状态转移测试。不要用页面数量或代码行数代替复杂度证据。
+
+**参考来源：**
+
+- [W3C：State Chart XML](https://www.w3.org/TR/scxml/)
+- [OWASP：Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)
 
 ---
 
@@ -648,8 +704,9 @@ const dictCache = new Map<string, DictItem[]>()
 const pendingMap = new Map<string, Promise<DictItem[]>>()
 
 async function getDict(key: string) {
-  const cached = dictCache.get(key)
-  if (cached) return cached                    // 已完成：直接取数据
+  if (dictCache.has(key)) {
+    return dictCache.get(key)!                 // 已完成：包括合法的空字典
+  }
 
   const pending = pendingMap.get(key)
   if (pending) return pending                  // 进行中：复用请求
@@ -697,6 +754,15 @@ async function getDict(key: string) {
 **继续追问：为什么不只把当前 step 放 URL？**
 
 答：URL 适合表达当前页面位置，不能可靠保存完整敏感表单数据，也无法证明前置步骤已经完成。真正可进入性要由快照/后端状态计算。
+
+**可验证边界：** 只有在代码中确实存在快照版本、恢复校验和路由守卫时，才能说该流程支持刷新恢复。若只是把 `step` 写入 `sessionStorage`，应说明它仍可能被用户修改，且多标签页、旧版本字段和敏感数据存储尚需处理。
+
+**验证清单：** 至少覆盖刷新、浏览器返回、直接输入后续 URL、快照缺字段、快照版本过旧和连续点击六条路径。每条测试都应得到确定的继续、回退或清空结果，不能让非法快照直接进入后续步骤。
+
+**参考来源：**
+
+- [Vue Router：Navigation Guards](https://router.vuejs.org/guide/advanced/navigation-guards)
+- [MDN：Window.sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage)
 
 ---
 
@@ -754,7 +820,7 @@ async function getDict(key: string) {
 
 ## Q36：STEMM 小程序的蓝牙配网流程怎么讲？
 
-**先背答案：** 我把蓝牙能力封装成统一状态模块：检查权限和蓝牙适配器，开始扫描并按 RSSI 排序，选择设备后建立连接，发现 service/characteristic，把 WiFi 配置信息编码分片写入，订阅 notify 接收设备进度，完成或异常时断开连接、停止扫描并移除监听。页面只展示状态，不直接堆 API 调用。
+**先背答案：** 一个可维护的蓝牙配网模块应把链路建模为明确状态：检查权限和适配器，扫描并筛选设备，建立连接，按设备协议发现 service/characteristic，把 WiFi 配置编码后分片写入，再通过 notify 接收进度；完成、失败或离开页面时统一停止扫描、断开连接并移除监听。页面只消费状态，不直接堆叠底层 API 调用。
 
 **关键词翻译：**
 
@@ -766,11 +832,13 @@ async function getDict(key: string) {
 
 答：按层排：手机蓝牙/定位权限和适配器状态 -> 设备是否真的在广播 -> service UUID 过滤是否写错 -> 距离和 RSSI -> 搜索超时和监听注册 -> 平台兼容/真机调试日志。不要只靠重试。
 
+**可验证边界：** 只有实际代码中存在统一状态模块、监听清理和至少一条失败恢复测试时，才能说“我完成了这套封装”。若项目只是页面内串联了若干 BLE API，应如实描述当前实现，并把状态机和统一清理作为改进方案。
+
 ---
 
 ## Q37：Three.js 数字孪生的技术亮点是什么？
 
-**先背答案：** 我负责的重点是三维交互到业务 UI 的连接：维护可交互对象列表，Raycaster 命中模型后取业务 ID；把模型世界坐标投影到屏幕坐标，让 HTML 信息弹窗跟随；处理大屏 resize、ECharts 尺寸变化，以及页面卸载时释放 Three.js 资源。它不是只把模型摆到页面上。
+**先背答案：** 数字孪生前端的技术重点通常是把三维交互接到真实业务：维护可交互对象列表，Raycaster 命中模型后取得业务 ID；把模型世界坐标投影到屏幕坐标，让 HTML 信息层跟随；处理容器 resize，并在页面卸载时停止渲染、解除监听和释放 Three.js 资源。技术价值不只是把模型显示出来。
 
 **关键词翻译：**
 
@@ -782,17 +850,36 @@ async function getDict(key: string) {
 
 答：不要每次鼠标移动对全场景 `intersectObjects`。维护可交互对象数组；按楼层/区域过滤，必要时再做空间划分或只在 click 时检测。先通过性能数据判断瓶颈，避免过早复杂化。
 
+**可验证边界：** 面试时应把通用设计与个人贡献分开。能指出模型加载入口、对象与业务 ID 的绑定方式、投影代码、资源清理代码和重复进出页面的稳定性测试，才可以说自己实现了这些能力；否则只作为方案分析。
+
 ---
 
-## Q38：你技术广但不深、没有大型项目独立负责经验，怎么回应？
+## Q38：行为面试｜如何回应“技术面广，但深度或负责范围不足”？
 
-**先背答案：** 我不把自己包装成架构负责人。我的优势是能把技术落在复杂业务模块上：SRM 的规则与流程、AMZ123 的状态一致性、STEMM 的小程序蓝牙、ContextForge 的 RAG/SSE。我当前能独立负责复杂页面、状态管理、接口联调、问题排查和跨端前端模块；更大范围架构会在真实协作中继续承担。
+**先背答案：** 不急着否认评价，也不自称架构负责人。先确认岗位真正关心的深度，再选择一个亲自负责、能被验证的模块，讲清问题、关键决策、失败路径和结果；最后坦诚更大规模协作或架构经验的边界，并说明正在如何补足。
 
-**答题边界：** 不要说“精通 Vue 源码/高并发架构”但答不出基本原理。可以说“正在系统补 Vue 响应式、网络和工程化，已能解释并在项目中使用哪些部分”。
+**回答框架：**
 
-**继续追问：三段实习时间短，稳定性怎么解释？**
+- **承认边界**：没有独立负责过的范围就明确说没有。
+- **证明深度**：围绕一个模块从入口讲到状态、数据、异常和测试，不罗列多个项目名。
+- **校准贡献**：区分“独立实现”“参与联调”“阅读学习”和“计划建设”。
+- **提出成长路径**：说明下一阶段希望承担的职责以及可检验的学习动作。
 
-答：按真实时间线简洁说明每段结束原因，不攻击前公司。强调当前求职目标明确，是广州前端/AI 应用方向，希望进入能长期承担业务模块和持续成长的团队。不要编造“项目结束”或“个人原因”。
+**中性示例：** “我的系统级负责经验仍有限，但在某个真实模块中，我能从需求约束讲到实现和故障处理，并展示对应提交与测试。团队已有的基础设施不会算作个人设计。对于尚未经历的容量和组织协作问题，我会明确假设，不用学习到的架构词冒充生产经验。”
+
+**继续追问：经历时间较短，如何解释稳定性？**
+
+答：只按真实时间线说明每段经历的起止、职责和结束原因，不攻击原团队，也不编造统一模板。然后说明当前选择岗位的标准和希望长期承担的职责；地点、行业或任职期限只说真实意愿。
+
+**易错点：**
+
+- 一口气报出 Vue、React、Java、AI 等技术名，却没有一条完整调用链。
+- 用“学习能力强”替代证据，没有提交、复盘或测试。
+- 背固定城市、公司和年限话术，导致回答与真实情况不一致。
+
+**参考来源：**
+
+- [IEEE Code of Ethics：诚实、可信与专业责任](https://www.ieee.org/about/corporate/governance/p7-8.html)
 
 ---
 
@@ -1019,21 +1106,57 @@ async function validateName(name: string) {
 
 答：返回命中的资料名、chunk 标识或引用片段，并记录检索分数和索引版本。用户和开发者都能知道答案依据什么，而不是只看模型输出。
 
+**量化定位：** 先建立一组人工标注的“问题—应命中资料—可接受答案”，再分层记录指标：
+
+- **检索层**：`Recall@K`，即应命中的片段是否进入前 K 个候选。
+- **排序层**：正确片段的名次、去重后候选数和过滤淘汰原因。
+- **生成层**：答案正确率、引用覆盖率，以及引用内容是否真的支持结论。
+- **运行层**：检索耗时、生成首字节时间、失败率和降级比例。
+
+阈值必须根据固定评测集和业务风险制定，不能临时挑几道成功样例就说“准确率很高”。修改切块、模型或 prompt 后要重跑同一评测集并保留版本，才能知道改善发生在哪一层、是否损伤其他题型。
+
+**验收边界：** 当前没有标注集和评测记录时，只能说“完成了可观察的排查链路”，不能声称召回率或正确率达到某个百分比。
+
+**参考来源：**
+
+- [NIST：AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
+- [Google Cloud：Evaluate search quality](https://cloud.google.com/generative-ai-app-builder/docs/evaluate-search-quality)
+
 ---
 
 ## Q47：Embedding 服务挂了怎么办？
 
-**先背答案：** 把 Embedding 当作可降级依赖，不让整个对话不可用：健康检查失败后切关键词检索/BM25，提示检索质量可能下降；恢复后对缺失向量或模型版本不匹配的数据进行重建。关键是记录失败原因并监控恢复，而不是静默给用户一段无依据回答。
+**先背答案：** 把 Embedding 当作可降级依赖，不让整个对话不可用。当前项目在向量能力失败时回退到简单关键词检索，并提示检索质量可能下降；BM25 是可选升级，不是当前实现。服务恢复后还要重建缺失或模型版本不匹配的向量，直到待补数据归零并通过抽样检索，才算真正恢复。
 
 **关键词翻译：** **BM25** 是按词频、词稀有度和文档长度给关键词相关性打分的传统检索算法，不理解语义同义词，但不依赖向量服务。
 
 **当前项目事实：** ContextForge 的关键词检索是查询词命中次数叠加资料权重，并非 BM25；配置缺失、调用失败或维度不匹配时回退关键词检索。不要把通用检索算法名称写成已实现功能。
 
+**恢复状态机：**
+
+1. **正常**：向量请求成功，记录成功率和延迟。
+2. **降级**：连续失败达到配置阈值后停止盲目重试，改走关键词检索，并暴露明确的 `retrieval_mode` 与原因。
+3. **探测恢复**：冷却期后只放少量探测请求；成功次数达到阈值才恢复正常，失败则继续降级。
+4. **补建索引**：恢复服务不等于数据已恢复。对失败期间新增、缺失或版本不一致的 chunk 排队补建，并保留重试次数和最后错误。
+5. **完成**：待补建数量归零，抽样检索通过，才解除“索引恢复中”状态。
+
+**量化判据：** 监控向量调用失败率和 P95 延迟、关键词降级比例、待补建 chunk 数、补建吞吐与失败数。具体阈值应由真实流量基线和 SLO 决定；没有监控数据时，不虚构“连续 3 次”或“30 秒恢复”是生产标准。
+
+**继续追问：为什么服务恢复后不能立刻全部放量？**
+
+答：依赖刚恢复时可能容量仍不足，积压的在线请求和补建任务会形成重试风暴。先半开探测，再给补建队列限速，才能避免把依赖再次压垮。
+
+**参考来源：**
+
+- [Microsoft Azure Architecture Center：Circuit Breaker pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker)
+- [Microsoft Azure Architecture Center：Retry Storm antipattern](https://learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/)
+- [Google Cloud：Update and rebuild a vector index](https://cloud.google.com/vertex-ai/docs/vector-search/update-rebuild-index)
+
 ---
 
 ## Q48：AI 流式输出中断、乱码或粘包怎么办？
 
-**先背答案：** 前端维护“已展示内容、buffer、loading、error、abort controller”状态。每次读取 chunk 先用 `TextDecoder` 流式解码并拼到 buffer，再只解析完整 SSE 事件；网络中断保留已生成内容并显示重试，用户取消则调用 `abort()`。后端用明确的 error event 和 `[DONE]` 结束标记。
+**先背答案：** 前端维护“已展示内容、buffer、loading、error、abort controller”状态。每次读取 chunk 先用 `TextDecoder` 流式解码并拼到 buffer，再只解析完整 SSE 事件；网络中断保留已生成内容并显示重试，用户取消则调用 `abort()`。当前后端用 `type: error` 表示失败、用 `type: done` 明确结束。
 
 **当前项目事实：** ContextForge 后端以 `type: start / delta / done / error` 事件标识流状态，不使用 `[DONE]` 字符串结束标记。
 
@@ -1170,11 +1293,28 @@ async function validateName(name: string) {
 
 ---
 
-## Q52：小程序页面栈溢出、上传鉴权失败怎么办？
+## Q52：小程序多步骤流程为什么会页面栈溢出，怎样修复并验证？
 
-**先背答案：** 页面栈溢出说明线性流程连续用了 `navigateTo`，下一步改 `redirectTo`，回首页用 `switchTab`，需要完全重置用 `reLaunch`。上传鉴权失败先确认 `uni.uploadFile` 是否绕过了普通请求拦截器；它通常需要在 header 显式带 `Authorization: Bearer token`，再检查 token 过期、域名白名单、文件路径和大小。
+**先背答案：** `navigateTo` 每调用一次都会保留当前页并压入新页面。线性步骤如果一直压栈，层数会持续增加；不需要返回上一中间步骤时用 `redirectTo` 替换当前页，回 tabBar 用 `switchTab`，重新开始整个流程才用 `reLaunch`。
 
-**关键词翻译：** **上传 API 与普通请求 API 不同**：很多项目的 Axios 拦截器不会自动作用于 `uni.uploadFile`，所以 token 可能漏带。
+**先画导航语义：**
+
+- `navigateTo`：保留当前页并打开新页，适合需要返回的分支详情。
+- `redirectTo`：关闭当前页并打开新页，适合不可回退的下一步。
+- `navigateBack`：关闭若干页，返回已有页面。
+- `switchTab`：切换到 tabBar 页面，不用于普通页面。
+- `reLaunch`：关闭所有页面后打开目标页，只用于明确的全流程重置。
+
+**项目 / 场景：** 不要看到报错就把所有导航都改成 `reLaunch`。先画出“步骤是否允许回退”的状态图：可回退的资料查看保留页面；提交成功后的确认页不应回到旧表单；刷新或冷启动则依据合法快照恢复，而不是依赖页面栈保存业务状态。
+
+**验证清单：** 连续前进超过平台常见栈深、逐步返回、从 tabBar 重新进入、提交后按系统返回键、冷启动恢复和重复点击下一步。每条路径都应得到确定页面和合法业务状态；开发工具中的当前页面数组不能无限增长。
+
+**可验证边界：** 页面栈修复只解决导航资源和返回行为，不自动解决表单持久化、接口鉴权或上传失败；这些必须由独立问题和独立日志定位。
+
+**参考来源：**
+
+- [uni-app：路由与页面跳转](https://uniapp.dcloud.net.cn/api/router.html)
+- [微信开放文档：页面路由](https://developers.weixin.qq.com/miniprogram/dev/framework/app-service/route.html)
 
 ---
 
@@ -1297,54 +1437,64 @@ async function validateName(name: string) {
 
 ---
 
-## Q56：SSR 首屏慢、接口 401、浏览器 CORS 分别怎么排查？
+## Q56：SSR 首屏慢，怎样用指标拆解而不是直接怪服务端渲染？
 
-**先背答案：** SSR 首屏慢要拆 TTFB、服务端接口、HTML 体积、JS 包和 hydration，SSR 不是自动加速。401 依次查 token 是否存在/过期、请求头是否漏带、刷新 token 是否失败、后端权限或资源归属是否变化；上传接口特别注意拦截器没生效。浏览器跨域而 Postman 正常，优先查后端 CORS 响应头及 OPTIONS 预检，不是前端代码能绕开的权限问题。
+**先背答案：** 先把首屏分成服务端等待、HTML 传输、资源下载、JavaScript 执行和 hydration 五段。SSR 只让服务器先产出 HTML；如果上游接口慢、TTFB 高、HTML 或 JS 过大、主线程繁忙，首屏仍然会慢。
 
 **关键词翻译：**
 
-- **TTFB**：从发请求到收到第一个响应字节的时间，反映服务端/网络等待。
-- **401**：未认证或 token 无效；**403**：通常已认证但无权限，具体也要看后端约定。
-- **CORS 响应头**：如 `Access-Control-Allow-Origin`、`Access-Control-Allow-Headers`。
+- **TTFB**：发出导航请求到收到第一个响应字节的时间，包含网络、代理、服务端渲染和上游等待。
+- **FCP / LCP**：首次内容绘制 / 最大内容绘制，用来观察用户何时看到主要内容。
+- **hydration**：浏览器让服务端 HTML 获得事件和客户端状态的过程；HTML 已显示不代表页面已经可交互。
+
+**排查顺序：**
+
+1. 用浏览器 Network 和服务端 trace 对齐请求 ID，拆出代理、SSR 和上游接口耗时。
+2. 检查 HTML 是否已包含首屏关键内容；若只是空壳，SSR 没有产生预期价值。
+3. 查看关键 CSS、字体、图片和 JS 是否阻塞，比较压缩后体积与缓存命中。
+4. 用 Performance 面板定位长任务、重复 hydration 或服务端/客户端内容不一致。
+5. 在相同网络与数据集下比较改动前后 TTFB、LCP 和可交互时间，不只比较本地刷新体感。
+
+**项目边界：** 401 和 CORS 是独立故障：前者属于身份验证，后者是浏览器跨源读取许可。它们不应和 SSR 性能共用一个答案；排查时分别建立请求样本和证据链。
+
+**继续追问：TTFB 低就说明 SSR 没问题吗？**
+
+答：不一定。HTML 很快到达，但关键内容可能依赖客户端二次请求；也可能 JS 下载和 hydration 占用主线程。必须结合响应 HTML、LCP 和交互就绪时间判断。
+
+**参考来源：**
+
+- [web.dev：Time to First Byte](https://web.dev/articles/ttfb)
+- [web.dev：Largest Contentful Paint](https://web.dev/articles/lcp)
+- [Chrome DevTools：Performance panel](https://developer.chrome.com/docs/devtools/performance/)
 
 ---
 
 # Part 4：后端、网络、Redis、MQTT、SQL、BLE 补充题
 
-## Q57：Redis 是什么，为什么快？
+## Q57：项目什么时候值得引入 Redis，而不是直接查数据库或用进程内缓存？
 
-**先背答案：** Redis 是以内存为主的 key-value 数据库，常用作缓存、计数器、排行榜、分布式协调等。它快主要因为内存读写、高效数据结构、简单协议和事件驱动的 I/O 多路复用；经典模型以单线程顺序执行命令，避免多线程共享数据的锁竞争。单线程不是说 Redis 没有后台线程，持久化和部分 I/O/释放工作可由其他线程处理。
+**先背答案：** 先用数据证明瓶颈，再决定是否引入 Redis。单实例、数据量小且数据库延迟稳定时，直接查询或短生命周期的进程内缓存更简单；当多个实例需要共享缓存、热点读压垮数据库，或需要跨实例会话/限流状态时，Redis 才可能值得增加的部署、一致性和运维成本。
 
-**关键词翻译：**
+**选择判据：**
 
-- **内存数据库**：数据主要在 RAM，不像 MySQL 查询常要访问磁盘页，因此延迟低。
-- **I/O 多路复用**：一个线程使用 epoll/kqueue 等机制同时关注很多 socket；哪个连接有数据可读写，操作系统通知它处理哪个，而不是每条连接一个线程傻等。
-- **锁竞争**：多线程同时改共享数据时要互斥，等待锁会增加开销和复杂度。
+- **访问模式**：同一数据是否被高频重复读取，命中率是否足以抵消网络和序列化开销。
+- **一致性要求**：能否容忍 TTL 内的旧值，写入后怎样失效，数据库是否仍是事实来源。
+- **部署形态**：单进程 Map 无法在多个服务实例间共享，也会随重启丢失。
+- **故障边界**：Redis 不可用时是回源数据库、返回旧值还是拒绝请求，回源会不会击穿数据库。
+- **可观测性**：至少记录命中率、回源量、P95 延迟、内存占用和淘汰数量。
 
-**继续追问：Redis 能替代 MySQL 吗？**
+**项目 / 场景：** 对一个低流量个人项目，先测数据库查询和页面端到端延迟；没有证据表明数据库是瓶颈，就不为“技术栈丰富”引入 Redis。若后续多实例共享登录状态或热点题库读取明显增加，再以压测基线、目标指标和降级方案做决策。
 
-答：通常不能。Redis 常用于高性能访问和临时/可重建数据；MySQL 等关系数据库负责事务、复杂查询和长期主数据。缓存是加速层，不应成为唯一事实来源。
+**继续追问：为什么进程内 Map 不能直接替代 Redis？**
 
-**学习示例：最小 Cache-Aside 读路径。** 以下代码表达“先缓存、miss 查库、再回填”，不是当前 ContextForge 的既有实现。
+答：单实例可以，但多实例各有一份副本，更新和淘汰不会自动同步；进程重启也会清空。Redis 提供共享状态和更丰富的数据结构，但同时引入网络跳数、独立故障点和运维责任。
 
-```ts
-async function getUserProfile(userId: number) {
-  const key = `user:profile:${userId}`
-  const cached = await redis.get(key)
-  if (cached) return JSON.parse(cached) // 命中：不访问 MySQL
+**可验证边界：** 没有真实命中率、流量和延迟数据时，只能陈述选型条件，不能声称 Redis 已让系统“提升数倍”。Redis 的基础原理统一到《数据库与缓存》题库学习，本题只训练项目选型。
 
-  const user = await db.user.findById(userId)
-  if (!user) {
-    await redis.set(key, '__NULL__', { EX: 60 }) // 短暂缓存空值，防穿透
-    return null
-  }
+**参考来源：**
 
-  await redis.set(key, JSON.stringify(user), { EX: 300 })
-  return user
-}
-```
-
-这里的 `EX` 是 TTL（过期时间）。没有 TTL 的缓存会长期陈旧；所有 key 同时设置 300 秒又可能形成雪崩，所以生产中通常会加少量随机过期时间。
+- [Redis Docs：Cache-aside](https://redis.io/docs/latest/develop/use-cases/cache-aside/)
+- [Redis Docs：FAQ](https://redis.io/docs/latest/develop/get-started/faq/)
 
 ---
 
@@ -1364,134 +1514,117 @@ async function getUserProfile(userId: number) {
 
 ---
 
-## Q59：缓存穿透、击穿、雪崩分别是什么？
+## Q59：热点缓存失效时，怎样证明重建方案不会压垮数据库？
 
-**先背答案：** 缓存穿透是反复查询根本不存在的数据，缓存和 DB 都 miss；缓存击穿是热点 key 过期瞬间大量并发同时打数据库；缓存雪崩是许多 key 同时过期或缓存服务故障，数据库被整体流量压垮。
+**先背答案：** 目标不是背“击穿”定义，而是限制同一热点 key 的并发回源。常见做法是一个请求负责重建，其他请求短暂等待、返回可接受的旧值或快速失败；同时给锁、等待和回源都设置上限，避免缓存故障演变成数据库故障。
 
-**关键词翻译：**
+**场景拆解：**
 
-- **miss**：缓存没有命中。
-- **热点 key**：访问量特别高的某个 key，例如热门商品详情。
-- **布隆过滤器**：用较少内存快速判断“一个值大概率不存在/可能存在”；它可误判存在，但不会把存在误判为不存在。
+1. 记录 key 级请求量、命中率和回源量，确认它真是热点，而不是猜测。
+2. 缓存失效后使用 single-flight 或带唯一 token 的短租约锁，只允许一个重建者。
+3. 等待者有超时和最大重试次数；允许旧值的业务可采用逻辑过期并后台刷新。
+4. 数据库侧仍要有限流、连接池和超时，不能把 Redis 锁当作唯一保护。
+5. 重建完成后设置带抖动的 TTL，避免大量 key 在同一秒再次失效。
 
-**防护：** 穿透用参数校验、空值缓存、布隆过滤器；击穿用互斥重建、逻辑过期/后台刷新；雪崩用过期时间加随机值、多级缓存、限流降级和高可用。
+**量化验证：** 用固定并发压测“缓存已热”“单个热点刚过期”“Redis 不可用”三种场景，比较数据库查询次数、连接池等待、接口 P95/P99 和错误率。合格结果不是“所有请求都成功”，而是回源次数被明确约束，数据库没有超过容量线，失败路径可预期。
 
-**学习示例：热点 key 的互斥重建。** 核心不是“拿到锁就一定正确”，而是只有一个请求重建，其他请求短暂等待或返回旧值。
+**继续追问：为什么释放锁必须校验唯一 token？**
 
-```ts
-async function getHotProduct(id: number) {
-  const cacheKey = `product:${id}`
-  const lockKey = `lock:product:${id}`
-  const cached = await redis.get(cacheKey)
-  if (cached) return JSON.parse(cached)
+答：请求 A 的锁可能已过期，随后 B 获得新锁；A 如果结束时直接 `DEL`，会误删 B 的锁。应原子比较锁值仍是 A 的 token 才删除，并让锁本身有过期时间以避免永久占用。
 
-  // NX: key 不存在才写入；PX: 锁必须自动过期，防止进程崩溃后永久死锁。
-  const locked = await redis.set(lockKey, crypto.randomUUID(), { NX: true, PX: 3000 })
-  if (!locked) {
-    await sleep(80)
-    return getHotProduct(id) // 示例简化；生产中要限制重试次数
-  }
+**可验证边界：** 如果项目没有缓存和并发压测，本题只能作为设计题回答，不能声称已经解决缓存击穿。穿透、击穿、雪崩的概念定义统一到《数据库与缓存》题库。
 
-  try {
-    const product = await db.product.findById(id)
-    await redis.set(cacheKey, JSON.stringify(product), { EX: 300 + Math.floor(Math.random() * 60) })
-    return product
-  } finally {
-    await redis.del(lockKey) // 严谨实现还要校验锁 token，不能误删别人的锁
-  }
-}
-```
+**参考来源：**
 
-**继续追问：为什么要校验锁 token？** 如果 A 的锁过期、B 已取得新锁，A 结束时直接 `DEL` 会把 B 的锁删掉。严谨方案要用 Lua 比较“锁内 token 是否仍是自己写入的 token”，相等才删除。
+- [Redis Docs：Cache-aside](https://redis.io/docs/latest/develop/use-cases/cache-aside/)
+- [Redis Docs：Distributed locks](https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/)
 
 ---
 
-## Q60：Redis 的 RDB、AOF 和缓存一致性怎么讲？
+## Q60：Redis 持久化能解决缓存与数据库不一致吗？
 
-**先背答案：** RDB 是某个时刻的二进制快照，恢复快、适合备份，但两次快照之间可能丢数据；AOF 记录写命令，数据更完整但文件更大、恢复通常更慢。缓存与数据库常用 Cache-Aside：读时先缓存，miss 再读数据库并回填；写时先更新数据库，再删除缓存，追求最终一致而不是绝对强一致。
+**先背答案：** 不能。RDB/AOF 解决的是 Redis 重启后能恢复多少自身数据；缓存一致性解决的是 Redis 副本与主数据库何时同步。即使 AOF 每次写都落盘，业务更新数据库后没有正确失效缓存，Redis 仍会持久地保存旧值。
 
-**关键词翻译：**
+**先把两个问题分开：**
 
-- **持久化**：内存数据写到磁盘，Redis 重启后可恢复。
-- **Cache-Aside**：业务代码显式管理缓存，不是数据库自动同步缓存。
-- **最终一致**：短时间可能读到旧缓存，但通过删除、过期、重试最终收敛到数据库数据。
+- **RDB**：按时间点生成快照，文件紧凑、恢复较快，但快照间的数据可能丢失。
+- **AOF**：记录写操作并在重启时重放，通常能减少数据丢失窗口，但文件和重写成本更高。
+- **Cache-Aside**：读取未命中时查主数据库并回填；写入通常先提交数据库，再删除缓存，下一次读取重新建立。
 
-**继续追问：为什么不是先删缓存再更新 DB？**
+**项目决策：** 如果 Redis 只保存可从主数据库重建的缓存，可以接受重启后重新预热，未必需要为了“缓存一致性”开启强持久化。若 Redis 还承担会话、限流计数或不可轻易重建的数据，就要逐类定义可丢失窗口、备份和恢复演练，不能把所有 key 当成同一种数据。
 
-答：先删后更新的窗口里，另一个读请求可能查到旧 DB 并回填旧缓存，造成更长时间不一致。先更新 DB 再删缓存也非绝对无窗口，但通常更常用；关键业务需结合事务消息、binlog 订阅、重试补偿等方案。
+**失败窗口：** 数据库提交成功但删除缓存失败时，旧值会继续存在。至少要给缓存设置 TTL，并把删除失败写入可重试任务或变更日志；更高要求可基于事务消息或数据库变更日志补偿。具体方案取决于允许的陈旧时间，不能承诺跨两个系统天然强一致。
 
----
+**继续追问：为什么“先更新数据库，再删除缓存”也不是绝对正确？**
 
-## Q61：MQTT 的传输原理是什么？
+答：删除可能失败，且并发读写仍有短窗口。该顺序只是常见的风险较小基线；要用 TTL、重试补偿、幂等和监控把窗口限制在业务可接受范围，并用故障注入验证。
 
-**先背答案：** MQTT 是基于 TCP 的轻量发布/订阅协议。设备和应用客户端都连到 Broker；订阅者订阅 Topic，发布者向 Topic 发消息，Broker 再转发给匹配订阅者。客户端彼此通常不需要知道对方地址，适合多设备状态上报和指令下发。
+**参考来源：**
 
-**关键词翻译：**
-
-- **Broker**：消息中转服务器，负责连接管理、Topic 匹配和 QoS 投递。
-- **Topic**：消息主题路径，例如 `device/123/status`，类似分类频道而非 HTTP URL。
-- **发布/订阅**：发布者只负责发到 topic；订阅者只关心订阅 topic，二者解耦。
-
-**流程：** 设备连接 Broker -> 订阅 `device/123/command` -> 云端发布控制命令 -> Broker 转发设备；设备发布 `device/123/status` -> Broker 转发监控页面或后端消费者。
-
-**学习示例：Node.js 客户端的发布/订阅。** 这段展示协议层的使用方式；`mqtt://` 只是本地演示，生产通常使用账号、TLS 和 `mqtts://`。
-
-```ts
-import mqtt from 'mqtt'
-
-const client = mqtt.connect('mqtt://broker.example.com:1883', {
-  clientId: `web-admin-${crypto.randomUUID()}`,
-  clean: true,
-  reconnectPeriod: 2000,
-})
-
-client.on('connect', () => {
-  client.subscribe('device/+/status', { qos: 1 })
-  client.publish(
-    'device/123/command',
-    JSON.stringify({ messageId: crypto.randomUUID(), action: 'reboot' }),
-    { qos: 1 },
-  )
-})
-
-client.on('message', (topic, payload) => {
-  const status = JSON.parse(payload.toString())
-  console.log(topic, status)
-})
-```
-
-`device/+/status` 里的 `+` 表示匹配一层 Topic；它让后台可以订阅多个设备状态。Topic 是路由规则，不等于权限系统，Broker 仍要通过 ACL 限制某个设备只能发布/订阅属于自己的路径。
+- [Redis Docs：Persistence](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
+- [Redis Docs：Cache-aside](https://redis.io/docs/latest/develop/use-cases/cache-aside/)
 
 ---
 
-## Q62：MQTT 的 QoS、retained message、will message 是什么？
+## Q61：设备项目的 MQTT Topic 和 ACL 应该怎样设计？
 
-**先背答案：** QoS 0 是最多一次，可能丢；QoS 1 是至少一次，可能重复；QoS 2 是恰好一次，最可靠但交互开销最大。retained message 是 Broker 保存某 Topic 的最后一条消息，新订阅者立刻收到当前状态；will message 是客户端异常断连后由 Broker 代发的遗嘱消息。
+**先背答案：** Topic 负责消息路由，ACL 负责谁能发布或订阅。先用稳定的租户、设备和消息类型组织 Topic，再让每台设备只访问自己的路径；不能因为 Topic 中含有设备 ID，就认为它自动具备权限隔离。
 
-**关键词翻译：**
+**一个可讨论的结构：**
 
-- **至少一次**：宁可重复也尽量不丢，因此消费者必须能处理重复消息。
-- **幂等消费**：同一设备指令/消息被处理多次，最终状态不出错，例如按 `messageId` 去重。
-- **异常断连**：没有正常发送 DISCONNECT 就掉线，例如设备断电。
-
-**项目落点：** 温湿度持续上报可 QoS 0；重要控制指令常用 QoS 1 并让设备按消息 ID 去重；retained 用于新监控页打开时立刻看到最近设备状态，will 用于离线提示。
-
-**学习示例：QoS 1 的幂等消费。** QoS 1 的语义是“至少一次”，网络重连或 ACK 丢失都可能让同一条消息再次到达。因此消费端不能只相信 QoS。
-
-```ts
-async function onCommand(payloadText: string) {
-  const command = JSON.parse(payloadText) as { messageId: string; action: string }
-  const key = `mqtt:processed:${command.messageId}`
-
-  // SET NX 成功才是第一次看到这条业务消息。
-  const firstSeen = await redis.set(key, '1', { NX: true, EX: 24 * 60 * 60 })
-  if (!firstSeen) return
-
-  await deviceService.execute(command.action)
-}
+```text
+tenant/{tenantId}/device/{deviceId}/telemetry
+tenant/{tenantId}/device/{deviceId}/state
+tenant/{tenantId}/device/{deviceId}/command
+tenant/{tenantId}/device/{deviceId}/command-result
 ```
 
-**继续追问：QoS 2 是否就完全不需要幂等？** 仍需要。QoS 2 管的是 Broker 和客户端的协议投递流程；业务侧还会遇到服务重试、跨系统调用、数据库提交失败等情况。关键写操作依旧应该有业务唯一键或状态机保护。
+- 设备只发布自己的 `telemetry/state/command-result`，只订阅自己的 `command`。
+- 后端服务按明确租户范围订阅，管理端不直接持有能访问所有 Topic 的设备凭据。
+- Topic 不放密码、token 和个人隐私；payload 仍需版本、时间、消息 ID 和 schema 校验。
+
+**为什么不能随便用 `device/#`：** `#` 会匹配后续所有层级。若 ACL 只按“已登录”而不按租户和设备限制，一个凭据泄露就可能读取全部设备状态或向其他设备下发命令。通配符订阅应只授给经过隔离的后端消费者。
+
+**验证方法：** 准备设备 A、设备 B 和管理服务三组凭据，分别测试允许与拒绝矩阵；再测试伪造 Topic、越权 tenantId、超大 payload、断线重连和凭据撤销。Broker 审计日志应能关联客户端 ID、身份、Topic 和拒绝原因。
+
+**项目边界：** 如果某项目实际只完成 BLE 配网、没有部署 MQTT Broker 和 ACL，就把以上内容作为设计方案，不得说成已上线的设备链路。MQTT 的发布订阅基础统一到后端题库，本题只训练 Topic 与权限建模。
+
+**参考来源：**
+
+- [OASIS：MQTT Version 5.0](https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html)
+- [OWASP：IoT Security Testing Guide](https://owasp.org/www-project-iot-security-testing-guide/)
+
+---
+
+## Q62：MQTT QoS 1 可能重复投递，设备命令怎样做到业务幂等？
+
+**先背答案：** QoS 1 保证“至少一次”，ACK 丢失或重连时同一消息可能再次到达。每条命令要有业务唯一 `messageId`，消费端在执行副作用前原子记录处理状态；重复消息返回已知结果，而不是再次开锁、扣费或重启设备。
+
+**状态设计：**
+
+```text
+received -> processing -> succeeded
+                     \-> failed_retryable
+                     \-> failed_final
+```
+
+- 唯一键至少包含设备范围和 `messageId`，防止不同设备互相冲突。
+- `processing` 要有租约或超时恢复，避免消费者崩溃后永久卡住。
+- `succeeded` 保存必要的结果摘要，重复命令可返回同一结果。
+- 是否允许重试由命令语义决定；“设置温度为 25℃”比“温度增加 1℃”更容易幂等。
+
+**为什么只用 Redis `SET NX` 还不够：** 拿到去重键后，设备操作或数据库提交仍可能失败；TTL 过短又会让迟到的重复消息再次执行。关键命令应把唯一约束、业务状态和结果持久化在可靠存储中，Redis 可作为加速而不是唯一事实来源。
+
+**验证方法：** 对同一 `messageId` 并发投递、ACK 丢失后重投、处理到一半进程退出、超时后迟到成功、超过去重保留期五种场景做测试。最终业务副作用只能发生一次，且每次重复都能查到一致状态。
+
+**继续追问：QoS 2 是否就不需要业务幂等？**
+
+答：仍需要。QoS 2 约束 MQTT 客户端与 Broker 的协议投递；业务服务重试、跨系统调用或设备自身重启仍可能重复执行。协议“恰好一次”不能自动变成端到端业务“恰好一次”。
+
+**参考来源：**
+
+- [OASIS：MQTT Version 5.0 - QoS](https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html#_Toc3901234)
+- [Microsoft Azure Architecture Center：Idempotent Consumer pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/idempotent-consumer)
 
 ---
 
@@ -1676,19 +1809,30 @@ LIMIT 20;
 
 ---
 
-## Q67：最左前缀和范围查询对联合索引有什么影响？
+## Q67：怎样用真实查询和 `EXPLAIN` 验证联合索引，而不是背最左前缀？
 
-**先背答案：** 联合索引按定义顺序使用，查询通常要从最左列开始连续利用。例如索引 `(user_id, status, created_at)`，有 `user_id` 能有效定位，有 `user_id + status` 更精确；只按 `status` 通常无法高效使用该索引。遇到范围条件后，后续列通常不能再用于精确定位，但仍可能用于覆盖索引或索引下推，必须以 `EXPLAIN` 验证。
+**先背答案：** 从线上慢查询的 `WHERE`、`JOIN`、排序和返回列出发设计候选索引，再用 `EXPLAIN` 和相同数据分布验证。规则只用于提出假设；优化是否成立要看扫描行数、访问类型、实际耗时、回表成本和写入代价。
 
-**关键词翻译：**
+**示例：** 对查询 `WHERE tenant_id=? AND status=? AND created_at>=? ORDER BY created_at DESC LIMIT 20`，候选索引可从 `(tenant_id, status, created_at)` 开始，因为前两列等值过滤，时间列同时用于范围和排序。若系统还有大量只按 `status` 查询，不能假设这个索引同样高效，应单独查看执行计划和选择性。
 
-- **覆盖索引**：查询所需字段都在索引里，数据库不用再回主键索引/数据页取完整行。
-- **回表**：先从二级索引找到主键，再根据主键取完整数据行。
-- **索引下推**：存储引擎在扫描索引时就提前过滤部分条件，减少回表；不是所有数据库/场景表现相同。
+**验证步骤：**
 
-**继续追问：为什么范围后通常不能继续精确定位？**
+1. 保存 SQL、参数、表行数和字段分布，避免只对一组理想数据测试。
+2. 记录改索引前的执行计划、扫描行数、排序方式和端到端耗时。
+3. 建立候选索引后重新分析统计信息，再比较计划和 P95/P99。
+4. 同时观察索引体积、写入耗时和重复索引，防止用读优化换来不可接受的写放大。
+5. 在预生产或影子流量验证后再上线，并准备回滚。
 
-答：B+ 树在范围字段处已经是多个连续值，例如一个月内很多 `created_at`；后续字段在每个时间点下的分布不是一个单独连续区间，无法像前面的等值条件那样一次锁定一个小范围。
+**继续追问：`EXPLAIN` 显示用了索引，为什么查询仍可能慢？**
+
+答：索引可能只过滤了很少数据，仍扫描大量记录；也可能发生大量回表、排序、锁等待或结果传输。`key` 非空只说明优化器选择了索引，不代表代价已经可接受。
+
+**可验证边界：** 没有执行计划、数据规模和改动前后指标时，只能说“提出了索引方案”，不能声称已经完成 SQL 优化。联合索引基础概念统一到《数据库与缓存》题库。
+
+**参考来源：**
+
+- [MySQL Reference Manual：Multiple-Column Indexes](https://dev.mysql.com/doc/refman/8.4/en/multiple-column-indexes.html)
+- [MySQL Reference Manual：EXPLAIN Statement](https://dev.mysql.com/doc/refman/8.4/en/explain.html)
 
 ---
 
@@ -1720,52 +1864,58 @@ LIMIT 20;
 
 ---
 
-## Q69：TCP 和 UDP 有什么区别？
+## Q69：浏览器报 `ERR_CONNECTION_CLOSED`，怎样分层定位而不是只说“网络问题”？
 
-**先背答案：** TCP 面向连接，提供可靠、有序的字节流，并有流量控制和拥塞控制；UDP 无连接、面向数据报，不保证到达、顺序或不重复，但头部开销小、时延低。HTTP/1.1 和 HTTP/2 常跑在 TCP 上；QUIC/HTTP/3 建在 UDP 之上，但自己在用户态实现可靠性和拥塞控制。
+**先背答案：** 先确定请求到达了哪一层：DNS 是否得到预期地址，目标端口能否建立 TCP，TLS 是否完成，反向代理是否收到请求，应用进程是否监听并返回。每层用自己的证据验证，不能因为能 `ping` 就认为 HTTPS 服务可用。
 
-**关键词翻译：**
+**排查顺序：**
 
-- **面向连接**：通信前先完成握手建立双方状态。
-- **字节流**：TCP 不保留应用消息边界，接收端可能一次读到半条或多条消息，应用协议自己划分边界。
-- **数据报**：UDP 一次发送对应一个报文边界，但报文可能丢失或乱序。
-- **流量控制**：避免发送方压垮接收方；**拥塞控制**：避免发送方压垮网络。
+1. **DNS**：查询域名当前 A/AAAA/CNAME，确认不是旧 IP 或失效 Tunnel 目标。
+2. **端口**：从外网测试 80/443 或实际端口能否连接，同时核对安全组和主机防火墙。
+3. **TLS**：查看证书域名、有效期、握手错误和 SNI；证书正确也不代表上游应用正常。
+4. **代理**：检查 Nginx/Cloudflare 是否命中正确站点、上游地址和超时配置，并用请求 ID 对齐访问/错误日志。
+5. **应用**：在服务器本机请求健康检查，确认进程监听地址、端口、依赖和数据库状态。
 
-**继续追问：UDP 不可靠为什么 HTTP/3 还用它？**
+**证据矩阵：** “本机健康检查成功、代理访问上游失败”指向代理到应用；“IP 可连但域名失败”优先查 DNS/TLS；“Cloudflare 1033”表示配置到 Tunnel 的主机名无法找到健康连接器，不应继续修改前端代码。
 
-答：QUIC 不直接裸用 UDP 的不可靠语义，而是在 UDP 之上实现重传、加密、流控等，同时避免 TCP 在多路复用下某个包丢失阻塞所有流的问题。
+**继续追问：为什么 `ping` 通仍可能打不开网页？**
 
-**学习示例：服务端 UDP 保留消息边界，TCP 不保留。** 前端业务通常不直接写这一层；下面是 Node 的概念演示。
+答：`ping` 使用 ICMP，网页通常需要 DNS、TCP/QUIC、TLS、HTTP、反向代理和应用共同成功。ICMP 可达只证明一种网络报文得到响应，不能证明 443 端口或应用进程可用。
 
-```ts
-import dgram from 'node:dgram'
+**可验证边界：** 报告故障时应附时间、请求域名、外网端口结果、TLS 结果、代理日志和本机健康检查，不以“刷新后好了”作为根因结论。TCP/UDP 的概念基础统一到《网络与部署》题库。
 
-const udp = dgram.createSocket('udp4')
-udp.on('message', (message, rinfo) => {
-  console.log(`收到一整个 UDP 数据报: ${message.length} bytes`, rinfo.port)
-})
-udp.bind(41234)
-```
+**参考来源：**
 
-TCP 的 `socket.on('data')` 不能假设“一次 data 回调就是一条业务消息”：一次回调可能只有半条 JSON，也可能拼了多条。这正是 Q78 中 SSE 前端必须维护 `buffer` 的同类问题。
+- [Chrome DevTools：Network features reference](https://developer.chrome.com/docs/devtools/network/reference/)
+- [Cloudflare：Error 1033](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1033/)
 
 ---
 
-## Q70：TCP 为什么可靠？三次握手、四次挥手分别做什么？
+## Q70：为什么“部署成功一次”不等于网站可以持续访问？
 
-**先背答案：** TCP 用序列号、确认 ACK、超时重传、校验、滑动窗口和拥塞控制，让丢失、乱序和重复的数据能够被发现并处理。建立连接时客户端发 SYN，服务端回 SYN+ACK，客户端回 ACK，双方确认收发能力和初始序列号；关闭时双方发送方向独立，一方 FIN 后另一方先 ACK，等自己数据发完再 FIN，因此常见四次挥手。
+**先背答案：** 一次访问成功只证明当时整条链路可用。持续可访问还要求应用随服务器启动、崩溃后受控重启、代理配置持久化、证书和域名持续有效、数据可恢复，并由外部监测及时发现故障。
 
-**关键词翻译：**
+**最小可用性闭环：**
 
-- **SYN**：请求建立连接的标志；**ACK**：确认收到了某个序列范围；**FIN**：本端不再发送数据。
-- **滑动窗口**：接收方告诉发送方自己还能接收多少数据，发送方不用每发一个字节就等待一次确认。
-- **TIME_WAIT**：主动关闭方等待一段时间，确保最后 ACK 可重发，也避免旧报文影响新连接。
+- **进程**：由 systemd、容器编排或等价机制托管，设置健康检查、重启策略和资源上限；不依赖开发终端一直开着。
+- **入口**：Nginx/网关配置纳入版本管理并做语法检查，安全组只开放必要端口。
+- **域名与证书**：记录 DNS/Tunnel 的所有权、续期方式和到期告警；备用 IP 入口也要明确是否支持 HTTPS。
+- **数据**：数据库和上传目录有一致性备份、恢复步骤与最近一次演练记录。
+- **监测**：从服务器外部请求页面和健康接口，记录可用率、证书剩余时间和错误码。
 
-![TCP 建连、数据传输与 TLS 握手之间的时序关系](/content/diagrams/network-deployment/tcp-tls-handshake-v1.svg "TCP 负责可靠连接，TLS 在其上建立加密会话")
+**发布验证：** 重启应用、重启服务器、切断并恢复上游依赖、部署坏版本再回滚；每次都确认静态页面、API、登录和关键数据，而不是只看首页返回 200。若依赖 Tunnel，还要验证连接器服务能自动启动，并保留直连或静态降级的明确边界。
 
-**继续追问：可靠是否代表绝不丢包？**
+**继续追问：设置 `Restart=always` 就够了吗？**
 
-答：不是。网络仍会丢包；TCP 的可靠是它能通过编号、确认和重传发现并恢复，最终按序把数据交给应用，或明确报错/超时。
+答：不够。程序如果因错误配置反复崩溃，会形成重启循环；数据库损坏或上游不可达时，盲目重启也不能恢复。需要启动频率限制、就绪/存活检查、日志、告警和可回滚版本共同工作。
+
+**可验证边界：** 没有外部监测和恢复演练时，只能说“已部署”，不能说“高可用”或“生产级”。TCP 可靠性、握手和挥手统一到《网络与部署》题库。
+
+**参考来源：**
+
+- [systemd：systemd.service](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html)
+- [NGINX：Controlling NGINX](https://nginx.org/en/docs/control.html)
+- [Cloudflare Tunnel：Run as a service](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/configure-tunnels/local-management/as-a-service/)
 
 ---
 
@@ -1843,13 +1993,24 @@ server {
 **学习示例：微信小程序 BLE 连接和订阅通知。** UUID 必须来自设备协议，下面的值只是结构示意；调用前需要初始化蓝牙适配器并处理用户授权、机型兼容和超时。
 
 ```ts
-async function connectAndSubscribe(deviceId: string) {
+async function connectAndSubscribe(
+  deviceId: string,
+  protocol: { serviceUuid: string; notifyCharacteristicUuid: string },
+) {
   await wx.createBLEConnection({ deviceId })
   const services = await wx.getBLEDeviceServices({ deviceId })
-  const serviceId = services.services[0].uuid
+  const service = services.services.find(
+    item => item.uuid.toUpperCase() === protocol.serviceUuid.toUpperCase(),
+  )
+  if (!service) throw new Error('未发现设备协议声明的 service')
+
+  const serviceId = service.uuid
   const chars = await wx.getBLEDeviceCharacteristics({ deviceId, serviceId })
-  const notifyChar = chars.characteristics.find(item => item.properties.notify)
-  if (!notifyChar) throw new Error('设备未提供 notify 特征值')
+  const notifyChar = chars.characteristics.find(item =>
+    item.uuid.toUpperCase() === protocol.notifyCharacteristicUuid.toUpperCase()
+    && item.properties.notify
+  )
+  if (!notifyChar) throw new Error('未发现设备协议声明的 notify characteristic')
 
   await wx.notifyBLECharacteristicValueChange({
     deviceId,
@@ -1962,7 +2123,7 @@ def refresh_source_chunks(conn, source_id: int):
 
 **先背答案：** `content_hash` 是内容的固定指纹。当前项目对每个 chunk 的 UTF-8 文本计算 SHA-256，写入 `content_hash` 字段，用于标识内容版本和为后续增量更新留接口；但它**不是当前数据库的去重约束**。当前真正的唯一约束是 `(source_id, chunk_index)`，所以同样内容来自不同资料，仍然可以同时入库。
 
-**技术原理：** SHA-256 会把任意长度的输入映射成固定长度的 64 位十六进制字符串。输入只改一个字符，结果通常完全不同；它不可逆，不能从 hash 还原原文。
+**技术原理：** SHA-256 会把任意长度的输入映射为 256 bit 的摘要，通常写成 64 个十六进制字符。输入只改一个字符，结果通常完全不同；它不可逆，不能从 hash 还原原文。
 
 ```python
 import hashlib
@@ -2016,53 +2177,39 @@ ON context_pack_source_chunks (content_hash, embedding_model);
 
 ---
 
-## Q75：Embedding 为什么要记录模型、维度和索引状态？模型切换后为什么要重建？
+## Q75：Embedding 模型切换怎样做到可回滚、不中断检索？
 
-**先背答案：** Embedding 是把文本映射为固定维度的浮点向量。向量只有在同一语义空间里才能比较余弦相似度，所以每条 chunk 都要记录 `embedding_provider`、`embedding_model`、`embedding_dimension` 和 `embedded_at`。切换模型后，旧向量和新问题向量可能维度不同，或者虽然维度相同但语义坐标系不同，因此必须重建索引；当前项目在索引不匹配时回退关键词检索，而不是强行混用。
+**先背答案：** 不在原索引上直接覆盖。为新模型建立独立索引版本，后台分批补建并记录成功、失败和待处理数量；用固定评测集验收后再切换读取版本。切换期间旧索引继续服务，失败可立即回滚；新旧模型的向量绝不混在同一次相似度计算中。
 
-**先理解“向量空间不能混用”：**
+**必须保存的版本信息：**
 
-```text
-模型 A: “供应商准入” -> [0.12, -0.31, ...]  # 假设 1024 维
-模型 B: “供应商准入” -> [0.67,  0.08, ...]  # 假设 1536 维
-```
+- provider、模型名和模型版本；
+- 向量维度、距离算法和必要的归一化方式；
+- 文本切块版本、内容 hash 和生成时间；
+- 索引版本以及 `pending / building / ready / active / retired / failed` 状态。
 
-即使两个模型碰巧都是 1024 维，坐标轴含义也不是同一套；把 A 的资料向量和 B 的问题向量做余弦相似度没有可靠业务含义。
+维度相同也不代表语义空间相同，因此判断兼容性不能只比较数组长度。
 
-**项目当前写入逻辑：**
+**迁移流程：**
 
-```python
-vector = create_embedding(chunk["content"], embedding_config)
-repo.update_chunk_embedding(
-    conn,
-    chunk_id=chunk["id"],
-    vector=serialize_embedding(vector),
-    provider=embedding_config["provider"],
-    model=embedding_config["model"],
-    dimension=len(vector),
-)
-```
+1. 冻结旧索引配置并创建新版本，新增文档在迁移期按明确策略双写或进入待补队列。
+2. 按批次补建，限制并发与费用；失败记录原因和重试次数，不把“有向量”误当作“属于当前模型”。
+3. 对新旧索引运行同一批问题，比较 Recall@K、引用支持率、延迟和成本。
+4. 达到预先定义的验收线后，小流量切换读取版本；持续观察错误和降级比例。
+5. 全量稳定后再把旧版本标为 retired，保留回滚窗口，最后按策略清理。
 
-**项目当前检索保护：**
+**查询保护：** 请求只能选择一个 `active_index_version`。若该版本未 ready、维度不符或服务失败，就返回明确的关键词降级模式及原因，而不是挑库里任意一条向量继续计算。
 
-```python
-query_embedding = create_embedding(query, embedding_config)
-expected_dimension = int(reference_chunk["embedding_dimension"] or 0)
+**继续追问：服务恢复与索引迁移完成有什么区别？**
 
-if expected_dimension and len(query_embedding) != expected_dimension:
-    # 不混用维度不同的向量，改走关键词检索
-    return keyword_fallback(reason="embedding_dimension_mismatch")
-```
+答：服务恢复只说明现在能生成向量；故障期间新增的数据仍可能缺索引。只有待补数量归零、失败任务得到处理、评测通过并完成读取切换，迁移才算结束。
 
-**面试官追问：模型变更后，怎样知道哪些向量过期？**
+**可验证边界：** 若项目当前只实现“记录模型/维度并在不匹配时回退关键词”，就只陈述这部分；双写、灰度、队列和自动回滚属于后续设计，除非代码、任务状态与测试确实存在。Embedding 概念与误召回原因见 Q18，本题不再复述。
 
-答：索引状态不能只看“有没有 embedding”，还要看 `embedding_model` 是否等于当前激活模型，以及 dimension 是否符合当前模型输出。当前项目会统计当前模型下已生成、待生成和过期的 chunk；重建时对当前模型已存在的向量可跳过，`force` 模式才强制重新生成。
+**参考来源：**
 
-**面试官追问：Embedding API 挂了，系统应该怎样降级？**
-
-答：当前项目的降级路径是保留关键词检索：没有有效配置、当前模型没有已索引向量、请求失败或维度不匹配时，返回 `retrieval_mode=keyword` 及原因。这样回答质量可能下降，但功能不会完全不可用。生产上还会加重试、限流、异步队列、告警和缓存，不过这些不属于当前项目已实现能力。
-
-**容易露馅的点：** 不能说“把向量放在 Redis 里做向量检索”。当前实现把向量 JSON 存在 MySQL 的 chunk 表中，在应用内遍历候选块计算余弦相似度，适合小规模 MVP，不是专用向量数据库的 ANN 检索。
+- [Google Machine Learning：Embeddings](https://developers.google.com/machine-learning/crash-course/embeddings)
+- [Google Cloud：Manage indexes](https://cloud.google.com/vertex-ai/docs/vector-search/update-rebuild-index)
 
 ---
 
@@ -2272,7 +2419,7 @@ function parseSseChunk(chunk: string, handlers: AIStreamHandlers) {
 
 ## Q79：为什么把后端拆成 routes / services / repositories / db schema？实际请求怎样流转？
 
-**先背答案：** 这个拆分不是为了“文件多”，而是把 HTTP 协议、业务编排和数据访问分开。当前 AI 流式请求大致走 `routes/ai.py -> ai_rag_service.py / context_pack_service.py -> context_pack_repo.py -> schema.py`：路由做鉴权和入参/响应，service 决定检索、降级、Prompt 和索引策略，repository 只执行 SQL 并映射数据，schema 维护表结构和索引。
+**先背答案：** 这个拆分不是为了“文件多”，而是把 HTTP 协议、业务编排和数据访问分开。当前 AI 流式请求大致走 `routes/ai.py -> ai_rag_service.py / context_pack_service.py -> context_pack_repo.py -> MySQL`：路由做鉴权和入参/响应，service 决定检索、降级、Prompt 和索引策略，repository 执行 SQL 并映射数据。`schema.py` 负责启动或迁移阶段的表结构与索引，不参与每次业务请求。
 
 **以“用户发起 AI 对话”为例：**
 

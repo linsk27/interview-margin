@@ -82,7 +82,7 @@ export const JAVA_FOUNDATION_V2_MODERN = {
     }, GUIDE.concurrent02, OFFICIAL.copyOnWriteArrayList),
     withSources({
       title: '进阶：AQS 的核心思想是什么？',
-      summary: '这是并发原理进阶题。AQS 让子类定义同步状态的获取与释放规则，由框架统一处理等待队列、阻塞唤醒以及独占或共享传播。',
+      summary: 'AQS（AbstractQueuedSynchronizer）可以理解为实现锁和同步器的通用骨架。具体同步器只定义“什么时候能取得或释放状态”，AQS 统一负责让失败线程排队、阻塞、被唤醒，并处理独占或共享获取；ReentrantLock、Semaphore 等因此能复用同一套排队机制。',
       mechanism: '回答 AQS 可以沿“state—队列—模板方法”展开：\n- 一个 volatile int state 表示同步状态，子类通过 getState、setState 和 CAS 修改它。\n- 获取失败的线程进入 FIFO 风格的 CLH 等待队列，后继线程在合适条件下被挂起和唤醒。\n- 独占模式同一时刻只允许一个持有者，共享模式可让多个线程同时成功并向后传播。\n- 子类实现 tryAcquire、tryRelease 或共享版本，AQS 的 final 模板方法处理排队、取消与中断。\n- ConditionObject 使用独立条件队列；await 先释放同步状态，signal 只把节点转移到同步队列，重新竞争成功后才能继续。',
       example: 'ReentrantLock、Semaphore、CountDownLatch 都可借助 AQS，但 state 语义不同：锁可表示重入次数，信号量表示许可数，倒计时器表示剩余计数。业务代码通常使用这些成熟同步器，而不是直接继承 AQS。',
       followUps: [
@@ -104,7 +104,7 @@ export const JAVA_FOUNDATION_V2_MODERN = {
     }, GUIDE.concurrent03, OFFICIAL.completableFuture),
     withSources({
       title: '进阶：JVM 解释执行和 JIT 编译是怎样配合的？',
-      summary: '这是 JVM 执行引擎进阶题。HotSpot 通常先解释执行字节码，再依据运行时画像把热点代码编译为优化机器码；假设失效时还可能去优化并回退。',
+      summary: 'JVM 启动时可以先逐条解释字节码，让程序快速开始运行；当某段代码被反复执行成为热点后，JIT（即时编译器）再把它编译成更快的机器码。编译优化依赖运行时观察到的类型等假设，假设失效时 JVM 会撤销部分优化并回到更通用的执行方式。',
       mechanism: '从启动到峰值性能可以分层理解：\n- class 字节码由 JVM 执行，解释器启动快并收集调用次数、分支和类型等运行时信息。\n- 热点代码达到阈值后进入即时编译，分层编译在较快的 C1 与更激进的 C2 优化之间平衡启动和吞吐。\n- JIT 可做内联、逃逸分析、标量替换和锁消除等优化；这些依赖真实调用分布，而非只看源码。\n- 基于“某调用点只有一种实现”等假设生成的代码，会保留守卫；类加载或类型分布改变时可能触发去优化。\n- 冷代码未必值得编译，短生命周期应用也可能还未充分预热就结束。',
       example: '基准测试若只运行一次，测到的主要是类加载、解释执行和编译预热，不代表稳态吞吐。应使用 JMH 处理预热、迭代和防止无用代码消除；线上则结合 JFR、编译日志和延迟分位数判断是否真是 JIT 问题。',
       followUps: [

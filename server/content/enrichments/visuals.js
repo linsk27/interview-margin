@@ -2,7 +2,7 @@ const VISUALS = new Map([
   ['javascript:12', {
     src: '/content/diagrams/javascript/type-coercion-v1.svg',
     alt: '宽松相等比较中的 JavaScript 类型转换步骤图',
-    caption: '先做 ToPrimitive 与数值转换，再比较最终值；不要凭表面类型猜结果。',
+    caption: 'false 先转为 0，空数组再经 ToPrimitive 和 ToNumber 转为 0；这与 if ([]) 的 ToBoolean 不是同一套规则。',
   }],
   ['javascript:48', {
     src: '/content/diagrams/javascript/prototype-chain-v1.svg',

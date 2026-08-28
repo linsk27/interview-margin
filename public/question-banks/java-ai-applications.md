@@ -413,7 +413,9 @@ Top P 是核采样阈值：模型按概率从高到低保留累计概率达到�
 
 **短回答：**
 
-MCP（Model Context Protocol）是 AI 应用连接外部上下文与能力的开放协议，统一资源、Prompt 和工具的发现与调用方式。工具调用是模型生成“调用哪个工具及参数”的能力；MCP 负责 Host 与外部 Server 怎样交换能力和结果，两者处在不同层。
+MCP（Model Context Protocol）是 AI 应用连接外部上下文与能力的开放协议，统一资源、Prompt 和工具的发现与调用方式。
+
+- 工具调用是模型生成“调用哪个工具及参数”的能力；MCP 负责 Host 与外部 Server 怎样交换能力和结果，两者处在不同层。
 
 **原理：**
 
@@ -579,7 +581,7 @@ Top K 决定候选数量，阈值过滤低相关候选；二者需要基于标�
 
 **短回答：**
 
-混合检索把向量语义召回与关键词检索组合起来，兼顾同义表达和精确术语、编号、错误码。各通道结果需要归一化、融合、去重，再进入重排。
+混合检索把向量语义召回与关键词检索组合起来，兼顾同义表达和精确术语、编号、错误码。两路结果要先融合和去重：按原始分数加权时必须先校准或归一化，使用 RRF 这类排名融合时则直接比较名次，不需要把原始分数硬凑到同一尺度。
 
 **原理：**
 
@@ -1121,7 +1123,9 @@ RAG 助手的 600 条样本含普通制度问答、无依据问题、过期版�
 
 **短回答：**
 
-选型看团队栈、所需抽象和退出成本。Spring AI 更贴近 Spring 生态与 Advisor、可观测体系；LangChain4j 的 AI Services、RAG 和工具抽象直接。框架不会替代业务治理。
+两者都是帮助 Java 应用接入模型、检索和工具的框架。
+
+- Spring AI 更容易融入现有 Spring 配置、监控和中间件；LangChain4j 更强调用 Java 接口快速描述 AI 服务。先按团队技术栈和必需能力做小型验证，再比较迁移成本；框架只能减少接线代码，不能替代权限、评测和故障治理。
 
 **原理：**
 
@@ -1249,7 +1253,7 @@ PostgreSQL 保存文档版本、ACL、会话和 Agent step，pgvector 表保存�
 
 **短回答：**
 
-ChatModel 负责模型请求与响应；ChatClient 在其上组合消息、参数、Advisor 和工具。业务层宜依赖自有用例接口，框架类型留在适配层。
+ChatModel 是直接调用某个模型的底层接口；ChatClient 是面向业务调用的组装器，在前者之上统一加入消息、参数、请求拦截器（Advisor）和工具。业务代码最好依赖自己的“回答问题”等用例接口，把这些框架类型留在接入层，方便测试和更换供应商。
 
 **原理：**
 
@@ -1291,7 +1295,7 @@ ChatModel 负责模型请求与响应；ChatClient 在其上组合消息、参�
 
 **短回答：**
 
-Advisor 是 ChatClient 前后的拦截链，可改写请求并处理响应。顺序决定后续节点看到的上下文及返回次序，应显式配置 order，并分别测试同步、流式链路。
+Advisor 可以理解为 AI 请求的中间件：发送前可加入记忆、检索资料或监控信息，返回后可记录指标和整理结果。多个 Advisor 会按顺序包裹执行，因此先后次序会改变后续节点看到的内容；顺序必须显式配置，并分别测试普通响应和流式响应。
 
 **原理：**
 
@@ -1333,7 +1337,9 @@ Advisor 是 ChatClient 前后的拦截链，可改写请求并处理响应。顺
 
 **短回答：**
 
-ToolCallback 用定义对象声明工具和输入 schema，以 call 接收参数并返回字符串。ChatClient 可直接注册或按名称解析；流式调用不会让回调自动异步。
+ToolCallback 是模型工具名与真实 Java 实现之间的回调接口：它先声明工具用途和参数结构，模型提出调用后，应用校验参数并执行 callback，再把结果交回模型。
+
+- ChatClient 可以直接注册实现或按名称查找；即使模型回答是流式的，耗时回调也不会自动变成非阻塞任务。
 
 **原理：**
 
@@ -1344,7 +1350,9 @@ ToolCallback 用定义对象声明工具和输入 schema，以 call 接收参数
 
 **代码 / 场景：**
 
-天气工具用 record WeatherRequest(String city) 生成输入 schema，以 FunctionToolCallback 注册为 weatherNow。ChatClient 通过 toolNames("weatherNow") 交给 resolver 查找；模型发出 {"city":"杭州"} 后，callback 返回 JSON 字符串，框架再发起下一轮模型调用生成自然语言答案。
+天气工具用 record WeatherRequest(String city) 生成输入 schema，以 FunctionToolCallback 注册为 weatherNow。ChatClient 通过 toolNames("weatherNow") 交给 resolver 查找；
+
+模型发出 {"city":"杭州"} 后，callback 返回 JSON 字符串，框架再发起下一轮模型调用生成自然语言答案。
 
 **递进追问：**
 
@@ -1374,7 +1382,9 @@ ToolCallback 用定义对象声明工具和输入 schema，以 call 接收参数
 
 **短回答：**
 
-VectorStore 负责文档写入、删除和相似度检索；SearchRequest 承载 query、topK、阈值和过滤表达式。字段支持、索引要求与性能仍取决于具体适配器。
+VectorStore 是保存文档语义向量并搜索相似内容的统一接口；
+
+- SearchRequest 是一次搜索的条件单，包含问题、候选数量、最低相似度和租户等元数据过滤。过滤应在搜索候选时完成，避免先召回无权限资料再在 Java 中删除；实际字段和索引仍要按所选数据库验证。
 
 **原理：**
 
@@ -1385,7 +1395,11 @@ VectorStore 负责文档写入、删除和相似度检索；SearchRequest 承载
 
 **代码 / 场景：**
 
-Document metadata 保存 tenantId、department 和 version。查询用 SearchRequest.builder().query(question).topK(8).similarityThreshold(0.72).filterExpression("tenantId == 't-42' && version == 7").build()；在 pgvector 与 Elasticsearch 适配器上分别验证字段类型、索引配置和空结果行为。
+Document metadata 保存 tenantId、department 和 version。
+
+查询用 SearchRequest.builder().query(question).topK(8).similarityThreshold(0.72).filterExpression("tenantId == 't-42' && version == 7").build()；
+
+在 pgvector 与 Elasticsearch 适配器上分别验证字段类型、索引配置和空结果行为。
 
 **递进追问：**
 

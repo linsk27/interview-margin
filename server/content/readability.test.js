@@ -21,7 +21,7 @@ describe('question readability normalization', () => {
   it('splits long mechanism prose without changing code fences or authored lists', () => {
     const source = `**原理：**
 
-第一层负责收集输入并建立稳定边界，避免调用方直接依赖内部结构和临时字段。第二层根据明确规则转换数据，并记录足够的上下文用于定位失败步骤和重放问题。第三层只提交已经校验的结果，任何中间失败都保留原状态并返回可理解的原因。最后通过指标、日志和回归测试验证完整链路，确认同一输入可以稳定复现，而不是凭感觉判断成功。
+第一层负责收集输入并建立稳定边界，避免调用方直接依赖内部结构和临时字段。第二层根据明确规则转换数据，并记录足够的上下文用于定位失败步骤和重放问题。第三层只提交已经校验的结果，任何中间失败都保留原状态并返回可理解的原因。第四层限制外部副作用并记录唯一标识，保证请求重放时不会重复写入。第五层根据失败类型选择重试、补偿或人工处理，不能把所有异常都无限重试。第六层明确每一步的超时与取消信号，避免上游退出后后台任务继续占用资源。最后通过指标、日志和回归测试验证完整链路，确认同一输入可以稳定复现，而不是凭感觉判断成功。
 
 - 已有列表保持原样。
 
@@ -30,7 +30,8 @@ const value = object.method()
 ~~~`
 
     const result = normalizeReadableQuestionBody(source)
-    expect(result.split('\n\n').length).toBeGreaterThanOrEqual(4)
+    expect(result).toContain('\n- 第一层负责收集输入并建立稳定边界')
+    expect(result.match(/^-/gm)?.length).toBeGreaterThanOrEqual(3)
     expect(result).toContain('- 已有列表保持原样。')
     expect(result).toContain('~~~ts\nconst value = object.method()\n~~~')
     expect(denseProseBlocks(result)).toEqual([])

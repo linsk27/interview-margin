@@ -1,4 +1,5 @@
 import { isConclusionOnlyDecisionAnswer } from '../answer-quality.js'
+import { normalizeReadableQuestionBody } from '../readability.js'
 
 const DEFAULT_VERIFIED_AT = '2026-07-20'
 
@@ -99,7 +100,7 @@ export function formatEnrichedBody({
   const visualMarkdown = visual
     ? `\n\n![${visual.alt}](${visual.src} "${visual.caption}")`
     : ''
-  return `**短回答：**
+  const body = `**短回答：**
 
 ${summary.trim()}
 
@@ -122,6 +123,7 @@ ${pitfalls.map((item) => `- ${item.trim()}`).join('\n')}
 **参考来源：**
 
 ${renderSources(sources, verifiedAt)}`
+  return normalizeReadableQuestionBody(body)
 }
 
 export function enrichmentTextLength(value) {

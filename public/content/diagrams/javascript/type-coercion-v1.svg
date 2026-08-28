@@ -1,55 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
-  <title id="title">JavaScript 类型转换决策图</title>
-  <desc id="desc">展示运算符如何根据操作数选择 ToPrimitive、ToNumber、ToString 和 ToBoolean 抽象操作。</desc>
+  <title id="title">JavaScript 宽松相等比较的类型转换</title>
+  <desc id="desc">逐步展示空数组与 false 宽松相等时，false 转为数字、空数组转为空字符串后再转为数字的过程，并区分条件判断的 ToBoolean。</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#eef2ff"/></linearGradient>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#475569"/></marker>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#475569"/></marker>
   </defs>
   <rect width="1200" height="720" rx="28" fill="url(#bg)"/>
-  <text x="64" y="62" font-family="Inter, Noto Sans SC, sans-serif" font-size="34" font-weight="700" fill="#0f172a">JavaScript 类型转换：先看运算符，再走抽象操作</text>
-  <text x="64" y="94" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#64748b">隐式转换不是“随机规则”，而是一条可追踪的规范决策链</text>
+  <text x="64" y="62" font-family="Inter, Noto Sans SC, sans-serif" font-size="34" font-weight="700" fill="#0f172a">[] == false 为什么是 true？</text>
+  <text x="64" y="96" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#64748b">跟着宽松相等规则逐步转换，不要把它与 if 的真假判断混在一起</text>
 
-  <rect x="64" y="132" width="230" height="92" rx="18" fill="#0f172a"/>
-  <text x="179" y="168" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#cbd5e1">表达式输入</text>
-  <text x="179" y="199" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="24" font-weight="600" fill="#fff">left  op  right</text>
+  <rect x="64" y="134" width="300" height="112" rx="18" fill="#0f172a"/>
+  <text x="92" y="170" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#93c5fd">① 先看两侧类型</text>
+  <text x="214" y="211" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="25" font-weight="700" fill="#fff">[]  ==  false</text>
+  <text x="214" y="234" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#cbd5e1">Object 与 Boolean</text>
 
-  <rect x="372" y="132" width="306" height="92" rx="18" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
-  <text x="525" y="168" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#1e40af">① 运算符决定语义</text>
-  <text x="525" y="199" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="21" font-weight="600" fill="#172554">+　==　&lt;　if (...)　模板字符串</text>
-  <path d="M294 178H360" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="450" y="134" width="300" height="112" rx="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+  <text x="478" y="170" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#92400e">② 布尔值先转数字</text>
+  <text x="600" y="211" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="25" font-weight="700" fill="#78350f">false  →  0</text>
+  <text x="600" y="234" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#92400e">IsLooselyEqual 的 Boolean 分支</text>
 
-  <rect x="756" y="132" width="380" height="92" rx="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-  <text x="946" y="168" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#92400e">② 对象先变成原始值</text>
-  <text x="946" y="199" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="20" font-weight="600" fill="#78350f">ToPrimitive(value, hint)</text>
-  <path d="M678 178H744" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="836" y="134" width="300" height="112" rx="18" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+  <text x="864" y="170" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#5b21b6">③ 对象转原始值</text>
+  <text x="986" y="211" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="25" font-weight="700" fill="#4c1d95">[]  →  ''</text>
+  <text x="986" y="234" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#6d28d9">ToPrimitive：valueOf → toString</text>
 
-  <rect x="64" y="282" width="320" height="196" rx="20" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
-  <circle cx="102" cy="322" r="18" fill="#2563eb"/><text x="102" y="329" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#fff">A</text>
-  <text x="132" y="330" font-family="Inter, Noto Sans SC, sans-serif" font-size="24" font-weight="700" fill="#0f172a">数值上下文</text>
-  <text x="94" y="373" font-family="IBM Plex Mono, monospace" font-size="20" fill="#1d4ed8">ToNumber(x)</text>
-  <text x="94" y="406" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#475569">- ×、÷、一元 +、关系比较常进入此路</text>
-  <text x="94" y="439" font-family="IBM Plex Mono, monospace" font-size="18" fill="#0f172a">Number('') → 0　 Number('x') → NaN</text>
+  <path d="M364 190H438" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M750 190H824" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M986 246V296" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
 
-  <rect x="440" y="282" width="320" height="196" rx="20" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
-  <circle cx="478" cy="322" r="18" fill="#7c3aed"/><text x="478" y="329" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#fff">B</text>
-  <text x="508" y="330" font-family="Inter, Noto Sans SC, sans-serif" font-size="24" font-weight="700" fill="#0f172a">字符串上下文</text>
-  <text x="470" y="373" font-family="IBM Plex Mono, monospace" font-size="20" fill="#6d28d9">ToString(x)</text>
-  <text x="470" y="406" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#475569">+ 任一原始值为字符串时执行拼接</text>
-  <text x="470" y="439" font-family="IBM Plex Mono, monospace" font-size="18" fill="#0f172a">1 + '2' → '12'　 `${null}` → 'null'</text>
+  <rect x="836" y="308" width="300" height="112" rx="18" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+  <text x="864" y="344" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#1e40af">④ 字符串与数字比较</text>
+  <text x="986" y="385" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="25" font-weight="700" fill="#172554">''  →  0</text>
+  <text x="986" y="408" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" fill="#1e40af">ToNumber('') 得到 +0</text>
 
-  <rect x="816" y="282" width="320" height="196" rx="20" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
-  <circle cx="854" cy="322" r="18" fill="#059669"/><text x="854" y="329" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#fff">C</text>
-  <text x="884" y="330" font-family="Inter, Noto Sans SC, sans-serif" font-size="24" font-weight="700" fill="#0f172a">布尔上下文</text>
-  <text x="846" y="373" font-family="IBM Plex Mono, monospace" font-size="20" fill="#047857">ToBoolean(x)</text>
-  <text x="846" y="406" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#475569">if、while、!、&amp;&amp;、|| 判断真值</text>
-  <text x="846" y="439" font-family="IBM Plex Mono, monospace" font-size="18" fill="#0f172a">false: 0, -0, '', null, undefined, NaN</text>
+  <rect x="450" y="308" width="300" height="112" rx="18" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="478" y="344" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#475569">⑤ 比较两个数值</text>
+  <text x="600" y="388" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="27" font-weight="700" fill="#0f172a">0  ==  0</text>
 
-  <path d="M525 224V248H224V270" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
-  <path d="M525 224V270" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
-  <path d="M525 224V248H976V270" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="64" y="308" width="300" height="112" rx="18" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
+  <text x="92" y="344" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#166534">⑥ 得到结果</text>
+  <text x="214" y="390" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="32" font-weight="700" fill="#14532d">true</text>
 
-  <rect x="64" y="526" width="1072" height="130" rx="20" fill="#0f172a"/>
-  <text x="94" y="566" font-family="Inter, Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#f8fafc">面试推导顺序</text>
-  <text x="94" y="604" font-family="Inter, Noto Sans SC, sans-serif" font-size="19" fill="#cbd5e1">① 写出操作数原始类型　→　② 对象执行 ToPrimitive　→　③ 按运算符选择 Number / String / Boolean　→　④ 再计算结果</text>
-  <text x="94" y="635" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#93c5fd">严格相等 === 不做类型转换；宽松相等 == 有独立的 Abstract Equality Comparison 规则，不能简化成“两边都转数字”。</text>
+  <path d="M836 364H762" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M450 364H376" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="64" y="474" width="1072" height="176" rx="20" fill="#0f172a"/>
+  <text x="94" y="516" font-family="Inter, Noto Sans SC, sans-serif" font-size="22" font-weight="700" fill="#fff">别混淆：宽松相等不是条件判断</text>
+  <text x="94" y="558" font-family="IBM Plex Mono, monospace" font-size="22" fill="#93c5fd">[] == false  →  true</text>
+  <text x="430" y="558" font-family="IBM Plex Mono, monospace" font-size="22" fill="#86efac">if ([])  →  true</text>
+  <text x="94" y="596" font-family="Inter, Noto Sans SC, sans-serif" font-size="18" fill="#cbd5e1">前者执行宽松相等转换；后者只对数组对象执行 ToBoolean，所有对象都是真值。</text>
+  <text x="94" y="630" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#fbbf24">JavaScript 假值：false、undefined、null、0、-0、0n、NaN 和空字符串 ''。</text>
 </svg>

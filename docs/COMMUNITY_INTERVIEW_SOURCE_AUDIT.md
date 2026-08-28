@@ -4,14 +4,14 @@
 
 > 社区帖子只用于确认“有人报告面试中出现过哪些技术主题”。题库答案不复用帖子回答，技术结论另由官方规范或项目文档校准。题目均已重新组织和改写，未复制面经正文。
 
-当前共收录 33 个可核验的面经页面。受登录墙或搜索屏蔽影响、无法读取正文的页面不进入题目来源。
+当前共收录 32 个可核验的面经页面。受登录墙或搜索屏蔽影响、无法读取正文的页面不进入题目来源。
 
 > 2026-08-06 使用账号已登录的小红书网页端复核了一篇公开 Java 后端高频清单，只记录反复出现的技术主题与笔记链接，不复制图片或正文答案。登录态搜索摘要、不可稳定打开的卡片仍不计入可核验来源；技术结论继续由官方文档校准。
 
 | 平台 | 来源 | 使用题库 | 关联题数 |
 | --- | --- | --- | ---: |
 | 牛客 | [Spring 单例 Bean 线程安全问答（牛客）](https://www.nowcoder.com/discuss/353149002420002816) | java-backend-interviews | 2 |
-| 牛客 | [20 篇 Java 后端面经汇总（牛客）](https://www.nowcoder.com/discuss/353155591071801344) | java-backend-interviews | 3 |
+| 牛客 | [20 篇 Java 后端面经汇总（牛客）](https://www.nowcoder.com/discuss/353155591071801344) | java-backend-interviews | 7 |
 | 牛客 | [阿里 MQ 可靠性三连问（牛客）](https://www.nowcoder.com/discuss/384032906283380736) | java-backend-interviews | 2 |
 | 牛客 | [OPPO Java 后端一二面复盘（牛客）](https://www.nowcoder.com/discuss/411933101142585344) | java-backend-interviews | 2 |
 | 牛客 | [阿里、腾讯、VIVO、OPPO Java 面经复盘（牛客）](https://www.nowcoder.com/discuss/422046) | java-backend-interviews | 3 |
@@ -42,7 +42,6 @@
 | 牛客 | [小红书 Java 后端岗位面经转载（牛客）](https://www.nowcoder.com/feed/main/detail/b9a57fd0856149ef87a55f80ade7f8fc) | java-backend-interviews | 7 |
 | 牛客 | [牛客：小红书 AI 应用前端一面复盘](https://www.nowcoder.com/feed/main/detail/cc1edc34eb4545b5a7438319b49e2b4e) | frontend-ai-interviews | 3 |
 | 牛客 | [牛客：小红书 AI 应用前端二面复盘](https://www.nowcoder.com/feed/main/detail/f6df782c2e3b4f689cbea1392139214a) | frontend-ai-interviews | 3 |
-| 小红书 | [Java 后端高频八股清单（小红书，2026-02-20）](https://www.xiaohongshu.com/explore/6997db890000000015023a49) | java-backend-interviews | 4 |
 
 ## Java 高频题库参考
 

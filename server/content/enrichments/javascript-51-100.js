@@ -291,7 +291,7 @@ export default [
     number: 67,
     title: 'Promise.all 中一个 Promise 拒绝会怎样？',
     mechanism: `Promise.all 返回的新 Promise 会在任一输入首先拒绝时立即以该原因拒绝，不再等待其他结果来决定外层状态；若全部兑现，则按输入迭代顺序返回值数组，而不是按完成顺序排列。所谓“快速失败”不等于取消：已启动的请求、定时器或计算仍会继续，除非任务本身支持 AbortSignal 等取消协议并由调用方主动触发。非 Promise 输入会按兑现值处理，空迭代对象返回一个已兑现的空数组 Promise。迭代、thenable 访问等过程自身抛错也会导致拒绝。`,
-    example: `fast 在十毫秒后拒绝，all 进入 catch 并输出 fail；slow 定时器仍继续运行并输出 slow finished，证明 Promise.all 不会自动取消其他任务。\n\n~~~js\nconst slow = new Promise((resolve) => setTimeout(() => {\n  console.log('slow finished')\n  resolve('slow')\n}, 50))\nconst fast = Promise.reject(new Error('fail'))\nPromise.all([slow, fast]).catch((error) => console.log(error.message))\n// fail\n// slow finished\n~~~`,
+    example: `fast 在 10 毫秒后拒绝，all 进入 catch 并输出 fail；slow 定时器仍继续运行并输出 slow finished，证明 Promise.all 不会自动取消其他任务。\n\n~~~js\nconst slow = new Promise((resolve) => setTimeout(() => {\n  console.log('slow finished')\n  resolve('slow')\n}, 50))\nconst fast = new Promise((_, reject) => {\n  setTimeout(() => reject(new Error('fail')), 10)\n})\nPromise.all([slow, fast]).catch((error) => console.log(error.message))\n// 10 ms 左右：fail\n// 50 ms 左右：slow finished\n~~~`,
     followUps: [
       { question: '如何在 Promise.all 失败后取消其余 fetch？', answer: `为相关 fetch 共享或分别传入 AbortController 的 signal，在 catch 或业务超时处调用 abort。取消是任务协议提供的能力，并非 Promise.all 自带。` },
       { question: '为什么结果数组仍按输入顺序排列？', answer: `all 为每个输入记录固定索引，某项兑现时把值写到对应位置；只有剩余计数归零才整体兑现，因此并发完成先后不会改变调用方预期的数据对应关系。` },
@@ -613,7 +613,7 @@ export default [
   },
   {
     number: 85,
-    title: 'typeof class User {} 的 User 是什么？',
+    title: '执行 `class User {}; typeof User` 会得到什么？',
     mechanism: `对已经完成声明初始化的 class User {} 执行 typeof User，结果是字符串 "function"。类在运行时由特殊的函数对象表示，具有 prototype，可作为 new 的构造目标；但它与传统 function 声明并不完全等同：类构造器不能不带 new 直接调用，类体代码按严格模式执行，类声明存在暂时性死区，且原型方法默认不可枚举。typeof 反映的是运行时可调用对象类别，不会告诉你这是 class 语法创建的，也不能据此断言它可像普通函数那样直接调用。检查类来源通常不应依赖 toString 文本。`,
     example: `typeof 输出 function，但 User() 直接调用会抛 TypeError；只有 new User() 才进行构造。这个对比说明 typeof 的粗粒度分类不会表达类的调用限制。\n\n~~~js\nclass User {}\nconsole.log(typeof User)       // 'function'\nconsole.log(new User() instanceof User) // true\ntry {\n  User()\n} catch (error) {\n  console.log(error.name)      // TypeError\n}\n~~~`,
     followUps: [

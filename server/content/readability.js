@@ -90,6 +90,11 @@ function readableParagraph(lines, kind) {
     const points = groupSentences(sentences.slice(1), limit)
     return `${sentences[0]}\n\n${points.map((point) => `- ${point}`).join('\n')}`
   }
+  if (kind === 'mechanism' && value.length > 240 && sentences.length >= 4) {
+    return groupSentences(sentences, 140)
+      .map((point) => `- ${point}`)
+      .join('\n')
+  }
 
   const groups = groupSentences(sentences, limit)
   if (groups.length < 2) return value

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
   <title id="title">浏览器 JavaScript 事件循环</title>
-  <desc id="desc">展示调用栈、Web API、任务队列、微任务队列、渲染机会与下一轮任务之间的顺序。</desc>
+  <desc id="desc">展示浏览器从任务队列取出一个任务、执行到调用栈清空、排空微任务、获得渲染机会，再进入下一轮任务的正确顺序。</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#ecfeff"/></linearGradient>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#475569"/></marker>
@@ -43,9 +43,16 @@
   <text x="806" y="449" font-family="Inter, Noto Sans SC, sans-serif" font-size="17" fill="#047857">不是每轮都渲染；由刷新节奏和页面状态决定</text>
   <path d="M704 419H764" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
 
-  <path d="M956 284V318" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
-  <path d="M776 463C735 544 326 548 183 520" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
-  <path d="M776 208C736 306 735 419 716 419" fill="none" stroke="#7c3aed" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+  <path d="M956 330V296" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="972" y="316" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#475569">④ 下一轮</text>
+
+  <path d="M776 244C742 542 340 542 302 474" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="518" y="538" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#1d4ed8">① 取出一个 task 进入调用栈</text>
+
+  <path d="M302 419H362" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="332" y="404" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#6d28d9">② 栈空</text>
+
+  <text x="734" y="404" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#047857">③ 排空</text>
 
   <rect x="64" y="560" width="1072" height="104" rx="18" fill="#0f172a"/>
   <text x="94" y="600" font-family="Inter, Noto Sans SC, sans-serif" font-size="20" font-weight="700" fill="#fff">顺序口诀：取一个 task → 执行到栈空 → 排空全部 microtasks → 可能渲染 → 再取下一个 task</text>

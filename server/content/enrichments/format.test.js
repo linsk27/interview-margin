@@ -7,6 +7,7 @@ import {
   formatEnrichedBody,
   normalizeQuestionTitle,
 } from './format.js'
+import { denseProseBlocks } from '../readability.js'
 
 const entry = {
   number: 1,
@@ -43,6 +44,7 @@ describe('content enrichment format', () => {
     expect(body).toContain('**递进追问：**')
     expect(body).toContain('**易错点：**')
     expect(body).toContain('**参考来源：**')
+    expect(denseProseBlocks(body)).toEqual([])
   })
 
   it('rejects generic or incomplete records', () => {

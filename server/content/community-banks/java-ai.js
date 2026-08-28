@@ -491,7 +491,7 @@ export const javaAiInterviewBank = {
         }),
         question({
           title: '什么是混合检索？',
-          summary: '混合检索把向量语义召回与关键词检索组合起来，兼顾同义表达和精确术语、编号、错误码。各通道结果需要归一化、融合、去重，再进入重排。',
+          summary: '混合检索把向量语义召回与关键词检索组合起来，兼顾同义表达和精确术语、编号、错误码。两路结果要先融合和去重：按原始分数加权时必须先校准或归一化，使用 RRF 这类排名融合时则直接比较名次，不需要把原始分数硬凑到同一尺度。',
           mechanism: [
             '向量检索擅长语义改写，BM25 等关键词检索擅长产品码、专有名词和原文词匹配；两者覆盖的失败模式不同。',
             '不能直接相加未经校准的原始分数，可使用 RRF 按排名融合，或在标注集上训练权重；融合后按文档与内容去重。',
@@ -727,7 +727,7 @@ export const javaAiInterviewBank = {
       questions: [
         question({
           title: 'Spring AI 与 LangChain4j 怎样选择？',
-          summary: '选型看团队栈、所需抽象和退出成本。Spring AI 更贴近 Spring 生态与 Advisor、可观测体系；LangChain4j 的 AI Services、RAG 和工具抽象直接。框架不会替代业务治理。',
+          summary: '两者都是帮助 Java 应用接入模型、检索和工具的框架。Spring AI 更容易融入现有 Spring 配置、监控和中间件；LangChain4j 更强调用 Java 接口快速描述 AI 服务。先按团队技术栈和必需能力做小型验证，再比较迁移成本；框架只能减少接线代码，不能替代权限、评测和故障治理。',
           mechanism: [
             '用需求矩阵比较模型供应商、流式、结构化输出、RAG、工具、记忆、观测、版本稳定性和社区维护，不按示例代码长度下结论。',
             '在同一模型和数据集上做 spike，验证错误映射、工具参数、流式取消、引用、监控与升级；记录 P95、成功率、实现成本和故障行为。',
@@ -783,7 +783,7 @@ export const javaAiInterviewBank = {
       questions: [
         question({
           title: 'ChatModel 与 ChatClient 的边界是什么？',
-          summary: 'ChatModel 负责模型请求与响应；ChatClient 在其上组合消息、参数、Advisor 和工具。业务层宜依赖自有用例接口，框架类型留在适配层。',
+          summary: 'ChatModel 是直接调用某个模型的底层接口；ChatClient 是面向业务调用的组装器，在前者之上统一加入消息、参数、请求拦截器（Advisor）和工具。业务代码最好依赖自己的“回答问题”等用例接口，把这些框架类型留在接入层，方便测试和更换供应商。',
           mechanism: [
             'ChatModel 适合框架适配、精确控制 Prompt 和响应元数据，便于做模型适配器与契约测试；ChatClient 适合应用编排，用 fluent API 统一请求级配置和同步、流式调用。',
             '一个 ChatClient.Builder 通常围绕注入的 ChatModel 创建，可配置默认 system 文本、options、advisors 和 tools；请求级配置只覆盖当前调用，不应通过修改共享可变对象串扰并发请求。',
@@ -800,7 +800,7 @@ export const javaAiInterviewBank = {
         }),
         question({
           title: 'Advisor 链怎样组织，顺序为什么重要？',
-          summary: 'Advisor 是 ChatClient 前后的拦截链，可改写请求并处理响应。顺序决定后续节点看到的上下文及返回次序，应显式配置 order，并分别测试同步、流式链路。',
+          summary: 'Advisor 可以理解为 AI 请求的中间件：发送前可加入记忆、检索资料或监控信息，返回后可记录指标和整理结果。多个 Advisor 会按顺序包裹执行，因此先后次序会改变后续节点看到的内容；顺序必须显式配置，并分别测试普通响应和流式响应。',
           mechanism: [
             '请求进入链时，Advisor 可以扩充 Prompt、上下文参数或调用下一个节点；响应返回时可补充元数据、记录指标或转换结果，形成类似中间件的包裹关系。',
             '先做身份与租户校验，再做带权限过滤的检索，随后才把证据装配进 Prompt；若先检索后鉴权，即使最终没有展示，也可能已经造成跨租户数据访问。',
@@ -817,7 +817,7 @@ export const javaAiInterviewBank = {
         }),
         question({
           title: 'ToolCallback 怎样定义、注册并完成一次调用？',
-          summary: 'ToolCallback 用定义对象声明工具和输入 schema，以 call 接收参数并返回字符串。ChatClient 可直接注册或按名称解析；流式调用不会让回调自动异步。',
+          summary: 'ToolCallback 是模型工具名与真实 Java 实现之间的回调接口：它先声明工具用途和参数结构，模型提出调用后，应用校验参数并执行 callback，再把结果交回模型。ChatClient 可以直接注册实现或按名称查找；即使模型回答是流式的，耗时回调也不会自动变成非阻塞任务。',
           mechanism: [
             '可用 @Tool 标注方法，或显式构造 MethodToolCallback、FunctionToolCallback；框架可依据方法参数或函数输入类型生成 JSON Schema，也允许在需要时提供自定义 schema。',
             '请求可通过 toolCallbacks 直接携带回调，默认配置可用 defaultToolCallbacks；若只传 toolNames，则由 ToolCallbackResolver 在运行时按名称找到对应回调。',
@@ -834,7 +834,7 @@ export const javaAiInterviewBank = {
         }),
         question({
           title: 'VectorStore、SearchRequest 与元数据过滤怎样配合？',
-          summary: 'VectorStore 负责文档写入、删除和相似度检索；SearchRequest 承载 query、topK、阈值和过滤表达式。字段支持、索引要求与性能仍取决于具体适配器。',
+          summary: 'VectorStore 是保存文档语义向量并搜索相似内容的统一接口；SearchRequest 是一次搜索的条件单，包含问题、候选数量、最低相似度和租户等元数据过滤。过滤应在搜索候选时完成，避免先召回无权限资料再在 Java 中删除；实际字段和索引仍要按所选数据库验证。',
           mechanism: [
             'add 接收包含文本和 metadata 的 Document，适配器调用 EmbeddingModel 后写入后端；delete 按 ID 删除，similaritySearch(SearchRequest) 返回匹配 Document。',
             'SearchRequest.Builder 设置 query、topK、similarityThreshold 和 filterExpression；过滤可用便携表达式字符串或 Filter.Expression 构造，随后由具体 VectorStore 转成后端查询。',

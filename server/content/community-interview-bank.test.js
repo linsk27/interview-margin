@@ -3,6 +3,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { assertCommunityInterviewBank } from './community-interview-bank.js'
+import { frontendAiInterviewBank } from './community-banks/frontend-ai.js'
+import { javaAiInterviewBank } from './community-banks/java-ai.js'
 import { parseQuestionMarkdown, sourceKindForUrl } from './markdown.js'
 
 const text = (prefix, size) => `${prefix}${'具体机制、约束、边界与验证方法。'.repeat(size)}`
@@ -52,6 +54,24 @@ function javaSpecialistQuestion(number) {
 }
 
 describe('community interview bank quality gate', () => {
+  it('keeps specialist AI summaries understandable before introducing framework terms', () => {
+    const frontendQuestions = frontendAiInterviewBank.sections.flatMap((section) => section.questions)
+    const javaAiQuestions = javaAiInterviewBank.sections.flatMap((section) => section.questions)
+
+    expect(frontendQuestions[15].summary).toContain('语义坐标')
+    expect(frontendQuestions[17].summary).toContain('召回率提高表示')
+    expect(frontendQuestions[22].summary).toContain('做事说明书')
+    expect(frontendQuestions[28].summary).toContain('95% 请求')
+    expect(frontendQuestions[29].summary).toContain('最晚结束时间')
+    expect(frontendQuestions[29].summary).toContain('熔断器')
+    expect(javaAiQuestions[14].summary).toContain('使用 RRF')
+    expect(javaAiQuestions[14].summary).toContain('不需要把原始分数')
+    expect(javaAiQuestions[30].summary).toContain('底层接口')
+    expect(javaAiQuestions[31].summary).toContain('请求的中间件')
+    expect(javaAiQuestions[32].summary).toContain('真实 Java 实现')
+    expect(javaAiQuestions[33].summary).toContain('一次搜索的条件单')
+  })
+
   it('classifies supported community platforms separately from technical authorities', () => {
     expect(sourceKindForUrl('https://www.nowcoder.com/discuss/123')).toBe('community-interview')
     expect(sourceKindForUrl('https://maimai.cn/article/detail?id=1')).toBe('community-interview')

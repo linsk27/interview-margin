@@ -115,7 +115,7 @@ export const JAVA_FOUNDATION_V2_JVM = {
     }, GUIDE.memory, OFFICIAL.throwable, OFFICIAL.jvmsRuntime),
     withSources({
       title: 'G1 收集器有什么特点，Full GC 频繁时怎样排查？',
-      summary: 'G1 把堆划分为多个 Region，按收益选择回收集合并以可预测停顿为目标；频繁 Full GC 要从触发原因、分配速率、存活量和并发标记进度逐层排查。',
+      summary: 'G1 是面向较大堆的垃圾收集器，它把堆切成许多小区域（Region），每次优先回收预计收益高的区域，以尽量满足停顿目标。Full GC 频繁表示并发回收来不及或出现特殊压力，应先看 GC 日志中的触发原因，再检查对象分配速度、回收后存活量、大对象和并发标记是否及时完成。',
       mechanism: 'G1 让 Region 动态承担 Eden、Survivor、Old 或大对象角色，年轻代回收转移存活对象，并发标记后可执行 Mixed GC 回收部分老年代 Region。它以停顿目标做启发式选择，不承诺每次都满足目标。Full GC 常见线索包括并发周期启动过晚、分配或晋升速度过快、Humongous 对象占用、转移空间不足、显式 System.gc 或真实长期存活集接近堆上限。先读 GC 日志中的 cause、各区域变化、暂停与回收效果，再结合堆和业务分配定位。',
       example: '若日志显示大量 Humongous 分配后触发并发模式失败，应定位超大 byte 数组来源，而不是只增加并发 GC 线程。若老年代回收后仍接近上限，获取 heap dump 分析 dominator 与 GC Root；若回收效果好但很快涨满，则重点查分配率和流量。',
       followUps: [
