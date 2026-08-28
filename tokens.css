@@ -37,6 +37,7 @@
 
   --font-sans: "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-sans);
+  --font-accent: var(--font-display);
   --font-reading-serif: var(--font-sans);
   --font-reading-sans: var(--font-sans);
   --font-reading: var(--font-sans);
@@ -95,25 +96,33 @@
 
 :root[data-font-theme="clean"],
 .app-shell[data-font-theme="clean"] {
+  --font-body: var(--font-sans);
   --font-display: var(--font-sans);
+  --font-accent: var(--font-sans);
   --font-reading: var(--font-sans);
 }
 
 :root[data-font-theme="playful"],
 .app-shell[data-font-theme="playful"] {
-  --font-display: "ZCOOL KuaiLe", var(--font-sans);
+  --font-body: var(--font-sans);
+  --font-display: var(--font-sans);
+  --font-accent: "ZCOOL KuaiLe", var(--font-sans);
   --font-reading: var(--font-sans);
 }
 
 :root[data-font-theme="notebook"],
 .app-shell[data-font-theme="notebook"] {
+  --font-body: "LXGW WenKai", var(--font-sans);
   --font-display: "LXGW WenKai", var(--font-sans);
+  --font-accent: "LXGW WenKai", var(--font-sans);
   --font-reading: "LXGW WenKai", var(--font-sans);
 }
 
 :root[data-font-theme="flowing"],
 .app-shell[data-font-theme="flowing"] {
-  --font-display: "Zhi Mang Xing", "LXGW WenKai", var(--font-sans);
+  --font-body: "LXGW WenKai", var(--font-sans);
+  --font-display: "LXGW WenKai", var(--font-sans);
+  --font-accent: "Zhi Mang Xing", "LXGW WenKai", var(--font-sans);
   --font-reading: "LXGW WenKai", var(--font-sans);
 }
 

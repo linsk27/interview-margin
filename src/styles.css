@@ -131,6 +131,7 @@ kbd {
   min-height: 100dvh;
   background: var(--color-paper);
   color: var(--color-ink);
+  font-family: var(--font-body);
 }
 
 .rail {
@@ -763,7 +764,7 @@ kbd {
   max-inline-size: 32em;
   margin: 0;
   color: var(--color-ink);
-  font-family: var(--font-display);
+  font-family: var(--font-accent);
   font-size: var(--text-2xl);
   font-weight: 750;
   letter-spacing: 0;

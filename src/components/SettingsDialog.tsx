@@ -19,9 +19,9 @@ const FONT_THEME_OPTIONS: Array<{
   sample: string
 }> = [
   { value: 'clean', label: '清爽', description: '清楚耐看', sample: '今天也要会一道' },
-  { value: 'playful', label: '快乐', description: '标题有点怪可爱', sample: '开心刷题' },
+  { value: 'playful', label: '快乐', description: '大题标题怪可爱，其他文字清爽', sample: '开心刷题' },
   { value: 'notebook', label: '手账', description: '答案像随手笔记', sample: '慢慢想明白' },
-  { value: 'flowing', label: '飘逸', description: '标题舒展，正文温和', sample: '风吹题页' },
+  { value: 'flowing', label: '飘逸', description: '大题标题飘逸，其他文字统一文楷', sample: '风吹题页' },
 ]
 
 export function SettingsDialog({ open, settings, spreadAvailable, onClose, onChange }: {
