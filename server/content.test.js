@@ -141,6 +141,21 @@ describe('question catalog seed quality', () => {
     expect(directQuestions.length / questions.length).toBeGreaterThanOrEqual(0.85)
   })
 
+  it('explains hybrid retrieval in plain language before introducing its jargon', () => {
+    const question = db.prepare(`
+      SELECT title, body_md FROM questions
+      WHERE bank_id = 'frontend-ai-interviews'
+        AND title LIKE '%关键词搜索（BM25）和语义搜索%'
+    `).get()
+
+    expect(question).toBeTruthy()
+    expect(question.body_md).toContain('两名找资料的同事')
+    expect(question.body_md).toContain('BM25（关键词搜索）')
+    expect(question.body_md).toContain('RRF（按名次合并）')
+    expect(question.body_md).toContain('两套分数不是同一把尺子')
+    expect(question.body_md).not.toContain('直接相加异构分数')
+  })
+
   it('keeps every community interview bank technical, substantial and independently sourced', () => {
     for (const [bankId, expectedCount] of Object.entries(COMMUNITY_BANK_COUNTS)) {
       const questions = db.prepare(
