@@ -34,8 +34,8 @@ describe('reading settings dialog', () => {
 
     const fontGroup = screen.getByRole('radiogroup', { name: '字体主题' })
     const clean = within(fontGroup).getByRole('radio', { name: '清爽字体，清楚耐看' })
-    const playful = within(fontGroup).getByRole('radio', { name: '快乐字体，大题标题怪可爱，其他文字清爽' })
-    const flowing = within(fontGroup).getByRole('radio', { name: '飘逸字体，大题标题飘逸，其他文字统一文楷' })
+    const playful = within(fontGroup).getByRole('radio', { name: '快乐字体，全站统一快乐手写风' })
+    const flowing = within(fontGroup).getByRole('radio', { name: '飘逸字体，全站统一飘逸行书' })
 
     expect(within(fontGroup).getAllByRole('radio')).toHaveLength(4)
     expect(clean).toHaveAttribute('aria-checked', 'true')

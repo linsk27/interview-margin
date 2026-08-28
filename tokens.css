@@ -104,10 +104,10 @@
 
 :root[data-font-theme="playful"],
 .app-shell[data-font-theme="playful"] {
-  --font-body: var(--font-sans);
-  --font-display: var(--font-sans);
+  --font-body: "ZCOOL KuaiLe", var(--font-sans);
+  --font-display: "ZCOOL KuaiLe", var(--font-sans);
   --font-accent: "ZCOOL KuaiLe", var(--font-sans);
-  --font-reading: var(--font-sans);
+  --font-reading: "ZCOOL KuaiLe", var(--font-sans);
 }
 
 :root[data-font-theme="notebook"],
@@ -120,10 +120,10 @@
 
 :root[data-font-theme="flowing"],
 .app-shell[data-font-theme="flowing"] {
-  --font-body: "LXGW WenKai", var(--font-sans);
-  --font-display: "LXGW WenKai", var(--font-sans);
+  --font-body: "Zhi Mang Xing", "LXGW WenKai", var(--font-sans);
+  --font-display: "Zhi Mang Xing", "LXGW WenKai", var(--font-sans);
   --font-accent: "Zhi Mang Xing", "LXGW WenKai", var(--font-sans);
-  --font-reading: "LXGW WenKai", var(--font-sans);
+  --font-reading: "Zhi Mang Xing", "LXGW WenKai", var(--font-sans);
 }
 
 [data-theme="dark"] {

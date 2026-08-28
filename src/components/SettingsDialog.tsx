@@ -19,9 +19,9 @@ const FONT_THEME_OPTIONS: Array<{
   sample: string
 }> = [
   { value: 'clean', label: '清爽', description: '清楚耐看', sample: '今天也要会一道' },
-  { value: 'playful', label: '快乐', description: '大题标题怪可爱，其他文字清爽', sample: '开心刷题' },
+  { value: 'playful', label: '快乐', description: '全站统一快乐手写风', sample: '开心刷题' },
   { value: 'notebook', label: '手账', description: '答案像随手笔记', sample: '慢慢想明白' },
-  { value: 'flowing', label: '飘逸', description: '大题标题飘逸，其他文字统一文楷', sample: '风吹题页' },
+  { value: 'flowing', label: '飘逸', description: '全站统一飘逸行书', sample: '风吹题页' },
 ]
 
 export function SettingsDialog({ open, settings, spreadAvailable, onClose, onChange }: {
@@ -60,7 +60,7 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
           </div>
         </section>
         <section className="settings-panel settings-panel--font">
-          <div className="settings-row__label"><Brush aria-hidden="true" /><div><strong>字体气质</strong><span>标题可以有性格，长答案仍保持容易阅读。</span></div></div>
+          <div className="settings-row__label"><Brush aria-hidden="true" /><div><strong>字体气质</strong><span>选择后统一应用于界面、标题与正文。</span></div></div>
           <div className="settings-font-grid" role="radiogroup" aria-label="字体主题">
             {FONT_THEME_OPTIONS.map((option) => {
               const active = settings.fontTheme === option.value
