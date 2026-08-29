@@ -64,6 +64,30 @@ describe('database bootstrap administrator', () => {
   })
 })
 
+describe('precompiled production catalog seed', () => {
+  let database
+
+  afterEach(() => {
+    database?.db.close()
+    database = undefined
+  })
+
+  it('loads the generated catalog without rerunning authored content enrichment', () => {
+    database = createDatabase({
+      filename: ':memory:',
+      bootstrap: false,
+      usePrecompiledSeed: true,
+    })
+
+    expect(database.db.prepare('SELECT COUNT(*) AS count FROM question_banks').get().count).toBe(14)
+    expect(database.db.prepare('SELECT COUNT(*) AS count FROM questions').get().count).toBe(762)
+    expect(database.db.prepare("SELECT body_md FROM questions WHERE id = 'js-q-1'").get().body_md)
+      .toContain('大量旧网页后来依赖这个结果')
+    expect(database.db.prepare("SELECT plain_text FROM questions WHERE id = 'js-q-1'").get().plain_text)
+      .toContain('为什么')
+  }, 20_000)
+})
+
 describe('built-in question seed synchronization', () => {
   let database
   let rootDir

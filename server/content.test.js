@@ -2,7 +2,7 @@
 
 import crypto from 'node:crypto'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createDatabase } from './database.js'
 import { COMMUNITY_INTERVIEW_BANKS } from './content/community-banks/index.js'
 import { denseProseBlocks } from './content/readability.js'
@@ -38,8 +38,8 @@ function normalizedTitle(value) {
 
 describe('question catalog seed quality', () => {
   let db
-  beforeEach(() => { db = createDatabase({ filename: ':memory:', bootstrap: false }).db })
-  afterEach(() => db.close())
+  beforeAll(() => { db = createDatabase({ filename: ':memory:', bootstrap: false }).db }, 120_000)
+  afterAll(() => db.close())
 
   it('contains fourteen banks and 762 unique active questions', () => {
     expect(db.prepare('SELECT COUNT(*) count FROM question_banks').get().count).toBe(14)

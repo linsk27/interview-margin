@@ -40,6 +40,7 @@ describe('server API', () => {
       secureCookies: false,
       databaseOptions: {
         filename: ':memory:',
+        usePrecompiledSeed: true,
         bootstrap: { username: 'admin', password: INITIAL_PASSWORD, skipCredentialFile: true },
       },
     })

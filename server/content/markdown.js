@@ -109,6 +109,10 @@ export function sourceKindForUrl(value) {
   }
 }
 
+export function markdownToPlainText(markdown) {
+  return toString(unified().use(remarkParse).parse(markdown)).replace(/\s+/g, ' ').trim()
+}
+
 export function parseQuestionMarkdown(source, options) {
   const tree = unified().use(remarkParse).parse(source)
   const children = tree.children
@@ -152,7 +156,7 @@ export function parseQuestionMarkdown(source, options) {
         { title: heading, bankId: options.bankId },
       ))
       : rawBody
-    const plainText = toString(unified().use(remarkParse).parse(body)).replace(/\s+/g, ' ').trim()
+    const plainText = markdownToPlainText(body)
     const number = numberMatch[1]
     const prefix = options.idPrefix ? `${options.idPrefix}-` : ''
     const id = options.preserveIds === false

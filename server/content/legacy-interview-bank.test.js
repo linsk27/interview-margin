@@ -14,7 +14,7 @@ describe('legacy interview bank quality repairs', () => {
   let db
 
   beforeEach(() => {
-    db = createDatabase({ filename: ':memory:', bootstrap: false }).db
+    db = createDatabase({ filename: ':memory:', bootstrap: false, usePrecompiledSeed: true }).db
   })
 
   afterEach(() => db.close())

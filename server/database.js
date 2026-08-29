@@ -6,7 +6,7 @@ import { Algorithm, hashSync } from '@node-rs/argon2'
 import Database from 'better-sqlite3'
 
 import { BUILTIN_BANKS } from './content/banks.js'
-import { parseQuestionMarkdown } from './content/markdown.js'
+import { markdownToPlainText, parseQuestionMarkdown } from './content/markdown.js'
 import { groupBuiltinSections } from './content/section-groups.js'
 
 const DEFAULT_SETTINGS = {
@@ -306,7 +306,55 @@ function seedRoles(db) {
   })()
 }
 
-function seedBuiltins(db, rootDir) {
+function loadPrecompiledBankSections(rootDir, bank) {
+  const snapshotPath = path.join(rootDir, 'public', 'catalog-banks', `${bank.id}.json`)
+  if (!fs.existsSync(snapshotPath)) {
+    throw new Error(`Precompiled catalog snapshot is missing: ${snapshotPath}`)
+  }
+
+  let snapshot
+  try {
+    snapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf8'))
+  } catch (error) {
+    throw new Error(`Precompiled catalog snapshot is invalid: ${snapshotPath}`, { cause: error })
+  }
+  if (snapshot?.version !== 1 || snapshot?.bank?.id !== bank.id || !Array.isArray(snapshot.sections)) {
+    throw new Error(`Precompiled catalog snapshot does not match bank ${bank.id}: ${snapshotPath}`)
+  }
+
+  return snapshot.sections.map((section, sectionOrder) => {
+    if (typeof section?.id !== 'string' || !section.id.startsWith(`${bank.id}:`)
+      || typeof section.title !== 'string' || !Array.isArray(section.questions)) {
+      throw new Error(`Precompiled catalog section is invalid for bank ${bank.id}: ${snapshotPath}`)
+    }
+    return {
+      id: section.id,
+      title: section.title,
+      order: Number.isInteger(section.order) ? section.order : sectionOrder,
+      questions: section.questions.map((question, questionOrder) => {
+        if (question?.library !== bank.id || typeof question.id !== 'string'
+          || typeof question.number !== 'string' || typeof question.title !== 'string'
+          || typeof question.body !== 'string' || !Array.isArray(question.tags)
+          || !Array.isArray(question.sources)) {
+          throw new Error(`Precompiled catalog question is invalid for bank ${bank.id}: ${snapshotPath}`)
+        }
+        return {
+          id: question.id,
+          number: question.number,
+          title: question.title,
+          body: question.body,
+          plainText: markdownToPlainText(question.body),
+          tags: question.tags,
+          sources: question.sources,
+          readMinutes: Number.isInteger(question.readMinutes) ? question.readMinutes : 1,
+          order: Number.isInteger(question.order) ? question.order : questionOrder,
+        }
+      }),
+    }
+  })
+}
+
+function seedBuiltins(db, rootDir, options = {}) {
   const now = new Date().toISOString()
   const insertBank = db.prepare(`
     INSERT INTO question_banks(
@@ -350,20 +398,23 @@ function seedBuiltins(db, rootDir) {
   db.transaction(() => {
     for (const [bankOrder, bank] of BUILTIN_BANKS.entries()) {
       const sourcePath = path.join(rootDir, bank.source)
-      if (!fs.existsSync(sourcePath)) continue
+      if (!options.usePrecompiledSeed && !fs.existsSync(sourcePath)) continue
       insertBank.run(bank.id, bank.title, bank.shortTitle, bank.kicker, bank.category,
         bank.description, JSON.stringify(bank.baseTags), bank.tone, bankOrder, now, now)
-      const source = fs.readFileSync(sourcePath, 'utf8')
-      const sections = groupBuiltinSections(bank.id, parseQuestionMarkdown(source, {
-        bankId: bank.id,
-        idPrefix: bank.idPrefix,
-        baseTags: bank.baseTags,
-        preserveIds: bank.preserveIds,
-        normalizeReadability: true,
-      }))
+      const sections = options.usePrecompiledSeed
+        ? loadPrecompiledBankSections(rootDir, bank)
+        : groupBuiltinSections(bank.id, parseQuestionMarkdown(fs.readFileSync(sourcePath, 'utf8'), {
+          bankId: bank.id,
+          idPrefix: bank.idPrefix,
+          baseTags: bank.baseTags,
+          preserveIds: bank.preserveIds,
+          normalizeReadability: true,
+        }))
       const currentQuestionIds = []
       for (const section of sections) {
-        const proposedSectionId = `${bank.id}:${section.id}`
+        const proposedSectionId = section.id.startsWith(`${bank.id}:`)
+          ? section.id
+          : `${bank.id}:${section.id}`
         const sectionId = insertSection
           .get(proposedSectionId, bank.id, section.title, section.order)
           .id
@@ -431,7 +482,9 @@ export function createDatabase(options = {}) {
   db.pragma('synchronous = NORMAL')
   migrate(db)
   seedRoles(db)
-  if (options.seed !== false) seedBuiltins(db, rootDir)
+  if (options.seed !== false) seedBuiltins(db, rootDir, {
+    usePrecompiledSeed: options.usePrecompiledSeed === true,
+  })
   const bootstrap = options.bootstrap === false ? undefined : bootstrapAdmin(db, dataDir, options.bootstrap)
   return { db, filename, dataDir, bootstrap }
 }

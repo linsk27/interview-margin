@@ -12,6 +12,7 @@ describe('study state and archived questions', () => {
   beforeEach(() => {
     const database = createDatabase({
       filename: ':memory:',
+      usePrecompiledSeed: true,
       bootstrap: {
         username: 'admin',
         password: 'ContentCheckPassword!1',
