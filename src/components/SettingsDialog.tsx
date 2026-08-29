@@ -1,6 +1,7 @@
 import { BookOpen, Brush, FileText, Focus, Keyboard, Moon, MonitorSmartphone, Sun, X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FontTheme, ReaderSettings, ReadingSize, ThemeMode } from '../types'
+import { canLoadFontTheme, ensureFontThemeLoaded } from '../lib/fontThemeLoading'
 
 const READING_SIZE_OPTIONS: Array<{
   value: ReadingSize
@@ -24,14 +25,19 @@ const FONT_THEME_OPTIONS: Array<{
   { value: 'flowing', label: '飘逸', description: '全站统一飘逸行书', sample: '风吹题页' },
 ]
 
-export function SettingsDialog({ open, settings, spreadAvailable, onClose, onChange }: {
+export function SettingsDialog({ open, settings, spreadAvailable, fontSampleText = '', onClose, onChange }: {
   open: boolean
   settings: ReaderSettings
   spreadAvailable: boolean
+  fontSampleText?: string
   onClose: () => void
   onChange: (settings: ReaderSettings) => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const fontLoadSequence = useRef(0)
+  const settingsRef = useRef(settings)
+  const [pendingFontTheme, setPendingFontTheme] = useState<FontTheme>()
+  settingsRef.current = settings
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -40,8 +46,38 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
     if (!open && dialog.open) dialog.close()
   }, [open])
 
+  useEffect(() => () => {
+    fontLoadSequence.current += 1
+  }, [])
+
   const setTheme = (theme: ThemeMode) => onChange({ ...settings, theme })
-  const setFontTheme = (fontTheme: FontTheme) => onChange({ ...settings, fontTheme })
+  const setFontTheme = (fontTheme: FontTheme) => {
+    if (fontTheme === settingsRef.current.fontTheme) {
+      fontLoadSequence.current += 1
+      setPendingFontTheme(undefined)
+      return
+    }
+    if (!canLoadFontTheme()) {
+      onChange({ ...settingsRef.current, fontTheme })
+      return
+    }
+
+    const sequence = ++fontLoadSequence.current
+    setPendingFontTheme(fontTheme)
+    void (async () => {
+      try {
+        await ensureFontThemeLoaded(fontTheme, fontSampleText)
+        if (sequence !== fontLoadSequence.current) return
+        onChange({ ...settingsRef.current, fontTheme })
+      } catch (error) {
+        if (sequence === fontLoadSequence.current) {
+          console.warn('Font theme preload failed; keeping the current readable theme.', error)
+        }
+      } finally {
+        if (sequence === fontLoadSequence.current) setPendingFontTheme(undefined)
+      }
+    })()
+  }
   const setSize = (readingSize: ReadingSize) => onChange({ ...settings, readingSize })
   const setPageLayout = (pageLayout: ReaderSettings['pageLayout']) => onChange({ ...settings, pageLayout })
 
@@ -64,6 +100,7 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
           <div className="settings-font-grid" role="radiogroup" aria-label="字体主题">
             {FONT_THEME_OPTIONS.map((option) => {
               const active = settings.fontTheme === option.value
+              const loading = pendingFontTheme === option.value
               return (
                 <button
                   key={option.value}
@@ -71,7 +108,8 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
                   role="radio"
                   aria-checked={active}
                   aria-label={`${option.label}字体，${option.description}`}
-                  className={`settings-font-option settings-font-option--${option.value}${active ? ' is-active' : ''}`}
+                  aria-busy={loading || undefined}
+                  className={`settings-font-option settings-font-option--${option.value}${active ? ' is-active' : ''}${loading ? ' is-loading' : ''}`}
                   onClick={() => setFontTheme(option.value)}
                 >
                   <span className="settings-font-option__sample" aria-hidden="true">{option.sample}</span>
@@ -79,7 +117,9 @@ export function SettingsDialog({ open, settings, spreadAvailable, onClose, onCha
                     <strong>{option.label}</strong>
                     <small>{option.description}</small>
                   </span>
-                  {active && <span className="settings-font-option__current">当前</span>}
+                  {(active || loading) && (
+                    <span className="settings-font-option__current">{loading ? '载入中' : '当前'}</span>
+                  )}
                 </button>
               )
             })}

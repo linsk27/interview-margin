@@ -354,4 +354,45 @@ describe('Reader learning document structure', () => {
     expect(screen.getByRole('progressbar', { name: '本题阅读进度 50%' })).toHaveValue(50)
     expect(screen.getByText('50%')).toBeInTheDocument()
   })
+
+  it('starts a spread turn immediately with DOM pages that keep the active font stack', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    })
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('reader-scroll')) return 1200
+      if (this.classList.contains('reader__flow')) return 1000
+      return 0
+    })
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('reader-scroll') ? 800 : 0
+    })
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('reader__flow') ? 2400 : 0
+    })
+
+    const { props } = renderReader(firstQuestion, { pageLayout: 'spread' })
+    fireEvent.click(screen.getByRole('button', { name: '下一组页面' }))
+
+    const layer = document.querySelector<HTMLDivElement>('.reader__snapshot-layer')
+    const sheet = layer?.querySelector<HTMLDivElement>('.reader__flip-sheet')
+    expect(layer).toHaveClass('is-active', 'is-animating')
+    expect(layer?.querySelectorAll('.reader__flip-flow')).toHaveLength(3)
+    expect(layer?.querySelector('canvas')).toBeNull()
+    expect(layer?.querySelector('[id]')).toBeNull()
+    expect(props.onSpreadChange).toHaveBeenLastCalledWith(1)
+
+    expect(sheet).not.toBeNull()
+    if (!sheet) return
+    const animationEnd = new Event('animationend', { bubbles: true })
+    Object.defineProperty(animationEnd, 'animationName', { value: 'reader-page-turn-dom-next' })
+    fireEvent(sheet, animationEnd)
+    expect(layer).not.toHaveClass('is-active')
+    expect(layer).toBeEmptyDOMElement()
+  })
 })

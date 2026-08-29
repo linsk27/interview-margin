@@ -1418,6 +1418,7 @@ export default function App() {
         open={settingsOpen}
         settings={{ ...state.settings, focusMode, notesOpen: drawerState.notesOpen }}
         spreadAvailable={spreadAvailable}
+        fontSampleText={`${activeQuestion?.title ?? ''} ${activeQuestion?.plainText ?? ''} ${activeQuestion?.body ?? ''}`}
         onClose={() => setSettingsOpen(false)}
         onChange={changeSettings}
       /></Suspense>}

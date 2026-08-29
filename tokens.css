@@ -76,7 +76,7 @@
   --dur-micro: 120ms;
   --dur-short: 220ms;
   --dur-long: 420ms;
-  --dur-page-turn: 760ms;
+  --dur-page-turn: 640ms;
 
   --z-base: 1;
   --z-raised: 10;
