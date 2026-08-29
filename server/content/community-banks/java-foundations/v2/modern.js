@@ -28,7 +28,7 @@ export const JAVA_FOUNDATION_V2_MODERN = {
     withSources({
       title: 'Optional 应该怎样使用，为什么不建议到处使用？',
       summary: 'Optional 用显式的“可能没有结果”替代部分裸 null 返回值，适合方法返回边界；它不是通用字段容器，也不应靠 get 或层层包装掩盖数据模型问题。',
-      mechanism: 'Optional 的价值来自调用协议而非消灭所有 null：\n- `of` 要求值非空，`ofNullable` 接受 null，`empty` 明确表示没有值。\n- `map` 适合普通映射，映射函数本身返回 Optional 时用 `flatMap` 避免嵌套。\n- `orElse` 会先计算备用值，即使当前有值；备用计算昂贵或有副作用时用惰性的 `orElseGet`。\n- `orElseThrow` 适合把“缺失”转换为清晰异常，`ifPresentOrElse` 适合显式处理两条分支。\n- 参数、DTO/实体字段和集合元素通常仍应通过约束、空集合或领域类型表达，而非全部改成 Optional。',
+      mechanism: '不建议把 Optional 塞进所有字段和参数，因为它会额外增加一层包装，还可能让序列化、ORM、Bean 校验和框架绑定变复杂，却没有消除数据模型本身的空值歧义。Optional 的价值来自方法返回协议：调用方一看到返回类型，就知道“没有结果”是允许且必须处理的分支。\n- `of` 要求值非空，`ofNullable` 接受 null，`empty` 明确表示没有值。\n- `map` 适合普通映射，映射函数本身返回 Optional 时用 `flatMap` 避免嵌套。\n- `orElse` 会先计算备用值，即使当前有值；备用计算昂贵或有副作用时用惰性的 `orElseGet`。\n- `orElseThrow` 适合把“缺失”转换为清晰异常，`ifPresentOrElse` 适合显式处理两条分支。\n- 参数、DTO/实体字段和集合元素通常仍应通过约束、空集合或领域类型表达，而非全部改成 Optional。',
       example: '仓储接口可返回 `Optional<User>`，服务层用 `orElseThrow(() -> new UserNotFoundException(id))` 转成领域错误。不要写 `optional.isPresent()` 后紧接 `get()` 模拟 null 判断；可以用 map、flatMap 或显式分支直接表达后续动作。',
       followUps: [
         { question: 'orElse 和 orElseGet 有什么关键差别？', answer: 'orElse 的参数会立即求值，orElseGet 的 Supplier 只在 Optional 为空时调用。' },
@@ -71,7 +71,7 @@ export const JAVA_FOUNDATION_V2_MODERN = {
     }, GUIDE.collections01, OFFICIAL.linkedHashMap, OFFICIAL.treeMap),
     withSources({
       title: '进阶：CopyOnWriteArrayList 为什么适合读多写少？',
-      summary: '这是并发容器进阶题。CopyOnWriteArrayList 写入时复制底层数组并发布新快照，读取无需写锁且迭代稳定，适合规模有限、读取远多于修改的场景。',
+      summary: 'CopyOnWriteArrayList 每次写入都会复制底层数组，再一次性发布新快照；普通读取不用争写锁，迭代器也能稳定遍历创建时的快照，所以适合列表不大、读取远多于修改的场景。',
       mechanism: '它的成本和语义来自写时复制：\n- get 等读取直接访问当前数组快照，不需要为普通读取获取写锁。\n- add、set、remove 会复制数组再修改，时间与额外内存开销随数组规模增长。\n- 迭代器持有创建时的快照，不会抛 ConcurrentModificationException，也看不到迭代开始后的新增删除。\n- 元素对象本身并不会被深拷贝；若元素可变，仍需处理对象内部的并发安全。\n- 复合操作不能自动由多个单独方法组成原子事务，应使用专门方法或外部同步。',
       example: '事件总线保存几十个、很少变化的监听器时，分发线程可遍历稳定快照，不必与偶发注册争用。若订单明细每秒更新成千上万次，写时复制会产生大量数组和 GC 压力，应换成更匹配的并发结构。',
       followUps: [

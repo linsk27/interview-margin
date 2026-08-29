@@ -173,6 +173,68 @@ try {
     ...question,
     sections: auditSections(question.body_md),
   }))
+  const structuredAnswerCount = auditedQuestions.filter((question) => (
+    /\*\*结论[：:]\*\*/.test(question.sections.answer ?? '')
+      && /\*\*为什么[：:]\*\*/.test(question.sections.answer ?? '')
+      && /\*\*怎么用[：:]\*\*/.test(question.sections.answer ?? '')
+  )).length
+  const glossaryQuestionCount = auditedQuestions.filter((question) => question.sections.glossary).length
+  const knownGlossaryCollisions = auditedQuestions.flatMap((question) => {
+    const glossary = question.sections.glossary ?? ''
+    const problems = []
+    if (question.bank_id === 'react-core' && /\*\*ReAct[：:]\*\*/.test(glossary)) {
+      problems.push('React was mistaken for the ReAct agent pattern')
+    }
+    if (question.bank_id === 'git-engineering' && /\*\*CAP\s*\/\s*BASE[：:]\*\*/.test(glossary)) {
+      problems.push('merge base was mistaken for the BASE database model')
+    }
+    if (question.bank_id === 'network-deployment'
+      && !/节流|限流/.test(question.title)
+      && /\*\*节流[：:]\*\*/.test(glossary)) {
+      problems.push('a byte stream or unrelated phrase was mistaken for throttling')
+    }
+    if (!question.bank_id.startsWith('java-')
+      && /\*\*GC[：:]\*\*/.test(glossary)
+      && /JVM/.test(glossary)) {
+      problems.push('a non-Java question received a JVM-only GC explanation')
+    }
+    return problems.map((problem) => ({
+      id: question.id,
+      bankId: question.bank_id,
+      title: question.title,
+      problem,
+    }))
+  })
+  const firstScreenReasonProblems = auditedQuestions.flatMap((question) => {
+    const conclusion = question.sections.answer
+      ?.match(/- \*\*结论[：:]\*\* ([^\n]+)/)?.[1]
+      ?.trim() ?? ''
+    const reason = question.sections.answer
+      ?.match(/- \*\*为什么[：:]\*\* ([^\n]+)/)?.[1]
+      ?.trim() ?? ''
+    const problems = []
+    if (/^(?:这道题|本题|真实面经|牛客公开面经).{0,48}(?:来自|源自|题源|面经|延伸|不冒充)|^(?:题源|资料来源|参考来源|社区题源|官方校验)/.test(conclusion)) {
+      problems.push('the conclusion explains source provenance instead of answering the question')
+    }
+    if (/^(?:这道题|本题|真实面经|牛客公开面经).{0,48}(?:来自|源自|题源|面经|延伸|不冒充)|^(?:题源|资料来源|参考来源|社区题源|官方校验)/.test(reason)) {
+      problems.push('the reason explains source provenance instead of the concept')
+    }
+    return problems.map((problem) => ({
+      id: question.id,
+      bankId: question.bank_id,
+      title: question.title,
+      conclusion,
+      reason,
+      problem,
+    }))
+  })
+  const fencedCodeByBank = Object.fromEntries(db.prepare(`
+    SELECT bank_id, COUNT(*) AS count
+    FROM questions
+    WHERE archived_at IS NULL
+      AND (body_md LIKE '%\`\`\`%' OR body_md LIKE '%~~~%')
+    GROUP BY bank_id
+  `).all().map((row) => [row.bank_id, row.count]))
   const conclusionOnlyFollowups = auditedQuestions.flatMap((question) => (
     extractFollowUpAnswers(question.body_md)
       .filter((followUp) => isConclusionOnlyDecisionAnswer(followUp.question, followUp.answer))
@@ -230,6 +292,9 @@ try {
       section,
       auditedQuestions.filter((question) => question.sections[section]).length,
     ])),
+    structuredAnswerCount,
+    glossaryQuestionCount,
+    fencedCodeByBank,
     bodyUnder620: activeQuestions.filter((question) => question.body_md.length < 620).length,
     bodyOver1800: activeQuestions.filter((question) => question.body_md.length > 1800).length,
     shortAnswerNonWhitespaceCharsOver160: auditedQuestions.filter((question) => proseLength(question.sections.answer ?? '') > 160).length,
@@ -285,6 +350,8 @@ try {
     genericTemplateCount,
     diagramQuestionCount,
     denseParagraphs,
+    knownGlossaryCollisions,
+    firstScreenReasonProblems,
     conclusionOnlyFollowups,
     exactDuplicateTitles: exactDuplicates,
     similarTitleReport: similar.slice(0, 30),
@@ -299,7 +366,15 @@ try {
     || incomplete.length || missingSections.length || missingMarkers.length
     || thinEnrichedQuestions.length || thinCommunityQuestions.length || thinFoundationQuestions.length
     || ai360MissingMarkers.length || thinAi360Questions.length
-    || genericTemplateCount || diagramQuestionCount < 29 || denseParagraphs.length
+    || genericTemplateCount || diagramQuestionCount < 48 || denseParagraphs.length
+    || knownGlossaryCollisions.length
+    || firstScreenReasonProblems.length
+    || structuredAnswerCount !== questionCount || glossaryQuestionCount < 480
+    || activeQuestions.some((question) => question.body_md.length < 620)
+    || (fencedCodeByBank['frontend-ai-interviews'] ?? 0) < 12
+    || (fencedCodeByBank['java-foundations'] ?? 0) < 10
+    || (fencedCodeByBank['java-backend-interviews'] ?? 0) < 8
+    || (fencedCodeByBank['java-ai-applications'] ?? 0) < 6
     || conclusionOnlyFollowups.length) {
     process.exitCode = 1
   }

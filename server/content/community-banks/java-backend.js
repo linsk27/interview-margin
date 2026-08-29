@@ -105,8 +105,8 @@ function q({ title, summary, mechanism, example, followUps, pitfalls, community,
 const springQuestions = [
   q({
     title: '什么是 Spring IoC 和依赖注入？',
-    summary: 'IoC 是把对象的创建与依赖管理交给容器；依赖注入是容器把所需对象传给 Bean 的实现方式。二者让业务代码面向接口协作，减少手工装配和硬编码依赖。',
-    mechanism: 'Spring 启动时读取配置与组件元数据，形成 BeanDefinition，再由 BeanFactory/ApplicationContext 创建并管理对象。构造器、Setter 或字段注入把依赖关系从对象内部的 new 操作移到容器。构造器注入能明确必需依赖、便于测试，并可配合 final 保持对象完整，因此通常是首选。',
+    summary: '因为在业务类里到处 `new` 具体实现会把创建方式、配置和业务逻辑绑死，Spring 才把对象的创建与依赖管理交给 IoC 容器。依赖注入是容器把所需对象传给 Bean 的具体做法，让业务代码只声明“我需要什么”。',
+    mechanism: '因为 `OrderService` 自己创建支付客户端时，也被迫知道地址、认证、实现类型和生命周期，所以测试替换困难，配置变化还会污染业务代码。改成只声明 `PaymentGateway` 依赖后，装配决策集中在容器，业务类可以稳定地面向接口工作。\n\nSpring 启动时读取配置与组件元数据，形成 BeanDefinition，再由 BeanFactory/ApplicationContext 创建并管理对象。构造器、Setter 或字段注入把依赖关系从对象内部的 `new` 操作移到容器。构造器注入能明确必需依赖、便于测试，并可配合 `final` 保持对象完整，因此通常是首选。',
     example: '订单服务不要在类内直接 new 支付客户端，而是通过构造器接收 PaymentGateway。测试时注入假的实现，生产时由容器装配 HTTP 客户端；启动失败还能立即暴露缺失依赖。',
     followUps: [
       { question: 'BeanFactory 和 ApplicationContext 有什么区别？', answer: 'ApplicationContext 在 BeanFactory 基础上增加事件、国际化、资源加载与自动注册后处理器等应用级能力，日常业务通常直接使用它。' },
@@ -189,7 +189,7 @@ const springQuestions = [
   }),
   q({
     title: 'Spring 能解决哪些循环依赖？',
-    summary: '设计良好的构造器依赖不应形成环。底层容器可处理部分单例 Setter/字段循环依赖，但构造器环、prototype 环和某些代理场景仍会失败；现代 Spring Boot 默认也不允许循环引用。',
+    summary: 'Spring 容器在允许循环引用时，只能借助早期引用处理一部分单例 Bean 的 Setter/字段注入环；构造器注入双方都必须先拿到完整依赖，prototype 也没有单例缓存协作，因此这些环处理不了。现代 Spring Boot 默认禁止循环引用，正确做法仍是拆开双向依赖。',
     mechanism: '单例创建过程中，容器可在对象实例化后、完整初始化前暴露工厂或早期引用，使另一个 Bean 完成属性注入，再回到原 Bean 继续初始化。构造器注入必须先拿到完整依赖，双方都无法开始实例化；prototype 也没有同样的单例缓存协作。即使底层机制能够处理，Spring Boot 的 `spring.main.allow-circular-references` 默认值为 false，不应把开启它当作设计方案。',
     example: 'OrderService 与 CouponService 互相注入通常说明职责或依赖方向错误。优先提取 PricingPolicy 或发布领域事件打断环，而不是开启允许循环依赖的配置；重构后用构造器注入让架构问题在启动时直接暴露。',
     followUps: [
@@ -673,7 +673,7 @@ const operationsQuestions = [
   q({
     title: 'Linux 上怎样排查 Java 接口变慢？',
     summary: '先确定影响范围和时间线，再按 CPU、内存、磁盘、网络、线程池、连接池、GC 与下游逐层收集证据，用请求追踪把系统指标和具体调用关联。',
-    mechanism: '先看流量、错误率和 p95/p99，再用 top/pidstat 定位进程与线程 CPU，vmstat/free 观察内存和换页，iostat 看磁盘，ss 看连接状态。应用侧用 jcmd、线程转储、GC 日志和 JFR 检查锁、热点栈、分配与暂停；数据库和 Redis 继续核对等待与延迟。每次只验证一个假设。',
+    mechanism: '因为“接口慢”可能来自流量、CPU、GC、锁、连接池、磁盘、网络或下游，单看一个 `top` 数字无法定位，所以排查要先按时间线和请求链缩小故障域，再逐层验证。先看流量、错误率和 p95/p99，再用 top/pidstat 定位进程与线程 CPU，vmstat/free 观察内存和换页，iostat 看磁盘，ss 看连接状态；应用侧用 jcmd、线程转储、GC 日志和 JFR 检查锁、热点栈、分配与暂停，数据库和 Redis 再核对等待与延迟。每次只验证一个假设。',
     example: '发布后接口 p99 升高，top 显示 CPU 正常但线程池 active 已满；线程转储显示大量线程等待数据库连接，追踪又显示事务内远程调用。先回滚止损，再拆短事务并增加连接等待告警。',
     followUps: [
       { question: '平均耗时正常为什么用户仍觉得慢？', answer: '平均值会被大量快速请求稀释，应看高分位并按接口、实例、版本、机房和用户群切片定位长尾。' },

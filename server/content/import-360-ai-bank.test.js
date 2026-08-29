@@ -325,8 +325,10 @@ describe('360 AI frontend bank importer', () => {
     const diagramRoot = path.resolve(rootDir, 'public/content/diagrams')
 
     expect(inspection.errors).toEqual([])
-    expect(inspection.diagrams).toHaveLength(7)
-    expect(uniqueUrls).toHaveLength(7)
+    // Two previously attached diagrams were intentionally removed because they
+    // described narrower mechanisms than the questions they accompanied.
+    expect(inspection.diagrams).toHaveLength(5)
+    expect(uniqueUrls).toHaveLength(5)
 
     for (const diagram of inspection.diagrams) {
       expect(DIAGRAM_URL_PATTERN.test(diagram.url)).toBe(true)

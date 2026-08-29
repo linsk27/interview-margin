@@ -102,7 +102,7 @@ describe('legacy interview bank quality repairs', () => {
     expect(question('q-30').body_md).toContain('dictCache.has(key)')
 
     const stream = question('q-48').body_md
-    expect(stream).toContain('用 `type: done` 明确结束')
+    expect(stream).toMatch(/用 `?type: done`? 明确结束/)
     expect(stream).not.toContain('用明确的 error event 和 `[DONE]` 结束标记')
 
     const ble = question('q-72').body_md

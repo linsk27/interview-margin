@@ -16,13 +16,19 @@
 
 **代码 / 场景：**
 
-访问 `api.example.com` 超时时，可以按层执行下面的最小诊断链，并记录每一步的实际输出。
+访问 `api.example.com` 超时时，可以先解析一次地址，再让路由检查和 HTTPS 请求都使用这一个地址，避免“查的是 A 地址、请求却走 B 地址”。
 
 ~~~bash
-ip link show                 # 链路层：接口是否 UP
-ip route get 203.0.113.10    # 网络层：出口、下一跳和源地址
-ss -tn state established     # 传输层：是否已有 TCP 连接
-curl -v --connect-timeout 3 https://api.example.com/health
+target_host=api.example.com
+target_ip=$(getent ahostsv4 "$target_host" | awk 'NR == 1 { print $1 }')
+test -n "$target_ip" || { echo "DNS 未返回 IPv4 地址"; exit 1; }
+
+ip link show                                      # 链路层：接口是否 UP
+ip route get "$target_ip"                         # 网络层：这次目标的出口、下一跳和源地址
+ss -tn state established                          # 传输层：是否已有 TCP 连接
+curl -v --connect-timeout 3 \
+  --resolve "$target_host:443:$target_ip" \
+  "https://$target_host/health"                  # TLS/HTTP：强制使用同一个 IP，仍保留正确 SNI
 ~~~
 
 `ip route get` 成功但 curl 报 `Connection refused`，说明 IP 路径大体可达、目标端口主动拒绝；若 TLS 已协商而 `/health` 返回 503，则应转向代理或应用层，而不是继续修改网卡。
@@ -438,11 +444,12 @@ curl -i -b cookies.txt https://app.example.com/profile
 
 **短回答：**
 
-TLS 协商版本和密码套件，验证服务器证书，进行密钥交换后用对称密钥加密并校验应用数据。
+因为 HTTP 明文本身不能证明“对面是谁”，也不能防止内容被偷看或篡改，HTTPS 会先通过 TLS 验证服务器身份并协商会话密钥，再传输加密且带完整性校验的 HTTP 数据。
 
 **原理：**
 
-- HTTPS 通常先完成 TCP 连接，再进行 TLS 握手。TLS 1.3 客户端在 ClientHello 中给出支持版本、密码套件、随机数、密钥份额、SNI 主机名和 ALPN；服务端用 ServerHello 选择参数并提供自己的密钥份额，双方据此计算共享秘密。
+- 因为 TCP 只保证字节尽量可靠、有序地到达，并不验证域名身份，也不加密内容，所以 HTTPS 不能连上 TCP 就直接发送敏感 HTTP，而要先做 TLS 握手，再允许双方交换受保护的应用数据。
+- TLS 1.3 客户端在 ClientHello 中给出支持版本、密码套件、随机数、密钥份额、SNI 主机名和 ALPN；服务端用 ServerHello 选择参数并提供自己的密钥份额，双方据此计算共享秘密。
 - 随后服务端发送证书链与 CertificateVerify，客户端检查域名、有效期、签名链、用途和信任根；双方用 Finished 校验此前握手 transcript 未被篡改，最后派生方向独立的对称应用数据密钥。证书用于认证身份，真正承载 HTTP 的是高效对称加密；
 - SNI 决定多域名证书/站点，ALPN 协商 h2 或 http/1.1。会话恢复可减少往返，但 0-RTT 数据具有重放风险。
 

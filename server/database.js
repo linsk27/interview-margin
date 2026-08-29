@@ -355,6 +355,7 @@ function seedBuiltins(db, rootDir) {
         bank.description, JSON.stringify(bank.baseTags), bank.tone, bankOrder, now, now)
       const source = fs.readFileSync(sourcePath, 'utf8')
       const sections = groupBuiltinSections(bank.id, parseQuestionMarkdown(source, {
+        bankId: bank.id,
         idPrefix: bank.idPrefix,
         baseTags: bank.baseTags,
         preserveIds: bank.preserveIds,

@@ -92,7 +92,7 @@ export default [
   {
     number: 6,
     title: '为什么 effect 每次执行前要清理旧依赖？',
-    mechanism: `effect 的依赖由本次实际读取路径决定，条件分支变化后，上一轮读取的键可能不再相关。例如 enabled 为 true 时读取 text，切到 false 后只读取 fallback；若不从 text 的依赖集合移除该 effect，之后修改 text 仍会触发无效执行，并让依赖集合持续膨胀。实现会在重跑期间标记、比对或移除旧 Dep，再把本轮访问重新登记；现代 Vue 使用版本和链表等优化避免每次简单全量清空，但语义仍是让订阅集合与最新执行路径一致。停止 effect 时也必须解除剩余依赖并运行清理回调。`,
+    mechanism: `因为 effect 的依赖由本次实际读取路径决定，条件分支变化后上一轮读取的键可能已经无关，所以每次执行前都要让旧订阅失效，再按本轮访问重新收集。例如 enabled 为 true 时读取 text，切到 false 后只读取 fallback；若不从 text 的依赖集合移除该 effect，之后修改 text 仍会触发无效执行，并让依赖集合持续膨胀。实现会在重跑期间标记、比对或移除旧 Dep，再把本轮访问重新登记；现代 Vue 使用版本和链表等优化避免每次简单全量清空，但语义仍是让订阅集合与最新执行路径一致。停止 effect 时也必须解除剩余依赖并运行清理回调。`,
     example: `关闭 enabled 后，effect 不再读取 text；正确清理后修改 text 不应再次输出，只有修改 fallback 才触发。可用调用次数验证是否存在幽灵依赖。\n\n~~~js\nimport { reactive, watchEffect } from 'vue'\nconst s = reactive({ enabled: true, text: 'A', fallback: '-' })\nlet runs = 0\nwatchEffect(() => {\n  runs += 1\n  console.log(s.enabled ? s.text : s.fallback)\n})\ns.enabled = false // 输出 -\ns.text = 'B'       // 当前分支不依赖 text，不应重跑\n~~~`,
     followUps: [
       { question: '为什么不能只不断新增依赖而从不删除？', answer: `动态分支会留下已经失效的订阅，导致无效计算、内存增长，甚至执行已不该发生的网络副作用；依赖图必须反映最近一次真实读取。` },
@@ -452,7 +452,7 @@ export default [
   {
     number: 26,
     title: '为什么 store 不应保存 DOM 节点和大型第三方实例？',
-    mechanism: `Pinia store 适合可序列化、可追踪并具有业务意义的共享状态。DOM 节点和编辑器、图表、地图等第三方实例通常包含循环引用、私有内部状态和宿主资源；被深层 reactive 代理后，身份判断、私有字段、this 绑定或库内部 WeakMap 可能失效，依赖遍历也增加成本。它们无法可靠 SSR 序列化、水合、持久化或显示在开发工具时间线中，生命周期还应跟随具体组件而非全局 store。更稳妥的是组件内用 shallowRef 或普通变量持有，必要时 markRaw，onUnmounted 销毁；store 只保存实例 ID、配置和可复现的业务状态。跨组件控制可提供窄接口，而不是暴露整个实例。`,
+    mechanism: `DOM 节点和编辑器、图表、地图等大型实例不应直接放进 store，因为它们常有循环引用、私有状态和浏览器资源：深层代理可能破坏身份判断、this 或内部 WeakMap，序列化、SSR 水合和持久化也会失败；而它们的创建与销毁生命周期本来就属于具体组件。Pinia store 更适合可序列化、可追踪并具有业务意义的共享状态。更稳妥的是组件内用 shallowRef 或普通变量持有实例，必要时 markRaw，并在 onUnmounted 中销毁；store 只保存实例 ID、配置和可复现的业务状态。跨组件控制可提供窄接口，而不是暴露整个实例。`,
     example: `图表实例留在组件 shallowRef 中，store 只保存筛选条件。卸载时 dispose 能与 DOM 生命周期一致；若把 chart 放进持久化 store，JSON 与 SSR 都会失败。\n\n~~~js\nconst host = useTemplateRef('host')\nconst chart = shallowRef(null)\nconst filters = useChartFilterStore()\nonMounted(() => {\n  chart.value = markRaw(createChart(host.value))\n  chart.value.setOption(buildOption(filters.current))\n})\nonUnmounted(() => { chart.value?.dispose(); chart.value = null })\n~~~`,
     followUps: [
       { question: 'markRaw 与 shallowRef 分别解决什么？', answer: `markRaw 标记对象不再被转换为代理；shallowRef 只追踪根 value 替换、内部保持原样。第三方实例常组合使用，但仍必须显式管理销毁。` },
@@ -632,7 +632,7 @@ export default [
   {
     number: 36,
     title: 'Vue SSR 为什么会发生 hydration mismatch？',
-    mechanism: `hydration 要求客户端首次渲染的 VNode 结构与服务端已输出 DOM 相符，才能只绑定事件并复用节点。服务端与客户端使用不同数据快照，或模板在首次渲染读取 Date.now、Math.random、时区格式、window 尺寸、本地存储和仅客户端权限，就会产生文本或结构差异；无效 HTML 被浏览器自动纠正也会改变真实 DOM。Vue 会警告并尝试恢复，严重时丢弃节点重建，带来性能、闪烁和状态风险。解决方式是序列化同一初始状态、使用确定性 ID/时间/区域设置，把浏览器专属逻辑放到 onMounted，保证合法 HTML。确实不可避免的局部差异可谨慎使用 data-allow-mismatch，但不能拿它隐藏数据错误。`,
+    mechanism: `Vue 出现 hydration mismatch，是因为客户端第一次算出的 VNode 与服务端已经输出的 DOM 不一样；常见原因是两端数据快照不同，或者首屏直接读取 Date.now、Math.random、时区、window 尺寸、本地存储等只在一端不同的值。hydration 原本要在结构一致的前提下复用 DOM 并绑定事件；无效 HTML 被浏览器自动纠正，也会让真实 DOM 偏离服务端模板。Vue 会警告并尝试恢复，严重时丢弃节点重建，带来性能、闪烁和状态风险。解决方式是序列化同一初始状态、使用确定性 ID/时间/区域设置，把浏览器专属逻辑放到 onMounted，保证合法 HTML。确实不可避免的局部差异可谨慎使用 data-allow-mismatch，但不能拿它隐藏数据错误。`,
     example: `服务端和客户端各自调用 Math.random 会得到不同文本。应由服务端生成 seed 并随初始状态注入，客户端首次复用同一值；挂载后再刷新客户端随机数。\n\n~~~vue\n<script setup>\n// initialState.seed 来自 SSR 序列化，而不是在两端各自 Math.random()\nconst seed = ref(initialState.seed)\nonMounted(() => {\n  // 此后才执行真正只属于客户端的逻辑\n})\n</script>\n<template><span>{{ seed }}</span></template>\n~~~`,
     followUps: [
       { question: '为什么仅用 v-if="typeof window !== undefined" 仍可能 mismatch？', answer: `服务端条件为 false、客户端首次渲染为 true，结构仍不同。应让首次客户端输出与服务端一致，再在 mounted 后切换。` },
@@ -722,7 +722,7 @@ export default [
   {
     number: 41,
     title: 'Reflect.get 的 receiver 为什么重要？',
-    mechanism: `Proxy 的 get 陷阱拿到 target、key 和 receiver。Reflect.get(target, key, receiver) 按普通属性读取语义查找 target，但若命中 getter，会把 getter 内的 this 绑定为最初接收访问的 receiver，通常就是响应式代理。这样 getter 内继续读取 this.firstName 时仍经过代理并收集 firstName 依赖。若直接写 target[key]，getter 的 this 常落到原对象，内部读取绕过代理，computed 或渲染只追踪了外层 name，却可能漏掉真正字段。receiver 在代理参与原型链时也代表最初访问者，使继承 getter/setter 的 this 语义与普通对象一致。它不是 track 的替代；陷阱仍需针对 key 建立依赖并避免内建 Symbol 等无关读取。`,
+    mechanism: `receiver 重要，是因为它决定 getter 里的 this 指向谁：把 receiver 传给 Reflect.get 后，getter 内继续读取 this.firstName 时仍会经过响应式代理并收集真正的字段依赖；若直接用 target[key]，this 常落到原对象，内部读取就可能绕过代理。Proxy 的 get 陷阱会拿到 target、key 和 receiver，Reflect.get(target, key, receiver) 按普通属性读取语义查找 target。receiver 在代理参与原型链时也代表最初访问者，使继承 getter/setter 的 this 语义与普通对象一致。它不是 track 的替代；陷阱仍需针对 key 建立依赖并避免内建 Symbol 等无关读取。`,
     example: `fullName 是原对象 getter。用 Reflect.get 传 receiver 后，getter 里的 this.first 和 this.last 都从 proxy 读取；修改 first 能让依赖 fullName 的 effect 正确更新。\n\n~~~js\nconst raw = {\n  first: 'Lin',\n  last: 'Da',\n  get fullName() { return this.first + ' ' + this.last },\n}\nconst proxy = new Proxy(raw, {\n  get(target, key, receiver) {\n    track(target, key)\n    return Reflect.get(target, key, receiver)\n  },\n})\nconsole.log(proxy.fullName) // Lin Da，内部读取仍经过 proxy\n~~~`,
     followUps: [
       { question: 'Reflect.set 为什么也接收 receiver？', answer: `它让继承的 setter 以最初接收者作为 this，并处理原型链上的数据属性定义语义；代理还需判断是否由当前 target 真正完成写入，避免重复触发。` },

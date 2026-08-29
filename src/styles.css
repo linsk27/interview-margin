@@ -1431,7 +1431,7 @@ kbd {
   display: block;
   width: 100%;
   height: auto;
-  max-height: min(34rem, calc(100dvh - 14rem));
+  max-height: none;
   aspect-ratio: 5 / 3;
   padding: var(--space-md);
   background: #f8fafc;
@@ -2989,7 +2989,7 @@ textarea::placeholder {
   }
 
   .markdown-diagram img {
-    max-height: min(26rem, calc(100dvh - 11rem));
+    max-height: none;
     padding: var(--space-xs);
   }
 

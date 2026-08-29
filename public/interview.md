@@ -156,7 +156,7 @@ const proxy = new Proxy(obj, {
 
 ## Q6：为什么不建议 `deep watch` 整个 `form`？字段联动怎么替代？
 
-**先背答案：** `deep watch` 会递归访问整个表单来收集依赖，任一字段变化都可能触发同一套回调。字段多、规则多时，校验、联动和渲染容易被放大。替代做法是把联动关系写进 schema，建立“源字段 -> 目标字段”的依赖表，只处理相关字段。
+**先背答案：** `deep watch` 会递归访问整个表单来收集依赖，任一字段变化都可能触发同一套回调。因为字段越多，单个字段变化就越容易重复运行本来无关的校验、联动和渲染，所以表单越大，额外工作越明显。替代做法是把联动关系写进 schema，建立“源字段 -> 目标字段”的依赖表，只处理相关字段。
 
 **关键词翻译：**
 
@@ -308,6 +308,8 @@ function canEnter(step: StepState) {
 
 **项目 / 场景：** 以“审批供应商资料”为例，前端可以根据 `supplier:approve` 隐藏按钮；用户即使绕过页面直接调用接口，后端仍需依次验证身份、权限码、供应商归属和当前流程状态。任一步失败都应拒绝并记录审计信息。
 
+**原理 / 流程：** 前端隐藏按钮只改变用户看到的入口，攻击者仍能绕过页面直接请求接口，所以它不是安全边界。后端必须根据当前登录身份重新计算角色权限，并继续校验租户、资源归属和业务状态；RBAC 只回答“这个角色通常能做什么”，不能自动回答“能否操作这一条具体数据”。
+
 **可验证边界：** 面试时只有在能指出后端鉴权入口、权限数据来源和至少一个越权测试时，才能说“实现了 RBAC”。如果项目只有前端路由或按钮控制，应如实称为“界面级权限展示”，不能说已完成安全授权。
 
 **继续追问：为什么只判断角色名不够？**
@@ -340,7 +342,7 @@ function canEnter(step: StepState) {
 
 ## Q15：AI 对话为什么常用 `fetch` 流，而不是直接上 WebSocket？
 
-**先背答案：** AI 对话通常是“一次提问，服务端持续返回一条答案”，通信方向主要是服务端到浏览器。`fetch POST` 能携带完整提问和鉴权信息，并让前端逐块读取响应；只有双方都要频繁、主动发送消息时，WebSocket 的全双工连接才更合适。
+**先背答案：** AI 对话通常是“一次提问，服务端持续返回一条答案”，通信方向主要是服务端到浏览器。因为这类链路不需要双方持续主动发消息，直接使用 HTTP 响应流更容易复用现有的鉴权、限流和代理；`fetch POST` 又能携带完整提问并逐块读取响应。只有双方都要频繁、主动发送消息时，WebSocket 的全双工连接才更合适。
 
 **先区分三种方案：**
 
@@ -366,7 +368,7 @@ function canEnter(step: StepState) {
 
 ## Q16：SSE 前端为什么不能直接 `response.json()`？
 
-**先背答案：** `response.json()` 会等待完整响应再解析 JSON；SSE 的目标是服务端生成一段就让前端显示一段，所以要从 `response.body` 逐块读取字节流，用 `TextDecoder` 解码，再以空行分隔 SSE 事件并解析 `data:`。
+**先背答案：** `response.json()` 会等待完整响应再解析 JSON；SSE 的目标是服务端生成一段就让前端显示一段。因为完整 JSON 在响应结束前还没有闭合，提前解析必然失败，而等到闭合又会失去流式体验，所以要从 `response.body` 逐块读取、增量解码并按 SSE 的空行边界组装完整事件。
 
 **关键词翻译：**
 
@@ -396,6 +398,8 @@ function canEnter(step: StepState) {
 - **token budget**：给上下文资料预留的 token 上限，避免 prompt 过长。
 
 **通用流程：** `上传资料 -> 解析文本 -> chunk + overlap -> Embedding/关键词索引 -> 查询召回 -> 可选重排 -> 截断到 token budget -> prompt -> LLM SSE 输出`。
+
+**原理 / 流程：** 模型参数里的知识可能过时，也不包含企业私有资料；RAG 在回答前先找出与当前问题相关、符合权限且可引用的证据，再让模型基于这些证据生成。它把错误拆成“资料没召回、排序不对、证据有了但生成仍错”几层，因此仍要分别评测检索和生成，不能把接上向量库就当成答案一定正确。
 
 **当前项目流程：** `文章/手动资料 -> HTML 规范化 -> chunk + overlap -> 关键词索引（Embedding 配置后可用向量）-> 查询召回 -> token budget 截断 -> prompt -> LLM SSE 输出`。PDF/Word 自动解析、独立 reranker 目前未实现，面试时不要说已经上线。
 
@@ -1570,6 +1574,8 @@ async function validateName(name: string) {
 
 **先背答案：** Topic 负责消息路由，ACL 负责谁能发布或订阅。先用稳定的租户、设备和消息类型组织 Topic，再让每台设备只访问自己的路径；不能因为 Topic 中含有设备 ID，就认为它自动具备权限隔离。
 
+**原理 / 流程：** Topic 只是 Broker 用来匹配消息路径的字符串，本身不会验证路径里的 tenantId 或 deviceId 是否属于当前连接。真正的隔离来自 Broker 在每次 publish/subscribe 时执行 ACL：把已认证身份映射到允许的 Topic 模式和动作，并默认拒绝越界访问。因此 Topic 负责“消息送到哪里”，ACL 才负责“谁有权收发”。
+
 **一个可讨论的结构：**
 
 ```text
@@ -1893,7 +1899,7 @@ LIMIT 20;
 
 ## Q70：为什么“部署成功一次”不等于网站可以持续访问？
 
-**先背答案：** 一次访问成功只证明当时整条链路可用。持续可访问还要求应用随服务器启动、崩溃后受控重启、代理配置持久化、证书和域名持续有效、数据可恢复，并由外部监测及时发现故障。
+**先背答案：** 一次访问成功只证明当时整条链路可用。因为网站长期可用同时依赖进程、代理、域名、证书、网络和数据，任何一环在重启、到期或故障后没有自动恢复，网站就会再次下线；所以还需要进程托管、持久配置、备份恢复和外部监测。
 
 **最小可用性闭环：**
 
@@ -1939,6 +1945,8 @@ LIMIT 20;
 
 **先背答案：** Nginx 可以托管前端静态资源，并把 `/api` 反向代理到 Flask 服务；AI 流式接口还要避免代理缓冲，否则服务端虽然持续 `yield`，浏览器仍可能攒到一大段后才显示。当前项目的 SSE 响应会返回 `X-Accel-Buffering: no`，部署时还应核对 Nginx 的 `proxy_buffering off`、超时和 HTTPS 配置。
 
+**原理 / 流程：** Nginx 默认可能先把上游响应的小块数据放进缓冲区，攒到一定大小或响应结束后再发给浏览器；因此 Flask 已经持续 `yield`，也不等于用户能逐段看到。只应在流式路由关闭代理缓冲并延长空闲超时，普通接口仍可保留缓冲带来的吞吐与慢客户端隔离收益。
+
 **答题边界：** 只有你实际完成过反向代理、静态资源托管或 HTTPS 配置时，才能说“我部署过”；没有做过负载均衡、缓存策略或灰度发布，就不要延伸为相关经验。
 
 **学习示例：前端静态资源、API 反代和 SSE 的最小 Nginx 配置。** 域名、证书路径和后端地址要按真实环境替换。
@@ -1972,6 +1980,11 @@ server {
 ```
 
 `try_files ... /index.html` 解决 Vue Router history 模式刷新 404；`proxy_buffering off` 让 Nginx 不把后端连续输出攒成大块再发。后端的 `X-Accel-Buffering: no` 是辅助信号，部署后仍要用浏览器 Network 观察首个 `delta` 是否及时到达。
+
+**参考来源：**
+
+- [Nginx：proxy_buffering 指令](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering)
+- [MDN：Using server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 
 ---
 
@@ -2335,7 +2348,9 @@ for candidate in sorted_candidates:
 
 ## Q78：ContextForge 的 SSE 流式输出如何从 Flask 传到 Vue？为什么要处理 buffer？
 
-**先背答案：** SSE 不是 WebSocket。它是一个保持不断开的 HTTP 响应，后端每次 `yield` 一段 `data: JSON\n\n`，浏览器通过 `ReadableStream` 持续读取。当前后端把生命周期拆成 `start`、`delta`、`done` 和 `error`；前端用 `TextDecoder` 解码字节流，并用 `buffer` 缓存不完整事件，因为一次网络 read 不保证刚好对应一条 SSE 事件。
+**先背答案：** `buffer` 必须存在，因为网络只负责运送字节，不认识 JSON 或 SSE 的事件边界；一次 `read()` 可能只拿到半个中文字符、半段 JSON，也可能一次拿到多条事件。Flask 每次 `yield` 一段 `data: JSON\n\n`，前端要先用同一个 `TextDecoder` 连续解码，再把文本放进 `buffer`，只在读到空行时取出完整事件。
+
+**原理：** 因为 Flask 的 `yield` 边界、TCP/代理送达的字节块和 SSE 的空行事件边界是三件不同的事，所以前端必须同时维护流式 `TextDecoder` 和文本 `buffer`。前者保留被拆开的 UTF-8 字节，后者保留不完整事件；如果把每个网络块直接 `JSON.parse()`，只要分片落在字符或 JSON 中间就会失败。
 
 **Flask 服务端当前事件格式：**
 
@@ -2360,7 +2375,7 @@ return Response(
 
 **前端当前读取逻辑：**
 
-![流式响应中生产、网络缓冲、前端消费与背压控制的关系](/content/diagrams/backend-fullstack/stream-backpressure-v1.svg "网络分片不等于业务消息，消费者必须维护缓冲和取消边界")
+![SSE 从任意网络字节分片恢复为完整事件的分帧过程](/content/diagrams/frontend-ai/sse-framing-buffer-v1.svg "Flask 的 yield、网络 read 和 SSE 事件不是一一对应；解码器与文本 buffer 分别守住字符边界和事件边界。")
 
 ```ts
 const reader = response.body.getReader()
@@ -2419,7 +2434,7 @@ function parseSseChunk(chunk: string, handlers: AIStreamHandlers) {
 
 ## Q79：为什么把后端拆成 routes / services / repositories / db schema？实际请求怎样流转？
 
-**先背答案：** 这个拆分不是为了“文件多”，而是把 HTTP 协议、业务编排和数据访问分开。当前 AI 流式请求大致走 `routes/ai.py -> ai_rag_service.py / context_pack_service.py -> context_pack_repo.py -> MySQL`：路由做鉴权和入参/响应，service 决定检索、降级、Prompt 和索引策略，repository 执行 SQL 并映射数据。`schema.py` 负责启动或迁移阶段的表结构与索引，不参与每次业务请求。
+**先背答案：** 这个拆分不是为了“文件多”，而是把 HTTP 协议、业务编排和数据访问分开。因为这三类代码的变化原因、测试方式和复用范围不同，混在一起会让改一个响应头也可能碰坏 SQL 或检索逻辑；分层后每层只承担一种职责，也更容易单测和替换。当前 AI 流式请求大致走 `routes/ai.py -> ai_rag_service.py / context_pack_service.py -> context_pack_repo.py -> MySQL`：路由做鉴权和入参/响应，service 决定检索、降级、Prompt 和索引策略，repository 执行 SQL 并映射数据。`schema.py` 负责启动或迁移阶段的表结构与索引，不参与每次业务请求。
 
 **以“用户发起 AI 对话”为例：**
 

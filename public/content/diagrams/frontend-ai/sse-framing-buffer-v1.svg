@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">SSE 字节解码与事件分帧</title>
+  <desc id="desc">展示 Flask 产生完整 SSE 事件后，网络任意拆分字节，浏览器用流式 TextDecoder 保留半个 UTF-8 字符，再用文本缓冲区按空行恢复完整事件的过程。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f8fbff"/>
+      <stop offset="1" stop-color="#edf4fb"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#23486b" flood-opacity=".12"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 10 5 0 10Z" fill="#3b78ad"/>
+    </marker>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#17324a}.title{font-size:34px;font-weight:800}.sub{font-size:17px;fill:#60758a}.step{font-size:20px;font-weight:800}.detail{font-size:15px;fill:#536b80}.mono{font-family:"IBM Plex Mono","Consolas",monospace;font-size:14px}.label{font-size:14px;font-weight:800;letter-spacing:.6px}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="62" class="title">SSE 分帧：网络块不等于一条事件</text>
+  <text x="58" y="96" class="sub">解码器先守住 UTF-8 字符边界，文本 buffer 再守住协议的空行边界。</text>
+
+  <g filter="url(#shadow)">
+    <rect x="58" y="142" width="232" height="346" rx="22" fill="#ffffff" stroke="#b9cfe3"/>
+    <rect x="78" y="162" width="108" height="30" rx="15" fill="#e4f0ff"/>
+    <text x="132" y="183" text-anchor="middle" class="label" fill="#226aa5">FLASK</text>
+    <text x="82" y="232" class="step">产生完整事件</text>
+    <rect x="82" y="262" width="184" height="128" rx="14" fill="#f2f7fc" stroke="#9ebbd5"/>
+    <text x="98" y="294" class="mono">data: {</text>
+    <text x="98" y="320" class="mono"> "type":"delta",</text>
+    <text x="98" y="346" class="mono"> "content":"你好"</text>
+    <text x="98" y="372" class="mono">}\n\n</text>
+    <text x="82" y="425" class="detail">yield 只表示应用写入</text>
+    <text x="82" y="449" class="detail">不保证一次 read 收齐</text>
+  </g>
+
+  <path d="M290 314H346" stroke="#3b78ad" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="354" y="142" width="232" height="346" rx="22" fill="#ffffff" stroke="#e2be75"/>
+    <rect x="374" y="162" width="108" height="30" rx="15" fill="#fff1d6"/>
+    <text x="428" y="183" text-anchor="middle" class="label" fill="#96610c">NETWORK</text>
+    <text x="378" y="232" class="step">任意字节分片</text>
+    <rect x="378" y="266" width="184" height="48" rx="11" fill="#fff7e8" stroke="#efc87d"/>
+    <text x="392" y="296" class="mono">data: {"type":</text>
+    <rect x="378" y="326" width="184" height="48" rx="11" fill="#fff7e8" stroke="#efc87d"/>
+    <text x="392" y="356" class="mono">"delta","con…</text>
+    <rect x="378" y="386" width="184" height="48" rx="11" fill="#fff7e8" stroke="#efc87d"/>
+    <text x="392" y="416" class="mono">…tent":"你好"}\n\n</text>
+    <text x="378" y="463" class="detail">边界可能落在字符或 JSON 中间</text>
+  </g>
+
+  <path d="M586 314H642" stroke="#3b78ad" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="650" y="142" width="232" height="346" rx="22" fill="#ffffff" stroke="#8fc8b2"/>
+    <rect x="670" y="162" width="126" height="30" rx="15" fill="#e4f7ef"/>
+    <text x="733" y="183" text-anchor="middle" class="label" fill="#247557">TEXTDECODER</text>
+    <text x="674" y="232" class="step">连续解码字节</text>
+    <rect x="674" y="264" width="184" height="82" rx="14" fill="#effaf6" stroke="#9ed5c0"/>
+    <text x="690" y="296" class="mono">decode(value,</text>
+    <text x="690" y="322" class="mono"> { stream: true })</text>
+    <text x="674" y="383" class="detail">同一个 decoder 保存</text>
+    <text x="674" y="407" class="detail">尚未完整的 UTF-8 字节</text>
+    <text x="674" y="449" class="detail">输出连续、无乱码的文本</text>
+  </g>
+
+  <path d="M882 314H938" stroke="#3b78ad" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="946" y="142" width="196" height="346" rx="22" fill="#ffffff" stroke="#9fb6de"/>
+    <rect x="966" y="162" width="98" height="30" rx="15" fill="#e9edff"/>
+    <text x="1015" y="183" text-anchor="middle" class="label" fill="#4d61a8">BUFFER</text>
+    <text x="970" y="232" class="step">按空行分帧</text>
+    <rect x="970" y="264" width="148" height="82" rx="14" fill="#f2f4ff" stroke="#adb9e1"/>
+    <text x="982" y="295" class="mono">buffer += text</text>
+    <text x="982" y="322" class="mono">split("\n\n")</text>
+    <text x="970" y="383" class="detail">完整帧：解析并派发</text>
+    <text x="970" y="407" class="detail">最后残片：留待下次</text>
+    <text x="970" y="449" class="detail">得到 start / delta / done</text>
+  </g>
+
+  <rect x="58" y="548" width="1084" height="116" rx="22" fill="#12324c"/>
+  <text x="84" y="585" class="step" style="fill:#ffffff">三个边界，三个职责</text>
+  <text x="84" y="620" class="mono" style="fill:#9fd1ff">yield 边界</text>
+  <text x="196" y="620" class="detail" style="fill:#d5e4ef">应用写入</text>
+  <text x="356" y="620" class="mono" style="fill:#ffd795">read 边界</text>
+  <text x="460" y="620" class="detail" style="fill:#f5e7cf">网络送达</text>
+  <text x="620" y="620" class="mono" style="fill:#a7e6cf">空行边界</text>
+  <text x="724" y="620" class="detail" style="fill:#d8eee6">SSE 事件完成</text>
+  <text x="84" y="648" class="detail" style="fill:#c5d7e4">测试时故意在中文多字节字符和 JSON 中间切块；无论怎样切，最终事件序列都应相同。</text>
+</svg>

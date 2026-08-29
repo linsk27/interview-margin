@@ -224,9 +224,82 @@
   box-shadow: 0 0.8rem 2.4rem color-mix(in oklch, var(--color-shadow) 42%, transparent);
 }
 
-:global(.markdown-body) .diagramCaption {
-  border-top-color: color-mix(in oklch, var(--color-rule) 70%, transparent);
+:global(.markdown-body) .diagramViewport {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+}
+
+:global(.markdown-body) .diagramViewport img {
+  height: auto;
+  max-height: none;
+}
+
+:global(.markdown-body) .diagramLoadPlaceholder {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 5 / 3;
+  place-content: center;
+  justify-items: center;
+  gap: 0.65rem;
+  background: color-mix(in oklch, var(--color-paper-2) 82%, var(--color-paper));
+  color: var(--color-muted);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+:global(.markdown-body) .diagramLoadPlaceholder svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-warm);
+}
+
+:global(.markdown-body) .diagramViewport:focus-visible {
+  outline: var(--rule-heavy) solid var(--color-focus);
+  outline-offset: calc(-1 * var(--rule-heavy));
+}
+
+:global(.markdown-body) .diagramFooter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.4rem 0.55rem 0.4rem 1rem;
+  border-top: var(--rule-thin) solid color-mix(in oklch, var(--color-rule) 70%, transparent);
   background: color-mix(in oklch, var(--color-paper-2) 58%, var(--color-paper));
+}
+
+:global(.markdown-body) .diagramOpen {
+  display: inline-flex;
+  justify-self: end;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: var(--rule-thin) solid color-mix(in oklch, var(--color-rule-strong) 80%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-paper) 88%, var(--color-accent-soft));
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 680;
+  line-height: 1;
+  text-decoration: none;
+}
+
+:global(.markdown-body) .diagramOpen svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+:global(.markdown-body) .diagramCaption {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: start;
 }
 
 :global(.markdown-body) .diagramUnavailable {
@@ -266,5 +339,32 @@
 
   :global(.markdown-body) .table {
     min-width: 28rem;
+  }
+
+  :global(.markdown-body) .diagramViewport {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  :global(.markdown-body) .diagramViewport img {
+    width: 60rem;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    min-width: 60rem;
+  }
+
+  :global(.markdown-body) .diagramLoadPlaceholder {
+    width: 60rem;
+    min-width: 60rem;
+  }
+
+  :global(.markdown-body) .diagramOpen {
+    min-inline-size: 2.75rem;
+  }
+
+  :global(.markdown-body) .diagramOpen span {
+    display: none;
   }
 }

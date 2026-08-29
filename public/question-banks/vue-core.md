@@ -251,7 +251,7 @@ s.tax = 2 // 外层 effect 正确重跑并输出 22
 
 **原理：**
 
-- effect 的依赖由本次实际读取路径决定，条件分支变化后，上一轮读取的键可能不再相关。例如 enabled 为 true 时读取 text，切到 false 后只读取 fallback；
+- 因为 effect 的依赖由本次实际读取路径决定，条件分支变化后上一轮读取的键可能已经无关，所以每次执行前都要让旧订阅失效，再按本轮访问重新收集。例如 enabled 为 true 时读取 text，切到 false 后只读取 fallback；
 - 若不从 text 的依赖集合移除该 effect，之后修改 text 仍会触发无效执行，并让依赖集合持续膨胀。实现会在重跑期间标记、比对或移除旧 Dep，再把本轮访问重新登记；现代 Vue 使用版本和链表等优化避免每次简单全量清空，但语义仍是让订阅集合与最新执行路径一致。
 - 停止 effect 时也必须解除剩余依赖并运行清理回调。
 
@@ -1256,8 +1256,8 @@ export const useCartStore = defineStore('cart', {
 
 **原理：**
 
-- Pinia store 适合可序列化、可追踪并具有业务意义的共享状态。DOM 节点和编辑器、图表、地图等第三方实例通常包含循环引用、私有内部状态和宿主资源；被深层 reactive 代理后，身份判断、私有字段、this 绑定或库内部 WeakMap 可能失效，依赖遍历也增加成本。
-- 它们无法可靠 SSR 序列化、水合、持久化或显示在开发工具时间线中，生命周期还应跟随具体组件而非全局 store。更稳妥的是组件内用 shallowRef 或普通变量持有，必要时 markRaw，onUnmounted 销毁；store 只保存实例 ID、配置和可复现的业务状态。
+- DOM 节点和编辑器、图表、地图等大型实例不应直接放进 store，因为它们常有循环引用、私有状态和浏览器资源：深层代理可能破坏身份判断、this 或内部 WeakMap，序列化、SSR 水合和持久化也会失败；而它们的创建与销毁生命周期本来就属于具体组件。
+- Pinia store 更适合可序列化、可追踪并具有业务意义的共享状态。更稳妥的是组件内用 shallowRef 或普通变量持有实例，必要时 markRaw，并在 onUnmounted 中销毁；store 只保存实例 ID、配置和可复现的业务状态。
 - 跨组件控制可提供窄接口，而不是暴露整个实例。
 
 **代码 / 场景：**
@@ -1757,10 +1757,9 @@ const HeavyEditor = defineAsyncComponent({
 
 **原理：**
 
-- hydration 要求客户端首次渲染的 VNode 结构与服务端已输出 DOM 相符，才能只绑定事件并复用节点。
-- 服务端与客户端使用不同数据快照，或模板在首次渲染读取 Date.now、Math.random、时区格式、window 尺寸、本地存储和仅客户端权限，就会产生文本或结构差异；无效 HTML 被浏览器自动纠正也会改变真实 DOM。
-- Vue 会警告并尝试恢复，严重时丢弃节点重建，带来性能、闪烁和状态风险。解决方式是序列化同一初始状态、使用确定性 ID/时间/区域设置，把浏览器专属逻辑放到 onMounted，保证合法 HTML。
-- 确实不可避免的局部差异可谨慎使用 data-allow-mismatch，但不能拿它隐藏数据错误。
+- Vue 出现 hydration mismatch，是因为客户端第一次算出的 VNode 与服务端已经输出的 DOM 不一样；常见原因是两端数据快照不同，或者首屏直接读取 Date.now、Math.random、时区、window 尺寸、本地存储等只在一端不同的值。
+- hydration 原本要在结构一致的前提下复用 DOM 并绑定事件；无效 HTML 被浏览器自动纠正，也会让真实 DOM 偏离服务端模板。Vue 会警告并尝试恢复，严重时丢弃节点重建，带来性能、闪烁和状态风险。
+- 解决方式是序列化同一初始状态、使用确定性 ID/时间/区域设置，把浏览器专属逻辑放到 onMounted，保证合法 HTML。确实不可避免的局部差异可谨慎使用 data-allow-mismatch，但不能拿它隐藏数据错误。
 
 **代码 / 场景：**
 
@@ -2021,9 +2020,8 @@ window.addEventListener('unhandledrejection', (event) => {
 
 **原理：**
 
-- Proxy 的 get 陷阱拿到 target、key 和 receiver。
-- Reflect.get(target, key, receiver) 按普通属性读取语义查找 target，但若命中 getter，会把 getter 内的 this 绑定为最初接收访问的 receiver，通常就是响应式代理。
-- 这样 getter 内继续读取 this.firstName 时仍经过代理并收集 firstName 依赖。若直接写 target[key]，getter 的 this 常落到原对象，内部读取绕过代理，computed 或渲染只追踪了外层 name，却可能漏掉真正字段。
+- receiver 重要，是因为它决定 getter 里的 this 指向谁：把 receiver 传给 Reflect.get 后，getter 内继续读取 this.firstName 时仍会经过响应式代理并收集真正的字段依赖；
+- 若直接用 target[key]，this 常落到原对象，内部读取就可能绕过代理。Proxy 的 get 陷阱会拿到 target、key 和 receiver，Reflect.get(target, key, receiver) 按普通属性读取语义查找 target。
 - receiver 在代理参与原型链时也代表最初访问者，使继承 getter/setter 的 this 语义与普通对象一致。它不是 track 的替代；陷阱仍需针对 key 建立依赖并避免内建 Symbol 等无关读取。
 
 **代码 / 场景：**

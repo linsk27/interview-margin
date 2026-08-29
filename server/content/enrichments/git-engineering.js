@@ -479,7 +479,7 @@ export default [
   {
     number: 13,
     title: '三方合并为什么需要共同祖先？',
-    mechanism: '三方合并需要 merge base 作为双方开始分叉时的基线，再分别计算 base→ours 与 base→theirs 的变化。若 ours 与 base 相同而 theirs 改变，可直接采用 theirs；反之亦然。当两侧变化无法自动协调成唯一结果时，Git 才留下冲突等待人工决定。冲突不只是双方修改同一行：一侧修改而另一侧删除、同一路径被重命名到两个不同目标、一侧重命名而另一侧删除，以及同路径在一侧是目录、另一侧是文件，都可能无法自动合并。反过来，Git 即使自动合并了不同文件或不同行，也可能产生业务上的语义冲突，因此仍需要测试。Git 会根据提交图寻找最佳共同祖先；复杂 criss-cross 历史可能有多个 merge base，合并策略会先构造虚拟基线。重命名检测是根据相似性推断，并非对象模型显式保存。',
+    mechanism: '因为没有 merge base 时 Git 只看到两份不同的终稿，不知道某行是 ours 删除了，还是 theirs 新增了，所以三方合并必须先找到共同祖先。以它为基线才能分别计算 base→ours 与 base→theirs；若 ours 与 base 相同而 theirs 改变，可直接采用 theirs，反之亦然。当两侧变化无法自动协调成唯一结果时，Git 才留下冲突等待人工决定。冲突不只是双方修改同一行：一侧修改而另一侧删除、同一路径被重命名到两个不同目标、一侧重命名而另一侧删除，以及同路径在一侧是目录、另一侧是文件，都可能无法自动合并。反过来，Git 即使自动合并了不同文件或不同行，也可能产生业务上的语义冲突，因此仍需要测试。Git 会根据提交图寻找最佳共同祖先；复杂 criss-cross 历史可能有多个 merge base，合并策略会先构造虚拟基线。重命名检测是根据相似性推断，并非对象模型显式保存。',
     example: [
       '冲突时 index 的 stage 1、2、3 正好保存 base、ours、theirs，可分别查看而不是只读冲突标记。',
       '',
@@ -561,7 +561,7 @@ export default [
   {
     number: 15,
     title: 'git rebase --onto 适合什么场景？',
-    mechanism: 'git rebase --onto <newbase> <upstream> <branch> 会选出 branch 可达但 upstream 不可达的一段提交，按顺序在 newbase 上重新应用并创建新提交，最后移动 branch。它适合把从错误父分支切出的主题分支移到正确基线，或只搬迁连续历史的一部分。例如 topic 基于 featureA 开发，但实际只依赖 main，可用 --onto main featureA topic 去掉 featureA 独有提交。upstream 是“排除边界”而不是新基线，参数写反可能丢选或多选提交；执行前应以 git log upstream..branch 核对集合并创建备份引用。由于提交 OID 重写，已共享分支需要协调和带 lease 的推送。',
+    mechanism: '因为普通 rebase 往往默认搬动整个分支，而 `--onto` 能把“提交选择边界”和“新落点”分开指定，所以它适合只搬一段连续历史。`git rebase --onto <newbase> <upstream> <branch>` 会选出 branch 可达但 upstream 不可达的提交，按顺序在 newbase 上重新应用并创建新提交，最后移动 branch。它适合把从错误父分支切出的主题分支移到正确基线，或只搬迁连续历史的一部分。例如 topic 基于 featureA 开发，但实际只依赖 main，可用 --onto main featureA topic 去掉 featureA 独有提交。upstream 是“排除边界”而不是新基线，参数写反可能丢选或多选提交；执行前应以 git log upstream..branch 核对集合并创建备份引用。由于提交 OID 重写，已共享分支需要协调和带 lease 的推送。',
     example: [
       'topic 错从 featureA 分出；命令只选 D、E，复制到 main 的 C 之后，A 分支的 X 不会进入新历史。',
       '',
@@ -884,7 +884,7 @@ export default [
   {
     number: 23,
     title: 'non-fast-forward push 为什么被拒绝？',
-    mechanism: '接收端更新分支引用时会检查旧 tip 是否是新 tip 的祖先。若是，引用只向前移动，所有旧提交仍可从新 tip 到达；若不是，就是 non-fast-forward，直接更新会让旧 tip 独有提交从该分支历史中失去可达名称，可能覆盖他人已推送工作，因此普通 push 默认拒绝。拒绝不是文件冲突检测，而是引用拓扑保护。正确处理通常是 fetch 最新远端，审查分叉后将远端变化 merge 或 rebase 到本地，再推送一个包含双方历史的新 tip。只有团队明确需要改写远端历史时才使用带 lease 的强推，并仍受受保护分支、权限与服务端 hook 限制。',
+    mechanism: 'non-fast-forward push 会被拒绝，是因为直接移动远端分支会让旧 tip 独有的提交失去该分支的可达名称，等于可能覆盖同事已经推送的历史。接收端因此先检查旧 tip 是否是新 tip 的祖先：若是，引用只向前移动，所有旧提交仍可从新 tip 到达；若不是就默认拒绝。它不是文件冲突检测，而是引用拓扑保护。正确处理通常是 fetch 最新远端，审查分叉后将远端变化 merge 或 rebase 到本地，再推送一个包含双方历史的新 tip。只有团队明确需要改写远端历史时才使用带 lease 的强推，并仍受受保护分支、权限与服务端 hook 限制。',
     example: [
       '先画出双方独有提交，再把远端 main 合入本地；新 tip 包含远端旧 tip 后，push 才成为快进。',
       '',
@@ -1414,7 +1414,7 @@ export default [
   {
     number: 36,
     title: 'Git hooks 能做什么，为什么不能只依赖本地 hook？',
-    mechanism: 'Git hooks 是在特定客户端或服务端事件前后执行的程序。客户端 pre-commit 可检查暂存内容，commit-msg 校验消息，pre-push 在发送前测试；服务端 pre-receive、update 可在引用更新前统一拒绝违规 push，post-receive 可触发异步流程。本地 .git/hooks 不随普通 clone 版本化，开发者环境、权限和依赖可能不同，且部分 hook 可用 --no-verify 跳过，所以它适合快速反馈而不是唯一强制门。可把脚本放进仓库并通过 core.hooksPath 或安装命令分发，但真正关键的测试、权限、签名和分支策略仍要在 CI 或服务端重复验证，保证无法由单台电脑绕过。',
+    mechanism: '不能只依赖本地 Git hook，因为 `.git/hooks` 不会随普通 clone 自动分发，开发者机器的环境和权限也不同，部分 hook 还可用 `--no-verify` 跳过；它只能提供快速反馈，不能充当团队唯一门禁。Git hooks 是在特定客户端或服务端事件前后执行的程序：客户端 pre-commit 可检查暂存内容，commit-msg 校验消息，pre-push 在发送前测试；服务端 pre-receive、update 可在引用更新前统一拒绝违规 push，post-receive 可触发异步流程。可把脚本放进仓库并通过 core.hooksPath 或安装命令分发，但真正关键的测试、权限、签名和分支策略仍要在 CI 或服务端重复验证，保证无法由单台电脑绕过。',
     example: [
       '把轻量检查脚本版本化并配置 hooksPath，同时在 CI 再运行同一命令作为权威门禁。',
       '',
@@ -1540,7 +1540,7 @@ export default [
   {
     number: 39,
     title: '如何评审一个大型 PR？',
-    mechanism: '先验证问题、范围与架构决策，要求作者提供行为前后、风险、迁移和回滚说明；若多个独立目标混在一起，应优先拆分，而不是用更多评论弥补不可审查性。无法再拆时，按提交或模块建立阅读顺序：先接口与数据模型，再核心路径，最后适配和测试；确认 diff 基线正确，关注删除、权限、并发、失败与兼容分支，而不只读快乐路径。先让自动检查处理格式、类型、测试和依赖，再由人判断设计与业务不变量。可本地检出精确 head 运行关键场景，并把意见区分为阻塞、建议和提问；批准前核对最新 base 与检查结果，合并后安排监控与后续清理。',
+    mechanism: '因为大型 PR 同时增加阅读上下文、遗漏边界和验证成本，所以评审不能从第一行漫无目的地读到最后一行，而要先缩小风险面并建立顺序。先验证问题、范围与架构决策，要求作者提供行为前后、风险、迁移和回滚说明；若多个独立目标混在一起，应优先拆分。无法再拆时，按提交或模块阅读：先接口与数据模型，再核心路径，最后适配和测试；确认 diff 基线正确，关注删除、权限、并发、失败与兼容分支，而不只读快乐路径。先让自动检查处理格式、类型、测试和依赖，再由人判断设计与业务不变量。可本地检出精确 head 运行关键场景，并把意见区分为阻塞、建议和提问；批准前核对最新 base 与检查结果，合并后安排监控与后续清理。',
     example: [
       '用明确基线生成统计与目录 diff，再按风险路径运行测试；命令输出应与 PR 页面 head/base OID 一致。',
       '',

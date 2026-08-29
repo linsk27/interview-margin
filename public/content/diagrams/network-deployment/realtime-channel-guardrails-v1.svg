@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">SSE 与 WebSocket 实时连接的安全防线</title>
+  <desc id="desc">连接建立前校验 TLS、身份、Origin 和资源归属；连接期间限制消息大小、速率、并发、空闲时间和缓冲，所有事件绑定用户与会话并记录审计。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fbff"/><stop offset="1" stop-color="#eef5fa"/></linearGradient>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#3c7199"/></marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#173149" flood-opacity=".11"/></filter>
+    <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#173149}.eyebrow{font:700 15px "IBM Plex Mono",monospace;letter-spacing:2px;fill:#286ca7}.title{font-size:34px;font-weight:800}.sub{font-size:16px;fill:#5f7688}.node{font-size:20px;font-weight:800}.body{font-size:15px;fill:#566f82}.badge{font-size:14px;font-weight:800;fill:#fff}</style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="58" class="eyebrow">REALTIME CHANNEL GUARDRAILS</text>
+  <text x="58" y="102" class="title">实时连接不是鉴权一次就永远安全</text>
+  <text x="58" y="135" class="sub">握手阶段挡住伪造来源和越权连接；运行阶段再控制消息、速率、并发、缓冲和生命周期。</text>
+
+  <rect x="52" y="264" width="188" height="144" rx="24" fill="#fff" stroke="#a8c5da" filter="url(#shadow)"/>
+  <text x="146" y="308" text-anchor="middle" class="node">浏览器 / 客户端</text>
+  <text x="146" y="344" text-anchor="middle" class="body">Cookie 或短期令牌</text>
+  <text x="146" y="373" text-anchor="middle" class="body">Origin · Last-Event-ID</text>
+
+  <rect x="322" y="195" width="250" height="282" rx="26" fill="#edf5ff" stroke="#7faad0" stroke-width="2" filter="url(#shadow)"/>
+  <text x="447" y="238" text-anchor="middle" class="node">连接入口</text>
+  <text x="352" y="278" class="body">① TLS 与 Host 校验</text>
+  <text x="352" y="312" class="body">② 身份、会话、资源归属</text>
+  <text x="352" y="346" class="body">③ WebSocket 检查 Origin</text>
+  <text x="352" y="380" class="body">④ 每 IP / 用户连接上限</text>
+  <text x="352" y="414" class="body">⑤ 超时与失败统一返回</text>
+  <rect x="362" y="435" width="170" height="24" rx="12" fill="#2f72a9"/><text x="447" y="452" text-anchor="middle" class="badge">握手通过才升级连接</text>
+
+  <rect x="660" y="195" width="250" height="282" rx="26" fill="#fff7e8" stroke="#d6aa65" stroke-width="2" filter="url(#shadow)"/>
+  <text x="785" y="238" text-anchor="middle" class="node">连接运行中</text>
+  <text x="690" y="278" class="body">① 消息 schema 与大小上限</text>
+  <text x="690" y="312" class="body">② 速率、并发与 Token 预算</text>
+  <text x="690" y="346" class="body">③ 心跳、空闲超时、断线清理</text>
+  <text x="690" y="380" class="body">④ 背压与有界发送缓冲</text>
+  <text x="690" y="414" class="body">⑤ runId + seq 防串台和乱序</text>
+  <rect x="700" y="435" width="170" height="24" rx="12" fill="#b17420"/><text x="785" y="452" text-anchor="middle" class="badge">每条消息继续做授权</text>
+
+  <rect x="998" y="264" width="150" height="144" rx="24" fill="#eaf7f1" stroke="#78aa91" filter="url(#shadow)"/>
+  <text x="1073" y="308" text-anchor="middle" class="node">业务服务</text>
+  <text x="1073" y="344" text-anchor="middle" class="body">模型 / 推送</text>
+  <text x="1073" y="373" text-anchor="middle" class="body">数据与工具</text>
+
+  <path d="M240 336H312" stroke="#3c7199" stroke-width="3" marker-end="url(#arrow)"/><path d="M572 336H650" stroke="#3c7199" stroke-width="3" marker-end="url(#arrow)"/><path d="M910 336H988" stroke="#3c7199" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="126" y="548" width="948" height="124" rx="22" fill="#173149"/>
+  <text x="600" y="585" text-anchor="middle" style="font-size:18px;font-weight:800;fill:#fff">常见攻击与对应控制</text>
+  <text x="600" y="618" text-anchor="middle" style="font-size:15px;fill:#d8e6ef">CSWSH / 跨站连接劫持 → Origin + SameSite + CSRF 能力令牌　　连接洪泛 → 配额 + 排队 + 快速拒绝</text>
+  <text x="600" y="648" text-anchor="middle" style="font-size:15px;fill:#d8e6ef">大消息与慢消费者 → 大小上限 + 有界缓冲 + 背压　　越权订阅 → 每个 channel/run 重新校验资源归属</text>
+</svg>

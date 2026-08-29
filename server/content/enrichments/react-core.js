@@ -2,7 +2,7 @@ export default [
   {
     number: 1,
     title: 'React 组件为什么应当是纯函数？',
-    mechanism: `React 会把函数组件当作“props、state、context 对应 UI 描述”的计算：相同输入应返回相同 JSX，且渲染期间不修改外部变量、DOM、网络或父对象。纯渲染让 React 可以暂停、重试、放弃或并行准备一棵树，而不会因一次未提交的 render 留下副作用；服务端渲染和测试也能确定复现。事件引起的写操作放事件处理器，需要与外部系统同步的操作放 Effect。开发环境 StrictMode 会额外调用组件函数和部分初始化逻辑来暴露不纯行为，但生产不会因此固定渲染两次。纯函数不等于不使用状态，而是每次 render 只读取本次快照并返回描述，状态更新交给 React。`,
+    mechanism: `因为 render 只是“准备 UI 描述”，并不保证这次计算一定提交到页面，所以 React 要求组件渲染保持纯净。React 为了并发渲染、错误恢复和开发检查，可能多算一次或放弃中间结果；若 render 顺手改了计数、DOM 或发出请求，副作用不会随这次渲染一起撤销。React 因此把函数组件当作“props、state、context 对应 UI 描述”的计算：相同输入应返回相同 JSX，且渲染期间不修改外部变量、DOM、网络或父对象。服务端渲染和测试也能确定复现。事件引起的写操作放事件处理器，需要与外部系统同步的操作放 Effect。开发环境 StrictMode 会额外调用组件函数和部分初始化逻辑来暴露不纯行为，但生产不会因此固定渲染两次。纯函数不等于不使用状态，而是每次 render 只读取本次快照并返回描述，状态更新交给 React。`,
     example: `Bad 每次 render 修改模块变量 visits，StrictMode 或被放弃的 render 会让计数失真；Good 只根据 prop 返回 JSX，浏览量由明确事件或服务端记录。\n\n~~~jsx\nlet visits = 0\nfunction BadProfile({ name }) {\n  visits += 1 // 渲染副作用：一次提交不一定只调用一次\n  return <p>{name} visited {visits}</p>\n}\n\nfunction Profile({ name, visits }) {\n  return <p>{name} visited {visits}</p>\n}\n~~~`,
     followUps: [
       { question: '在 render 中创建新对象是否违反纯函数？', answer: `不一定。只创建并返回本次局部对象、没有改外部状态仍是纯的；问题在可观察副作用和同输入结果不稳定，性能再另行测量。` },
@@ -362,7 +362,7 @@ export default [
   {
     number: 21,
     title: '如何判断状态应该放在哪里？',
-    mechanism: `先区分真正会随交互变化且无法从现有输入计算的数据，再寻找所有需要读取或修改它的组件的最近公共祖先，把状态放到这个共同所有者；由它通过 props 下发值与事件，让同一事实只有一个权威来源。只被单个叶子使用的临时展开、悬停或输入草稿应留在局部，避免全局 store；需要跨远层共享但变化不频繁的主题、身份可用 Context；跨路由可分享或可刷新重建的筛选条件更适合 URL；服务端实体由请求缓存管理；跨页面高频共享并需要选择器时再考虑外部 store。组件在树中的位置和 key 决定局部 state 是否保留，不能用 effect 不断在父子之间复制同一值。判断标准包括所有权、生命周期、共享范围、持久化需求和更新频率，而不是“以后可能会用”就全局化。`,
+    mechanism: `因为同一事实若在多个组件各存一份，就必须额外同步且容易出现互相覆盖，所以状态应只由一个最接近使用者的组件拥有。先区分真正会随交互变化且无法从现有输入计算的数据，再寻找所有需要读取或修改它的组件的最近公共祖先；由它通过 props 下发值与事件。只被单个叶子使用的临时展开、悬停或输入草稿应留在局部，避免全局 store；需要跨远层共享但变化不频繁的主题、身份可用 Context；跨路由可分享或可刷新重建的筛选条件更适合 URL；服务端实体由请求缓存管理；跨页面高频共享并需要选择器时再考虑外部 store。组件在树中的位置和 key 决定局部 state 是否保留，不能用 effect 不断在父子之间复制同一值。判断标准包括所有权、生命周期、共享范围、持久化需求和更新频率，而不是“以后可能会用”就全局化。`,
     example: `两个温度输入要保持摄氏与华氏一致，不能各存一份互相 effect 同步；公共父组件只保存最后编辑的单位和值，两个输入都由该源派生。切换页面后不需保留的焦点状态仍留在输入内部。\n\n~~~jsx\nfunction Calculator() {\n  const [temperature, setTemperature] = useState('')\n  const [scale, setScale] = useState('c')\n  const c = scale === 'f' ? toCelsius(temperature) : temperature\n  const f = scale === 'c' ? toFahrenheit(temperature) : temperature\n  return <>\n    <TemperatureInput value={c} onChange={v => { setScale('c'); setTemperature(v) }} />\n    <TemperatureInput value={f} onChange={v => { setScale('f'); setTemperature(v) }} />\n  </>\n}\n~~~`,
     followUps: [
       { question: '状态提升得越高越好吗？', answer: `不是。提升只到所有消费者的最近公共祖先即可；过高会延长生命周期、扩大重渲染范围并让局部组件难以独立复用。` },
@@ -614,7 +614,7 @@ export default [
   {
     number: 35,
     title: 'React.memo 为什么可能无效？',
-    mechanism: `React.memo 只在父组件重新渲染且新旧 props 按 Object.is 比较相等时，允许 React 跳过该子组件的重新执行；它是性能优化而非语义保证。父组件每次创建的新对象、数组、函数或 JSX children 都会破坏浅比较，哪怕内容相同；子组件自己的 state 改变、读取的 Context 改变仍必须渲染。自定义 arePropsEqual 若漏比函数，会让函数闭包长期读取旧 state；深比较还可能比渲染更慢。memo 对本来廉价的组件收益很小，并增加依赖稳定化成本。应先用 Profiler 确认组件频繁、相同输入且渲染昂贵，再缩小 props、把 state 下沉或用 useMemo/useCallback稳定必要引用。启用 React Compiler 的项目可自动覆盖许多记忆化场景，但仍不能修复可变 props、过宽 Context 或副作用 render。`,
+    mechanism: `React.memo 可能看起来“无效”，通常是因为父组件每次都新建对象、数组、函数或 JSX children，引用已经变了；或者子组件自己的 state、读取的 Context 发生变化，这些更新本来就不受 props 比较拦截。memo 只在父组件重新渲染且新旧 props 按 Object.is 比较相等时，允许 React 跳过该子组件的重新执行；它是性能优化而非语义保证。自定义 arePropsEqual 若漏比函数，会让函数闭包长期读取旧 state；深比较还可能比渲染更慢。memo 对本来廉价的组件收益很小，并增加依赖稳定化成本。应先用 Profiler 确认组件频繁、相同输入且渲染昂贵，再缩小 props、把 state 下沉或用 useMemo/useCallback 稳定必要引用。启用 React Compiler 的项目可自动覆盖许多记忆化场景，但仍不能修复可变 props、过宽 Context 或副作用 render。`,
     example: `List 已 memo，但 visible 每次 filter 都是新数组，所以 theme 改变时仍渲染。useMemo 让 todos 与 tab 未变时复用数组，List 才能跳过；若 List 自己的选中 state 更新，它仍正常渲染。\n\n~~~jsx\nconst List = memo(function List({ items }) {\n  return items.map(item => <div key={item.id}>{item.text}</div>)\n})\nfunction TodoPage({ todos, tab, theme }) {\n  const visible = useMemo(() => todos.filter(t => t.tab === tab), [todos, tab])\n  return <main className={theme}><List items={visible} /></main>\n}\n~~~`,
     followUps: [
       { question: '自定义比较函数只比数据不比回调可以吗？', answer: `通常不可以。回调闭包也是行为输入；返回 true 会让组件保留旧函数并读取旧 props/state，必须逐项比较包括函数在内的全部 props。` },
@@ -704,7 +704,7 @@ export default [
   {
     number: 40,
     title: 'Strict Mode 为什么会让 effect 开发环境执行两次？',
-    mechanism: `StrictMode 只在开发环境启用额外检查。对纳入检查的首次挂载，React 会额外执行一次 effect setup→cleanup，再执行真实 setup，用来模拟用户离开后返回、暴露忘记退订、重复连接和不可逆副作用；生产构建没有这次开发压力测试。它还可能额外调用组件 render、某些 initializer/reducer 和 ref callback，目标都是发现不纯或缺少清理，而不是生产会渲染两份 UI。正确 effect 必须让 cleanup 完全撤销 setup，使连接数量在测试后仍为一。不要用 ref 标志跳过第二次 setup，因为第一次资源已被 cleanup，标志会让真实资源缺失，也掩盖导航重挂载问题。现代 React 文档还指出：若 StrictMode 不是根级而只包部分树，初始 effect 不执行父子生产中不可能出现的额外组合；行为需按所用 React 版本和边界位置验证。`,
+    mechanism: `因为 React 想在开发阶段提前暴露“副作用不能重进”或“cleanup 没有清干净”的问题，所以 StrictMode 会为纳入检查的首次挂载额外执行一次 effect setup→cleanup，再执行真实 setup，用它模拟用户离开后返回；生产构建没有这次压力测试。它还可能额外调用组件 render、某些 initializer/reducer 和 ref callback，目标都是发现不纯或缺少清理，而不是生产会渲染两份 UI。正确 effect 必须让 cleanup 完全撤销 setup，使连接数量在测试后仍为一。不要用 ref 标志跳过第二次 setup，因为第一次资源已被 cleanup，标志会让真实资源缺失，也掩盖导航重挂载问题。现代 React 文档还指出：若 StrictMode 不是根级而只包部分树，初始 effect 不执行父子生产中不可能出现的额外组合；行为需按所用 React 版本和边界位置验证。`,
     example: `缺少 cleanup 时开发首次挂载连接两次；补上 disconnect 后日志是 connect、disconnect、connect，最终只有一个活动连接。生产首次挂载只有一次 connect，但真实路由卸载再进入仍会验证 cleanup。\n\n~~~jsx\nfunction Chat({ roomId }) {\n  useEffect(() => {\n    const connection = createConnection(roomId)\n    connection.connect()\n    return () => connection.disconnect()\n  }, [roomId])\n  return <h1>房间 {roomId}</h1>\n}\nroot.render(<StrictMode><Chat roomId="general" /></StrictMode>)\n~~~`,
     followUps: [
       { question: '可以为了避免双请求关闭 StrictMode 吗？', answer: `不应先关闭检查。读取请求应能取消、缓存或去重，写请求应由用户事件和幂等协议触发；开发双执行通常揭示真实重挂载缺陷。` },

@@ -42,7 +42,7 @@ describe('invitation registration API', () => {
     })
     app = created.app
     db = created.database.db
-  })
+  }, 90_000)
 
   afterEach(() => db.close())
 

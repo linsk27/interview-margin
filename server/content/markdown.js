@@ -5,6 +5,7 @@ import remarkParse from 'remark-parse'
 import { unified } from 'unified'
 
 import { normalizeReadableQuestionBody } from './readability.js'
+import { enhanceQuestionClarity } from './clarity.js'
 
 function stableUuid(value) {
   const bytes = Buffer.from(crypto.createHash('sha256').update(value).digest().subarray(0, 16))
@@ -24,11 +25,11 @@ const TAG_RULES = [
   ['Vue', ['vue', '响应式', 'computed', 'watch', 'pinia', 'vuex', 'nexttick']],
   ['React', ['react', 'hook', 'jsx', 'fiber']],
   ['JavaScript', ['javascript', '闭包', '原型', 'promise', 'event loop']],
-  ['TypeScript', ['typescript', '类型', '泛型']],
+  ['TypeScript', ['typescript', '类型体操', '类型系统', '泛型约束']],
   ['工程化', ['vite', 'webpack', 'nginx', '性能', 'lighthouse', '部署']],
   ['后端', ['flask', 'node', 'jwt', 'rbac', 'cors', 'restful', 'sqlalchemy']],
   ['数据库', ['mysql', 'sql', '索引', '事务', 'redis']],
-  ['AI / RAG', ['rag', 'embedding', 'prompt', 'token', 'contextforge']],
+  ['AI / RAG', ['rag', 'embedding', 'bm25', 'rerank', '向量召回', '向量检索', '混合检索', 'prompt', 'token', 'contextforge']],
   ['小程序', ['uniapp', '小程序', '页面栈', '微信']],
   ['IoT', ['ble', '蓝牙', 'mqtt', 'gatt', 'mtu']],
   ['网络', ['tcp', 'udp', 'http', 'websocket', 'osi', '网络']],
@@ -43,14 +44,24 @@ function slugify(value) {
 
 export function inferTags(title, plainText, baseTags = []) {
   const normalizedTitle = title.toLowerCase()
-  const normalizedBody = plainText.toLowerCase()
+  const escapedKeyword = (keyword) => keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const matchesKeyword = (haystack, keyword) => {
+    if (!/[a-z0-9]/i.test(keyword)) return haystack.includes(keyword)
+    return new RegExp(`(?:^|[^a-z0-9])${escapedKeyword(keyword)}(?=$|[^a-z0-9])`, 'i').test(haystack)
+  }
+  const javaContext = baseTags.some((tag) => /^java(?:\s|$)/i.test(tag))
+  const gitContext = baseTags.some((tag) => /^git$/i.test(tag))
+  const excludedTags = new Set([
+    ...(javaContext ? ['Vue', 'React', 'JavaScript', 'TypeScript'] : []),
+    ...(gitContext ? ['React'] : []),
+  ])
   const matchedTags = (haystack) => TAG_RULES
-    .filter(([, keywords]) => keywords.some((keyword) => haystack.includes(keyword)))
+    .filter(([tag]) => !excludedTags.has(tag))
+    .filter(([, keywords]) => keywords.some((keyword) => matchesKeyword(haystack, keyword)))
     .map(([tag]) => tag)
   const titleTags = matchedTags(normalizedTitle)
-  const fallbackTags = titleTags.length ? [] : matchedTags(normalizedBody).slice(0, 2)
 
-  return [...baseTags, ...titleTags, ...fallbackTags]
+  return [...baseTags, ...titleTags]
     .filter((tag, index, tags) => tags.indexOf(tag) === index)
     .slice(0, 6)
 }
@@ -136,7 +147,10 @@ export function parseQuestionMarkdown(source, options) {
     }
     const rawBody = source.slice(start, end).trim()
     const body = options.normalizeReadability
-      ? normalizeReadableQuestionBody(rawBody)
+      ? normalizeReadableQuestionBody(enhanceQuestionClarity(
+        normalizeReadableQuestionBody(rawBody),
+        { title: heading, bankId: options.bankId },
+      ))
       : rawBody
     const plainText = toString(unified().use(remarkParse).parse(body)).replace(/\s+/g, ' ').trim()
     const number = numberMatch[1]

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Agent、Skill、MCP 与工具调用的职责边界</title>
+  <desc id="desc">用户目标进入 Agent，Skill 提供任务方法，Agent 通过 MCP Client 调用 MCP Server 暴露的工具与资源；调用结果再经 MCP Server 和 Client 原路返回，可信应用负责审批、权限和预算。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f9fbfe"/><stop offset="1" stop-color="#edf4fa"/></linearGradient>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto-start-reverse"><path d="M0 0L9 4.5L0 9Z" fill="#3a719d"/></marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#173149" flood-opacity=".12"/></filter>
+    <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#173149}.eyebrow{font:700 15px "IBM Plex Mono",monospace;letter-spacing:2px;fill:#286ca7}.title{font-size:34px;font-weight:800}.sub{font-size:16px;fill:#5f7688}.nodeTitle{font-size:21px;font-weight:800}.body{font-size:15px;fill:#566f82}.mini{font-size:14px;font-weight:700}.edge{font-size:12px;font-weight:700;fill:#4f687a}.step{font-size:13px;font-weight:800;fill:#fff}</style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="58" class="eyebrow">AGENT CAPABILITY BOUNDARIES</text>
+  <text x="58" y="102" class="title">Skill 教“怎么做”，MCP 管“怎么连”，Agent 决定“下一步”</text>
+  <text x="58" y="135" class="sub">三者可以协作，但都不能绕过应用的身份、权限、参数、预算和人工确认。</text>
+
+  <rect x="52" y="273" width="164" height="124" rx="22" fill="#fff" stroke="#a8c5da" filter="url(#shadow)"/>
+  <text x="134" y="316" text-anchor="middle" class="nodeTitle">用户目标</text>
+  <text x="134" y="351" text-anchor="middle" class="body">任务 · 约束 · 确认</text>
+  <text x="134" y="376" text-anchor="middle" class="body">最终结果</text>
+
+  <rect x="292" y="190" width="254" height="276" rx="26" fill="#fff" stroke="#7faad0" stroke-width="2" filter="url(#shadow)"/>
+  <text x="419" y="232" text-anchor="middle" class="nodeTitle">Agent / 应用主机</text>
+  <text x="322" y="271" class="body">• 读取目标与当前状态</text>
+  <text x="322" y="303" class="body">• 规划下一步并选择能力</text>
+  <text x="322" y="335" class="body">• 观察结果、重试或停止</text>
+  <rect x="320" y="367" width="198" height="72" rx="16" fill="#edf5ff" stroke="#a4c3dd"/>
+  <text x="419" y="397" text-anchor="middle" class="mini">Skill / SKILL.md</text>
+  <text x="419" y="423" text-anchor="middle" class="body">步骤、边界、模板与资料</text>
+
+  <rect x="640" y="190" width="214" height="276" rx="26" fill="#fff" stroke="#a596d0" stroke-width="2" filter="url(#shadow)"/>
+  <text x="747" y="232" text-anchor="middle" class="nodeTitle">MCP Client</text>
+  <text x="670" y="271" class="body">• 列出 tools/resources</text>
+  <text x="670" y="303" class="body">• 发送结构化调用</text>
+  <text x="670" y="335" class="body">• 接收结果或错误</text>
+  <rect x="668" y="367" width="158" height="72" rx="16" fill="#f2edff" stroke="#b2a4d8"/>
+  <text x="747" y="397" text-anchor="middle" class="mini">统一协议</text>
+  <text x="747" y="423" text-anchor="middle" class="body">不是权限通行证</text>
+
+  <rect x="950" y="180" width="198" height="140" rx="23" fill="#fff7e8" stroke="#d9ac65" filter="url(#shadow)"/>
+  <text x="1049" y="223" text-anchor="middle" class="nodeTitle">MCP Server</text>
+  <text x="1049" y="257" text-anchor="middle" class="body">窄工具 · 窄资源</text>
+  <text x="1049" y="284" text-anchor="middle" class="body">参数 schema · 明确错误</text>
+
+  <rect x="950" y="386" width="198" height="140" rx="23" fill="#eaf7f1" stroke="#78aa91" filter="url(#shadow)"/>
+  <text x="1049" y="429" text-anchor="middle" class="nodeTitle">外部系统</text>
+  <text x="1049" y="463" text-anchor="middle" class="body">文件 · 数据库 · SaaS</text>
+  <text x="1049" y="490" text-anchor="middle" class="body">真正产生读写副作用</text>
+
+  <path d="M216 332H282" stroke="#3a719d" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M546 296H630" stroke="#3a719d" stroke-width="3" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="588" y="282" text-anchor="middle" class="edge">调用 / 结果</text>
+  <path d="M854 276C899 260 914 248 940 248" fill="none" stroke="#3a719d" stroke-width="3" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="899" y="226" text-anchor="middle" class="edge">协议请求 / 响应</text>
+  <path d="M1049 320V376" stroke="#3a719d" stroke-width="3" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="1070" y="353" class="edge">执行 / 返回</text>
+
+  <rect x="250" y="570" width="700" height="105" rx="22" fill="#173149"/>
+  <text x="600" y="607" text-anchor="middle" style="font-size:18px;font-weight:800;fill:#fff">可信执行层必须一直存在</text>
+  <text x="600" y="638" text-anchor="middle" style="font-size:15px;fill:#d8e6ef">最小权限 · 参数校验 · 人工确认 · 幂等与超时 · 预算限制 · 全链路审计</text>
+  <text x="600" y="662" text-anchor="middle" style="font-size:14px;fill:#9fc4de">模型和文档都按不可信输入处理，高风险操作不能只凭自然语言授权</text>
+</svg>

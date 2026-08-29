@@ -182,8 +182,28 @@ describe('QuestionMarkdown diagrams', () => {
     expect(image).toHaveAttribute('height', '720')
     expect(image).toHaveAttribute('loading', 'eager')
     expect(screen.getByText('读取时 track，写入时 trigger')).toBeTruthy()
+    expect(screen.getByRole('link', { name: /在新窗口查看高清图/ })).toHaveAttribute(
+      'href', '/interview/content/diagrams/vue-core/dependency-tracking-v1.svg',
+    )
 
     fireEvent.load(image)
+    expect(onDiagramSettled).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the same diagram node after the parent rerenders and only settles once', () => {
+    const onDiagramSettled = vi.fn()
+    const markdown = '![依赖图](/content/diagrams/vue-core/dependency-tracking-v1.svg "读取时 track，写入时 trigger")'
+    const { rerender } = render(
+      <QuestionMarkdown imageLoading="eager" onDiagramSettled={onDiagramSettled}>{markdown}</QuestionMarkdown>,
+    )
+    const firstImage = screen.getByRole('img', { name: '依赖图' })
+
+    fireEvent.load(firstImage)
+    rerender(<QuestionMarkdown imageLoading="eager" onDiagramSettled={onDiagramSettled}>{markdown}</QuestionMarkdown>)
+    const secondImage = screen.getByRole('img', { name: '依赖图' })
+    fireEvent.load(secondImage)
+
+    expect(secondImage).toBe(firstImage)
     expect(onDiagramSettled).toHaveBeenCalledOnce()
   })
 
@@ -210,14 +230,20 @@ describe('QuestionMarkdown diagrams', () => {
 
   it('replaces a failed trusted image with a readable fallback', () => {
     const onDiagramSettled = vi.fn()
-    render(
+    const { container } = render(
       <QuestionMarkdown onDiagramSettled={onDiagramSettled}>
         {'![事件循环](/content/diagrams/javascript/event-loop-v1.svg)'}
       </QuestionMarkdown>,
     )
+    const diagram = screen.getByRole('group', { name: '技术图解' })
     fireEvent.error(screen.getByRole('img', { name: '事件循环' }))
     expect(screen.queryByRole('img')).toBeNull()
     expect(screen.getByText('图解暂时无法加载。')).toBeTruthy()
+    expect(screen.getByRole('group', { name: '技术图解' })).toBe(diagram)
+    expect(container.querySelector('[class*="diagramLoadPlaceholder"]')).toBeTruthy()
+    expect(screen.getByRole('link', { name: /在新窗口查看高清图/ })).toHaveAttribute(
+      'href', '/interview/content/diagrams/javascript/event-loop-v1.svg',
+    )
     expect(onDiagramSettled).toHaveBeenCalledOnce()
   })
 

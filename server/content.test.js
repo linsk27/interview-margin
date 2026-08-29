@@ -101,6 +101,7 @@ describe('question catalog seed quality', () => {
       '/content/diagrams/java-foundations/thread-coordination-v1.svg',
       '/content/diagrams/java-backend/thread-pool-admission-v1.svg',
       '/content/diagrams/java-foundations/jvm-memory-v1.svg',
+      '/content/diagrams/java-foundations/stream-pipeline-v1.svg',
     ])
   })
 

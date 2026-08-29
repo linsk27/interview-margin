@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">BM25 与向量召回的混合检索和重排流程</title>
+  <desc id="desc">同一个查询并行进入关键词召回与向量召回，两路候选分别按自身尺度排序，经过去重和 RRF 排名融合，再由 Reranker 精排，最终把少量证据交给模型。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fbff"/><stop offset="1" stop-color="#eef5fa"/></linearGradient>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#3d719b"/></marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#173149" flood-opacity=".12"/></filter>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#173149}.eyebrow{font:700 15px "IBM Plex Mono",monospace;letter-spacing:2px;fill:#286ca7}.title{font-size:34px;font-weight:800}.sub{font-size:16px;fill:#5f7688}.nodeTitle{font-size:21px;font-weight:800}.body{font-size:15px;fill:#566f82}.mono{font:700 14px "IBM Plex Mono",monospace}.step{font-size:14px;font-weight:800;fill:#fff}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="58" class="eyebrow">HYBRID RETRIEVAL</text>
+  <text x="58" y="102" class="title">先让两位“找资料的人”各自排名，再统一复试</text>
+  <text x="58" y="135" class="sub">BM25 分数和向量相似度不是同一把尺子；先按名次融合，最后再用更精细的模型判断谁真正回答了问题。</text>
+
+  <rect x="58" y="275" width="188" height="132" rx="22" fill="#fff" stroke="#a8c5da" filter="url(#shadow)"/>
+  <text x="152" y="319" text-anchor="middle" class="nodeTitle">用户问题</text>
+  <text x="152" y="352" text-anchor="middle" class="body">“退款失败 E104”</text>
+  <text x="152" y="379" text-anchor="middle" class="body">原词 + 真实意图</text>
+
+  <rect x="326" y="196" width="236" height="154" rx="22" fill="#fff7e7" stroke="#ddb26d" filter="url(#shadow)"/>
+  <text x="444" y="236" text-anchor="middle" class="nodeTitle">BM25 关键词召回</text>
+  <text x="444" y="270" text-anchor="middle" class="body">擅长错误码、编号、专有名词</text>
+  <text x="444" y="301" text-anchor="middle" class="mono">排名：A1 · A2 · A3</text>
+  <text x="444" y="326" text-anchor="middle" class="body">原始分数只在本路内部比较</text>
+
+  <rect x="326" y="407" width="236" height="154" rx="22" fill="#edf5ff" stroke="#83aed2" filter="url(#shadow)"/>
+  <text x="444" y="447" text-anchor="middle" class="nodeTitle">向量语义召回</text>
+  <text x="444" y="481" text-anchor="middle" class="body">擅长口语改写、同义表达</text>
+  <text x="444" y="512" text-anchor="middle" class="mono">排名：B1 · A2 · B3</text>
+  <text x="444" y="537" text-anchor="middle" class="body">相似度也只在本路内部解释</text>
+
+  <rect x="656" y="254" width="224" height="204" rx="24" fill="#fff" stroke="#9ab8cd" stroke-width="2" filter="url(#shadow)"/>
+  <text x="768" y="296" text-anchor="middle" class="nodeTitle">去重 + RRF 融合</text>
+  <text x="686" y="334" class="body">① 保留文档身份与来源</text>
+  <text x="686" y="366" class="body">② 按两路名次折算贡献</text>
+  <text x="686" y="398" class="body">③ 合并重复候选</text>
+  <text x="768" y="432" text-anchor="middle" class="mono">A2 · A1 · B1 · …</text>
+
+  <rect x="966" y="208" width="178" height="132" rx="22" fill="#f3edff" stroke="#aa98d3" filter="url(#shadow)"/>
+  <text x="1055" y="250" text-anchor="middle" class="nodeTitle">Reranker</text>
+  <text x="1055" y="283" text-anchor="middle" class="body">逐条精细判断</text>
+  <text x="1055" y="310" text-anchor="middle" class="body">是否真正回答问题</text>
+
+  <rect x="966" y="412" width="178" height="132" rx="22" fill="#eaf7f1" stroke="#7eaf96" filter="url(#shadow)"/>
+  <text x="1055" y="454" text-anchor="middle" class="nodeTitle">Top-K 证据</text>
+  <text x="1055" y="487" text-anchor="middle" class="body">少量、互补、可引用</text>
+  <text x="1055" y="514" text-anchor="middle" class="body">再交给模型回答</text>
+
+  <path d="M246 331C282 300 292 274 316 274" fill="none" stroke="#3b719b" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M246 352C280 398 292 475 316 482" fill="none" stroke="#3b719b" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M562 274C612 276 626 310 646 330" fill="none" stroke="#3b719b" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M562 484C612 476 627 422 646 403" fill="none" stroke="#3b719b" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M880 330C920 307 930 278 956 274" fill="none" stroke="#3b719b" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M1055 340V402" stroke="#3b719b" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="122" y="619" width="956" height="54" rx="17" fill="#173149"/>
+  <text x="600" y="652" text-anchor="middle" style="font-size:16px;font-weight:700;fill:#fff">调参要同时看召回率、重复率、引用正确率、延迟与成本，而不是只盯一个相似度阈值</text>
+</svg>

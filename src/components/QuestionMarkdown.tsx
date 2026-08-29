@@ -1,6 +1,6 @@
-import { Children, isValidElement, useEffect, useState } from 'react'
-import { Check, Copy, Highlighter, ImageOff, Link as LinkIcon } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
+import { Children, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Copy, Highlighter, ImageOff, Link as LinkIcon, Maximize2 } from 'lucide-react'
+import ReactMarkdown, { type Components } from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import type { Annotation } from '../types'
@@ -76,6 +76,15 @@ function DiagramPlaceholder({ reason }: { reason: 'alt' | 'source' | 'load' }) {
   )
 }
 
+function DiagramLoadPlaceholder() {
+  return (
+    <span className={styles.diagramLoadPlaceholder} role="note">
+      <ImageOff aria-hidden="true" />
+      <span>图解暂时无法加载。</span>
+    </span>
+  )
+}
+
 function MarkdownDiagram({
   src,
   alt,
@@ -90,28 +99,51 @@ function MarkdownDiagram({
   onSettled?: () => void
 }) {
   const [failed, setFailed] = useState(false)
+  const settledSourceRef = useRef<string | undefined>(undefined)
   const description = alt?.trim() ?? ''
 
   useEffect(() => setFailed(false), [src])
 
+  const reportSettled = useCallback(() => {
+    if (settledSourceRef.current === src) return
+    settledSourceRef.current = src
+    onSettled?.()
+  }, [onSettled, src])
+
   if (!description) return <DiagramPlaceholder reason="alt" />
   if (!isSafeDiagramSource(src)) return <DiagramPlaceholder reason="source" />
-  if (failed) return <DiagramPlaceholder reason="load" />
-
   return (
     <span className={classNames('markdown-diagram', styles.diagram)} role="group" aria-label="技术图解">
-      <img
-        src={appPath(src)}
-        alt={description}
-        title={title}
-        width={1200}
-        height={720}
-        loading={loading}
-        decoding="async"
-        onLoad={onSettled}
-        onError={() => { setFailed(true); onSettled?.() }}
-      />
-      {title?.trim() && <span className={classNames('markdown-diagram__caption', styles.diagramCaption)}>{title.trim()}</span>}
+      <span className={styles.diagramViewport} tabIndex={0} aria-label="技术图解画布；窄屏可左右滑动">
+        {failed
+          ? <DiagramLoadPlaceholder />
+          : (
+              <img
+                src={appPath(src)}
+                alt={description}
+                title={title}
+                width={1200}
+                height={720}
+                loading={loading}
+                decoding="async"
+                onLoad={reportSettled}
+                onError={() => { setFailed(true); reportSettled() }}
+              />
+            )}
+      </span>
+      <span className={styles.diagramFooter}>
+        {title?.trim() && <span className={classNames('markdown-diagram__caption', styles.diagramCaption)}>{title.trim()}</span>}
+        <a
+          className={styles.diagramOpen}
+          href={appPath(src)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`在新窗口查看高清图：${description}`}
+        >
+          <Maximize2 aria-hidden="true" />
+          <span>查看高清图</span>
+        </a>
+      </span>
     </span>
   )
 }
@@ -127,6 +159,62 @@ export function QuestionMarkdown({
   imageLoading?: 'eager' | 'lazy'
   onDiagramSettled?: () => void
 }) {
+  const components = useMemo<Components>(() => ({
+    pre: ({ children: content }) => <CodeBlock>{content}</CodeBlock>,
+    p: ({ children: content }) => (
+      <p className={styles.paragraph} data-reading-density={readingDensity(content)}>
+        {content}
+      </p>
+    ),
+    h1: ({ children: content }) => <h1 className={classNames(styles.heading, styles.heading1)}>{content}</h1>,
+    h2: ({ children: content }) => <h2 className={classNames(styles.heading, styles.heading2)}>{content}</h2>,
+    h3: ({ className, children: content, id }) => {
+      const isLearningHeading = className?.split(/\s+/).includes('learning-section__heading')
+      return (
+        <h3
+          className={classNames(className, isLearningHeading ? styles.learningHeading : styles.heading, !isLearningHeading && styles.heading3)}
+          id={id}
+        >
+          {content}
+        </h3>
+      )
+    },
+    h4: ({ children: content }) => <h4 className={classNames(styles.heading, styles.heading4)}>{content}</h4>,
+    ul: ({ children: content }) => <ul className={classNames(styles.list, styles.unorderedList)}>{content}</ul>,
+    ol: ({ children: content }) => <ol className={classNames(styles.list, styles.orderedList)}>{content}</ol>,
+    li: ({ children: content }) => <li className={styles.listItem}>{content}</li>,
+    table: ({ children: content }) => (
+      <div className={classNames('table-wrap', styles.tableWrap)} role="region" aria-label="数据表格" tabIndex={0}>
+        <table className={styles.table}>{content}</table>
+      </div>
+    ),
+    a: ({ href, children: content }) => (
+      <a className={styles.link} href={href} target="_blank" rel="noopener noreferrer">
+        {content}<LinkIcon aria-hidden="true" />
+      </a>
+    ),
+    blockquote: ({ children: content }) => (
+      <blockquote className={styles.blockquote}>
+        <Highlighter className={styles.blockquoteIcon} aria-hidden="true" />
+        <div className={classNames('markdown-blockquote__content', styles.blockquoteContent)}>{content}</div>
+      </blockquote>
+    ),
+    hr: () => <span className={styles.sectionBreath} data-markdown-break="true" aria-hidden="true" />,
+    code: ({ className, children: content, ...props }) => (
+      <code className={classNames(className, styles.inlineCode)} {...props}>{content}</code>
+    ),
+    mark: ({ children: content, ...props }) => <mark {...props}>{content}</mark>,
+    img: ({ src, alt, title }) => (
+      <MarkdownDiagram
+        src={src}
+        alt={alt}
+        title={title}
+        loading={imageLoading}
+        onSettled={onDiagramSettled}
+      />
+    ),
+  }), [imageLoading, onDiagramSettled])
+
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkLearningSections]}
@@ -134,61 +222,7 @@ export function QuestionMarkdown({
         rehypeHighlight,
         [rehypeAnnotationMarks, { annotations }],
       ]}
-      components={{
-        pre: ({ children: content }) => <CodeBlock>{content}</CodeBlock>,
-        p: ({ children: content }) => (
-          <p className={styles.paragraph} data-reading-density={readingDensity(content)}>
-            {content}
-          </p>
-        ),
-        h1: ({ children: content }) => <h1 className={classNames(styles.heading, styles.heading1)}>{content}</h1>,
-        h2: ({ children: content }) => <h2 className={classNames(styles.heading, styles.heading2)}>{content}</h2>,
-        h3: ({ className, children: content, id }) => {
-          const isLearningHeading = className?.split(/\s+/).includes('learning-section__heading')
-          return (
-            <h3
-              className={classNames(className, isLearningHeading ? styles.learningHeading : styles.heading, !isLearningHeading && styles.heading3)}
-              id={id}
-            >
-              {content}
-            </h3>
-          )
-        },
-        h4: ({ children: content }) => <h4 className={classNames(styles.heading, styles.heading4)}>{content}</h4>,
-        ul: ({ children: content }) => <ul className={classNames(styles.list, styles.unorderedList)}>{content}</ul>,
-        ol: ({ children: content }) => <ol className={classNames(styles.list, styles.orderedList)}>{content}</ol>,
-        li: ({ children: content }) => <li className={styles.listItem}>{content}</li>,
-        table: ({ children: content }) => (
-          <div className={classNames('table-wrap', styles.tableWrap)} role="region" aria-label="数据表格" tabIndex={0}>
-            <table className={styles.table}>{content}</table>
-          </div>
-        ),
-        a: ({ href, children: content }) => (
-          <a className={styles.link} href={href} target="_blank" rel="noopener noreferrer">
-            {content}<LinkIcon aria-hidden="true" />
-          </a>
-        ),
-        blockquote: ({ children: content }) => (
-          <blockquote className={styles.blockquote}>
-            <Highlighter className={styles.blockquoteIcon} aria-hidden="true" />
-            <div className={classNames('markdown-blockquote__content', styles.blockquoteContent)}>{content}</div>
-          </blockquote>
-        ),
-        hr: () => <span className={styles.sectionBreath} data-markdown-break="true" aria-hidden="true" />,
-        code: ({ className, children: content, ...props }) => (
-          <code className={classNames(className, styles.inlineCode)} {...props}>{content}</code>
-        ),
-        mark: ({ children: content, ...props }) => <mark {...props}>{content}</mark>,
-        img: ({ src, alt, title }) => (
-          <MarkdownDiagram
-            src={src}
-            alt={alt}
-            title={title}
-            loading={imageLoading}
-            onSettled={onDiagramSettled}
-          />
-        ),
-      }}
+      components={components}
     >
       {children}
     </ReactMarkdown>

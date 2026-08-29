@@ -296,7 +296,7 @@ export const frontendAiInterviewBank = {
   kicker: 'FRONTEND AI INTERVIEWS',
   category: 'AI 应用开发',
   description: '覆盖流式交互、生成式 UI、RAG、Agent、模型网关与安全评估，重点训练技术选型、失败路径、指标和降级策略。',
-  baseTags: ['前端', 'AI 应用', 'RAG', 'Agent', '真实面经'],
+  baseTags: ['前端', 'AI 应用', '真实面经'],
   tone: 'blue',
   source: 'public/question-banks/frontend-ai-interviews.md',
   sections: [
@@ -431,7 +431,7 @@ export const frontendAiInterviewBank = {
         {
           title: '高频解析或代码高亮何时迁入 Web Worker？',
           summary: '当可分离的 CPU 任务持续阻塞主线程并造成可测交互延迟时才迁 Worker；迁移前先节流、增量化并评估序列化成本。',
-          mechanism: '先用 Performance profile 找到长任务：Markdown 解析、语法高亮、diff 或大 JSON 校验若单次超过一帧且频繁触发，可放入 Worker。主线程发送不可变文本、语言和版本号，Worker 返回 AST 或 token spans；结果带版本，过期响应直接丢弃。Worker 无法访问 DOM，传输大对象有结构化克隆成本，二进制可用 Transferable；小文本任务批量处理比每 token 发消息更划算。UI 先显示转义文本或无高亮代码，后台结果回来再渐进增强；Worker 异常时重建一次，仍失败则关闭高亮并记录降级率。',
+          mechanism: '因为主线程既负责 JavaScript，也负责输入响应、布局和绘制，所以频繁的重解析一旦占用几十毫秒就会直接造成页面卡顿；Web Worker 把可分离的 CPU 计算移到另一线程，让主线程及时处理交互。迁移前先用 Performance profile 证明 Markdown 解析、语法高亮、diff 或大 JSON 校验确实形成长任务；结果带版本，过期响应直接丢弃。Worker 无法访问 DOM，传输大对象有结构化克隆成本，二进制可用 Transferable；小文本任务批量处理比每 token 发消息更划算。UI 先显示转义文本或无高亮代码，后台结果回来再渐进增强；Worker 异常时重建一次，仍失败则关闭高亮并记录降级率。',
           example: '200KB 代码回答的高亮在低端机产生 90ms 长任务。系统以闭合代码块为单位发给共享 Worker，携带 messageId/blockVersion；用户继续生成导致版本变化时，旧结果被丢弃。Worker 超时 500ms 就保留纯文本和复制按钮，不阻塞滚动。',
           followUps: [
             { question: '为什么不是所有解析都放 Worker？', answer: '线程启动、消息传输和序列化也有成本；短小、低频或强依赖 DOM 的任务留在主线程更简单，必须以实测长任务为依据。' },
@@ -512,7 +512,9 @@ export const frontendAiInterviewBank = {
         {
           title: '关键词搜索（BM25）和语义搜索怎样配合？为什么不能直接把分数相加？',
           summary: '把它们想成两名找资料的同事：BM25 按“字面是否出现”找，适合错误码、型号和专有名词；向量搜索按“意思是否相近”找，能认出不同说法。两人的评分标准不同，不能把原始分数直接相加。更稳妥的起点是先比较各自的名次，再用真实问题验证怎样组合效果最好。',
-          mechanism: `先把名词翻译成人话：
+          mechanism: `因为 BM25 分数和向量相似度来自不同算法，数值范围和分布都不是同一把尺子，直接相加会让“数字天生较大”的一路支配结果，所以通常先分别召回，再按名次融合或校准后重排。
+
+先把名词翻译成人话：
 
 - **BM25（关键词搜索）**：看问题中的词是否也出现在文档里，并考虑词有多罕见、出现多少次。搜索“ERR_CONNECTION_CLOSED”这类准确文本时，它通常很强。
 - **向量搜索（语义搜索）**：把问题和文档转换成表示“含义”的数字，再找意思接近的内容。用户说“页面一直转圈”，它可能找到写着“请求长期未返回”的排障文档，即使两边用词不同。
@@ -887,9 +889,14 @@ TopK 的确定方法是逐步增加海选保留数，例如 10、20、40、80、
           sources: [COMMUNITY.baiduAgent, OFFICIAL.postgresReadOnly, OFFICIAL.postgresRls],
         },
         {
-          title: '流式请求如何实现幂等重试、背压与并发控制？',
-          summary: '创建任务与消费事件要分离：提交使用幂等键，事件按序号去重，生产速度受队列与消费能力约束，并对用户和模型设置并发上限。',
-          mechanism: '客户端为一次用户发送生成 requestId/idempotencyKey，服务端若重复提交则返回同一 taskId，不重复计费或调用模型。流事件带 sequence，客户端只提交连续序号并忽略重复，出现缺口从快照或可重放窗口恢复。服务端使用有界队列，高水位时暂停读取上游、合并 token、丢弃非关键进度事件或主动取消，而不是无限缓存；浏览器渲染也按帧批量消费。按用户、会话和供应商设并发与速率限制，新问题可取消旧生成或排队。重试遵守总 deadline 与 Retry-After，已经开始的流先查询任务状态再决定重连。',
+          title: 'AI 生成任务怎样防重复、续传事件并控制负载？',
+          summary: '因为“重新连数据流”和“重新创建模型任务”不是一回事，断线后无脑重发会重复计费并生成两份答案。正确做法是：创建任务用幂等键复用同一 taskId，消费事件用序号续传和去重，再用有界队列与并发门禁防止慢客户端拖垮服务。',
+          mechanism: '因为幂等解决“同一个业务意图别执行两次”，事件序号解决“同一结果别重复显示或漏显示”，背压和并发限制解决“生产速度别超过系统容量”，所以三者必须分层实现。这些都属于稳定性，但失败对象不同，不能只用一个 loading 状态代替。客户端为一次用户发送生成 requestId/idempotencyKey，服务端若重复提交则返回同一 taskId，不重复计费或调用模型。流事件带 sequence，客户端只提交连续序号并忽略重复，出现缺口从快照或可重放窗口恢复。服务端使用有界队列，高水位时暂停读取上游、合并 token、丢弃非关键进度事件或主动取消，而不是无限缓存；浏览器渲染也按帧批量消费。按用户、会话和供应商设并发与速率限制，新问题可取消旧生成或排队。重试遵守总 deadline 与 Retry-After，已经开始的流先查询任务状态再决定重连。',
+          visual: {
+            src: '/content/diagrams/frontend-ai/idempotent-stream-control-v1.svg',
+            alt: 'AI 生成任务从幂等创建、事件续传到有界缓冲和并发门禁的控制链路',
+            caption: '幂等键守住任务唯一性，事件序号守住续传正确性，有界队列与并发门禁守住容量边界。',
+          },
           example: '用户双击发送只创建一个 taskId；SSE 重连收到 sequence 40—60，其中 40—52 已渲染，客户端只接 53 起。Markdown 解析队列超过 20 个块时合并 delta，但保留 tool_error 和 done。单用户最多两条生成，第三条提示排队或让用户停止旧任务。',
           followUps: [
             { question: 'TCP 已有流控，应用还需要背压吗？', answer: '需要，TCP 只管字节传输，不知道 Markdown 解析、状态提交和下游模型队列容量；应用仍可能无限积累内存与任务。' },

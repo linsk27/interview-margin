@@ -4,13 +4,19 @@ const entries = [
     title: 'OSI 七层模型分别是什么？',
     mechanism: 'OSI 从低到高是物理层、数据链路层、网络层、传输层、会话层、表示层和应用层。它首先是一套职责边界，不应机械地等同于七个独立进程：以访问 HTTPS 为例，以太网或 Wi-Fi 承载帧，IP 负责跨网段寻址，TCP 提供有序字节流，TLS 完成加密与身份认证，HTTP 表达应用语义；TLS 和 HTTP 在 OSI 教学模型中会横跨表示、会话、应用层。互联网工程更常用链路层、网际层、传输层、应用层的 TCP/IP 模型。排障价值在于逐层建立证据：链路是否 up、ARP/邻居是否可达、路由是否选择正确、端口是否完成握手、TLS 是否通过证书校验、HTTP 是否返回预期内容，上一层失败前不要先猜下一层业务代码。',
     example: [
-      '访问 `api.example.com` 超时时，可以按层执行下面的最小诊断链，并记录每一步的实际输出。',
+      '访问 `api.example.com` 超时时，可以先解析一次地址，再让路由检查和 HTTPS 请求都使用这一个地址，避免“查的是 A 地址、请求却走 B 地址”。',
       '',
       '~~~bash',
-      'ip link show                 # 链路层：接口是否 UP',
-      'ip route get 203.0.113.10    # 网络层：出口、下一跳和源地址',
-      'ss -tn state established     # 传输层：是否已有 TCP 连接',
-      'curl -v --connect-timeout 3 https://api.example.com/health',
+      'target_host=api.example.com',
+      'target_ip=$(getent ahostsv4 "$target_host" | awk \'NR == 1 { print $1 }\')',
+      'test -n "$target_ip" || { echo "DNS 未返回 IPv4 地址"; exit 1; }',
+      '',
+      'ip link show                                      # 链路层：接口是否 UP',
+      'ip route get "$target_ip"                         # 网络层：这次目标的出口、下一跳和源地址',
+      'ss -tn state established                          # 传输层：是否已有 TCP 连接',
+      'curl -v --connect-timeout 3 \\',
+      '  --resolve "$target_host:443:$target_ip" \\',
+      '  "https://$target_host/health"                  # TLS/HTTP：强制使用同一个 IP，仍保留正确 SNI',
       '~~~',
       '',
       '`ip route get` 成功但 curl 报 `Connection refused`，说明 IP 路径大体可达、目标端口主动拒绝；若 TLS 已协商而 `/health` 返回 503，则应转向代理或应用层，而不是继续修改网卡。'
@@ -324,7 +330,7 @@ const entries = [
   {
     number: 10,
     title: 'HTTPS 建立连接做了什么？',
-    mechanism: 'HTTPS 通常先完成 TCP 连接，再进行 TLS 握手。TLS 1.3 客户端在 ClientHello 中给出支持版本、密码套件、随机数、密钥份额、SNI 主机名和 ALPN；服务端用 ServerHello 选择参数并提供自己的密钥份额，双方据此计算共享秘密。随后服务端发送证书链与 CertificateVerify，客户端检查域名、有效期、签名链、用途和信任根；双方用 Finished 校验此前握手 transcript 未被篡改，最后派生方向独立的对称应用数据密钥。证书用于认证身份，真正承载 HTTP 的是高效对称加密；SNI 决定多域名证书/站点，ALPN 协商 h2 或 http/1.1。会话恢复可减少往返，但 0-RTT 数据具有重放风险。',
+    mechanism: '因为 TCP 只保证字节尽量可靠、有序地到达，并不验证域名身份，也不加密内容，所以 HTTPS 不能连上 TCP 就直接发送敏感 HTTP，而要先做 TLS 握手，再允许双方交换受保护的应用数据。TLS 1.3 客户端在 ClientHello 中给出支持版本、密码套件、随机数、密钥份额、SNI 主机名和 ALPN；服务端用 ServerHello 选择参数并提供自己的密钥份额，双方据此计算共享秘密。随后服务端发送证书链与 CertificateVerify，客户端检查域名、有效期、签名链、用途和信任根；双方用 Finished 校验此前握手 transcript 未被篡改，最后派生方向独立的对称应用数据密钥。证书用于认证身份，真正承载 HTTP 的是高效对称加密；SNI 决定多域名证书/站点，ALPN 协商 h2 或 http/1.1。会话恢复可减少往返，但 0-RTT 数据具有重放风险。',
     example: [
       '下面的命令会同时验证 SNI、证书链、协议版本、密码套件和 ALPN，不要使用不带 `-servername` 的结果判断多域名站点。',
       '',

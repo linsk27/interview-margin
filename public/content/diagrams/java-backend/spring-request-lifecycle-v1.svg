@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Spring MVC 一次请求的完整调用链</title>
+  <desc id="desc">HTTP 请求依次经过 Filter、DispatcherServlet、HandlerMapping、HandlerAdapter、Controller、Service 与 Repository；MVC Interceptor 围绕 Handler 链，AOP 代理围绕 Spring Service Bean。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fbff"/><stop offset="1" stop-color="#eff5f9"/></linearGradient>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#3b719b"/></marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#173149" flood-opacity=".11"/></filter>
+    <style>text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#173149}.eyebrow{font:700 15px "IBM Plex Mono",monospace;letter-spacing:2px;fill:#286ca7}.title{font-size:34px;font-weight:800}.sub{font-size:16px;fill:#5f7688}.node{font-size:18px;font-weight:800}.body{font-size:13px;fill:#5b7183}.edge{font-size:13px;font-weight:700;fill:#446178}</style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="58" y="58" class="eyebrow">SPRING MVC REQUEST LIFECYCLE</text>
+  <text x="58" y="102" class="title">一条请求不是直接跳进 Controller</text>
+  <text x="58" y="135" class="sub">认证、路由、参数绑定、业务事务、数据访问和异常转换分别位于不同边界，排障时要沿链路逐层定位。</text>
+
+  <g filter="url(#shadow)">
+    <rect x="48" y="258" width="126" height="112" rx="20" fill="#fff" stroke="#a8c5da"/>
+    <rect x="206" y="258" width="126" height="112" rx="20" fill="#edf5ff" stroke="#8bb4d5"/>
+    <rect x="364" y="258" width="150" height="112" rx="20" fill="#fff" stroke="#a8c5da"/>
+    <rect x="546" y="258" width="140" height="112" rx="20" fill="#f2edff" stroke="#ac9bd3"/>
+    <rect x="718" y="258" width="126" height="112" rx="20" fill="#fff7e8" stroke="#d6aa65"/>
+    <rect x="876" y="258" width="126" height="112" rx="20" fill="#eaf7f1" stroke="#79aa92"/>
+    <rect x="1034" y="258" width="126" height="112" rx="20" fill="#fff" stroke="#a8c5da"/>
+  </g>
+  <text x="111" y="301" text-anchor="middle" class="node">Filter</text><text x="111" y="331" text-anchor="middle" class="body">认证 · Trace</text><text x="111" y="353" text-anchor="middle" class="body">编码 · CORS</text>
+  <text x="269" y="294" text-anchor="middle" class="node">Dispatcher</text><text x="269" y="317" text-anchor="middle" class="node">Servlet</text><text x="269" y="350" text-anchor="middle" class="body">统一调度入口</text>
+  <text x="439" y="294" text-anchor="middle" class="node">Handler</text><text x="439" y="317" text-anchor="middle" class="node">Mapping</text><text x="439" y="342" text-anchor="middle" class="body">定位 Handler</text><text x="439" y="361" text-anchor="middle" class="body">返回执行链</text>
+  <text x="616" y="294" text-anchor="middle" class="node">Handler</text><text x="616" y="317" text-anchor="middle" class="node">Adapter</text><text x="616" y="342" text-anchor="middle" class="body">调用 Handler</text><text x="616" y="361" text-anchor="middle" class="body">参数 / 返回值</text>
+  <text x="781" y="301" text-anchor="middle" class="node">Controller</text><text x="781" y="331" text-anchor="middle" class="body">校验输入</text><text x="781" y="353" text-anchor="middle" class="body">组织用例</text>
+  <text x="939" y="301" text-anchor="middle" class="node">Service</text><text x="939" y="331" text-anchor="middle" class="body">业务规则</text><text x="939" y="353" text-anchor="middle" class="body">Spring Bean</text>
+  <text x="1097" y="301" text-anchor="middle" class="node">Repository</text><text x="1097" y="331" text-anchor="middle" class="body">SQL / 外部服务</text><text x="1097" y="353" text-anchor="middle" class="body">持久化</text>
+
+  <g stroke="#3b719b" stroke-width="3" marker-end="url(#arrow)"><path d="M174 314H196"/><path d="M332 314H354"/><path d="M514 314H536"/><path d="M686 314H708"/><path d="M844 314H866"/><path d="M1002 314H1024"/></g>
+  <rect x="420" y="429" width="300" height="86" rx="20" fill="#fff" stroke="#9db9ce"/>
+  <text x="570" y="462" text-anchor="middle" class="node">MVC Interceptor</text>
+  <text x="570" y="489" text-anchor="middle" class="body">围绕 Handler：pre / post / completion</text>
+  <path d="M439 370V419" stroke="#3b719b" stroke-width="3" marker-end="url(#arrow)"/><path d="M616 419V380" stroke="#3b719b" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="790" y="429" width="300" height="86" rx="20" fill="#fff" stroke="#9db9ce"/>
+  <text x="940" y="462" text-anchor="middle" class="node">AOP / @Transactional</text>
+  <text x="940" y="489" text-anchor="middle" class="body">围绕 Service Bean 方法：事务 · 日志</text>
+  <path d="M940 370V419" stroke="#3b719b" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="178" y="556" width="844" height="108" rx="22" fill="#173149"/>
+  <text x="600" y="592" text-anchor="middle" style="font-size:18px;font-weight:800;fill:#fff">异常也要走统一出口</text>
+  <text x="600" y="623" text-anchor="middle" style="font-size:15px;fill:#d8e6ef">ControllerAdvice 转换业务错误，Filter 记录最终状态与耗时；不要在每层重复吞异常</text>
+  <text x="600" y="649" text-anchor="middle" style="font-size:14px;fill:#9fc4de">排障顺序：入口日志 → 路由与参数 → 事务与依赖 → SQL/下游 → 响应序列化</text>
+</svg>

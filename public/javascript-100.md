@@ -11,11 +11,11 @@
 
 **短回答：**
 
-这是 JavaScript 早期实现遗留问题。`null` 是空值，但 `typeof null` 会返回字符串 `'object'`；判断 `null` 应直接使用 `value === null`。
+结果是字符串 `'object'`。这是 JavaScript 早期实现遗留行为；`null` 本身仍是原始空值，判断它应直接使用 `value === null`。
 
 **原理：**
 
-- 结果是字符串 'object'。ECMAScript 对 typeof 运算符规定：操作数值为 Null 时返回 'object'，这是一项为兼容早期网页而保留的历史行为，并不表示 null 真的是普通对象。null 是独立的原始值，表示“有意的空值”；
+- JavaScript 早期实现把 null 也归到了 object 这条 typeof 返回路径；大量旧网页后来依赖这个结果，所以 ECMAScript 为向后兼容保留了它。这并不表示 null 真的是普通对象。null 是独立的原始值，表示“有意的空值”；
 - 它没有可读取的对象属性，也不能作为 Object.keys 等对象操作的有效输入。typeof 更适合粗分函数、字符串、数字等类型，判断 null 应使用 value === null；
 - 若要判断非空对象，应同时检查 value !== null && typeof value === 'object'，数组还需再使用 Array.isArray 区分。这种分层判断能避免空引用进入属性访问，并让类型分支与运行时事实保持一致。
 
