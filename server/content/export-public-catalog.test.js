@@ -4,13 +4,15 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import {
-  buildPublicBankCatalog, buildPublicCatalog, buildPublicCatalogIndex, exportPublicCatalog,
+  buildPublicBankCatalog, buildPublicCatalog, buildPublicCatalogArtifacts,
+  buildPublicCatalogIndex, exportPublicCatalog,
 } from './export-public-catalog.js'
 
 const temporaryDirectories = []
+let artifacts
 
 function temporaryDirectory() {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'interview-public-catalog-'))
@@ -37,8 +39,12 @@ afterEach(() => {
 })
 
 describe('public catalog exporter', () => {
+  beforeAll(() => {
+    artifacts = buildPublicCatalogArtifacts()
+  }, 120_000)
+
   it('exports exactly the public, active seeded catalog', () => {
-    const catalog = buildPublicCatalog()
+    const catalog = buildPublicCatalog({ artifacts })
     const questions = catalog.sections.flatMap((section) => section.questions)
 
     expect(catalog.banks).toHaveLength(14)
@@ -64,7 +70,7 @@ describe('public catalog exporter', () => {
   }, 20_000)
 
   it('builds a lightweight index and one plainText-free payload per bank', () => {
-    const index = buildPublicCatalogIndex()
+    const index = buildPublicCatalogIndex({ artifacts })
     expect(index.version).toBe(1)
     expect(index.banks).toHaveLength(14)
     expect(index.banks.reduce((total, bank) => total + bank.questionCount, 0)).toBe(762)
@@ -74,7 +80,7 @@ describe('public catalog exporter', () => {
     expect(JSON.stringify(index)).not.toContain('plainText')
     expect(JSON.stringify(index)).not.toContain('"body"')
 
-    const javascript = buildPublicBankCatalog('javascript')
+    const javascript = buildPublicBankCatalog('javascript', { artifacts })
     expect(javascript).toMatchObject({ version: 1, bank: { id: 'javascript' } })
     const questions = javascript.sections.flatMap((section) => section.questions)
     expect(questions).toHaveLength(index.banks.find((bank) => bank.id === 'javascript').questionCount)
@@ -87,8 +93,8 @@ describe('public catalog exporter', () => {
     const first = path.join(directory, 'first', 'catalog.json')
     const second = path.join(directory, 'second', 'catalog.json')
 
-    const firstResult = exportPublicCatalog({ outputPath: first })
-    const secondResult = exportPublicCatalog({ outputPath: second })
+    const firstResult = exportPublicCatalog({ artifacts, outputPath: first })
+    const secondResult = exportPublicCatalog({ artifacts, outputPath: second })
 
     expect(firstResult).toMatchObject({ banks: 14, questions: 762, outputPath: first })
     expect(secondResult).toMatchObject({ banks: 14, questions: 762, outputPath: second })
@@ -101,6 +107,6 @@ describe('public catalog exporter', () => {
       const secondBankPath = path.join(secondResult.banksOutputDirectory, path.basename(firstBankPath))
       expect(fs.readFileSync(firstBankPath, 'utf8')).toBe(fs.readFileSync(secondBankPath, 'utf8'))
     }
-    expect(JSON.parse(fs.readFileSync(first, 'utf8'))).toEqual(buildPublicCatalog())
+    expect(JSON.parse(fs.readFileSync(first, 'utf8'))).toEqual(artifacts.catalog)
   }, 60_000)
 })

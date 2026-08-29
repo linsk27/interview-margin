@@ -155,28 +155,38 @@ export function buildPublicCatalogArtifacts({ rootDir = projectRoot } = {}) {
  * ever opening the production database. The seeded in-memory database is
  * always closed before the catalog is returned.
  */
-export function buildPublicCatalog({ rootDir = projectRoot } = {}) {
-  return buildPublicCatalogArtifacts({ rootDir }).catalog
+function resolveArtifacts({ rootDir = projectRoot, artifacts } = {}) {
+  return artifacts ?? buildPublicCatalogArtifacts({ rootDir })
 }
 
-export function buildPublicCatalogIndex({ rootDir = projectRoot } = {}) {
-  return buildPublicCatalogArtifacts({ rootDir }).index
+export function buildPublicCatalog(options = {}) {
+  return resolveArtifacts(options).catalog
 }
 
-export function buildPublicBankCatalog(bankId, { rootDir = projectRoot } = {}) {
-  return buildPublicCatalogArtifacts({ rootDir }).banks[bankId]
+export function buildPublicCatalogIndex(options = {}) {
+  return resolveArtifacts(options).index
+}
+
+export function buildPublicBankCatalog(bankId, options = {}) {
+  return resolveArtifacts(options).banks[bankId]
 }
 
 /**
- * Writes a deterministic JSON snapshot suitable for static/offline hosting.
+ * Writes an already-validated artifact set without rebuilding the 762-question
+ * source catalog. Keeping generation and writing separate lets the test suite
+ * verify deterministic output without repeating the expensive content pass.
  */
-export function exportPublicCatalog({
+export function writePublicCatalogArtifacts({
+  artifacts,
   rootDir = projectRoot,
   outputPath = path.join(rootDir, 'public/catalog.json'),
   indexOutputPath,
   banksOutputDirectory,
 } = {}) {
-  const { catalog, index, banks } = buildPublicCatalogArtifacts({ rootDir })
+  if (!artifacts?.catalog || !artifacts?.index || !artifacts?.banks) {
+    throw new Error('A complete public catalog artifact set is required.')
+  }
+  const { catalog, index, banks } = artifacts
   const resolvedOutput = path.resolve(outputPath)
   const resolvedIndexOutput = path.resolve(indexOutputPath ?? path.join(path.dirname(resolvedOutput), 'catalog-index.json'))
   const resolvedBanksOutput = path.resolve(banksOutputDirectory ?? path.join(path.dirname(resolvedOutput), 'catalog-banks'))
@@ -206,6 +216,19 @@ export function exportPublicCatalog({
     sections: catalog.sections.length,
     questions: catalog.sections.reduce((total, section) => total + section.questions.length, 0),
   }
+}
+
+/**
+ * Builds and writes a deterministic JSON snapshot suitable for static/offline
+ * hosting. The authored Markdown pipeline still runs exactly once per export.
+ */
+export function exportPublicCatalog(options = {}) {
+  const rootDir = options.rootDir ?? projectRoot
+  return writePublicCatalogArtifacts({
+    ...options,
+    rootDir,
+    artifacts: resolveArtifacts({ rootDir, artifacts: options.artifacts }),
+  })
 }
 
 function cliOutputPath(args) {

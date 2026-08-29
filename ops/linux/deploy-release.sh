@@ -267,12 +267,15 @@ deploy_release() {
       sudo -u interview-margin env HOME=/var/lib/interview-margin npm_config_cache="$npm_cache_root" \
         npm audit --omit=dev --registry=https://registry.npmjs.org
     fi
+    # Generated catalog snapshots are intentionally excluded from Git. The
+    # build's prebuild step creates them from the committed Markdown before the
+    # tests exercise the exact production seed path that will be switched live.
+    sudo -u interview-margin env HOME=/var/lib/interview-margin \
+      npm_config_cache="$npm_cache_root" npm run build
     sudo -u interview-margin env HOME=/var/lib/interview-margin \
       npm_config_cache="$npm_cache_root" npm test -- --maxWorkers=1
     sudo -u interview-margin env HOME=/var/lib/interview-margin \
       npm_config_cache="$npm_cache_root" npm run db:check
-    sudo -u interview-margin env HOME=/var/lib/interview-margin \
-      npm_config_cache="$npm_cache_root" npm run build
 
     chown -R root:interview-margin "$staging_release"
     chmod -R g+rX,o-rwx "$staging_release"

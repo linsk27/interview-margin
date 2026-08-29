@@ -69,9 +69,9 @@ Build the release before starting it:
 ```bash
 cd /opt/interview-margin/current
 npm ci --include=optional
+npm run build
 npm test
 npm run db:check
-npm run build
 sudo -u interview-margin /usr/bin/bash ops/linux/db-preflight.sh app
 ```
 
