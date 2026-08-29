@@ -1,16 +1,113 @@
+import '@fontsource/zcool-xiaowei/400.css'
+
 import {
-  ArrowRight, BookOpenCheck, BrainCircuit, Check, CheckCircle2, Highlighter,
-  Layers3, MessageSquareText, RefreshCcw, Send, ShieldCheck, Sparkles, UserRoundPlus, X,
+  ArrowRight, BookOpenCheck, Bot, Check, CheckCircle2, ChevronRight,
+  Highlighter, MessageSquareText, RefreshCcw, Search, Send, Sparkles,
+  UserRoundPlus, X,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import type { PublicCatalogIndex } from './lib/api'
 import './marketing.css'
 
 type ContactKind = 'feedback' | 'account'
 
-interface HealthSummary {
-  banks: number
-  questions: number
+interface LandingQuestion {
+  id: string
+  library: string
+  title: string
+  readMinutes: number
+  sectionTitle: string
+}
+
+interface LandingTrack {
+  id: 'frontend' | 'java' | 'ai'
+  title: string
+  bankCount: number
+  questionCount: number
+  banks: Array<{ id: string; title: string; shortTitle: string }>
+}
+
+interface LandingPayload {
+  version: 1
+  summary: { banks: number; questions: number }
+  featuredQuestions: LandingQuestion[]
+  tracks: LandingTrack[]
+}
+
+const FEATURED_QUESTION_IDS = [
+  'q-1',
+  '521d047b-e5d6-59b9-907a-cd7ad0de657a',
+  '72d8195b-5fad-5cfc-8370-85a1379ca106',
+]
+
+const TRACK_DEFINITIONS: Array<{ id: LandingTrack['id']; title: string; bankIds: string[] }> = [
+  { id: 'frontend', title: '前端工程', bankIds: ['javascript', 'git-engineering', 'vue-core', 'react-core', 'frontend-engineering'] },
+  { id: 'java', title: 'Java 后端', bankIds: ['java-foundations', 'java-backend-interviews', 'database-cache', 'network-deployment'] },
+  { id: 'ai', title: 'AI 应用开发', bankIds: ['frontend-ai-interviews', 'java-ai-applications', '360-ai-frontend'] },
+]
+
+const TRACK_COPY: Record<LandingTrack['id'], { mark: string; description: string; topics: string[] }> = {
+  frontend: {
+    mark: 'FE',
+    description: '从语言基础到框架与浏览器，把常见追问连成一条完整前端路线。',
+    topics: ['JavaScript', 'Vue / React', '浏览器', 'TypeScript', 'Git'],
+  },
+  java: {
+    mark: 'JV',
+    description: '先补齐 Java 基础，再进入 Spring、数据库、缓存与线上排障。',
+    topics: ['集合与并发', 'JVM', 'Spring', 'MySQL / Redis', '分布式'],
+  },
+  ai: {
+    mark: 'AI',
+    description: '面向真正的应用开发：模型接入、检索、Agent、工具与安全边界。',
+    topics: ['RAG', 'Agent', 'MCP / Skill', '流式交互', 'Spring AI'],
+  },
+}
+
+const QUESTION_LABELS: Record<string, string> = {
+  interview: '前端',
+  'java-foundations': 'Java',
+  'java-ai-applications': 'AI 应用',
+}
+
+function landingFromIndex(index: PublicCatalogIndex): LandingPayload {
+  const banksById = new Map(index.banks.map((bank) => [bank.id, bank]))
+  const questions = index.banks.flatMap((bank) => bank.sections.flatMap((section) => section.questions))
+  const questionsById = new Map(questions.map((question) => [question.id, question]))
+  return {
+    version: 1,
+    summary: {
+      banks: index.banks.length,
+      questions: index.banks.reduce((total, bank) => total + bank.questionCount, 0),
+    },
+    featuredQuestions: FEATURED_QUESTION_IDS
+      .map((id) => questionsById.get(id))
+      .filter((question): question is NonNullable<typeof question> => Boolean(question))
+      .map(({ id, library, title, readMinutes, sectionTitle }) => ({ id, library, title, readMinutes, sectionTitle })),
+    tracks: TRACK_DEFINITIONS.map((definition) => {
+      const banks = definition.bankIds.map((id) => banksById.get(id)).filter((bank): bank is NonNullable<typeof bank> => Boolean(bank))
+      return {
+        id: definition.id,
+        title: definition.title,
+        bankCount: banks.length,
+        questionCount: banks.reduce((total, bank) => total + bank.questionCount, 0),
+        banks: banks.map(({ id, title, shortTitle }) => ({ id, title, shortTitle })),
+      }
+    }),
+  }
+}
+
+async function fetchLandingPayload() {
+  try {
+    const response = await fetch('/api/landing', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+    if (response.ok) return await response.json() as LandingPayload
+  } catch {
+    // Static catalog fallback keeps the public entrance useful during API maintenance.
+  }
+  const fallback = await fetch('/catalog-index.json', { headers: { Accept: 'application/json' } })
+  if (!fallback.ok) throw new Error('公开题库暂时不可用。')
+  return landingFromIndex(await fallback.json() as PublicCatalogIndex)
 }
 
 function BrandMark() {
@@ -18,7 +115,7 @@ function BrandMark() {
 }
 
 function ContactDialog({ kind, onClose }: { kind: ContactKind; onClose: () => void }) {
-  const titleId = `contact-dialog-${kind}`
+  const titleId = 'contact-dialog-' + kind
   const panelRef = useRef<HTMLElement>(null)
   const firstFieldRef = useRef<HTMLInputElement>(null)
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'success'>('idle')
@@ -43,9 +140,11 @@ function ContactDialog({ kind, onClose }: { kind: ContactKind; onClose: () => vo
       const first = focusable[0]
       const last = focusable[focusable.length - 1]
       if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault(); last.focus()
+        event.preventDefault()
+        last.focus()
       } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault(); first.focus()
+        event.preventDefault()
+        first.focus()
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -91,7 +190,7 @@ function ContactDialog({ kind, onClose }: { kind: ContactKind; onClose: () => vo
     <section ref={panelRef} className="contact-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <header className="contact-dialog__header">
         <div className="contact-dialog__icon" aria-hidden="true">{isAccount ? <UserRoundPlus /> : <MessageSquareText />}</div>
-        <div><span>{isAccount ? 'ACCOUNT REQUEST' : 'PRODUCT FEEDBACK'}</span><h2 id={titleId}>{isAccount ? '申请学习账号' : '告诉我哪里还不好用'}</h2></div>
+        <div><span>{isAccount ? '学习账号' : '产品反馈'}</span><h2 id={titleId}>{isAccount ? '申请学习账号' : '告诉我哪里还不好用'}</h2></div>
         <button type="button" className="contact-dialog__close" onClick={onClose} aria-label="关闭"><X /></button>
       </header>
 
@@ -102,7 +201,7 @@ function ContactDialog({ kind, onClose }: { kind: ContactKind; onClose: () => vo
         <button type="button" onClick={onClose}>完成</button>
       </div> : <form className="contact-form" onSubmit={submit}>
         <p className="contact-dialog__intro">{isAccount
-          ? '游客可以直接阅读和体验 AI；账号用于保存批注、收藏、进度与复习计划。'
+          ? '游客可以直接读题和体验 AI；账号用于保存批注、收藏、进度与复习计划。'
           : '可提交内容错误、交互问题或功能建议。若希望收到回复，请留下联系方式。'}</p>
         <label>怎么称呼你
           <input ref={firstFieldRef} name="name" required maxLength={80} autoComplete="name" placeholder="例如：Linda" />
@@ -115,7 +214,7 @@ function ContactDialog({ kind, onClose }: { kind: ContactKind; onClose: () => vo
             placeholder={isAccount ? '例如：正在准备前端 × AI 面试，希望保存复习进度。' : '请描述发生了什么、你原本希望怎样。'} />
         </label>
         <label className="contact-honeypot" aria-hidden="true">网站<input name="website" tabIndex={-1} autoComplete="off" /></label>
-        <label className="contact-consent"><input name="consent" type="checkbox" required /><span>同意将以上信息保存到本站，用于处理本次{isAccount ? '账号申请' : '反馈'}；处理完成后最多保留 30 天。</span></label>
+        <label className="contact-consent"><input name="consent" type="checkbox" required /><span>同意将以上信息保存到本站，用于处理本次{isAccount ? '账号申请' : '反馈'}。</span></label>
         {error && <p className="contact-error" role="alert">{error}</p>}
         <footer><button type="button" className="button-secondary" onClick={onClose}>取消</button><button type="submit" className="button-primary" disabled={submitState === 'submitting'}>{submitState === 'submitting' ? <RefreshCcw className="is-spinning" /> : <Send />} {submitState === 'submitting' ? '提交中' : '提交'}</button></footer>
       </form>}
@@ -123,80 +222,135 @@ function ContactDialog({ kind, onClose }: { kind: ContactKind; onClose: () => vo
   </div>
 }
 
+function QuestionShelf({ questions }: { questions?: LandingQuestion[] }) {
+  if (!questions?.length) {
+    return <div className="question-shelf question-shelf--loading" aria-label="正在读取真实题目">
+      {[0, 1, 2].map((index) => <div key={index}><span /><strong /><i /></div>)}
+    </div>
+  }
+  return <div className="question-shelf">
+    {questions.map((question, index) => <a key={question.id} href={'/app#' + question.id} className={'question-card question-card--' + (index + 1)}>
+      <div className="question-card__meta">
+        <span>{QUESTION_LABELS[question.library] ?? question.sectionTitle}</span>
+        <small>{question.readMinutes} 分钟</small>
+      </div>
+      <strong>{question.title.replace(/^Q\d+[：:]\s*/, '')}</strong>
+      <div className="question-card__footer"><span>打开题目</span><ArrowRight /></div>
+    </a>)}
+  </div>
+}
+
 export default function MarketingLanding() {
   const [contactKind, setContactKind] = useState<ContactKind>()
-  const [health, setHealth] = useState<HealthSummary>({ banks: 14, questions: 762 })
+  const [landing, setLanding] = useState<LandingPayload>()
 
   useEffect(() => {
-    fetch('/api/health', { headers: { Accept: 'application/json' } })
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((payload: Partial<HealthSummary>) => {
-        if (Number.isInteger(payload.banks) && Number.isInteger(payload.questions)) {
-          setHealth({ banks: payload.banks!, questions: payload.questions! })
-        }
-      }).catch(() => undefined)
+    let active = true
+    fetchLandingPayload().then((payload) => {
+      if (active) setLanding(payload)
+    }).catch(() => undefined)
+    return () => { active = false }
   }, [])
 
   return <div className="marketing-page">
     <header className="marketing-header">
       <a className="marketing-brand" href="/" aria-label="面试边注首页"><BrandMark /><span><strong>面试边注</strong><small>INTERVIEW MARGIN</small></span></a>
-      <nav aria-label="首页导航"><a href="#product">产品体验</a><a href="#workflow">使用方式</a><a href="#questions">常见问题</a></nav>
-      <a className="header-cta" href="/app#question-banks">进入题库 <ArrowRight /></a>
+      <nav aria-label="首页导航"><a href="#questions">先试一题</a><a href="#paths">题库路线</a><a href="#guest">游客能做什么</a></nav>
+      <a className="header-cta" href="/app#question-banks">开始刷题 <ArrowRight /></a>
     </header>
 
     <main>
       <section className="marketing-hero" aria-labelledby="hero-title">
         <div className="hero-copy">
-          <p className="eyebrow"><span>762</span> 道持续校验的技术面试题</p>
-          <h1 id="hero-title">把答案读懂，<br /><em>也把复习做完。</em></h1>
-          <p className="hero-lead">不是把八股堆给你。面试边注把题目拆成速答、原理、实战、追问与避坑，让你先理解，再用批注和复习节奏真正记住。</p>
-          <div className="hero-actions"><a className="button-primary" href="/app#question-banks">以游客身份开始 <ArrowRight /></a><a className="button-secondary" href="#workflow">看看怎么用</a></div>
-          <ul className="hero-trust"><li><Check />游客可读全部公开题库</li><li><Check />可直接体验 AI 追问</li><li><Check />登录后才保存个人记忆</li></ul>
+          <p className="hero-kicker"><span aria-hidden="true" />{landing ? landing.summary.banks + ' 个公开题库 · ' + landing.summary.questions + ' 道题' : '公开题库正在同步'}</p>
+          <h1 id="hero-title">别急着背答案，<br /><em>先把这道题讲明白。</em></h1>
+          <p className="hero-lead">这里整理了前端、Java 后端和 AI 应用面试题。先自己组织答案，再看结论、为什么、边界与追问；卡住时，让 AI 换一种说法。</p>
+          <div className="hero-actions"><a className="button-primary" href="/app#question-banks">开始刷题 <ArrowRight /></a><a className="button-text" href="#questions">先试三道真实题 <ChevronRight /></a></div>
+          <p className="hero-note"><Check />无需注册即可读题和试用 AI；登录后才保存个人学习记录。</p>
         </div>
-
-        <figure className="product-preview" aria-label="面试边注阅读与复习界面示意">
-          <div className="preview-topbar"><span>前端基础 · Q1</span><div><i className="is-active" />速答<i />原理<i />实战<i />追问</div><small>63%</small></div>
-          <div className="preview-body">
-            <aside><span>题库</span><strong>前端基础</strong><ul><li className="is-active">Q1 Vue 响应式</li><li>Q2 浏览器渲染</li><li>Q3 事件循环</li><li>Q4 React 更新</li></ul></aside>
-            <article><p className="preview-kicker">INTERVIEW NOTES · Q1</p><h2>为什么 Vue 3 使用 Proxy？</h2><p className="preview-meta">2 分钟阅读 · 前端 · 工程化</p><div className="preview-answer"><strong>先背答案</strong><p>Proxy 代理整个对象，能拦截新增、删除与集合操作，让响应式边界更完整。</p></div><h3>先把两个概念说清楚</h3><div className="preview-list"><span><b>响应式</b>数据变化后，依赖它的界面重新计算。</span><span><b>Proxy</b>把对象操作统一交给代理层处理。</span></div></article>
-            <div className="preview-notes"><span>本题工作区</span><strong>写下自己的理解</strong><div /><span className="preview-notes__action" aria-hidden="true">安排复习</span></div>
-          </div>
-          <figcaption><Sparkles /> 阅读、批注、复习与 AI 追问，在同一个学习上下文里完成。</figcaption>
-        </figure>
+        <aside className="hero-note-card" aria-label="学习提示">
+          <Sparkles aria-hidden="true" />
+          <p>真正能说出口，<br />才算会。</p>
+          <span>先答 · 再看 · 再追问</span>
+        </aside>
       </section>
 
-      <section className="proof-strip" aria-label="内容规模" aria-live="polite"><p><strong>{health.banks}</strong><span>个主题题库</span></p><p><strong>{health.questions}</strong><span>道在库题目</span></p><p><strong>6</strong><span>层答案结构</span></p><p><strong>0</strong><span>游客注册门槛</span></p></section>
-
-      <section className="feature-section" id="product" aria-labelledby="feature-title">
-        <header className="section-heading"><p>BUILT FOR UNDERSTANDING</p><h2 id="feature-title">不只是给答案，<br />而是帮你形成回答。</h2><span>从“看过”到“能讲”，每一步都有明确位置。</span></header>
-        <div className="feature-grid">
-          <article><span className="feature-number">01</span><BookOpenCheck /><h3>先给结论，再解释为什么</h3><p>速答用于面试开场；原理补概念、因果和边界。长段落会拆成对比、步骤或图解。</p></article>
-          <article><span className="feature-number">02</span><Highlighter /><h3>把不会的地方留在原文旁</h3><p>登录后可高亮、批注和写本题总结。复习时回到当时卡住的位置，不必重新找上下文。</p></article>
-          <article><span className="feature-number">03</span><BrainCircuit /><h3>让 AI 围绕当前题继续追问</h3><p>游客也能体验。AI 自动携带当前题目上下文，适合通俗解释、项目类比和模拟追问。</p></article>
-        </div>
+      <section className="sample-section" id="questions" aria-labelledby="sample-title">
+        <header className="section-heading">
+          <span className="section-index">01</span>
+          <div><h2 id="sample-title">先试三道高频题</h2><p>不是产品截图，点击就是题库里的真实内容。</p></div>
+          <a href="/app#question-banks">查看全部题库 <ArrowRight /></a>
+        </header>
+        <QuestionShelf questions={landing?.featuredQuestions} />
       </section>
 
-      <section className="workflow-section" id="workflow" aria-labelledby="workflow-title">
-        <div className="workflow-intro"><p>ONE QUIET LOOP</p><h2 id="workflow-title">一条不打断思路的学习路径</h2><span>不用先配置账号。先确认内容适不适合你，再决定是否留下学习记录。</span><a href="/app#question-banks">打开公开题库 <ArrowRight /></a></div>
-        <ol className="workflow-list">
-          <li><span>01</span><div><strong>游客先读</strong><p>选择方向，完整阅读题目、来源和图解，也可以调用 AI 解释。</p></div><BookOpenCheck /></li>
-          <li><span>02</span><div><strong>遇到值得记的，再登录</strong><p>收藏、批注、总结和掌握状态只写入自己的学习账号。</p></div><Layers3 /></li>
-          <li><span>03</span><div><strong>按 1 / 3 / 7 天回来</strong><p>把模糊的题加入复习队列，让系统记住下一次回看的时间。</p></div><RefreshCcw /></li>
+      <section className="paths-section" id="paths" aria-labelledby="paths-title">
+        <header className="section-heading">
+          <span className="section-index">02</span>
+          <div><h2 id="paths-title">按方向开始，<br />不用先逛完整目录。</h2><p>选最接近下一场面试的路线。</p></div>
+        </header>
+        <div className="track-grid">
+          {(landing?.tracks ?? []).map((track) => {
+            const copy = TRACK_COPY[track.id]
+            return <article key={track.id} className={'track-card track-card--' + track.id}>
+              <div className="track-card__top"><span>{copy.mark}</span><small>{track.questionCount} 题 · {track.bankCount} 个题库</small></div>
+              <h3>{track.title}</h3>
+              <p>{copy.description}</p>
+              <ul>{copy.topics.map((topic) => <li key={topic}>{topic}</li>)}</ul>
+              <a href="/app#question-banks">选择这条路线 <ArrowRight /></a>
+            </article>
+          })}
+          {!landing && [0, 1, 2].map((index) => <article className="track-card track-card--loading" key={index} aria-hidden="true"><span /><strong /><p /><i /></article>)}
+        </div>
+        <p className="paths-footnote">另外还有简历专项，以及 API、鉴权与 Node / Flask 等独立题库。</p>
+      </section>
+
+      <section className="practice-section" aria-labelledby="practice-title">
+        <div className="practice-copy">
+          <span className="section-index">03</span>
+          <h2 id="practice-title">一道题，<br />不只是翻到答案。</h2>
+          <p>把“看起来懂了”变成“面试时能讲”，中间需要一次主动回忆和一次真实追问。</p>
+        </div>
+        <ol className="practice-steps">
+          <li><span>1</span><div><strong>先答</strong><p>先写关键词，或者在脑中组织一遍。</p></div></li>
+          <li><span>2</span><div><strong>再对照</strong><p>按速答、原理、场景和边界逐项检查。</p></div></li>
+          <li><span>3</span><div><strong>继续追问</strong><p>AI 带着当前题，换说法或模拟面试官。</p></div></li>
+          <li><span>4</span><div><strong>安排复习</strong><p>需要记住时，再登录保存学习状态。</p></div></li>
         </ol>
       </section>
 
-      <section className="contact-section" aria-labelledby="contact-title">
-        <div><p>OPEN CHANNEL</p><h2 id="contact-title">看到问题，就直接告诉我。</h2><span>内容错误、交互建议和账号申请都会进入管理员工作区，不会丢进无人查看的邮箱。</span></div>
-        <div className="contact-actions"><button type="button" onClick={() => setContactKind('feedback')}><MessageSquareText /><span><strong>提交反馈</strong><small>内容、样式或功能建议</small></span><ArrowRight /></button><button type="button" onClick={() => setContactKind('account')}><UserRoundPlus /><span><strong>申请账号</strong><small>保存批注与复习进度</small></span><ArrowRight /></button></div>
+      <section className="access-section" id="guest" aria-labelledby="access-title">
+        <div className="access-intro">
+          <span className="section-index">04</span>
+          <h2 id="access-title">先当游客用，<br />合适再留下记录。</h2>
+          <p>题库不是登录后的诱饵。公开内容和 AI 体验对游客开放，账号只负责你的个人记忆。</p>
+          <a className="button-primary" href="/app#question-banks">继续游客阅读 <ArrowRight /></a>
+        </div>
+        <div className="access-list">
+          <article>
+            <header><Search /><div><strong>游客可以</strong><span>直接开始，不注册</span></div></header>
+            <ul><li><Check />完整阅读公开题库</li><li><Check />搜索、筛选与练习模式</li><li><Check />围绕当前题向 AI 追问</li><li><Check />查看图解与可核对来源</li></ul>
+          </article>
+          <article>
+            <header><Highlighter /><div><strong>登录后增加</strong><span>保存自己的学习痕迹</span></div></header>
+            <ul><li><Check />阅读进度与掌握状态</li><li><Check />收藏、高亮、批注与总结</li><li><Check />复习队列与跨设备同步</li><li><Check />学习数据导入与导出</li></ul>
+            <button type="button" onClick={() => setContactKind('account')}>申请学习账号 <ChevronRight /></button>
+          </article>
+        </div>
       </section>
 
-      <section className="faq-section" id="questions" aria-labelledby="faq-title">
-        <header><p>BEFORE YOU START</p><h2 id="faq-title">常见问题</h2></header>
-        <div><details><summary>游客能看到多少内容？</summary><p>公开题库可完整阅读，也可以体验 AI。收藏、批注、学习状态和跨设备同步需要登录。</p></details><details><summary>申请账号后会自动注册吗？</summary><p>不会。管理员会先审核用途，再通过你留下的联系方式发出邀请或账号信息；本站不会要求你提交密码。</p></details><details><summary>题目内容来自哪里？</summary><p>题库结合真实社区面经、官方文档与高质量技术资料整理，题内尽量保留可核对的来源，并持续修正表述。</p></details></div>
+      <section className="final-cta" aria-labelledby="final-title">
+        <div><Bot aria-hidden="true" /><span>游客也可以直接体验 AI 追问</span></div>
+        <h2 id="final-title">下一场面试，<br />从一道真正会讲的题开始。</h2>
+        <a className="button-primary" href="/app#question-banks">打开题库 <ArrowRight /></a>
       </section>
     </main>
 
-    <footer className="marketing-footer"><a className="marketing-brand" href="/"><BrandMark /><span><strong>面试边注</strong><small>INTERVIEW MARGIN</small></span></a><p>为真正要讲清技术的人，做一张安静的学习桌。</p><div><button type="button" onClick={() => setContactKind('feedback')}>反馈</button><button type="button" onClick={() => setContactKind('account')}>申请账号</button><a href="https://github.com/linsk27/interview-margin" target="_blank" rel="noreferrer">GitHub</a></div></footer>
+    <footer className="marketing-footer">
+      <a className="marketing-brand" href="/"><BrandMark /><span><strong>面试边注</strong><small>INTERVIEW MARGIN</small></span></a>
+      <p>给认真准备下一场面试的人。</p>
+      <div><button type="button" onClick={() => setContactKind('feedback')}>反馈</button><button type="button" onClick={() => setContactKind('account')}>申请账号</button><a href="https://github.com/linsk27/interview-margin" target="_blank" rel="noreferrer">GitHub</a></div>
+    </footer>
     {contactKind && <ContactDialog kind={contactKind} onClose={() => setContactKind(undefined)} />}
   </div>
 }

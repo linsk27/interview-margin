@@ -67,6 +67,64 @@ function noStore(_req, res, next) {
 
 const PUBLIC_CATALOG_CACHE = 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400'
 
+const LANDING_TRACKS = [
+  {
+    id: 'frontend',
+    title: '前端工程',
+    bankIds: ['javascript', 'git-engineering', 'vue-core', 'react-core', 'frontend-engineering'],
+  },
+  {
+    id: 'java',
+    title: 'Java 后端',
+    bankIds: ['java-foundations', 'java-backend-interviews', 'database-cache', 'network-deployment'],
+  },
+  {
+    id: 'ai',
+    title: 'AI 应用开发',
+    bankIds: ['frontend-ai-interviews', 'java-ai-applications', '360-ai-frontend'],
+  },
+]
+
+const LANDING_FEATURED_QUESTION_IDS = [
+  'q-1',
+  '521d047b-e5d6-59b9-907a-cd7ad0de657a',
+  '72d8195b-5fad-5cfc-8370-85a1379ca106',
+]
+
+function landingCatalogFromIndex(index) {
+  const questions = index.banks.flatMap((bank) => bank.sections.flatMap((section) => section.questions))
+  const questionsById = new Map(questions.map((question) => [question.id, question]))
+  const banksById = new Map(index.banks.map((bank) => [bank.id, bank]))
+
+  return {
+    version: 1,
+    summary: {
+      banks: index.banks.length,
+      questions: index.banks.reduce((total, bank) => total + bank.questionCount, 0),
+    },
+    featuredQuestions: LANDING_FEATURED_QUESTION_IDS
+      .map((id) => questionsById.get(id))
+      .filter(Boolean)
+      .map((question) => ({
+        id: question.id,
+        library: question.library,
+        title: question.title,
+        readMinutes: question.readMinutes,
+        sectionTitle: question.sectionTitle,
+      })),
+    tracks: LANDING_TRACKS.map((track) => {
+      const banks = track.bankIds.map((id) => banksById.get(id)).filter(Boolean)
+      return {
+        id: track.id,
+        title: track.title,
+        bankCount: banks.length,
+        questionCount: banks.reduce((total, bank) => total + bank.questionCount, 0),
+        banks: banks.map((bank) => ({ id: bank.id, title: bank.title, shortTitle: bank.shortTitle })),
+      }
+    }),
+  }
+}
+
 function weakJsonEtag(body) {
   return `W/"${crypto.createHash('sha256').update(body).digest('base64url')}"`
 }
@@ -202,7 +260,7 @@ export function createApp(options = {}) {
     if (!req.user?.mustChangePassword) return next()
     const allowed = new Set([
       '/api/auth/session', '/api/auth/change-password', '/api/auth/logout', '/api/health', '/api/catalog',
-      '/api/invitations/inspect', '/api/invitations/accept', '/api/contact-requests',
+      '/api/invitations/inspect', '/api/invitations/accept', '/api/contact-requests', '/api/landing',
     ])
     if (allowed.has(req.path)
       || req.path === '/api/catalog/index'
@@ -223,6 +281,11 @@ export function createApp(options = {}) {
     const cacheControl = canEdit ? 'private, no-cache' : PUBLIC_CATALOG_CACHE
     const index = listCatalogIndex(db, { includeArchived: false, includePrivate: canEdit })
     return sendCatalogJson(req, res, index, cacheControl)
+  })
+
+  app.get('/api/landing', (req, res) => {
+    const index = listCatalogIndex(db, { includeArchived: false, includePrivate: false })
+    return sendCatalogJson(req, res, landingCatalogFromIndex(index), PUBLIC_CATALOG_CACHE)
   })
 
   app.post('/api/contact-requests', contactRequestLimit, parseBody(contactRequestCreateSchema), (req, res) => {

@@ -147,6 +147,25 @@ describe('server API', () => {
   })
 
   it('serves cacheable catalog indexes and bank payloads with stable ETags', async () => {
+    const landing = await request(app).get('/api/landing').expect(200)
+    expect(landing.headers['cache-control']).toBe('public, max-age=0, s-maxage=300, stale-while-revalidate=86400')
+    expect(landing.body).toMatchObject({
+      version: 1,
+      summary: { banks: 14, questions: 762 },
+      tracks: [
+        { id: 'frontend', bankCount: 5, questionCount: 300 },
+        { id: 'java', bankCount: 4, questionCount: 179 },
+        { id: 'ai', bankCount: 3, questionCount: 147 },
+      ],
+    })
+    expect(landing.body.featuredQuestions).toHaveLength(3)
+    expect(landing.body.featuredQuestions.map((question) => question.id)).toEqual([
+      'q-1',
+      '521d047b-e5d6-59b9-907a-cd7ad0de657a',
+      '72d8195b-5fad-5cfc-8370-85a1379ca106',
+    ])
+    expect(JSON.stringify(landing.body)).not.toContain('"body"')
+
     const index = await request(app).get('/api/catalog/index').expect(200)
     expect(index.headers['cache-control']).toBe('public, max-age=0, s-maxage=300, stale-while-revalidate=86400')
     expect(index.headers.etag).toMatch(/^W\/["].+[\"]$/)

@@ -24,9 +24,17 @@ function Invoke-CheckedCommand {
 function Get-PublicSmoke {
   param([Parameter(Mandatory = $true)][Uri]$BaseUri)
 
-  $page = Invoke-WebRequest -Uri $BaseUri.AbsoluteUri -Method Get -TimeoutSec 20 -UseBasicParsing
-  $healthUri = [Uri]::new($BaseUri, 'api/health')
-  $health = Invoke-RestMethod -Uri $healthUri.AbsoluteUri -Method Get -TimeoutSec 20
+  $cacheBuster = [Guid]::NewGuid().ToString('N')
+  $requestHeaders = @{
+    'Cache-Control' = 'no-cache'
+    'Pragma' = 'no-cache'
+  }
+  $pageUri = [UriBuilder]$BaseUri
+  $pageUri.Query = "deploy-smoke=$cacheBuster"
+  $page = Invoke-WebRequest -Uri $pageUri.Uri.AbsoluteUri -Method Get -TimeoutSec 20 -UseBasicParsing -Headers $requestHeaders
+  $healthUri = [UriBuilder][Uri]::new($BaseUri, 'api/health')
+  $healthUri.Query = "deploy-smoke=$cacheBuster"
+  $health = Invoke-RestMethod -Uri $healthUri.Uri.AbsoluteUri -Method Get -TimeoutSec 20 -Headers $requestHeaders
   if ($page.StatusCode -ne 200 -or $health.ok -ne $true) {
     throw 'Public page or API health check failed.'
   }
@@ -39,14 +47,10 @@ function Get-PublicSmoke {
     @{ Path = 'assets/interview-margin-share.png'; Types = @('image/png') }
   )
   $assetStatus = [ordered]@{}
-  $cacheBuster = [Guid]::NewGuid().ToString('N')
   foreach ($asset in $assetChecks) {
     $assetUri = [UriBuilder][Uri]::new($BaseUri, $asset.Path)
     $assetUri.Query = "deploy-smoke=$cacheBuster"
-    $response = Invoke-WebRequest -Uri $assetUri.Uri.AbsoluteUri -Method Get -TimeoutSec 20 -UseBasicParsing -Headers @{
-      'Cache-Control' = 'no-cache'
-      'Pragma' = 'no-cache'
-    }
+    $response = Invoke-WebRequest -Uri $assetUri.Uri.AbsoluteUri -Method Get -TimeoutSec 20 -UseBasicParsing -Headers $requestHeaders
     $contentType = [string]$response.Headers['Content-Type']
     $mediaType = $contentType.Split(';')[0].Trim()
     $hasExpectedType = $asset.Types -contains $mediaType
