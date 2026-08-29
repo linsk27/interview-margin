@@ -111,6 +111,7 @@ function landingCatalogFromIndex(index) {
         title: question.title,
         readMinutes: question.readMinutes,
         sectionTitle: question.sectionTitle,
+        sourceTitle: question.sources?.[0]?.title,
       })),
     tracks: LANDING_TRACKS.map((track) => {
       const banks = track.bankIds.map((id) => banksById.get(id)).filter(Boolean)

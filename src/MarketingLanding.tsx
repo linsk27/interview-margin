@@ -18,6 +18,7 @@ interface LandingQuestion {
   title: string
   readMinutes: number
   sectionTitle: string
+  sourceTitle?: string
 }
 
 interface LandingTrack {
@@ -47,21 +48,24 @@ const TRACK_DEFINITIONS: Array<{ id: LandingTrack['id']; title: string; bankIds:
   { id: 'ai', title: 'AI 应用开发', bankIds: ['frontend-ai-interviews', 'java-ai-applications', '360-ai-frontend'] },
 ]
 
-const TRACK_COPY: Record<LandingTrack['id'], { mark: string; description: string; topics: string[] }> = {
+const TRACK_COPY: Record<LandingTrack['id'], { mark: string; description: string; topics: string[]; href: string }> = {
   frontend: {
     mark: 'FE',
     description: '从语言基础到框架与浏览器，把常见追问连成一条完整前端路线。',
     topics: ['JavaScript', 'Vue / React', '浏览器', 'TypeScript', 'Git'],
+    href: '/app#q-1',
   },
   java: {
     mark: 'JV',
     description: '先补齐 Java 基础，再进入 Spring、数据库、缓存与线上排障。',
     topics: ['集合与并发', 'JVM', 'Spring', 'MySQL / Redis', '分布式'],
+    href: '/app#521d047b-e5d6-59b9-907a-cd7ad0de657a',
   },
   ai: {
     mark: 'AI',
     description: '面向真正的应用开发：模型接入、检索、Agent、工具与安全边界。',
     topics: ['RAG', 'Agent', 'MCP / Skill', '流式交互', 'Spring AI'],
+    href: '/app#72d8195b-5fad-5cfc-8370-85a1379ca106',
   },
 }
 
@@ -84,7 +88,9 @@ function landingFromIndex(index: PublicCatalogIndex): LandingPayload {
     featuredQuestions: FEATURED_QUESTION_IDS
       .map((id) => questionsById.get(id))
       .filter((question): question is NonNullable<typeof question> => Boolean(question))
-      .map(({ id, library, title, readMinutes, sectionTitle }) => ({ id, library, title, readMinutes, sectionTitle })),
+      .map(({ id, library, title, readMinutes, sectionTitle, sources }) => ({
+        id, library, title, readMinutes, sectionTitle, sourceTitle: sources?.[0]?.title,
+      })),
     tracks: TRACK_DEFINITIONS.map((definition) => {
       const banks = definition.bankIds.map((id) => banksById.get(id)).filter((bank): bank is NonNullable<typeof bank> => Boolean(bank))
       return {
@@ -222,7 +228,20 @@ function ContactDialog({ kind, onClose }: { kind: ContactKind; onClose: () => vo
   </div>
 }
 
-function QuestionShelf({ questions }: { questions?: LandingQuestion[] }) {
+function LandingLoadError({ onRetry }: { onRetry: () => void }) {
+  return <div className="landing-load-error" role="alert">
+    <strong>题库数据暂时没有加载出来</strong>
+    <span>页面主体仍可浏览，重新连接后再试一次。</span>
+    <button type="button" onClick={onRetry}>重新加载 <RefreshCcw /></button>
+  </div>
+}
+
+function QuestionShelf({ questions, state, onRetry }: {
+  questions?: LandingQuestion[]
+  state: 'loading' | 'ready' | 'error'
+  onRetry: () => void
+}) {
+  if (state === 'error') return <LandingLoadError onRetry={onRetry} />
   if (!questions?.length) {
     return <div className="question-shelf question-shelf--loading" aria-label="正在读取真实题目">
       {[0, 1, 2].map((index) => <div key={index}><span /><strong /><i /></div>)}
@@ -235,6 +254,7 @@ function QuestionShelf({ questions }: { questions?: LandingQuestion[] }) {
         <small>{question.readMinutes} 分钟</small>
       </div>
       <strong>{question.title.replace(/^Q\d+[：:]\s*/, '')}</strong>
+      <small className="question-card__source">{question.sourceTitle ?? `${question.sectionTitle} · 题库内公开题`}</small>
       <div className="question-card__footer"><span>打开题目</span><ArrowRight /></div>
     </a>)}
   </div>
@@ -243,14 +263,23 @@ function QuestionShelf({ questions }: { questions?: LandingQuestion[] }) {
 export default function MarketingLanding() {
   const [contactKind, setContactKind] = useState<ContactKind>()
   const [landing, setLanding] = useState<LandingPayload>()
+  const [landingState, setLandingState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [landingAttempt, setLandingAttempt] = useState(0)
 
   useEffect(() => {
     let active = true
+    setLandingState('loading')
     fetchLandingPayload().then((payload) => {
-      if (active) setLanding(payload)
-    }).catch(() => undefined)
+      if (!active) return
+      setLanding(payload)
+      setLandingState('ready')
+    }).catch(() => {
+      if (active) setLandingState('error')
+    })
     return () => { active = false }
-  }, [])
+  }, [landingAttempt])
+
+  const retryLanding = () => setLandingAttempt((attempt) => attempt + 1)
 
   return <div className="marketing-page">
     <header className="marketing-header">
@@ -262,15 +291,19 @@ export default function MarketingLanding() {
     <main>
       <section className="marketing-hero" aria-labelledby="hero-title">
         <div className="hero-copy">
-          <p className="hero-kicker"><span aria-hidden="true" />{landing ? landing.summary.banks + ' 个公开题库 · ' + landing.summary.questions + ' 道题' : '公开题库正在同步'}</p>
-          <h1 id="hero-title">别急着背答案，<br /><em>先把这道题讲明白。</em></h1>
+          <p className="hero-kicker"><span aria-hidden="true" />{landing
+            ? landing.summary.banks + ' 个公开题库 · ' + landing.summary.questions + ' 道题'
+            : landingState === 'error'
+              ? <button type="button" onClick={retryLanding}>题库数据加载失败，点此重试</button>
+              : '公开题库正在同步'}</p>
+          <h1 id="hero-title"><span>别急着背答案，</span><em>先把这道题讲明白。</em></h1>
           <p className="hero-lead">这里整理了前端、Java 后端和 AI 应用面试题。先自己组织答案，再看结论、为什么、边界与追问；卡住时，让 AI 换一种说法。</p>
           <div className="hero-actions"><a className="button-primary" href="/app#question-banks">开始刷题 <ArrowRight /></a><a className="button-text" href="#questions">先试三道真实题 <ChevronRight /></a></div>
           <p className="hero-note"><Check />无需注册即可读题和试用 AI；登录后才保存个人学习记录。</p>
         </div>
         <aside className="hero-note-card" aria-label="学习提示">
           <Sparkles aria-hidden="true" />
-          <p>真正能说出口，<br />才算会。</p>
+          <p>能讲清楚，<br />才算真的会。</p>
           <span>先答 · 再看 · 再追问</span>
         </aside>
       </section>
@@ -281,15 +314,15 @@ export default function MarketingLanding() {
           <div><h2 id="sample-title">先试三道高频题</h2><p>不是产品截图，点击就是题库里的真实内容。</p></div>
           <a href="/app#question-banks">查看全部题库 <ArrowRight /></a>
         </header>
-        <QuestionShelf questions={landing?.featuredQuestions} />
+        <QuestionShelf questions={landing?.featuredQuestions} state={landingState} onRetry={retryLanding} />
       </section>
 
       <section className="paths-section" id="paths" aria-labelledby="paths-title">
         <header className="section-heading">
           <span className="section-index">02</span>
-          <div><h2 id="paths-title">按方向开始，<br />不用先逛完整目录。</h2><p>选最接近下一场面试的路线。</p></div>
+          <div><h2 id="paths-title"><span>按方向开始，</span><span>不必逛完整目录。</span></h2><p>选最接近下一场面试的路线。</p></div>
         </header>
-        <div className="track-grid">
+        {landingState === 'error' ? <LandingLoadError onRetry={retryLanding} /> : <div className="track-grid">
           {(landing?.tracks ?? []).map((track) => {
             const copy = TRACK_COPY[track.id]
             return <article key={track.id} className={'track-card track-card--' + track.id}>
@@ -297,18 +330,18 @@ export default function MarketingLanding() {
               <h3>{track.title}</h3>
               <p>{copy.description}</p>
               <ul>{copy.topics.map((topic) => <li key={topic}>{topic}</li>)}</ul>
-              <a href="/app#question-banks">选择这条路线 <ArrowRight /></a>
+              <a href={copy.href}>从这题开始 <ArrowRight /></a>
             </article>
           })}
           {!landing && [0, 1, 2].map((index) => <article className="track-card track-card--loading" key={index} aria-hidden="true"><span /><strong /><p /><i /></article>)}
-        </div>
+        </div>}
         <p className="paths-footnote">另外还有简历专项，以及 API、鉴权与 Node / Flask 等独立题库。</p>
       </section>
 
       <section className="practice-section" aria-labelledby="practice-title">
         <div className="practice-copy">
           <span className="section-index">03</span>
-          <h2 id="practice-title">一道题，<br />不只是翻到答案。</h2>
+          <h2 id="practice-title"><span>一道题，</span><span>不只是翻答案。</span></h2>
           <p>把“看起来懂了”变成“面试时能讲”，中间需要一次主动回忆和一次真实追问。</p>
         </div>
         <ol className="practice-steps">
@@ -322,7 +355,7 @@ export default function MarketingLanding() {
       <section className="access-section" id="guest" aria-labelledby="access-title">
         <div className="access-intro">
           <span className="section-index">04</span>
-          <h2 id="access-title">先当游客用，<br />合适再留下记录。</h2>
+          <h2 id="access-title"><span>游客先试，</span><span>记录以后再留。</span></h2>
           <p>题库不是登录后的诱饵。公开内容和 AI 体验对游客开放，账号只负责你的个人记忆。</p>
           <a className="button-primary" href="/app#question-banks">继续游客阅读 <ArrowRight /></a>
         </div>
@@ -341,7 +374,7 @@ export default function MarketingLanding() {
 
       <section className="final-cta" aria-labelledby="final-title">
         <div><Bot aria-hidden="true" /><span>游客也可以直接体验 AI 追问</span></div>
-        <h2 id="final-title">下一场面试，<br />从一道真正会讲的题开始。</h2>
+        <h2 id="final-title">从一道真正会讲的题开始。</h2>
         <a className="button-primary" href="/app#question-banks">打开题库 <ArrowRight /></a>
       </section>
     </main>

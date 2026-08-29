@@ -21,6 +21,20 @@ function Invoke-CheckedCommand {
   }
 }
 
+function Get-Sha256Hex {
+  param([Parameter(Mandatory = $true)][string]$LiteralPath)
+
+  $stream = [IO.File]::OpenRead($LiteralPath)
+  $sha256 = [Security.Cryptography.SHA256]::Create()
+  try {
+    return ([BitConverter]::ToString($sha256.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+  }
+  finally {
+    $sha256.Dispose()
+    $stream.Dispose()
+  }
+}
+
 function Get-PublicSmoke {
   param([Parameter(Mandatory = $true)][Uri]$BaseUri)
 
@@ -205,7 +219,7 @@ $remoteEntrypoint = '/opt/interview-margin/deploy/deploy-release.sh'
 $remoteArchive = "/var/lib/interview-margin-deploy/incoming/$sha-$nonce.tar.gz"
 $expectedRelease = "/opt/interview-margin/releases/$sha"
 $sshOptions = @('-o', 'BatchMode=yes', '-o', "ConnectTimeout=$ConnectTimeoutSeconds")
-$entrypointSha = (Get-FileHash -LiteralPath $releaseScript -Algorithm SHA256).Hash.ToLowerInvariant()
+$entrypointSha = Get-Sha256Hex -LiteralPath $releaseScript
 $bootstrapCheck = 'entry=/opt/interview-margin/deploy/deploy-release.sh; control=/var/lib/interview-margin-deploy; incoming=/var/lib/interview-margin-deploy/incoming; [ -f "$entry" ] && [ ! -L "$entry" ] && [ "$(stat -c %U:%G "$entry")" = root:root ] || exit 41; mode=$(stat -c %a "$entry"); case "$mode" in 500|700) ;; *) exit 42 ;; esac; for directory in "$control" "$incoming"; do [ -d "$directory" ] && [ ! -L "$directory" ] && [ "$(stat -c %U:%G "$directory")" = root:root ] && [ "$(stat -c %a "$directory")" = 700 ] || exit 43; done; actual=$(sha256sum "$entry"); actual=${actual%% *}; [ "$actual" = "' + $entrypointSha + '" ] || exit 44'
 
 if (Test-Path -LiteralPath $archivePath) {
@@ -295,7 +309,7 @@ try {
   if ($archiveInfo.Length -le 0) {
     throw "Release archive is empty: $archivePath"
   }
-  $archiveSha = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+  $archiveSha = Get-Sha256Hex -LiteralPath $archivePath
 
   $remoteArchiveMayExist = $true
   Invoke-CheckedCommand -FilePath 'scp' -Arguments @(

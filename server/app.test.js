@@ -164,6 +164,8 @@ describe('server API', () => {
       '521d047b-e5d6-59b9-907a-cd7ad0de657a',
       '72d8195b-5fad-5cfc-8370-85a1379ca106',
     ])
+    expect(landing.body.featuredQuestions.find((question) => question.id === '72d8195b-5fad-5cfc-8370-85a1379ca106').sourceTitle)
+      .toContain('牛客')
     expect(JSON.stringify(landing.body)).not.toContain('"body"')
 
     const index = await request(app).get('/api/catalog/index').expect(200)
