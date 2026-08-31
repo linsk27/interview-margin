@@ -106,6 +106,11 @@ export const contactRequestPatchSchema = z.object({
   status: z.enum(['new', 'reviewing', 'resolved']),
 }).strict()
 
+export const aiScoreRequestSchema = z.object({
+  questionId: z.string().trim().min(1).max(160),
+  answer: z.string().trim().min(1).max(6_000),
+}).strict()
+
 export const bankCreateSchema = z.object({
   id: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,63}$/),
   title: z.string().trim().min(1).max(120),

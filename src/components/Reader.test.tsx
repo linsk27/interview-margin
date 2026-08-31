@@ -134,7 +134,7 @@ describe('Reader learning document structure', () => {
     fireEvent.change(screen.getByRole('textbox', { name: '用自己的话写下答案' }), {
       target: { value: '先说依赖收集，再说触发更新。' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '揭晓标准答案' }))
+    fireEvent.click(screen.getByRole('button', { name: '提交并对照' }))
     expect(screen.getByText('通过代理读取和写入来追踪依赖。')).toBeInTheDocument()
     expect(onPracticeRevealChange).toHaveBeenLastCalledWith(true)
 

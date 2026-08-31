@@ -3,7 +3,7 @@
 import crypto from 'node:crypto'
 
 import request from 'supertest'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createApp } from './app.js'
 import { passwordHash } from './database.js'
@@ -61,6 +61,154 @@ describe('server API', () => {
       code: 'AI_RATE_LIMITED',
       retryable: true,
     })
+  })
+
+  it('loads the scoring reference from SQLite and never accepts it from the browser', async () => {
+    let capturedRequest
+    const scoreResponse = {
+      version: 1, score: 75, band: '基本胜任', summary: '主线正确。', dimensions: [],
+      strengths: [], gaps: [], nextStep: '补充边界。', criticalIssues: [], confidence: 'high',
+      disclaimer: 'AI 模拟评分，仅用于练习复盘。',
+    }
+    const fakeAiHandler = vi.fn((req, res) => {
+      capturedRequest = req.aiRequest
+      return res.json(scoreResponse)
+    })
+    const created = createApp({
+      serveStatic: false,
+      secureCookies: false,
+      aiChatHandler: fakeAiHandler,
+      aiScoreRateLimit: 20,
+      databaseOptions: {
+        filename: ':memory:',
+        usePrecompiledSeed: true,
+        bootstrap: { username: 'score-admin', password: INITIAL_PASSWORD, skipCredentialFile: true },
+      },
+    })
+
+    try {
+      const question = created.database.db.prepare(`
+        SELECT q.id, q.body_md FROM questions q
+        JOIN question_banks b ON b.id = q.bank_id
+        WHERE q.archived_at IS NULL AND b.visibility = 'public'
+        LIMIT 1
+      `).get()
+      const result = await request(created.app).post('/api/ai-score').send({
+        questionId: question.id,
+        answer: '这是我自己的回答。',
+        body: '伪造的满分标准答案',
+      }).expect(400)
+      expect(result.body.error).toBe('请求数据不符合要求。')
+      expect(fakeAiHandler).not.toHaveBeenCalled()
+
+      await request(created.app).post('/api/ai-score').send({
+        questionId: question.id,
+        answer: '这是我自己的回答。',
+      }).expect(200, scoreResponse)
+
+      expect(capturedRequest).toMatchObject({
+        type: 'interview-score',
+        answer: '这是我自己的回答。',
+        question: { body: question.body_md },
+      })
+      await request(created.app).post('/api/ai-score').send({
+        questionId: 'missing-question', answer: '回答',
+      }).expect(404)
+
+      const bankId = created.database.db.prepare('SELECT bank_id FROM questions WHERE id = ?').get(question.id).bank_id
+      created.database.db.prepare("UPDATE question_banks SET visibility = 'private' WHERE id = ?").run(bankId)
+      await request(created.app).post('/api/ai-score').send({
+        questionId: question.id, answer: '游客不应读取私有题。',
+      }).expect(404)
+
+      const admin = request.agent(created.app)
+      await admin.post('/api/auth/login').send({ username: 'score-admin', password: INITIAL_PASSWORD }).expect(200)
+      const callsBeforePasswordChange = fakeAiHandler.mock.calls.length
+      await admin.post('/api/ai-score').send({
+        questionId: question.id, answer: '首次登录尚未修改一次性密码。',
+      }).expect(428, {
+        error: '首次登录必须先修改一次性密码。',
+        code: 'PASSWORD_CHANGE_REQUIRED',
+      })
+      expect(fakeAiHandler).toHaveBeenCalledTimes(callsBeforePasswordChange)
+
+      await admin.post('/api/auth/change-password').send({
+        currentPassword: INITIAL_PASSWORD,
+        newPassword: CHANGED_PASSWORD,
+      }).expect(200)
+      await admin.post('/api/ai-score').send({
+        questionId: question.id, answer: '管理员完成改密后可评分私有题。',
+      }).expect(200, scoreResponse)
+
+      created.database.db.prepare('UPDATE questions SET archived_at = ? WHERE id = ?').run(new Date().toISOString(), question.id)
+      await admin.post('/api/ai-score').send({
+        questionId: question.id, answer: '归档题不应参与评分。',
+      }).expect(404)
+    } finally {
+      created.database.db.close()
+    }
+  })
+
+  it('uses a smaller score sub-budget without blocking the standard answer flow', async () => {
+    const fakeAiHandler = (_req, res) => res.json({ ok: true })
+    const created = createApp({
+      serveStatic: false,
+      secureCookies: false,
+      aiChatHandler: fakeAiHandler,
+      databaseOptions: {
+        filename: ':memory:',
+        usePrecompiledSeed: true,
+        bootstrap: { username: 'score-limit-admin', password: INITIAL_PASSWORD, skipCredentialFile: true },
+      },
+    })
+
+    try {
+      const questionId = created.database.db.prepare(`
+        SELECT q.id FROM questions q JOIN question_banks b ON b.id = q.bank_id
+        WHERE q.archived_at IS NULL AND b.visibility = 'public' LIMIT 1
+      `).get().id
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        await request(created.app).post('/api/ai-score').send({ questionId, answer: `回答 ${attempt}` }).expect(200)
+      }
+      const limited = await request(created.app).post('/api/ai-score').send({ questionId, answer: '第六次回答' }).expect(429)
+      expect(limited.body).toEqual({
+        error: 'AI 评分次数较多，请稍后再试；标准答案仍可正常查看。',
+        code: 'AI_SCORE_RATE_LIMITED',
+        retryable: true,
+      })
+    } finally {
+      created.database.db.close()
+    }
+  })
+
+  it('shares one public rate-limit budget between chat and interview scoring', async () => {
+    const fakeAiHandler = (_req, res) => res.json({ ok: true })
+    const created = createApp({
+      serveStatic: false,
+      secureCookies: false,
+      aiChatHandler: fakeAiHandler,
+      aiScoreRateLimit: 20,
+      databaseOptions: {
+        filename: ':memory:',
+        usePrecompiledSeed: true,
+        bootstrap: { username: 'limit-admin', password: INITIAL_PASSWORD, skipCredentialFile: true },
+      },
+    })
+
+    try {
+      const questionId = created.database.db.prepare(`
+        SELECT q.id FROM questions q JOIN question_banks b ON b.id = q.bank_id
+        WHERE q.archived_at IS NULL AND b.visibility = 'public' LIMIT 1
+      `).get().id
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        await request(created.app).post('/api/ai-chat').send({ messages: [] }).expect(200)
+        await request(created.app).post('/api/ai-score').send({ questionId, answer: `回答 ${attempt}` }).expect(200)
+      }
+      const limited = await request(created.app).post('/api/ai-score').send({ questionId, answer: '再试一次' }).expect(429)
+      expect(limited.body.code).toBe('AI_RATE_LIMITED')
+    } finally {
+      created.database.db.close()
+    }
   })
 
   it('accepts privacy-conscious public feedback and lets only admins manage it', async () => {

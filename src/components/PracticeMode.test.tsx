@@ -57,6 +57,28 @@ describe('PracticePanel', () => {
     expect(screen.getByText('Proxy 可以统一拦截对象操作。')).toBeInTheDocument()
   })
 
+  it('offers AI scoring only after a written answer is revealed', () => {
+    renderPractice({ scoreQuestionId: 'question-1' })
+    const answer = screen.getByRole('textbox', { name: '用自己的话写下答案' })
+
+    expect(screen.queryByRole('heading', { name: '面试官评分' })).not.toBeInTheDocument()
+    fireEvent.change(answer, { target: { value: 'Proxy 可以拦截对象操作，但我还需要补充原因。' } })
+    expect(screen.getByRole('button', { name: '提交并对照' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '提交并对照' }))
+
+    expect(screen.getByRole('heading', { name: '面试官评分' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '开始 AI 评分' })).toBeInTheDocument()
+    expect(screen.getByText('Proxy 可以统一拦截对象操作。')).toBeInTheDocument()
+  })
+
+  it('skips AI scoring when the learner reveals without writing an answer', () => {
+    renderPractice({ scoreQuestionId: 'question-1' })
+    fireEvent.click(screen.getByRole('button', { name: '揭晓标准答案' }))
+
+    expect(screen.queryByRole('heading', { name: '面试官评分' })).not.toBeInTheDocument()
+    expect(screen.getByText('Proxy 可以统一拦截对象操作。')).toBeInTheDocument()
+  })
+
   it.each([
     ['不会', 1, 'again'],
     ['模糊', 3, 'unsure'],

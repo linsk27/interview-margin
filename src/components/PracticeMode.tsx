@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, ReactNode } from 'react'
+import { InterviewScorePanel } from './InterviewScorePanel'
 import styles from './PracticeMode.module.css'
 
 export type PracticeRating = 'again' | 'unsure' | 'mastered'
@@ -40,6 +41,7 @@ export interface PracticePanelProps {
   disabled?: boolean
   autoFocusAnswer?: boolean
   canSaveReview?: boolean
+  scoreQuestionId?: string
   onAnswerChange?: (answer: string) => void
   onReveal?: (answer: string) => void
   onRevealChange?: (revealed: boolean) => void
@@ -94,6 +96,7 @@ function PracticeSession({
   disabled = false,
   autoFocusAnswer = false,
   canSaveReview = true,
+  scoreQuestionId,
   onAnswerChange,
   onReveal,
   onRevealChange,
@@ -233,11 +236,19 @@ function PracticeSession({
           {!revealed && (
             <button className={styles.revealButton} type="submit" disabled={disabled}>
               <Eye aria-hidden="true" />
-              {revealLabel}
+              {scoreQuestionId && draftAnswer.trim() ? '提交并对照' : revealLabel}
             </button>
           )}
         </div>
       </form>
+
+      {revealed && scoreQuestionId && draftAnswer.trim() && (
+        <InterviewScorePanel
+          questionId={scoreQuestionId}
+          answer={draftAnswer}
+          disabled={disabled}
+        />
+      )}
 
       {revealed && (
         <section className={styles.answerSection} aria-labelledby={answerTitleId}>

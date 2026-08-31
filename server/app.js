@@ -28,7 +28,7 @@ import {
   saveStudyState, updateQuestion,
 } from './repository.js'
 import {
-  bankCreateSchema, bankPatchSchema, loginSchema, parseBody, passwordSchema,
+  aiScoreRequestSchema, bankCreateSchema, bankPatchSchema, loginSchema, parseBody, passwordSchema,
   contactRequestCreateSchema, contactRequestPatchSchema,
   invitationAcceptSchema, invitationCreateSchema, invitationInspectSchema,
   questionCreateSchema, questionPatchSchema, studyStateSchema, userCreateSchema, userPatchSchema,
@@ -215,12 +215,27 @@ function currentQuestion(db, questionId) {
   return db.prepare('SELECT id, version, bank_id, archived_at FROM questions WHERE id = ?').get(questionId)
 }
 
+function scoringQuestion(db, questionId, includePrivate = false) {
+  return db.prepare(`
+    SELECT q.id, q.display_number AS number, q.title, q.body_md AS body,
+      s.title AS section_title
+    FROM questions q
+    JOIN sections s ON s.id = q.section_id
+    JOIN question_banks b ON b.id = q.bank_id
+    WHERE q.id = ?
+      AND q.archived_at IS NULL
+      AND b.archived_at IS NULL
+      AND (b.visibility = 'public' OR ? = 1)
+  `).get(questionId, includePrivate ? 1 : 0)
+}
+
 export function createApp(options = {}) {
   const rootDir = options.rootDir ?? path.resolve(process.cwd())
   const distDir = options.distDir ?? path.join(rootDir, 'dist')
   const backupDir = options.backupDir ?? path.join(rootDir, 'backups')
   const database = options.database ?? createDatabase({ rootDir, ...options.databaseOptions })
   const { db } = database
+  const appAiHandler = options.aiChatHandler ?? aiChatHandler
   const ensureVisitTotal = db.prepare('INSERT OR IGNORE INTO app_meta(key, value) VALUES(?, ?)')
   const incrementVisitTotal = db.prepare('UPDATE app_meta SET value = CAST(value AS INTEGER) + 1 WHERE key = ?')
   const selectVisitTotal = db.prepare('SELECT CAST(value AS INTEGER) AS total FROM app_meta WHERE key = ?')
@@ -260,6 +275,28 @@ export function createApp(options = {}) {
     legacyHeaders: false,
     message: { error: '访问统计请求较多，请稍后再试。' },
   })
+  const aiPublicLimit = rateLimit({
+    windowMs: 10 * 60_000,
+    limit: 20,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+      error: 'AI 请求过于频繁，请稍后再试。',
+      code: 'AI_RATE_LIMITED',
+      retryable: true,
+    },
+  })
+  const aiScoreLimit = rateLimit({
+    windowMs: 10 * 60_000,
+    limit: options.aiScoreRateLimit ?? 5,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+      error: 'AI 评分次数较多，请稍后再试；标准答案仍可正常查看。',
+      code: 'AI_SCORE_RATE_LIMITED',
+      retryable: true,
+    },
+  })
   const allowedOrigins = new Set((process.env.APP_ORIGINS ?? 'https://interview.linsk27.dpdns.org,http://127.0.0.1:4173,http://localhost:5173')
     .split(',').map((item) => item.trim()).filter(Boolean))
 
@@ -281,6 +318,7 @@ export function createApp(options = {}) {
     const allowed = new Set([
       '/api/auth/session', '/api/auth/change-password', '/api/auth/logout', '/api/health', '/api/catalog',
       '/api/invitations/inspect', '/api/invitations/accept', '/api/contact-requests', '/api/landing', '/api/visits',
+      '/api/ai-chat',
     ])
     if (allowed.has(req.path)
       || req.path === '/api/catalog/index'
@@ -680,18 +718,30 @@ export function createApp(options = {}) {
     return res.download(target)
   })
 
-  app.use('/api/ai-chat', rateLimit({
-    windowMs: 10 * 60_000,
-    limit: 20,
-    standardHeaders: 'draft-8',
-    legacyHeaders: false,
-    message: {
-      error: 'AI 请求过于频繁，请稍后再试。',
-      code: 'AI_RATE_LIMITED',
-      retryable: true,
-    },
-  }))
-  app.all('/api/ai-chat', aiChatHandler)
+  app.use(['/api/ai-chat', '/api/ai-score'], aiPublicLimit)
+  app.post('/api/ai-score', aiScoreLimit, parseBody(aiScoreRequestSchema), (req, res) => {
+    const canReadPrivate = req.user?.permissions?.includes('banks.write') ?? false
+    const question = scoringQuestion(db, req.validatedBody.questionId, canReadPrivate)
+    if (!question) return res.status(404).json({ error: '题目不存在或当前不可访问。', code: 'QUESTION_NOT_FOUND' })
+
+    req.aiRequest = {
+      type: 'interview-score',
+      question: {
+        number: question.number,
+        title: question.title,
+        sectionTitle: question.section_title,
+        // Reference material is loaded from SQLite, never trusted from the browser.
+        body: question.body,
+      },
+      answer: req.validatedBody.answer,
+    }
+    return appAiHandler(req, res)
+  })
+  app.all('/api/ai-score', (_req, res) => {
+    res.setHeader('Allow', 'POST')
+    return res.status(405).json({ error: 'Method Not Allowed', code: 'METHOD_NOT_ALLOWED', retryable: false })
+  })
+  app.all('/api/ai-chat', appAiHandler)
 
   if (options.serveStatic !== false) {
     app.use(express.static(distDir, {

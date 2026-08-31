@@ -78,6 +78,22 @@ function Get-PublicSmoke {
     throw 'Public page or API health check failed.'
   }
 
+  # Validate that the score route reached production without spending model tokens.
+  # An empty object must be rejected by request validation before the AI handler runs.
+  $scoreUri = [Uri]::new($BaseUri, 'api/ai-score')
+  try {
+    $scoreResponse = Invoke-WebRequest -Uri $scoreUri.AbsoluteUri -Method Post -TimeoutSec 20 -UseBasicParsing `
+      -Headers $requestHeaders -ContentType 'application/json' -Body '{}'
+    $scoreStatus = [int]$scoreResponse.StatusCode
+  }
+  catch {
+    if ($null -eq $_.Exception.Response) { throw }
+    $scoreStatus = [int]$_.Exception.Response.StatusCode
+  }
+  if ($scoreStatus -ne 400) {
+    throw "Public AI score route verification failed: expected 400, received $scoreStatus."
+  }
+
   $assetChecks = @(
     @{ Path = 'robots.txt'; Types = @('text/plain') },
     @{ Path = 'sitemap.xml'; Types = @('application/xml', 'text/xml') },
@@ -102,7 +118,12 @@ function Get-PublicSmoke {
     $assetStatus[$asset.Path] = $mediaType
   }
 
-  return [pscustomobject]@{ PageStatus = $page.StatusCode; Health = $health; Assets = $assetStatus }
+  return [pscustomobject]@{
+    PageStatus = $page.StatusCode
+    Health = $health
+    ScoreRouteStatus = $scoreStatus
+    Assets = $assetStatus
+  }
 }
 
 function Get-RemoteDeploymentObservation {
@@ -289,6 +310,7 @@ if ($initialObservation.Pending -eq 'present') {
     target = $Target
     publicUrl = $publicUri.AbsoluteUri
     pageStatus = $recoveredSmoke.PageStatus
+    scoreRouteStatus = $recoveredSmoke.ScoreRouteStatus
     health = $recoveredSmoke.Health
     assets = $recoveredSmoke.Assets
   } | ConvertTo-Json -Depth 5
@@ -309,6 +331,7 @@ if ($initialObservation.Current -eq $expectedRelease) {
     target = $Target
     publicUrl = $publicUri.AbsoluteUri
     pageStatus = $currentSmoke.PageStatus
+    scoreRouteStatus = $currentSmoke.ScoreRouteStatus
     health = $currentSmoke.Health
     assets = $currentSmoke.Assets
   } | ConvertTo-Json -Depth 5
@@ -386,6 +409,7 @@ try {
     target = $Target
     publicUrl = $publicUri.AbsoluteUri
     pageStatus = $smoke.PageStatus
+    scoreRouteStatus = $smoke.ScoreRouteStatus
     health = $smoke.Health
     assets = $smoke.Assets
   } | ConvertTo-Json -Depth 5

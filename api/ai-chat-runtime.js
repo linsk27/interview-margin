@@ -459,6 +459,56 @@ function createSseSink(res, maxOutputChars, flowControl = {}) {
   }
 }
 
+function createBufferedJsonSink(res, maxOutputChars, finalize) {
+  let content = ''
+  let ended = false
+
+  return {
+    get started() { return content.length > 0 },
+    get retrySafe() { return !ended },
+    reset() {
+      if (!ended) content = ''
+    },
+    async emit(delta) {
+      if (ended || !delta) return !ended
+      const remaining = maxOutputChars - content.length
+      if (remaining <= 0) return false
+      content += delta.slice(0, remaining)
+      return delta.length <= remaining && content.length < maxOutputChars
+    },
+    async finish(truncated = false) {
+      if (ended) return
+      if (truncated) {
+        throw new AiError('AI_SCORE_INVALID_RESPONSE', 'AI 评分结果不完整，请重试。', {
+          status: 502,
+          retryable: true,
+        })
+      }
+      let payload
+      try {
+        payload = finalize(content)
+      } catch {
+        throw new AiError('AI_SCORE_INVALID_RESPONSE', 'AI 评分结果格式异常，请重试。', {
+          status: 502,
+          retryable: true,
+        })
+      }
+      ended = true
+      return sendJson(res, 200, payload)
+    },
+    async fail(error) {
+      if (ended) return
+      ended = true
+      const retryAfter = error.status === 429 || error.status === 503 ? 2 : undefined
+      return sendJson(res, error.status, {
+        error: error.message,
+        code: error.code,
+        retryable: error.retryable,
+      }, retryAfter)
+    },
+  }
+}
+
 function clientAbortSignal(req, res) {
   const controller = new AbortController()
   const abort = () => controller.abort()
@@ -508,7 +558,8 @@ export function createAiChatHandler(options = {}) {
     const body = typeof req.body === 'string'
       ? (() => { try { return JSON.parse(req.body) } catch { return {} } })()
       : (req.body || {})
-    const messages = options.normalizeMessages(body.messages)
+    const preparedRequest = options.prepareRequest?.(req.aiRequest)
+    const messages = preparedRequest?.messages ?? options.normalizeMessages(body.messages)
     if (!messages.length || messages.at(-1)?.role !== 'user') {
       return sendJson(res, 400, { error: '请先输入一个问题。', code: 'AI_INVALID_REQUEST', retryable: false })
     }
@@ -536,8 +587,14 @@ export function createAiChatHandler(options = {}) {
       })
     }
 
-    const maxOutputTokens = integerSetting(env.AI_MAX_OUTPUT_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, 64, 8192)
-    const maxOutputChars = integerSetting(env.AI_MAX_OUTPUT_CHARS, maxOutputTokens * 12, 1024, 120_000)
+    const configuredMaxOutputTokens = integerSetting(env.AI_MAX_OUTPUT_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, 64, 8192)
+    const maxOutputTokens = preparedRequest?.maxOutputTokens
+      ? integerSetting(env.AI_SCORE_MAX_OUTPUT_TOKENS, preparedRequest.maxOutputTokens, 512, 2048)
+      : configuredMaxOutputTokens
+    const configuredMaxOutputChars = integerSetting(env.AI_MAX_OUTPUT_CHARS, configuredMaxOutputTokens * 12, 1024, 120_000)
+    const maxOutputChars = preparedRequest?.maxOutputChars
+      ? integerSetting(env.AI_SCORE_MAX_OUTPUT_CHARS, preparedRequest.maxOutputChars, 4096, 30_000)
+      : configuredMaxOutputChars
     const totalTimeoutMs = integerSetting(env.AI_REQUEST_TIMEOUT_MS, DEFAULT_REQUEST_TIMEOUT_MS, 1000, 180_000)
     const firstTokenTimeoutMs = integerSetting(
       env.AI_FIRST_TOKEN_TIMEOUT_MS,
@@ -554,7 +611,9 @@ export function createAiChatHandler(options = {}) {
         : 'max_tokens'
     const clientAbort = clientAbortSignal(req, res)
     const deadline = Date.now() + totalTimeoutMs
-    const sink = createSseSink(res, maxOutputChars, { signal: clientAbort.signal, deadline })
+    const sink = preparedRequest?.responseMode === 'json'
+      ? createBufferedJsonSink(res, maxOutputChars, preparedRequest.finalize)
+      : createSseSink(res, maxOutputChars, { signal: clientAbort.signal, deadline })
     const fetchImpl = options.fetchImpl ?? globalThis.fetch
     const wait = options.wait ?? delay
 
@@ -566,7 +625,7 @@ export function createAiChatHandler(options = {}) {
           model,
           stream: true,
           [tokenField]: maxOutputTokens,
-          messages: [
+          messages: preparedRequest?.messages ?? [
             { role: 'system', content: `${options.systemPrompt}\n\n${options.questionContext(body.question)}` },
             ...messages,
           ],
@@ -595,8 +654,9 @@ export function createAiChatHandler(options = {}) {
             return
           } catch (error) {
             primaryError = publicError(error)
-            if (sink.started || primaryError.clientAbort) throw primaryError
+            if ((sink.started && !sink.retrySafe) || primaryError.clientAbort) throw primaryError
             if (attempt === 0 && primaryError.retryable && remainingMs(deadline) > baseRetryDelayMs) {
+              sink.reset?.()
               await wait(retryDelay(primaryError, baseRetryDelayMs))
               continue
             }
@@ -605,7 +665,7 @@ export function createAiChatHandler(options = {}) {
         }
       }
 
-      if (fallbackUrl && (!primaryError || primaryError.fallbackEligible)) {
+      if (!preparedRequest && fallbackUrl && (!primaryError || primaryError.fallbackEligible)) {
         try {
           const result = await consumeTarget({
             fetchImpl,

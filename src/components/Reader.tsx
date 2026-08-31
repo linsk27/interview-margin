@@ -734,6 +734,7 @@ export function Reader({
               <div className="reader__practice">
                 <PracticeMode
                   questionKey={question.id}
+                  scoreQuestionId={question.id}
                   onScheduleReview={onPracticeSchedule}
                   onRevealChange={onPracticeRevealChange}
                   canSaveReview={practiceCanSaveReview}
