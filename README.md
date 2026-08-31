@@ -31,9 +31,6 @@
 
 <p align="center"><sub>产品首页：先做一道真实题，再进入适合自己的复习路线。点击图片查看原图。</sub></p>
 
-<details>
-<summary>查看更多页面：题库中心、Java 图解与 RAG 题解</summary>
-
 <table>
   <tr>
     <td width="50%" align="center">
@@ -57,9 +54,33 @@
       <br><sub>AI 应用：结论、原因、实践与术语翻译分层呈现</sub>
     </td>
   </tr>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/assets/readme/05-ai-explanation.png">
+        <img src="docs/assets/readme/05-ai-explanation.png" alt="AI 学习助手结合当前 RAG 题目给出完整的项目场景、实现思路与面试表达">
+      </a>
+      <br><sub>AI 题解：围绕当前题补充真实场景、实现步骤与面试表达</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/assets/readme/06-ai-conversation.png">
+        <img src="docs/assets/readme/06-ai-conversation.png" alt="AI 学习助手保留当前题目上下文并支持连续追问">
+      </a>
+      <br><sub>上下文追问：问题与回答始终绑定当前题目，可继续深挖</sub>
+    </td>
+  </tr>
 </table>
 
-</details>
+### AI 回答为什么能边生成边显示？
+
+可以把这条链路理解成：
+
+`当前题目 + 你的追问 → 同源 AI 代理 → 解析模型的 SSE / NDJSON / JSON → 统一输出 SSE → 前端逐段渲染 Markdown`
+
+- **SSE 是什么：** Server-Sent Events，即服务器通过一条 HTTP 连接持续向浏览器单向发送事件。AI 问答通常是“用户问一次，服务器连续回答”，因此不必为了流式效果额外使用双向 WebSocket。
+- **服务端做什么：** 浏览器只请求项目自己的 `/api/ai-chat`；服务端保管密钥、附带当前题目的必要上下文，兼容模型返回的 SSE、NDJSON 或一次性 JSON，再统一向页面发送 SSE 事件。
+- **前端做什么：** 使用 UTF-8 解码器和事件缓冲区拼好被网络分片拆开的文字，再增量渲染 Markdown，所以页面会“生成一段、显示一段”，中文和代码块也不会因半个字符或半条事件而损坏。
+- **如果模型不支持流式：** 服务端也能读取一次性 JSON，再通过同一条下行链路交给页面；只是首段内容要等完整答案返回，因此“能回答”和“上游能否实时流式输出”不会被绑死。
+- **上下文边界：** AI 只获得当前题目和本次对话所需的信息。模型密钥只保存在服务端；浏览器会话仅用于同源鉴权，代理不会把 Cookie、密码或账号资料发送给上游模型。
 
 ## 内容与质量
 
