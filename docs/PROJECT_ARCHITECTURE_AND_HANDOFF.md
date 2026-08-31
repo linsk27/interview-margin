@@ -498,6 +498,9 @@ npm run build
 
 ## 9. 双部署：Windows/Cloudflare 与 Vercel
 
+个人电脑正式接管、同一 Tunnel 的防分叉切换、未备案华南 ECS 的使用边界和完整回滚步骤，以
+[`PERSONAL_PC_CLOUDFLARE_DEPLOYMENT.md`](PERSONAL_PC_CLOUDFLARE_DEPLOYMENT.md) 为准。
+
 ### 9.1 当前结构
 
 - Express 监听 `127.0.0.1:4173`。
