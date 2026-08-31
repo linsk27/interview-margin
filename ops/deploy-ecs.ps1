@@ -39,8 +39,8 @@ function Invoke-WithTransientRetry {
   param(
     [Parameter(Mandatory = $true)][string]$Label,
     [Parameter(Mandatory = $true)][scriptblock]$Operation,
-    [int]$Attempts = 10,
-    [int]$DelaySeconds = 2
+    [int]$Attempts = 30,
+    [int]$DelaySeconds = 3
   )
 
   for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
