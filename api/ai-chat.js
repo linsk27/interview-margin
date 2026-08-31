@@ -4,8 +4,10 @@ import { z } from 'zod'
 const MAX_MESSAGES = 10
 const MAX_MESSAGE_CHARS = 6000
 const MAX_QUESTION_CHARS = 14000
-const SCORE_MAX_OUTPUT_TOKENS = 900
-const SCORE_MAX_OUTPUT_CHARS = 8000
+const SCORE_MAX_REFERENCE_CHARS = 6000
+const SCORE_MAX_ANSWER_CHARS = 4000
+const SCORE_MAX_OUTPUT_TOKENS = 512
+const SCORE_MAX_OUTPUT_CHARS = 4096
 
 const SCORE_WEIGHTS = {
   correctness: 30,
@@ -76,9 +78,9 @@ const SCORE_SYSTEM_PROMPT = [
   '五项等级只能是 none、weak、partial、solid、strong，并统一按可观察证据判档：none=完全没回答该维度或完全错误；weak=提到一点但主线不成立；partial=方向正确且命中部分要点；solid=主线正确、关键内容基本完整，只有次要遗漏；strong=准确完整，并能主动说明边界、取舍或验证方法。',
   'levels 对象的五个键必须逐字使用英文 correctness、reasoning、coverage、application、communication，绝对不能翻译成中文或改名。',
   '技术正确性看结论和术语是否成立；原理与因果看是否说清“为什么”和作用链路；关键点覆盖只看本题必要要点，不因未背诵所有参考资料扣分；场景、边界与取舍看能否说明何时用、何时不用、风险或替代方案；表达与结构看是否先结论、再理由，且没有明显自相矛盾。',
-  '硬伤只记录足以改变面试结论的实质错误，最多 3 条；类型只能使用 OFF_TOPIC、CORE_CONCEPT_REVERSED、FABRICATED_MECHANISM、UNSAFE_ADVICE、NONVIABLE_SOLUTION、CONTRADICTION。evidence 必须逐字摘录候选人回答中的短片段，explanation 用白话说明为什么错；轻微遗漏只放 gaps。没有硬伤时返回空数组，同一错误不要重复记录。',
+  '硬伤只记录足以改变面试结论的实质错误；最多返回影响最大的一条。类型只能使用 OFF_TOPIC、CORE_CONCEPT_REVERSED、FABRICATED_MECHANISM、UNSAFE_ADVICE、NONVIABLE_SOLUTION、CONTRADICTION。evidence 必须逐字摘录候选人回答中的短片段，explanation 用白话说明为什么错；轻微遗漏只放 gaps。没有硬伤时返回空数组。',
   '只输出一个 JSON 对象，不要 Markdown、代码围栏或额外说明。严格使用这个结构：{"levels":{"correctness":"partial","reasoning":"partial","coverage":"partial","application":"partial","communication":"partial"},"criticalIssues":[],"summary":"一句总评","strengths":[],"gaps":[],"nextStep":"下一步","confidence":"medium"}。只能替换字段值，不能翻译、增加、删除或重命名任何键。',
-  'summary 用一句白话总评；strengths 最多 2 条；gaps 最多 3 条；nextStep 只写下一次回答最优先补的一步。所有评价使用简体中文。',
+  '保持精简：summary 不超过 45 个汉字；strengths 最多 1 条；gaps 最多 1 条；nextStep 不超过 45 个汉字，只写下一次回答最优先补的一步。所有评价使用简体中文。',
 ].join('\n')
 
 function asText(value) {
@@ -129,7 +131,7 @@ function scoreQuestionData(question) {
     number: asText(question?.number),
     title: asText(question?.title),
     sectionTitle: asText(question?.sectionTitle),
-    referenceMaterial: asText(question?.body).slice(0, MAX_QUESTION_CHARS),
+    referenceMaterial: asText(question?.body).slice(0, SCORE_MAX_REFERENCE_CHARS),
   }
 }
 
@@ -212,7 +214,7 @@ function finalizeScoreResponse(rawText, candidateAnswer) {
 
 function prepareRequest(aiRequest) {
   if (aiRequest?.type !== 'interview-score') return undefined
-  const answer = asText(aiRequest.answer).slice(0, MAX_MESSAGE_CHARS)
+  const answer = asText(aiRequest.answer).slice(0, SCORE_MAX_ANSWER_CHARS)
   if (!answer) return undefined
 
   return {

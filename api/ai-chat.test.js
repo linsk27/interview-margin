@@ -129,11 +129,12 @@ describe('AI chat proxy reliability', () => {
 
     const [, init] = fetchImpl.mock.calls[0]
     const upstreamBody = JSON.parse(init.body)
-    expect(upstreamBody.max_tokens).toBe(900)
+    expect(upstreamBody.max_tokens).toBe(512)
     expect(upstreamBody.messages[0].role).toBe('system')
     expect(upstreamBody.messages[0].content).toContain('技术面试评分器')
     expect(upstreamBody.messages[0].content).toContain('correctness、reasoning、coverage、application、communication')
     expect(upstreamBody.messages[0].content).toContain('不能翻译、增加、删除或重命名任何键')
+    expect(upstreamBody.messages[0].content).toContain('strengths 最多 1 条')
     expect(upstreamBody.messages[0].content).not.toContain('RAG 是在生成前检索外部证据')
     const scoringData = JSON.parse(upstreamBody.messages.at(-1).content)
     expect(upstreamBody.messages.at(-1).role).toBe('user')
@@ -145,6 +146,33 @@ describe('AI chat proxy reliability', () => {
       },
       candidateAnswer: '先找证据，再让模型依据证据回答。',
     })
+  })
+
+  it('keeps interview scoring context bounded to avoid unnecessary token usage', async () => {
+    const modelPayload = {
+      levels: {
+        correctness: 'partial', reasoning: 'partial', coverage: 'partial',
+        application: 'partial', communication: 'partial',
+      },
+      criticalIssues: [],
+      summary: '方向正确，但还不够完整。',
+      strengths: ['说清了主线'],
+      gaps: ['缺少边界'],
+      nextStep: '补充适用边界。',
+      confidence: 'medium',
+    }
+    const fetchImpl = vi.fn().mockResolvedValue(scoreSseResponse(modelPayload))
+    const handler = createConfiguredAiChatHandler({ env: baseEnv(), fetchImpl, wait: vi.fn() })
+    const res = responseRecorder()
+    const req = scoreRequest('答'.repeat(5000))
+    req.aiRequest.question.body = '参'.repeat(8000)
+
+    await handler(req, res)
+
+    const upstreamBody = JSON.parse(fetchImpl.mock.calls[0][1].body)
+    const scoringData = JSON.parse(upstreamBody.messages.at(-1).content)
+    expect(scoringData.question.referenceMaterial).toHaveLength(6000)
+    expect(scoringData.candidateAnswer).toHaveLength(4000)
   })
 
   it('rejects malformed model scoring output instead of inventing a score', async () => {

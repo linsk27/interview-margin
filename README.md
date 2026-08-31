@@ -116,7 +116,7 @@
 | 公开加载 | 首屏只取题库索引，进入题库后按需加载分片；实时 API 失败时回退静态快照和缓存 |
 | 身份权限 | `admin / editor / learner` RBAC；Argon2id 密码；HttpOnly + Secure + SameSite=Lax 会话 |
 | 学习同步 | 服务端状态为权威；IndexedDB outbox 只保留待确认写入，并按用户隔离防止串号 |
-| AI | 浏览器只请求同源服务端代理；聊天兼容流式与一次性响应，评分由服务端读取标准答案、校验结构并计算总分；评分还受独立的 5 次 / 10 分钟 / IP 子额度保护 |
+| AI | 浏览器只请求同源服务端代理；聊天兼容流式与一次性响应；评分只让模型返回紧凑等级 JSON，默认最多 512 completion tokens，总分仍由服务端计算，并受独立的 5 次 / 10 分钟 / IP 子额度保护 |
 | 部署 | 阿里云 ECS 单 Node 实例、systemd、Cloudflare Tunnel HTTPS；Vercel 保留游客快照与 AI 备用入口 |
 
 ## 系统架构
