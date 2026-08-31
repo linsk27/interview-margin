@@ -1,195 +1,214 @@
 # 面试边注
 
-面向技术面试复习的多用户阅读工作台。现有 Markdown 内容保持不删减，运行时以本机 SQLite 为权威数据源；登录用户的进度、阅读位置、收藏、复习和批注可跨浏览器同步，访客保持只读。
+> 面向求职者与开发者的结构化技术面试学习工作台。
 
-当前包含 14 个题库、762 道题：原有简历题 81 道、JavaScript 100 道，Git、Vue、React、
-前端工程、后端、数据库缓存和网络部署共 320 道工程题，72 道 360 AI 应用前端一面专项题，
-以及 Java 基础高频 60 题、来自公开社区面经线索的前端 × AI 40 题、Java 后端高频 54 题和
-Java × AI 应用高频 35 题。
+面试边注把高频题库、白话题解、代码与图解、AI 追问、批注和间隔复习放进同一个阅读流程。游客可以直接阅读全部公开内容并体验 AI；登录后再保存个人进度、收藏、批注与复习计划。
 
-完整的架构、数据模型、API、部署方式、当前进度和跨电脑迁移步骤见
-[`docs/PROJECT_ARCHITECTURE_AND_HANDOFF.md`](docs/PROJECT_ARCHITECTURE_AND_HANDOFF.md)。
+`React + TypeScript` · `Express` · `SQLite` · `Vite` · `Cloudflare Tunnel` · `Vercel`
 
-当前正式环境已部署在阿里云 ECS，使用 Node.js `v22.15.0`、systemd 和
-cloudflared。Express 只监听服务器回环地址，Cloudflare Tunnel 提供主站公网入口与免费
-HTTPS；SQLite 位于独立持久化目录，systemd timer 每天创建一致性备份。另有一份独立的
-Vercel 游客备用站 `https://interview-margin.vercel.app`，可读取构建时导出的公开题库快照；
-旧个人电脑不再承担主站、数据库或 Tunnel。
+[在线体验](https://interview.linsk27.dpdns.org/) · [直接开始刷题](https://interview.linsk27.dpdns.org/app) · [面试者速览](#面试者速览) · [开发者速览](#开发者速览) · [本地启动](#本地启动)
 
-## 本地运行
+## 面试者速览
 
-```bash
-npm install
+| 你关心的事 | 当前实现 |
+| --- | --- |
+| 题库规模 | 14 个题库、50 个大章节、762 道公开题；覆盖前端、Java 后端、AI 应用与求职专项 |
+| 题解方式 | 每题先给“结论、为什么、怎么用”，再展开原理、代码、图解、追问、易错点与来源 |
+| 游客体验 | 无需注册即可阅读、搜索、切题、复制代码、切换版式与字体、使用练习模式和 AI 学习助手 |
+| 主动练习 | 先自己回答，再揭晓答案、自评掌握程度，并安排 1 / 3 / 7 天后的复习 |
+| 个人记录 | 登录后保存进度、收藏、掌握状态、总结、高亮、批注和复习计划，并跨设备同步 |
+| 学习路线 | 前端开发、Java 后端和 AI 应用三条主路线，也可以按题库、章节或关键词自由组合 |
+
+## 产品预览
+
+下面均为正式环境的游客态实机画面，不含账号、批注或后台数据。
+
+<p align="center">
+  <a href="docs/assets/readme/01-home.png">
+    <img src="docs/assets/readme/01-home.png" width="100%" alt="面试边注产品首页，展示 14 个题库、762 道题与游客刷题入口">
+  </a>
+</p>
+
+<p align="center"><sub>产品首页：先做一道真实题，再进入适合自己的复习路线。点击图片查看原图。</sub></p>
+
+<details>
+<summary>查看更多页面：题库中心、Java 图解与 RAG 题解</summary>
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/assets/readme/02-question-bank-hub.png">
+        <img src="docs/assets/readme/02-question-bank-hub.png" alt="面试边注题库中心，展示题库分类、数量和学习入口">
+      </a>
+      <br><sub>题库中心：按方向筛选 14 个题库并继续上次学习</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/assets/readme/03-reader-java-hashmap.png">
+        <img src="docs/assets/readme/03-reader-java-hashmap.png" alt="Java HashMap 面试题的白话原理与流程图">
+      </a>
+      <br><sub>Java 图解：把 HashMap put 流程拆成可复述的步骤</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <a href="docs/assets/readme/04-reader-rag.png">
+        <img src="docs/assets/readme/04-reader-rag.png" width="70%" alt="RAG 面试题的结论、原因、实践方式和关键词翻译">
+      </a>
+      <br><sub>AI 应用：结论、原因、实践与术语翻译分层呈现</sub>
+    </td>
+  </tr>
+</table>
+
+</details>
+
+## 内容与质量
+
+| 指标 | 当前基线 |
+| --- | ---: |
+| 公开题库 / 章节 / 题目 | 14 / 50 / 762 |
+| 首屏包含“结论、为什么、怎么用” | 762 题 |
+| 带可核验来源 | 735 题、1,876 条引用、1,136 个唯一 URL |
+| 带术语翻译 | 492 题 |
+| 带代码示例 | 507 题 |
+| 带站内图解 | 48 题 |
+| 自动化验证 | 55 个测试文件、399 项测试 |
+
+题目按四个大方向组织：
+
+| 方向 | 题量 | 适合人群 |
+| --- | ---: | --- |
+| 前端开发 | 300 | JavaScript、Vue、React、工程化、浏览器与 TypeScript |
+| 后端开发 | 234 | Java 基础、Spring、数据库、缓存、网络与部署 |
+| AI 应用开发 | 75 | RAG、Agent、MCP、Skill、Tool Calling、流式交互与安全 |
+| 求职专项 | 153 | 简历项目拷打、真实面经与公司专项准备 |
+
+社区面经只用于确认“真实面试中出现过什么”；答案会重新撰写，并用 Java 官方文档、MDN、框架文档、JavaGuide、小林 Coding 等来源交叉校准。无法公开核验正文的登录墙页面不会伪装成公开证据。
+
+## 开发者速览
+
+| 关注点 | 当前实现 |
+| --- | --- |
+| Web | React、TypeScript、Vite；题库中心、沉浸阅读器、练习模式、AI 与管理后台按模块拆分 |
+| API | Express 同源 API；公开题库、会话、个人学习状态、内容管理、账号、备份、审计和 AI 代理 |
+| 数据 | better-sqlite3；WAL、外键和写锁等待；生产数据放在独立持久目录并每日一致性备份 |
+| 内容管线 | Markdown / JS 内容源 → 生成与质量门禁 → 分片公开快照 → SQLite 种子；题目 ID 保持稳定 |
+| 公开加载 | 首屏只取题库索引，进入题库后按需加载分片；实时 API 失败时回退静态快照和缓存 |
+| 身份权限 | `admin / editor / learner` RBAC；Argon2id 密码；HttpOnly + Secure + SameSite=Lax 会话 |
+| 学习同步 | 服务端状态为权威；IndexedDB outbox 只保留待确认写入，并按用户隔离防止串号 |
+| AI | 浏览器只请求同源服务端代理；兼容流式与一次性响应、首 token 超时、有限重试和备用服务 |
+| 部署 | 阿里云 ECS 单 Node 实例、systemd、Cloudflare Tunnel HTTPS；Vercel 保留游客快照与 AI 备用入口 |
+
+## 系统架构
+
+```mermaid
+flowchart LR
+    USER["游客 / 学习账号 / 管理员"] --> WEB["React + TypeScript<br/>学习工作台"]
+    WEB --> API["Express 同源 API<br/>127.0.0.1:4173"]
+    WEB -. "API 故障回退" .-> SNAP["公开题库分片快照"]
+
+    API --> DB[("SQLite<br/>题库、账号、学习记录")]
+    API --> AI["OpenAI-compatible<br/>AI 服务代理"]
+    API --> BACKUP["一致性备份"]
+
+    SOURCE["Markdown / JS 内容源"] --> GATE["生成器 + 内容质量门禁"]
+    GATE --> SNAP
+    GATE --> SEED["预编译题库种子"]
+    SEED --> DB
+
+    INTERNET["公网访问"] --> CF["Cloudflare Tunnel<br/>免费 HTTPS"]
+    CF --> API
+    VERCEL["Vercel 备用站"] --> SNAP
+```
+
+- 正式应用只监听服务器回环地址，公网入口由 Cloudflare Tunnel 提供。
+- 生产 SQLite 位于 `/var/lib/interview-margin/data/interview.db`；发布目录通过受控链接访问，不把数据库放进 Git。
+- 发布脚本执行构建、测试、内容检查、数据库预检、上线前备份、原子版本切换和健康检查；失败时回滚到上一版本。
+
+## 代码入口
+
+| 路径 | 先从这里理解什么 |
+| --- | --- |
+| [`src/App.tsx`](src/App.tsx) | 应用路由、题库加载、游客与登录态边界 |
+| [`src/components/Reader.tsx`](src/components/Reader.tsx) | 单页 / 双页阅读、练习模式、翻页与阅读状态 |
+| [`src/components/QuestionMarkdown.tsx`](src/components/QuestionMarkdown.tsx) | Markdown、代码、表格和受控站内 SVG 图解 |
+| [`server/index.js`](server/index.js) | Express 入口、API 与静态资源组合 |
+| [`server/database.js`](server/database.js) | SQLite 初始化、迁移、题库种子与持久化边界 |
+| [`server/content/`](server/content/) | 题库源、生成器、清晰度增强、来源与质量测试 |
+| [`api/ai-chat.js`](api/ai-chat.js) | ECS 与 Vercel 共用的 AI 服务端代理 |
+| [`ops/linux/`](ops/linux/) | ECS、systemd、Tunnel、备份、发布和回滚 |
+
+## 本地启动
+
+前置条件：Node.js 22.15 或更高版本。
+
+```powershell
+npm ci
+Copy-Item .env.example .env
+npm run content:export
+```
+
+开发时需要两个终端。终端一启动 Express 与 SQLite：
+
+```powershell
+npm start
+```
+
+终端二启动 Vite；开发服务器会把 `/api` 代理到 `127.0.0.1:4173`：
+
+```powershell
 npm run dev
 ```
 
-生产构建：
+生产级验证：
 
-```bash
-npm run test
-npm run db:check
+```powershell
 npm run build
+npm test -- --maxWorkers=1
+npm run db:check
 ```
 
-`npm run build` 会先自动执行 `npm run content:export`，从 Git 中的公开、未归档内置题生成
-`public/catalog.json`，再把它打入 `dist/` 供 Vercel 游客备用站使用。需要单独检查快照时也可
-直接运行 `npm run content:export`。该快照不读取生产 SQLite，因此后台中仅存在于 SQLite 的
-编辑内容要先同步回题库源并重新部署，才会出现在 Vercel 备用站。
-
-当前内容基线为 14 个题库、762 题和 762 个唯一 ID；681 道结构化富题解均经过正文、
-段落标记和来源门禁；核心题包含站内 SVG 图解，正文会自动拆分过密段落；测试与生产构建
-全部通过。
-
-本机生产服务（供 Cloudflare Tunnel 等反向代理使用）：
-
-```bash
-npm run start:local
-```
-
-默认只监听 `127.0.0.1:4173`，不会直接向局域网开放端口。健康检查地址为
-`http://127.0.0.1:4173/api/health`。
+健康检查：`http://127.0.0.1:4173/api/health`。
 
 ## 题库内容开发
 
-JavaScript 与 7 个工程题库采用“原题清单 + 逐题 enrichment + 生成后的 Markdown”三层结构。
-逐题原理、示例、追问、易错点和来源位于 `server/content/enrichments/`；不要直接批量修改
-`public/question-banks/` 下的生成产物。受控技术图位于 `public/content/diagrams/`，正文只允许
-引用该目录内带替代文本的同源 SVG，远程图片、Base64 和原始内联 SVG 会被拒绝。
+不要直接批量修改 `public/question-banks/` 下的生成产物。主要内容源位于：
 
-360 专项题只在 `docs/source/360-ai-frontend/` 保留生成所需的脱敏答案材料，由
-`server/content/import-360-ai-bank.js` 转换成统一的“短回答、原理、场景、追问、易错点、
-来源”阅读结构。修改源材料或逐题补充后运行 `npm run content:generate:360`，不要直接维护
-生成后的 `public/question-banks/360-ai-frontend.md`。
+- `server/content/enrichments/`：JavaScript 与工程题库的逐题原理、示例、追问、易错点和来源。
+- `server/content/community-banks/`：Java 基础、Java 后端、Java × AI 与前端 × AI 题库。
+- `docs/source/360-ai-frontend/`：360 AI 应用前端专项的脱敏源材料。
+- `public/content/diagrams/`：带替代文本的同源 SVG 图解；远程图片、Base64 和危险内联 HTML 会被拒绝。
 
-三套社区真实面经题库及 Java 基础高频 60 题的数据源位于 `server/content/community-banks/`。
-社区页面只用于确认面试主题真实出现过，JavaGuide 与小林 Coding 用于筛选高频主题和安排
-复习顺序，题目与答案均重新撰写，并由官方文档独立校准。Java 后端、Java × AI 每题必须同时
-具备公开面经、高频题库参考和官方来源；Java 基础题不伪造社区出处，每题使用高频题库参考，
-再以 Java 21 API、JLS、JVMS 或 OpenJDK 文档校准。`npm run content:generate:community` 会生成四份 Markdown 与
-`docs/COMMUNITY_INTERVIEW_SOURCE_AUDIT.md`，无法公开核验正文的登录墙页面不会进入来源表。
+修改内容源后运行：
 
-修改题库源后执行：
-
-```bash
+```powershell
 npm run content:generate
-npm test
+npm test -- --maxWorkers=1
 npm run db:check
 npm run build
 ```
 
-生成器会校验题号、标题、正文结构和来源。非 Java 题目的 ID 保持稳定；2026-08-06 全量重建的
-三套 Java 题库使用独立 v2 ID，旧 Java 题会安全归档，不会把历史进度套到新题上。生产启动只覆盖仍标记为
-`seed` 的内置题；管理员已经编辑并转为 `editor` 来源的题目不会被自动正文覆盖。
+`npm run build` 会生成 `catalog-index.json`、`catalog-banks/<id>.json` 和兼容旧客户端的 `catalog.json`。生产启动会严格校验预编译分片；缺失、格式错误或题库 ID 不匹配时拒绝启动。
 
-正式环境的应用、Cloudflare Tunnel 和备份任务均由 ECS 上的 systemd 管理；服务模板、
-数据库预检、Nginx 示例和发布说明见 `ops/linux/README.md`。Tunnel token 与生产环境变量
-只保存在服务器受限权限目录，不进入 Git、发布包或日志。Windows 计划任务脚本仅保留作
-历史迁移与本地应急参考，不是当前生产运行方式。
+## 数据、权限与运行边界
 
-首次启动会生成 `data/bootstrap-admin.txt`。该文件只显示一次管理员临时密码，首次
-登录必须修改。管理员可直接创建 `admin / editor / learner` 账号，也可生成一次性
-`learner` 邀请；任何人都能自行进入的公共注册仍然关闭。
-
-## 游客浏览与个人记录
-
-游客无需账号即可浏览全部公开题库和题目正文，并可使用搜索、题目切换、代码复制、
-阅读版式、字号、主题、专注模式和 AI 学习助手。普通滚动、上下题和双页翻页不会触发
-登录，也不会读取或写入个人学习状态。
-
-收藏、掌握状态、题目总结、高亮与批注、复习计划、个人学习概览、复习/收藏/掌握筛选
-以及学习记录导入导出属于账号记忆功能；游客点击这些入口时才显示带具体原因的登录框。
-个人状态 API 仍由服务端强制鉴权，前端提示不能替代 API 权限检查。
-
-当 ECS、Tunnel 或账户 API 不可用时，Vercel 站会自动回退到随构建发布的
-`/catalog.json`，游客阅读、搜索和题目切换仍可使用；需要保存批注、收藏、进度或进入后台
-时会提示账户服务不可用。这里的“备用”解决的是主服务故障，不代表访客设备在完全断网时
-还能首次打开网页。
-
-## 邀请注册
-
-管理员应从正式域名登录并进入“内容管理 → 账号权限 → 邀请注册”生成邀请。链接会使用
-当前页面的 origin，因此不要把在 `localhost` 或 `127.0.0.1` 开发页面生成的链接发给
-别人。默认有效期为 72 小时，服务端允许 1–168 小时，当前界面提供 24 小时、3 天和
-7 天三个选项。完整邀请链接只在创建成功时显示一次，需立即复制并通过可信的私下渠道
-发送；后台列表只显示可使用、已使用、已撤销或已过期状态及时间等元数据，不能再次取回
-原链接。
-
-受邀者应先退出其他账号，再打开 `/#invite/...` 链接，自行填写用户名、显示名称和至少
-12 位密码。注册成功后固定获得 `learner` 角色并自动登录，不需要管理员接触其密码。
-邀请只能使用一次，管理员可在使用前撤销；过期、已使用和已撤销的邀请都会失效。如需
-创建编辑或管理员账号，仍由管理员在同一页面直接创建并分配角色。
-
-邀请 token 不写入服务端访问路径：浏览器从 URL fragment 读取后立即清除地址栏，之后
-只把 token 放入固定邀请 API 的 JSON 请求体。SQLite `invitations` 表只保存 token 的
-SHA-256 哈希，原始 token 不写入数据库、审计日志或邀请列表。
-
-## 使用入口
-
-- 左侧题库：全文搜索、章节浏览、复习/收藏/掌握筛选。
-- 正文选区：选择高亮颜色，或打开边注编辑器记录理解。
-- 右侧边注：本题总结、复习日期和全部文字批注；桌面端可拖动左边缘调整宽度，也可一键收窄/恢复，双击边缘恢复默认宽度。
-- 学习概览：阅读、掌握、复习、时长、14 天活动和章节进度。
-- 数据同步：登录账号后写入本机 SQLite；旧版 localStorage 首次登录可幂等合并。
-- 内容管理：管理员/编辑可增删改题库和题目、预览导入 Markdown、处理归档和版本冲突。
-- 账号管理：管理员生成/撤销 learner 邀请，或直接创建、停用、分配角色和重置账号密码；操作写入审计日志。
-- 数据备份：管理员可立即创建或下载 SQLite 备份，系统每天自动保留最近 30 份。
-- 专注模式：隐藏题库和边注，只保留正文。
-
-## 快捷键
-
-| 按键 | 操作 |
+| 项目 | 当前边界 |
 | --- | --- |
-| `/` 或 `Ctrl/Cmd + K` | 全局搜索 |
-| `J` / `K` | 下一题 / 上一题 |
-| `M` | 标记已掌握 |
-| `R` | 标记需复习 |
-| `F` | 收藏当前题 |
-| `N` | 打开边注 |
-| `?` | 阅读设置 |
+| 游客 | 可阅读全部公开题、搜索、练习并体验 AI；不写个人学习记忆 |
+| 学习账号 | 保存个人进度、收藏、总结、批注和复习计划；只能访问自己的状态 |
+| 管理员 / 编辑 | 内容 CRUD、归档恢复、Markdown 导入预览、账号邀请、审计与 SQLite 备份 |
+| 注册 | 公共注册关闭；普通学习账号使用一次性邀请或由管理员创建 |
+| 主站 | [interview.linsk27.dpdns.org](https://interview.linsk27.dpdns.org/)；ECS + Express + SQLite |
+| 备用站 | [interview-margin.vercel.app](https://interview-margin.vercel.app/)；公开题库快照与受限 AI 代理 |
+| 密钥 | 只保存在服务器或部署平台的环境变量中，不进入浏览器、Git、截图或日志 |
 
-主站为 `https://interview.linsk27.dpdns.org`，由阿里云 ECS 上的 Express、SQLite 和
-Cloudflare Tunnel 提供完整动态服务；游客备用站为
-`https://interview-margin.vercel.app`，由 Vercel 托管前端、公开题库快照和 AI 函数。
-个人电脑关机、休眠或断网不会影响主站；只有 ECS 或 Tunnel 故障时动态账号功能才会暂时
-不可用，此时 Vercel 备用站仍可进行只读游客浏览。
+## 技术文档
 
-当前不要直接把 `interview.linsk27.dpdns.org` 指向 Vercel：`vercel.json` 的 `/api/*`
-目前仍代理到这个主机名，直接切换会形成代理回环。未来如需让 Vercel 承接主域名，应先建立
-独立的 API 子域名（例如 `api.interview.linsk27.dpdns.org`）并让 Tunnel 只把该子域名指向
-ECS，再更新 Vercel API 代理、`APP_ORIGINS` 并完成验证后切换主域名。
+| 需要了解 | 文档 |
+| --- | --- |
+| Linux 正式部署、发布与回滚 | [`ops/linux/README.md`](ops/linux/README.md) |
+| 社区面经来源审计 | [`docs/COMMUNITY_INTERVIEW_SOURCE_AUDIT.md`](docs/COMMUNITY_INTERVIEW_SOURCE_AUDIT.md) |
+| Java 题库全量重建说明 | [`docs/JAVA_INTERVIEW_REBUILD_V2.md`](docs/JAVA_INTERVIEW_REBUILD_V2.md) |
+| 产品与交互设计说明 | [`docs/PRODUCT_UI_REDESIGN_BRIEF.md`](docs/PRODUCT_UI_REDESIGN_BRIEF.md) |
+| 架构图数据与可视化 | [`docs/diagrams/`](docs/diagrams/) |
 
-## 数据与权限
-
-- SQLite 启用 WAL、外键和 5 秒写锁等待，数据文件为 `data/interview.db`。
-- 会话 Cookie 使用 `HttpOnly + Secure + SameSite=Lax`；数据库只保存随机令牌哈希。
-- 密码使用 Argon2id；改密、停用或角色调整会撤销现有会话。
-- API 最终执行 RBAC 与资源隔离，前端隐藏管理入口不作为安全判断。
-- IndexedDB outbox 按 `userId` 分区，只保存各账号尚未被服务器确认的最新写操作，确认后立即删除。
-- 学习状态读取、保存和旧数据迁移都携带 `X-Expected-User-Id`；会话若已切换到其他账号，服务端返回 `409`，避免旧异步请求写入新账号。
-
-## AI 学习助手
-
-右侧边注顶部和阅读器工具栏都可打开 AI 学习助手。它会自动携带当前题目的题干、正文及本题对话，适合追问“为什么”“用项目怎么讲”“继续追问什么”。
-
-为防止 API Key 出现在浏览器端，AI 请求会通过 Vercel 的 `api/ai-chat.js` 转发。部署到 Vercel 后，在 Project Settings → Environment Variables 设置：
-
-```bash
-OPENAI_API_KEY=你的密钥
-OPENAI_BASE_URL=https://code.rayinai.com/v1
-OPENAI_MODEL=gpt-5.6-luna
-OPENAI_TOKEN_LIMIT_FIELD=max_completion_tokens
-AI_MAX_OUTPUT_TOKENS=1200
-AI_MAX_CONCURRENCY=4
-AI_FIRST_TOKEN_TIMEOUT_MS=15000
-AI_REQUEST_TIMEOUT_MS=60000
-```
-
-以上为 RayinAI 中转配置。`OPENAI_BASE_URL` 也可以改为其他支持 Chat Completions 的兼容服务地址。不同兼容服务对输出上限字段的支持可能不同：新模型优先使用 `max_completion_tokens`，若服务商只兼容旧字段再改为 `max_tokens`。变量配置后重新部署；本地仅运行 Vite 时 `/api/ai-chat` 不会存在，因此会提示服务未连接。
-
-ECS 应用未配置 `OPENAI_API_KEY` 时，可以通过 `AI_FALLBACK_URL` 转发到现有的
-Vercel AI 代理。这样密钥仍只保存在 Vercel，ECS 应用进程和浏览器都不会接触原始密钥。
-
-`AI_MAX_CONCURRENCY` 是单个 Node.js 进程或单个 Serverless 实例内的并发上限。当前单进程 ECS
-部署可直接依赖它；Vercel 会按流量创建多个隔离实例，因此它不是跨实例的全局配额。若继续向游客
-开放 Vercel AI 接口，应同时在 Vercel 防火墙中配置 `/api/ai-chat` 的速率限制和项目消费上限；
-在没有共享限流存储时，不应把进程内计数描述成全局限流。
+如果你只是准备面试，从[在线题库](https://interview.linsk27.dpdns.org/app)开始即可；如果你要继续开发，建议依次阅读“开发者速览 → 系统架构 → 代码入口 → 本地启动”。
