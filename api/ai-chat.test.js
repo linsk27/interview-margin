@@ -132,6 +132,8 @@ describe('AI chat proxy reliability', () => {
     expect(upstreamBody.max_tokens).toBe(900)
     expect(upstreamBody.messages[0].role).toBe('system')
     expect(upstreamBody.messages[0].content).toContain('技术面试评分器')
+    expect(upstreamBody.messages[0].content).toContain('correctness、reasoning、coverage、application、communication')
+    expect(upstreamBody.messages[0].content).toContain('不能翻译、增加、删除或重命名任何键')
     expect(upstreamBody.messages[0].content).not.toContain('RAG 是在生成前检索外部证据')
     const scoringData = JSON.parse(upstreamBody.messages.at(-1).content)
     expect(upstreamBody.messages.at(-1).role).toBe('user')
