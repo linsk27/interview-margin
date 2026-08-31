@@ -66,6 +66,9 @@ function noStore(_req, res, next) {
 }
 
 const PUBLIC_CATALOG_CACHE = 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400'
+const VISIT_COUNTER_KEY = 'site.total_visits'
+const VISIT_COOKIE_NAME = 'im_visit_24h'
+const VISIT_COOKIE_MAX_AGE_MS = 24 * 60 * 60_000
 
 const LANDING_TRACKS = [
   {
@@ -218,6 +221,15 @@ export function createApp(options = {}) {
   const backupDir = options.backupDir ?? path.join(rootDir, 'backups')
   const database = options.database ?? createDatabase({ rootDir, ...options.databaseOptions })
   const { db } = database
+  const ensureVisitTotal = db.prepare('INSERT OR IGNORE INTO app_meta(key, value) VALUES(?, ?)')
+  const incrementVisitTotal = db.prepare('UPDATE app_meta SET value = CAST(value AS INTEGER) + 1 WHERE key = ?')
+  const selectVisitTotal = db.prepare('SELECT CAST(value AS INTEGER) AS total FROM app_meta WHERE key = ?')
+  const recordVisit = db.transaction(() => {
+    ensureVisitTotal.run(VISIT_COUNTER_KEY, '0')
+    incrementVisitTotal.run(VISIT_COUNTER_KEY)
+    return Number(selectVisitTotal.get(VISIT_COUNTER_KEY)?.total ?? 0)
+  })
+  const currentVisitTotal = () => Number(selectVisitTotal.get(VISIT_COUNTER_KEY)?.total ?? 0)
   const app = express()
   const loginGuard = createLoginGuard()
   const invitationInspectLimit = rateLimit({
@@ -241,6 +253,13 @@ export function createApp(options = {}) {
     legacyHeaders: false,
     message: { error: '提交次数较多，请稍后再试。' },
   })
+  const visitRegistrationLimit = rateLimit({
+    windowMs: 60 * 60_000,
+    limit: 120,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { error: '访问统计请求较多，请稍后再试。' },
+  })
   const allowedOrigins = new Set((process.env.APP_ORIGINS ?? 'https://interview.linsk27.dpdns.org,http://127.0.0.1:4173,http://localhost:5173')
     .split(',').map((item) => item.trim()).filter(Boolean))
 
@@ -261,7 +280,7 @@ export function createApp(options = {}) {
     if (!req.user?.mustChangePassword) return next()
     const allowed = new Set([
       '/api/auth/session', '/api/auth/change-password', '/api/auth/logout', '/api/health', '/api/catalog',
-      '/api/invitations/inspect', '/api/invitations/accept', '/api/contact-requests', '/api/landing',
+      '/api/invitations/inspect', '/api/invitations/accept', '/api/contact-requests', '/api/landing', '/api/visits',
     ])
     if (allowed.has(req.path)
       || req.path === '/api/catalog/index'
@@ -287,6 +306,21 @@ export function createApp(options = {}) {
   app.get('/api/landing', (req, res) => {
     const index = listCatalogIndex(db, { includeArchived: false, includePrivate: false })
     return sendCatalogJson(req, res, landingCatalogFromIndex(index), PUBLIC_CATALOG_CACHE)
+  })
+
+  app.post('/api/visits', visitRegistrationLimit, (req, res) => {
+    const alreadyCounted = req.cookies?.[VISIT_COOKIE_NAME] === '1'
+    const total = alreadyCounted ? currentVisitTotal() : recordVisit()
+    if (!alreadyCounted) {
+      res.cookie(VISIT_COOKIE_NAME, '1', {
+        httpOnly: true,
+        secure: options.secureCookies ?? req.secure,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: VISIT_COOKIE_MAX_AGE_MS,
+      })
+    }
+    return res.json({ total, counted: !alreadyCounted })
   })
 
   app.post('/api/contact-requests', contactRequestLimit, parseBody(contactRequestCreateSchema), (req, res) => {

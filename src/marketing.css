@@ -137,12 +137,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
   margin: 0 0 1.55rem;
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.65rem;
   color: var(--m-blue);
   font: 600 0.78rem/1.4 var(--font-mono);
   letter-spacing: 0.04em;
 }
-.hero-kicker span { width: 2.7rem; height: 0.18rem; border-radius: 99px; background: var(--m-coral); }
+.hero-kicker__line { width: 2.7rem; height: 0.18rem; border-radius: 99px; background: var(--m-coral); }
+.hero-kicker__separator { color: var(--m-coral); }
+.hero-kicker__visits { color: var(--m-muted); }
 .hero-kicker button { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
 .hero-kicker button:hover { text-decoration: underline; text-underline-offset: 0.2rem; }
 

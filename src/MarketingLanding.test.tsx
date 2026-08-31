@@ -29,7 +29,11 @@ describe('MarketingLanding', () => {
   }
 
   it('offers real guest entry points without loading the full question catalog', async () => {
-    const fetchMock = vi.fn((_input: RequestInfo | URL, _options?: RequestInit) => Promise.resolve(jsonResponse(landingPayload)))
+    const fetchMock = vi.fn((input: RequestInfo | URL, _options?: RequestInit) => Promise.resolve(
+      String(input) === '/api/visits'
+        ? jsonResponse({ total: 1234, counted: true })
+        : jsonResponse(landingPayload),
+    ))
     vi.stubGlobal('fetch', fetchMock)
     render(<MarketingLanding />)
 
@@ -41,15 +45,18 @@ describe('MarketingLanding', () => {
       '/app#521d047b-e5d6-59b9-907a-cd7ad0de657a',
       '/app#72d8195b-5fad-5cfc-8370-85a1379ca106',
     ])
+    expect(await screen.findByText('累计 1,234 次访问')).toBeTruthy()
+    expect(fetchMock).toHaveBeenCalledWith('/api/visits', expect.objectContaining({ method: 'POST' }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/landing', expect.any(Object)))
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/catalog/index'))).toBe(false)
   })
 
   it('shows a retry action when both public catalog endpoints fail', async () => {
-    let requestCount = 0
-    const fetchMock = vi.fn(() => {
-      requestCount += 1
-      if (requestCount <= 2) return Promise.reject(new Error('offline'))
+    let catalogRequestCount = 0
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input) === '/api/visits') return Promise.reject(new Error('offline'))
+      catalogRequestCount += 1
+      if (catalogRequestCount <= 2) return Promise.reject(new Error('offline'))
       return Promise.resolve(jsonResponse(landingPayload))
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -60,8 +67,20 @@ describe('MarketingLanding', () => {
     expect(await screen.findByRole('link', { name: /Vue2 和 Vue3/ })).toHaveAttribute('href', '/app#q-1')
   })
 
+  it('keeps the public entrance usable when the visit counter is unavailable', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => String(input) === '/api/visits'
+      ? Promise.reject(new Error('counter offline'))
+      : Promise.resolve(jsonResponse(landingPayload)))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<MarketingLanding />)
+
+    expect(await screen.findByRole('link', { name: /Vue2 和 Vue3/ })).toHaveAttribute('href', '/app#q-1')
+    expect(screen.queryByText(/次访问/)).toBeNull()
+  })
+
   it('submits feedback to the private admin inbox', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, _options?: RequestInit) => {
+      if (String(input) === '/api/visits') return Promise.resolve(jsonResponse({ total: 1234, counted: false }))
       if (String(input) === '/api/landing') return Promise.resolve(jsonResponse(landingPayload))
       if (String(input) === '/api/contact-requests') return Promise.resolve(jsonResponse({ ok: true }, 201))
       return Promise.reject(new Error(`Unexpected request: ${String(input)}`))
@@ -75,7 +94,7 @@ describe('MarketingLanding', () => {
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: /^提交$/ }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('已经收到')
+    expect(await screen.findByRole('heading', { name: '已经收到' })).toBeTruthy()
     const submitCall = fetchMock.mock.calls.find(([url]) => String(url) === '/api/contact-requests')
     expect(JSON.parse(String((submitCall?.[1] as RequestInit).body))).toMatchObject({
       kind: 'feedback', name: '测试访客', message: '希望移动端的题库入口更容易找到。', consent: true,

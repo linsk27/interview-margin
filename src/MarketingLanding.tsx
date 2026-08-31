@@ -8,6 +8,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 
 import type { PublicCatalogIndex } from './lib/api'
+import { registerVisit } from './lib/visits'
 import './marketing.css'
 
 type ContactKind = 'feedback' | 'account'
@@ -35,6 +36,12 @@ interface LandingPayload {
   featuredQuestions: LandingQuestion[]
   tracks: LandingTrack[]
 }
+
+interface MarketingLandingProps {
+  visitRegistration?: Promise<number | undefined>
+}
+
+const visitNumberFormatter = new Intl.NumberFormat('zh-CN')
 
 const FEATURED_QUESTION_IDS = [
   'q-1',
@@ -260,11 +267,20 @@ function QuestionShelf({ questions, state, onRetry }: {
   </div>
 }
 
-export default function MarketingLanding() {
+export default function MarketingLanding({ visitRegistration }: MarketingLandingProps = {}) {
   const [contactKind, setContactKind] = useState<ContactKind>()
   const [landing, setLanding] = useState<LandingPayload>()
   const [landingState, setLandingState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [landingAttempt, setLandingAttempt] = useState(0)
+  const [visitTotal, setVisitTotal] = useState<number>()
+
+  useEffect(() => {
+    let active = true
+    ;(visitRegistration ?? registerVisit()).then((total) => {
+      if (active && total !== undefined) setVisitTotal(total)
+    })
+    return () => { active = false }
+  }, [visitRegistration])
 
   useEffect(() => {
     let active = true
@@ -291,11 +307,22 @@ export default function MarketingLanding() {
     <main>
       <section className="marketing-hero" aria-labelledby="hero-title">
         <div className="hero-copy">
-          <p className="hero-kicker"><span aria-hidden="true" />{landing
-            ? landing.summary.banks + ' 个公开题库 · ' + landing.summary.questions + ' 道题'
-            : landingState === 'error'
-              ? <button type="button" onClick={retryLanding}>题库数据加载失败，点此重试</button>
-              : '公开题库正在同步'}</p>
+          <p className="hero-kicker">
+            <span className="hero-kicker__line" aria-hidden="true" />
+            <span className="hero-kicker__catalog">{landing
+              ? landing.summary.banks + ' 个公开题库 · ' + landing.summary.questions + ' 道题'
+              : landingState === 'error'
+                ? <button type="button" onClick={retryLanding}>题库数据加载失败，点此重试</button>
+                : '公开题库正在同步'}</span>
+            {visitTotal !== undefined && <>
+              <span className="hero-kicker__separator" aria-hidden="true">·</span>
+              <span className="hero-kicker__visits" role="status" aria-atomic="true"
+                aria-label={`累计访问 ${visitNumberFormatter.format(visitTotal)} 次；同一浏览器 24 小时内只计一次`}
+                title="同一浏览器 24 小时内只计一次">
+                累计 {visitNumberFormatter.format(visitTotal)} 次访问
+              </span>
+            </>}
+          </p>
           <h1 id="hero-title"><span>别急着背答案，</span><em>先把这道题讲明白。</em></h1>
           <p className="hero-lead">这里整理了前端、Java 后端和 AI 应用面试题。先自己组织答案，再看结论、为什么、边界与追问；卡住时，让 AI 换一种说法。</p>
           <div className="hero-actions"><a className="button-primary" href="/app#question-banks">开始刷题 <ArrowRight /></a><a className="button-text" href="#questions">先试三道真实题 <ChevronRight /></a></div>

@@ -116,6 +116,29 @@ describe('server API', () => {
     await request(app).post('/api/contact-requests').send(payload).expect(429)
   })
 
+  it('counts a browser visit once per 24 hours without storing a visitor identifier', async () => {
+    const firstBrowser = request.agent(app)
+    const first = await firstBrowser.post('/api/visits').expect(200)
+    expect(first.body).toEqual({ total: 1, counted: true })
+    expect(first.headers['cache-control']).toBe('no-store')
+    expect(first.headers['set-cookie'][0]).toContain('im_visit_24h=1')
+    expect(first.headers['set-cookie'][0]).toContain('Max-Age=86400')
+    expect(first.headers['set-cookie'][0]).toContain('HttpOnly')
+    expect(first.headers['set-cookie'][0]).toContain('SameSite=Lax')
+
+    const refresh = await firstBrowser.post('/api/visits').expect(200)
+    expect(refresh.body).toEqual({ total: 1, counted: false })
+
+    const secondBrowser = request.agent(app)
+    const second = await secondBrowser.post('/api/visits').expect(200)
+    expect(second.body).toEqual({ total: 2, counted: true })
+    expect(db.prepare("SELECT value FROM app_meta WHERE key = 'site.total_visits'").get().value).toBe('2')
+    expect(db.prepare('SELECT COUNT(*) AS count FROM app_meta').get().count).toBe(1)
+
+    await request(app).post('/api/visits').set('Origin', 'https://evil.example').expect(403)
+    expect(db.prepare("SELECT value FROM app_meta WHERE key = 'site.total_visits'").get().value).toBe('2')
+  })
+
   it('serves all 762 active questions while preserving the stable non-Java ids', async () => {
     const health = await request(app).get('/api/health').expect(200)
     expect(health.body).toMatchObject({ storage: 'sqlite', banks: 14, questions: 762 })
@@ -205,6 +228,7 @@ describe('server API', () => {
     await admin.get('/api/users').expect(428)
     await admin.get('/api/catalog/index').expect(200)
     await admin.get('/api/catalog/banks/javascript').expect(200)
+    await admin.post('/api/visits').expect(200)
     await admin.post('/api/auth/change-password')
       .send({ currentPassword: INITIAL_PASSWORD, newPassword: CHANGED_PASSWORD }).expect(200)
 
