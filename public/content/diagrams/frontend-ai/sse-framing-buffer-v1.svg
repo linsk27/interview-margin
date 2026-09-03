@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
   <title id="title">SSE 字节解码与事件分帧</title>
-  <desc id="desc">展示 Flask 产生完整 SSE 事件后，网络任意拆分字节，浏览器用流式 TextDecoder 保留半个 UTF-8 字符，再用文本缓冲区按空行恢复完整事件的过程。</desc>
+  <desc id="desc">展示服务端产生完整 SSE 事件后，网络任意拆分字节，浏览器用流式 TextDecoder 保留半个 UTF-8 字符，再用文本缓冲区按空行恢复完整事件的过程。</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop stop-color="#f8fbff"/>
@@ -23,7 +23,7 @@
   <g filter="url(#shadow)">
     <rect x="58" y="142" width="232" height="346" rx="22" fill="#ffffff" stroke="#b9cfe3"/>
     <rect x="78" y="162" width="108" height="30" rx="15" fill="#e4f0ff"/>
-    <text x="132" y="183" text-anchor="middle" class="label" fill="#226aa5">FLASK</text>
+    <text x="132" y="183" text-anchor="middle" class="label" fill="#226aa5">SERVER</text>
     <text x="82" y="232" class="step">产生完整事件</text>
     <rect x="82" y="262" width="184" height="128" rx="14" fill="#f2f7fc" stroke="#9ebbd5"/>
     <text x="98" y="294" class="mono">data: {</text>

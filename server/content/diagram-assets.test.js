@@ -36,7 +36,7 @@ describe('curated SVG diagram assets', () => {
 
   it('keeps clarity diagrams local, accessible and free of active SVG content', () => {
     const entries = clarityVisualEntries()
-    expect(entries).toHaveLength(6)
+    expect(entries.length).toBeGreaterThanOrEqual(9)
     for (const visual of entries) {
       expect(visual.banks.length).toBeGreaterThan(0)
       expect(visual.alt.trim().length).toBeGreaterThan(12)

@@ -25,6 +25,7 @@ function firstPrincipleSentence(body) {
   return body
     .slice(body.indexOf(marker) + marker.length)
     .trimStart()
+    .replace(/^!\[[^\n]+\]\([^\n]+\)\s*/, '')
     .replace(/^[-*]\s+/, '')
 }
 

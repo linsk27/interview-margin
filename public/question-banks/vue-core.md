@@ -151,11 +151,11 @@ WeakMap 以原对象为键便于垃圾回收，Map 区分属性键，Set 对同�
 
 **原理：**
 
+![Vue 响应式读取 track 与写入 trigger 的依赖追踪图](/content/diagrams/vue-core/dependency-tracking-v1.svg "WeakMap → Map → Set 将目标、属性键与副作用关联起来。")
+
 - 依赖图需要从一次属性读取反查所有订阅者，因此常用 WeakMap<target, Map<key, Set<effect>>>。第一层以原对象为键；当对象在业务中不再可达时，WeakMap 不会单独阻止其回收。
 - 第二层 Map 区分 name、length、迭代键等不同依赖通道，同一对象的字段更新无需扫描其他字段。第三层 Set 保存订阅该键的 effect，可去重同一 effect 在一次执行中多次读取，并支持清理时快速删除。
 - 集合类型还会用专用的迭代依赖键表达 keys、values、size 等观察维度。这是概念结构，Vue 当前实现会用 Dep 等对象优化版本标记和链表操作。
-
-![Vue 响应式读取 track 与写入 trigger 的依赖追踪图](/content/diagrams/vue-core/dependency-tracking-v1.svg "WeakMap → Map → Set 将目标、属性键与副作用关联起来。")
 
 **代码 / 场景：**
 

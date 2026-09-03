@@ -528,12 +528,12 @@ JavaScript 在线程上执行回调，I/O 由系统和 libuv 管理，完成后�
 
 **原理：**
 
+![Node.js 事件循环阶段、微任务与线程池协作图](/content/diagrams/backend-fullstack/node-event-loop-v1.svg "JavaScript 回调在事件循环中调度，部分阻塞工作由操作系统或线程池承担。")
+
 - Node 让单个 JavaScript 线程用非阻塞方式协调大量并发 I/O。网络、文件系统等操作交给操作系统或 libuv 线程池，完成后对应回调进入事件循环阶段；
 - JavaScript 依次执行 timers、poll、check 等阶段中可运行的回调，并在规定检查点处理 process.nextTick 与 Promise 微任务。这样等待一个 socket 时线程可服务其他连接，不必为每个请求建立一条 JavaScript 线程。
 - 它没有消除工作：CPU 密集循环、同步文件 API、巨大 JSON 解析仍占住主线程，所有连接延迟都会上升。并发也不等于并行，worker_threads 或多进程才可让 JavaScript CPU 计算利用多个核心。
 - 理解事件循环要结合宿主版本和回调所在阶段，不能只背一张固定队列图。
-
-![Node.js 事件循环阶段、微任务与线程池协作图](/content/diagrams/backend-fullstack/node-event-loop-v1.svg "JavaScript 回调在事件循环中调度，部分阻塞工作由操作系统或线程池承担。")
 
 **代码 / 场景：**
 
@@ -680,11 +680,11 @@ setTimeout(() => console.log('timer after', count), 0)
 
 **原理：**
 
+![Node.js Stream 背压从消费者反馈到生产者的流程图](/content/diagrams/backend-fullstack/stream-backpressure-v1.svg "写入返回 false 后暂停生产，等待 drain 再继续，避免缓冲区无界增长。")
+
 - 背压是生产者速度超过消费者时，系统把“请减速”反馈给上游，避免未处理数据无限堆在内存。Node Writable.write(chunk) 返回 false 表示内部缓冲达到 highWaterMark，上游应暂停并等待 drain 再继续；
 - Readable.pipe 或 stream.pipeline 会自动协调暂停、恢复、错误与关闭。highWaterMark 是触发流控的阈值，不是硬内存上限，编码、对象模式和多级管道还会增加实际占用。
 - 忽略 write 返回值会让进程在慢磁盘或慢客户端下积累 Buffer、GC 激增甚至 OOM。背压只在管道各层遵守协议时有效，自己写 Transform 必须正确调用 callback，异步并发也要有上限。
-
-![Node.js Stream 背压从消费者反馈到生产者的流程图](/content/diagrams/backend-fullstack/stream-backpressure-v1.svg "写入返回 false 后暂停生产，等待 drain 再继续，避免缓冲区无界增长。")
 
 **代码 / 场景：**
 

@@ -1630,12 +1630,12 @@ render 计算下一棵树，可被中断或重做；commit 把变更应用到 DO
 
 **原理：**
 
+![React render 阶段与 commit 阶段职责和时序图](/content/diagrams/react-core/render-commit-v1.svg "render 负责计算且可被打断，commit 才把变更应用到宿主环境。")
+
 - render phase 是 React 调用组件、展开元素并协调新旧树，计算“下一幅界面应是什么”的纯阶段。它可能因并发调度暂停、重启或因更高优先级更新而放弃，所以组件函数、state initializer、memo 计算不能写 DOM、发请求或修改外部数据。
 - 候选树完整后进入 commit phase：React 以一个连续步骤应用必要 DOM 插入/更新/删除，更新 ref，并运行与布局相关的生命周期和 useLayoutEffect；浏览器获得绘制机会后，普通 useEffect 通常再运行。
 - 一次 render 不保证一定 commit，而一次 commit 对应已经完成的一致候选结果。React 只修改与上次输出不同的 DOM 节点，不是把整页重建。开发 Strict Mode 会额外调用 render 路径检查纯度，但不会把候选 DOM 重复提交给用户；
 - 这些时序边界比死记内部函数名更稳定。
-
-![React render 阶段与 commit 阶段职责和时序图](/content/diagrams/react-core/render-commit-v1.svg "render 负责计算且可被打断，commit 才把变更应用到宿主环境。")
 
 **代码 / 场景：**
 

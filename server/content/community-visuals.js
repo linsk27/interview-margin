@@ -1,6 +1,15 @@
 const RULES = [
   {
     bankId: 'frontend-ai-interviews',
+    title: /Fetch 流式响应/,
+    visual: {
+      src: '/content/diagrams/frontend-ai/sse-framing-buffer-v1.svg',
+      alt: '一条 SSE 消息被网络任意拆开，再经连续解码和缓冲区恢复成完整事件的过程图',
+      caption: '下面以 SSE 为例：read() 每次拿到的只是任意一段字节，必须先连续解码，再等空行出现后解析完整事件。',
+    },
+  },
+  {
+    bankId: 'frontend-ai-interviews',
     title: /SSE/,
     visual: {
       src: '/content/diagrams/frontend-ai/streaming-answer-pipeline-v1.svg',
@@ -10,11 +19,47 @@ const RULES = [
   },
   {
     bankId: 'frontend-ai-interviews',
-    title: /RAG.*(?:链路|评估)|(?:链路|评估).*RAG/,
+    title: /RAG.*(?:链路|评估|整理资料|带出处)|(?:链路|评估).*RAG/,
     visual: {
       src: '/content/diagrams/360-ai-frontend/rag-pipeline-v1.svg',
       alt: 'RAG 从文档摄取、召回、重排到带引用回答的流程图',
       caption: '检索质量和生成质量需要分阶段观测，不能只用最终回答观感定位问题。',
+    },
+  },
+  {
+    bankId: 'frontend-ai-interviews',
+    title: /BM25.*语义搜索/,
+    visual: {
+      src: '/content/diagrams/ai/hybrid-retrieval-fusion-v1.svg',
+      alt: 'BM25 关键词名单和语义搜索名单先按各自名次融合，再进行精细重排的流程图',
+      caption: '两种搜索的原始分数不是同一把尺子；先比较各自名次，再融合和重排更容易解释与验证。',
+    },
+  },
+  {
+    bankId: 'frontend-ai-interviews',
+    title: /传统 API.*MCP|Skill 与 MCP/,
+    visual: {
+      src: '/content/diagrams/ai/mcp-agent-tool-boundary-v1.svg',
+      alt: '用户目标、Agent、Skill、MCP 客户端、MCP 服务和外部工具之间的职责边界图',
+      caption: 'Skill 教“怎么做”，MCP 统一“怎么连接能力”，Agent 决定下一步；执行权限仍由可信应用控制。',
+    },
+  },
+  {
+    bankId: 'frontend-ai-interviews',
+    title: /工具链执行到一半失败|工具调用.*最小权限/,
+    visual: {
+      src: '/content/diagrams/java-ai/agent-execution-guardrails-v1.svg',
+      alt: 'Agent 在工具执行前经过权限、参数和人工确认，执行后记录结果并判断继续或停止的闭环图',
+      caption: '模型只提出下一步；重试、幂等、权限、人工确认和停止条件由应用强制执行。',
+    },
+  },
+  {
+    bankId: 'frontend-ai-interviews',
+    title: /AI 生成任务.*防重复.*续传.*负载/,
+    visual: {
+      src: '/content/diagrams/frontend-ai/idempotent-stream-control-v1.svg',
+      alt: 'AI 生成任务通过幂等键防重复、事件序号续传、有界队列背压和并发门禁控制负载的流程图',
+      caption: '幂等键、事件序号、背压和并发限制分别解决不同故障，不能用一个 loading 状态代替。',
     },
   },
   {

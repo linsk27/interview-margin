@@ -448,12 +448,12 @@ curl -i -b cookies.txt https://app.example.com/profile
 
 **原理：**
 
+![TCP 建连、TLS 握手与加密 HTTP 数据传输时序图](/content/diagrams/network-deployment/tcp-tls-handshake-v1.svg "先建立可靠传输，再验证身份并协商会话密钥，之后才发送加密应用数据。")
+
 - 因为 TCP 只保证字节尽量可靠、有序地到达，并不验证域名身份，也不加密内容，所以 HTTPS 不能连上 TCP 就直接发送敏感 HTTP，而要先做 TLS 握手，再允许双方交换受保护的应用数据。
 - TLS 1.3 客户端在 ClientHello 中给出支持版本、密码套件、随机数、密钥份额、SNI 主机名和 ALPN；服务端用 ServerHello 选择参数并提供自己的密钥份额，双方据此计算共享秘密。
 - 随后服务端发送证书链与 CertificateVerify，客户端检查域名、有效期、签名链、用途和信任根；双方用 Finished 校验此前握手 transcript 未被篡改，最后派生方向独立的对称应用数据密钥。证书用于认证身份，真正承载 HTTP 的是高效对称加密；
 - SNI 决定多域名证书/站点，ALPN 协商 h2 或 http/1.1。会话恢复可减少往返，但 0-RTT 数据具有重放风险。
-
-![TCP 建连、TLS 握手与加密 HTTP 数据传输时序图](/content/diagrams/network-deployment/tcp-tls-handshake-v1.svg "先建立可靠传输，再验证身份并协商会话密钥，之后才发送加密应用数据。")
 
 **代码 / 场景：**
 
@@ -1098,12 +1098,12 @@ location / { try_files $uri $uri/ /index.html; }
 
 **原理：**
 
+![浏览器、Cloudflare 边缘、cloudflared 与本地服务之间的流量路径图](/content/diagrams/network-deployment/cloudflare-tunnel-v1.svg "连接器主动建立出站隧道；公网请求经边缘路由到本地服务，无需开放家庭入站端口。")
+
 - `cloudflared` 在源站网络内主动向 Cloudflare 边缘建立多条长连接，因方向是出站，家庭路由器或主机无需把 80/443 入站端口暴露公网。公网主机名的 DNS 指向某个 Tunnel 标识；
 - 请求先到 Cloudflare 边缘，边缘根据主机名和隧道路由选择在线 connector，再沿已有连接转发到配置的本地 URL，例如 `http://127.0.0.1:3000`。
 - 隧道只提供到源站的传输路径，不会让错误的本地端口自动可用：边缘找不到在线 connector 常表现为 1033，connector 在线却连不上本地服务则常表现为 502。高可用可运行多个同 Tunnel connector，凭据必须当密钥保护；
 - 公网 TLS、Access 策略和源站协议仍要分别配置和验证。
-
-![浏览器、Cloudflare 边缘、cloudflared 与本地服务之间的流量路径图](/content/diagrams/network-deployment/cloudflare-tunnel-v1.svg "连接器主动建立出站隧道；公网请求经边缘路由到本地服务，无需开放家庭入站端口。")
 
 **代码 / 场景：**
 

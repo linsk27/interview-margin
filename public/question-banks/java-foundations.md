@@ -413,11 +413,11 @@ default 方法用于兼容演进而非替代完整基类。若调用方只需要
 
 **原理：**
 
+![Java 引用相等、equals 语义相等与 hashCode 散列契约关系图](/content/diagrams/java-foundations/object-contract-v1.svg "先区分引用身份与业务相等，再确保相等对象产生相同散列值，集合才能稳定定位元素。")
+
 Object.equals 默认仍是身份相等，值对象需要按业务身份重写，并满足自反、对称、传递、一致和非空约束。hashCode 的核心契约是：equals 为 true 的对象必须得到相同哈希值；反过来哈希相同不代表 equals。HashMap、HashSet 先用哈希定位候选桶，再用 equals 区分键。
 
 若只重写 equals，不同步重写 hashCode，相等对象可能进入不同桶。参与两者计算的字段在作为键期间也应保持稳定。
-
-![Java 引用相等、equals 语义相等与 hashCode 散列契约关系图](/content/diagrams/java-foundations/object-contract-v1.svg "先区分引用身份与业务相等，再确保相等对象产生相同散列值，集合才能稳定定位元素。")
 
 **代码 / 场景：**
 
@@ -729,11 +729,11 @@ put 先计算哈希与桶索引，再按空桶、同键、链表或树分支新�
 
 **原理：**
 
+![HashMap 从计算哈希、定位桶到链表树化和扩容的处理流程图](/content/diagrams/java-foundations/hashmap-put-resize-v2.svg "先用扰动后的哈希定位桶，再区分空桶、同键更新与冲突插入；达到阈值后统一扩容迁移。")
+
 put 的关键步骤是：必要时初始化或扩容桶表；定位桶；空桶直接写入，非空桶先检查首节点，再遍历链表或树查找相同 key；找到则替换 value，未找到则追加节点并在需要时触发树化；最后按结构变化更新 size 并判断扩容。get 同样先计算 hash 和索引，比较首节点后再进入链或树。
 
 HashMap 判断键相等通常先比 hash，再满足引用相同或 equals 为 true，以减少昂贵比较。
-
-![HashMap 从计算哈希、定位桶到链表树化和扩容的处理流程图](/content/diagrams/java-foundations/hashmap-put-resize-v2.svg "先用扰动后的哈希定位桶，再区分空桶、同键更新与冲突插入；达到阈值后统一扩容迁移。")
 
 **代码 / 场景：**
 
@@ -1315,11 +1315,11 @@ wait 在持有对象监视器时进入等待并释放该监视器，sleep 只让
 
 **原理：**
 
+![Java 线程在监视器等待、通知、中断与 join 协作中的状态流转图](/content/diagrams/java-foundations/thread-coordination-v1.svg "条件循环守住业务谓词，通知只让等待者重新竞争锁；中断与 join 都必须明确传播策略。")
+
 Object.wait 必须在拥有对应 monitor 的 synchronized 区域调用，调用后加入该对象等待集并释放 monitor；被 notify、notifyAll、中断或超时后，还要重新竞争锁才能继续。Thread.sleep 是静态方法，使当前线程进入定时等待，不与某个监视器协议绑定，所以不会主动释放锁。
 
 join 在语义上等待指定线程终止，并建立目标线程动作到 join 成功返回之间的可见性。三者都可能被中断，代码应恢复中断标志或按边界传播，而不是静默吞掉。
-
-![Java 线程在监视器等待、通知、中断与 join 协作中的状态流转图](/content/diagrams/java-foundations/thread-coordination-v1.svg "条件循环守住业务谓词，通知只让等待者重新竞争锁；中断与 join 都必须明确传播策略。")
 
 **代码 / 场景：**
 
@@ -1356,10 +1356,10 @@ join 在语义上等待指定线程终止，并建立目标线程动作到 join 
 
 **原理：**
 
+![ThreadPoolExecutor 从核心线程、工作队列到拒绝策略的任务接纳流程图](/content/diagrams/java-backend/thread-pool-admission-v1.svg "先补核心线程、再尝试入队，队满后扩到最大线程；仍无法接纳时执行明确的拒绝策略。")
+
 - 主要参数包括 corePoolSize、maximumPoolSize、keepAliveTime、workQueue、threadFactory 与 RejectedExecutionHandler。execute 提交后：运行线程少于核心数则尝试新建核心线程；否则任务入队；
 - 队列无法接收且线程数未到最大值时再建非核心线程；仍无法接收就执行拒绝策略。无界队列常使 maximumPoolSize 形同虚设，有界队列则让过载显性化。线程数和队列容量应由任务阻塞比、下游容量、内存与延迟预算共同决定。
-
-![ThreadPoolExecutor 从核心线程、工作队列到拒绝策略的任务接纳流程图](/content/diagrams/java-backend/thread-pool-admission-v1.svg "先补核心线程、再尝试入队，队满后扩到最大线程；仍无法接纳时执行明确的拒绝策略。")
 
 **代码 / 场景：**
 
@@ -1553,11 +1553,11 @@ AtomicStampedReference 等把值与版本一起比较，或通过不可复用标
 
 **原理：**
 
+![Java 进程中堆、Metaspace、直接内存和线程栈的边界与限制图](/content/diagrams/java-foundations/jvm-memory-v1.svg "Xmx 只约束 Java 堆；容量规划还要给类元数据、直接缓冲区、线程栈和本地组件留出余量。")
+
 程序计数器记录当前线程下一条字节码位置；虚拟机栈由栈帧组成，保存局部变量、操作数栈和返回信息；本地方法栈服务于 native 调用。堆主要存放对象和数组，是垃圾回收重点。方法区是规范概念，保存类结构、运行时常量池等，HotSpot 从 JDK 8 起主要以本地内存中的 Metaspace 实现，而不是永久代。
 
 线程隔离与共享属性影响故障范围，排障时还要关注直接缓冲区、代码缓存和线程栈等非堆消耗。
-
-![Java 进程中堆、Metaspace、直接内存和线程栈的边界与限制图](/content/diagrams/java-foundations/jvm-memory-v1.svg "Xmx 只约束 Java 堆；容量规划还要给类元数据、直接缓冲区、线程栈和本地组件留出余量。")
 
 **代码 / 场景：**
 

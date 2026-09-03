@@ -105,7 +105,7 @@ describe('question clarity enhancement', () => {
     )
     const result = enhanceQuestionClarity(source, { title: '混合检索', bankId: 'frontend-ai-interviews' })
 
-    expect(result).toContain('原题中更完整的解释、边界或代码如下')
+    expect(result).toContain('下面把这件事拆开说')
     expect(result).toContain('const score = rankA + rankB')
     expect(result.indexOf('const score = rankA + rankB')).toBeGreaterThan(result.indexOf('**原理：**'))
   })
@@ -204,6 +204,34 @@ describe('question clarity enhancement', () => {
     expect(tool).toContain('@ToolParam')
     expect(tool).not.toContain('@P(')
     expect(stream).toContain('/\\r\\n\\r\\n|\\n\\n|\\r\\r/')
+  })
+
+  it('teaches Fetch stream framing with a plain analogy, explicit terms, complete cancellation code and its dedicated diagram', () => {
+    const stream = enhancedBuiltIn('frontend-ai-interviews', /Fetch 流式响应/)
+    const summary = firstScreen(stream)
+
+    expect(summary?.conclusion).toContain('一卷被随手剪开的纸带')
+    expect(summary?.conclusion).toContain('半个汉字或半条 JSON')
+    expect(summary?.reason).toContain('不保证每次 read() 刚好拿到')
+
+    for (const term of [
+      '**网络 chunk：**',
+      '**增量解码 / TextDecoderStream：**',
+      '**Buffer / 半包：**',
+      '**分帧：**',
+    ]) {
+      expect(stream).toContain(term)
+    }
+
+    expect(stream).toContain('```ts')
+    expect(stream).toContain("if (field === 'data') data.push(value)")
+    expect(stream).toContain("data.join('\\n')")
+    expect(stream).toContain("buffer = frames.pop() ?? ''")
+    expect(stream).toContain("if (buffer.trim()) throw new Error('响应结束时仍有不完整事件')")
+    expect(stream).toContain('const controller = new AbortController()')
+    expect(stream).toContain("controller.abort()")
+    expect(stream).toContain('reader.releaseLock()')
+    expect(stream).toContain('/content/diagrams/frontend-ai/sse-framing-buffer-v1.svg')
   })
 
   it('keeps rendered Markdown links and images on an explicit HTTPS or same-origin allowlist', () => {

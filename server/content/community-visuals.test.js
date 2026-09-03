@@ -7,11 +7,23 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { DIAGRAM_URL_PATTERN } from './diagram-policy.js'
-import { communityVisualEntries } from './community-visuals.js'
+import { communityVisualEntries, visualForCommunityQuestion } from './community-visuals.js'
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
 describe('community interview diagram mappings', () => {
+  it('prefers the dedicated Fetch framing diagram over the broader SSE mapping', () => {
+    expect(visualForCommunityQuestion(
+      'frontend-ai-interviews',
+      'Fetch 流式响应如何正确分帧、解码并处理中断？',
+    )?.src).toBe('/content/diagrams/frontend-ai/sse-framing-buffer-v1.svg')
+
+    expect(visualForCommunityQuestion(
+      'frontend-ai-interviews',
+      'AI 对话为什么通常使用 SSE，何时必须换成 WebSocket？',
+    )?.src).toBe('/content/diagrams/frontend-ai/streaming-answer-pipeline-v1.svg')
+  })
+
   it('uses compact, accessible and script-free local SVG assets', () => {
     const entries = communityVisualEntries()
     expect(entries.length).toBeGreaterThanOrEqual(8)

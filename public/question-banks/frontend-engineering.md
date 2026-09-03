@@ -10,11 +10,11 @@
 
 **原理：**
 
+![从输入 URL 到页面可交互的浏览器流水线图](/content/diagrams/frontend-engineering/browser-rendering-pipeline-v1.svg "网络、解析、样式布局、绘制与主线程任务共同决定可交互时间。")
+
 - 浏览器先解析并规范化 URL，执行安全策略、缓存与 Service Worker 检查，再经 DNS 获得地址并按协议建立 TCP/TLS 或 QUIC 连接。收到 HTTP 响应后，网络层可流式交给 HTML 解析器构建 DOM；
 - 预加载扫描器并行发现样式、脚本、图片，CSSOM 与 DOM 共同形成渲染所需结构。同步脚本可能阻塞解析，样式又可能阻塞脚本；随后计算样式、布局、绘制与合成。DOMContentLoaded 只表示文档解析和 defer 脚本完成，不保证主线程空闲；
 - 真正可交互还取决于 hydration、事件绑定与是否存在长任务。应使用 Navigation Timing、Resource Timing、LCP 与 INP 分段验证，而不是用单个 load 时间概括。
-
-![从输入 URL 到页面可交互的浏览器流水线图](/content/diagrams/frontend-engineering/browser-rendering-pipeline-v1.svg "网络、解析、样式布局、绘制与主线程任务共同决定可交互时间。")
 
 **代码 / 场景：**
 

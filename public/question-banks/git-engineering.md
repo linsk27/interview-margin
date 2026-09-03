@@ -10,12 +10,12 @@
 
 **原理：**
 
+![Git 工作区、暂存区和仓库之间的数据流图](/content/diagrams/git-engineering/three-trees-v1.svg "git add 更新索引，git commit 从索引生成提交，checkout/restore 改变对应区域。")
+
 - 工作区是某个提交被检出后供编辑器和构建工具直接读写的文件树；暂存区实际是 .git/index 中的一份路径清单，每条记录包含路径、文件模式和将进入下一次快照的 blob 对象名；
 - 仓库则由 .git/objects 中的不可变对象、refs 下的引用、HEAD 与配置等元数据组成。
 - git add 会根据选定的工作区内容写入 blob 并更新 index，git commit 递归把 index 写成 tree，再创建指向该 tree 和父提交的 commit，最后移动当前分支引用。
 - 未暂存修改只在工作区，已暂存修改在 index，提交之后才由引用可达，三层不能简单理解成三个文件夹。
-
-![Git 工作区、暂存区和仓库之间的数据流图](/content/diagrams/git-engineering/three-trees-v1.svg "git add 更新索引，git commit 从索引生成提交，checkout/restore 改变对应区域。")
 
 **代码 / 场景：**
 

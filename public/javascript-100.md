@@ -657,11 +657,11 @@ console.log(parseBoolean('false')) // false
 
 **原理：**
 
+![宽松相等比较中的 JavaScript 类型转换步骤图](/content/diagrams/javascript/type-coercion-v1.svg "false 先转为 0，空数组再经 ToPrimitive 和 ToNumber 转为 0；这与 if ([]) 的 ToBoolean 不是同一套规则。")
+
 - 结果是 true，但来自多步抽象相等转换，不表示数组在条件中是假值。比较对象 [] 与布尔值 false 时，Abstract Equality Comparison 先把 false 转成 Number 0；随后因另一侧是对象，对空数组执行 ToPrimitive。
 - 数组先尝试 valueOf 得到的仍是对象，再通过 toString 得到空字符串；空字符串与数字比较时又执行 ToNumber，结果是 +0。最终变成 0 与 0 的数值比较，因此返回 true。若写 if ([])，走的是 ToBoolean，所有数组对象都是真值。
 - 宽松相等的转换路径依赖双方类型，工程代码通常应使用严格相等并显式转换。
-
-![宽松相等比较中的 JavaScript 类型转换步骤图](/content/diagrams/javascript/type-coercion-v1.svg "false 先转为 0，空数组再经 ToPrimitive 和 ToNumber 转为 0；这与 if ([]) 的 ToBoolean 不是同一套规则。")
 
 **代码 / 场景：**
 
@@ -2787,12 +2787,12 @@ freeze 只改变 user 自身描述符，没有递归访问 profile。
 
 **原理：**
 
+![JavaScript 实例、构造函数与原型链关系图](/content/diagrams/javascript/prototype-chain-v1.svg "属性查找沿 [[Prototype]] 链向上进行，prototype 与对象的原型不是同一个概念。")
+
 - Object.create(proto) 创建一个新对象，并把它的 [[Prototype]] 直接设置为传入的对象或 null；它不会复制 proto 的属性，也不会调用某个构造函数。读取新对象缺少的键时，普通属性查找才会沿原型链访问 proto。
 - 可选的第二参数是属性描述符映射，规则与 Object.defineProperties 相同，省略 writable、enumerable、configurable 时默认都是 false。
 - 传入 Object.create(null) 可得到没有 Object.prototype 的纯字典，避免 toString 等继承键干扰，但该对象也没有 hasOwnProperty 和常见对象方法。proto 必须是对象或 null，否则会抛 TypeError。
 - 创建后若修改 proto 的可见属性，新对象也可能立即通过委托观察到变化，因为两者始终保持原型关联。
-
-![JavaScript 实例、构造函数与原型链关系图](/content/diagrams/javascript/prototype-chain-v1.svg "属性查找沿 [[Prototype]] 链向上进行，prototype 与对象的原型不是同一个概念。")
 
 **代码 / 场景：**
 
@@ -3685,10 +3685,10 @@ console.log('sync')
 
 **原理：**
 
+![浏览器任务、微任务与渲染机会的事件循环顺序图](/content/diagrams/javascript/event-loop-v1.svg "当前任务结束后先清空微任务，再进入渲染机会和下一个任务。")
+
 - 典型浏览器脚本中，先执行当前任务里的全部同步代码；调用 then 只登记 Promise 反应微任务，setTimeout(0) 则登记后续定时器任务。当前调用栈清空后，事件循环执行微任务检查点，按队列顺序清空已就绪的 Promise 回调；
 - 之后才可能进行渲染并选择下一个任务，所以常见顺序是同步日志、then 回调、定时器回调。这个结论依赖它们在同一轮中登记且 Promise 已解决；若代码嵌套、Promise 尚未解决，或运行在 Node 等宿主，具体先后还要结合各自宿主的事件循环阶段分析。
-
-![浏览器任务、微任务与渲染机会的事件循环顺序图](/content/diagrams/javascript/event-loop-v1.svg "当前任务结束后先清空微任务，再进入渲染机会和下一个任务。")
 
 **代码 / 场景：**
 

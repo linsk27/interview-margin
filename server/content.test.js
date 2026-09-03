@@ -172,7 +172,9 @@ describe('question catalog seed quality', () => {
         expect(question.body_md).toContain('**易错点：**')
         expect(question.body_md).toContain('**参考来源：**')
         expect(question.body_md.length).toBeGreaterThanOrEqual(620)
-        expect(question.body_md.length).toBeLessThanOrEqual(2_600)
+        const bodyWithoutCode = question.body_md.replace(/(```|~~~)[\s\S]*?\1/g, '')
+        expect(bodyWithoutCode.length).toBeLessThanOrEqual(2_600)
+        expect(question.body_md.length).toBeLessThanOrEqual(4_500)
         expect(question.read_minutes).toBeGreaterThanOrEqual(1)
 
         const kinds = db.prepare(

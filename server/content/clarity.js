@@ -28,6 +28,13 @@ const SECTION_PATTERNS = [
 // narrow: the full authored explanation remains below the summary.
 const FIRST_SCREEN_OVERRIDES = [
   {
+    bankId: 'frontend-ai-interviews',
+    title: /Fetch 流式响应/,
+    conclusion: '把网络返回想成一卷被随手剪开的纸带：一次 read() 可能只有半个汉字或半条 JSON；先连续解码，再存进 buffer，看到协议约定的空行后才解析一条完整消息。',
+    reason: 'HTTP 只保证字节按顺序到达，不保证每次 read() 刚好拿到一个字符、一个模型 Token 或一条 JSON；如果每段都直接 JSON.parse，就会随机乱码或报错。',
+    application: '用 TextDecoderStream 处理文字边界，用 buffer 留住最后半包；停止按钮调用 AbortController.abort()，并把同一个 signal 传给 fetch 和读取循环。',
+  },
+  {
     bankId: 'interview',
     title: /CRUD/,
     conclusion: '承认 CRUD 是基础后，用业务约束、失败后果、自己的决策和验证证据说明真正的工程复杂度。',
@@ -114,6 +121,10 @@ const FIRST_SCREEN_OVERRIDES = [
 ]
 
 const TERM_ENTRIES = [
+  [/网络\s*chunk|网络.{0,24}(?:小段|字节|拆)|chunk.{0,24}(?:字符|JSON|消息|事件|read)|read\(\)/i, '网络 chunk', '浏览器一次从网络流里读到的一小段字节。它在哪里结束由网络和缓冲决定，不等于一个汉字、一个模型 Token 或一条完整消息。'],
+  [/TextDecoderStream|增量解码/i, '增量解码 / TextDecoderStream', '反复使用同一个解码器，把多次收到的字节连续转换成文字；即使一个中文字符被拆到两次 read()，也不会被解成乱码。'],
+  [/pending\s*buffer|\bbuffer\b|半包/i, 'Buffer / 半包', '暂存“还没凑完整”的尾部数据。下一段到达后先接到尾部，再尝试找完整消息；这里不是指页面上的输入框。'],
+  [/分帧|组帧|协议边界/i, '分帧', '按照协议规定的结束标记，把任意网络片段重新拼成一条条完整业务消息；SSE 通常用空行结束一条事件。'],
   [/\bRAG\b/i, 'RAG', '先从资料库找出相关证据，再让模型根据证据回答；它解决的是“知识从哪里来”，不是让模型凭空记住更多事实。'],
   [/\bBM25\b/i, 'BM25', '一种关键词排序算法：词越稀有、在当前文档里越有代表性，分数通常越高；它擅长编号、专有名词和错误码。'],
   [/Embedding|向量(?:检索|召回|搜索)/i, '向量 / Embedding', '把一段文字变成一串数字，使“意思相近”的内容在数学空间里距离更近，便于按语义查找。'],
@@ -487,23 +498,215 @@ Flux<ServerSentEvent<String>> answer() {
 }`,
   },
   {
-    banks: ['frontend-ai-interviews'], title: /Fetch 流式响应/,
-    language: 'ts', intro: '网络 chunk 不是完整消息，必须保留半包并在取消时停止读取：',
-    code: `const response = await fetch('/api/chat', { signal });
-const reader = response.body!
-  .pipeThrough(new TextDecoderStream())
-  .getReader();
+    banks: ['frontend-ai-interviews'], title: /超长会话.*DOM.*内存.*更新频率/,
+    language: 'ts', intro: '先看最容易漏掉的一层：把连续 delta 暂存在内存里，每 50ms 最多提交一次 UI，而不是每个 Token 都 setState。',
+    code: `function createDeltaBatcher(commit: (text: string) => void) {
+  let pending = '';
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
-let buffer = '';
-for (;;) {
-  const { value = '', done } = await reader.read();
-  buffer += value;
-  // SSE 允许 CRLF、LF 或 CR；分隔符被拆包时会继续留在 buffer 中。
-  const frames = buffer.split(/\\r\\n\\r\\n|\\n\\n|\\r\\r/);
-  buffer = frames.pop() ?? '';
-  frames.forEach(handleSseFrame);
-  if (done) break;
+  const flush = () => {
+    timer = undefined;
+    if (!pending) return;
+    commit(pending);
+    pending = '';
+  };
+
+  return {
+    push(delta: string) {
+      pending += delta;
+      timer ??= setTimeout(flush, 50);
+    },
+    dispose() {
+      if (timer) clearTimeout(timer);
+      flush();
+    },
+  };
 }`,
+  },
+  {
+    banks: ['frontend-ai-interviews'], title: /长任务的计划、工具调用与错误.*UI/,
+    language: 'ts', intro: '把服务端事件先归并成一种确定的页面状态；注意 sequence 去重和“等待确认”不是“失败”。',
+    code: `type TaskEvent =
+  | { sequence: number; type: 'step_started'; label: string }
+  | { sequence: number; type: 'tool_finished'; summary: string }
+  | { sequence: number; type: 'awaiting_approval'; prompt: string }
+  | { sequence: number; type: 'failed'; message: string };
+
+type TaskState = {
+  lastSequence: number;
+  status: 'running' | 'waiting' | 'failed';
+  timeline: string[];
+  notice?: string;
+};
+
+function reduceTaskEvent(state: TaskState, event: TaskEvent): TaskState {
+  if (event.sequence <= state.lastSequence) return state; // 重连去重
+  const next = { ...state, lastSequence: event.sequence };
+  if (event.type === 'step_started') {
+    return { ...next, status: 'running', timeline: [...state.timeline, event.label] };
+  }
+  if (event.type === 'tool_finished') {
+    return { ...next, timeline: [...state.timeline, event.summary] };
+  }
+  if (event.type === 'awaiting_approval') {
+    return { ...next, status: 'waiting', notice: event.prompt };
+  }
+  return { ...next, status: 'failed', notice: event.message };
+}`,
+  },
+  {
+    banks: ['frontend-ai-interviews'], title: /高频解析.*Web Worker/,
+    language: 'ts', intro: '这个最小例子展示三件事：主线程发任务、旧版本结果不再覆盖新内容、组件卸载时终止 Worker。',
+    code: `// 页面线程
+const worker = new Worker(new URL('./parser.worker.ts', import.meta.url), {
+  type: 'module',
+});
+let latestVersion = 0;
+
+export function parseLater(markdown: string) {
+  worker.postMessage({ version: ++latestVersion, markdown });
+}
+
+worker.onmessage = ({ data }) => {
+  if (data.version !== latestVersion) return; // 丢弃过期结果
+  renderSafeAst(data.ast);
+};
+
+export function disposeParser() {
+  worker.terminate();
+}
+
+// parser.worker.ts：Worker 不能操作 DOM，只返回可序列化结果
+self.onmessage = ({ data }) => {
+  const ast = parseMarkdownToSafeAst(data.markdown);
+  self.postMessage({ version: data.version, ast });
+};`,
+  },
+  {
+    banks: ['frontend-ai-interviews'], title: /长文档.*切成小段|文档.*Chunk.*找得到/,
+    language: 'ts', intro: '下面是教学版分块器：优先保留自然段，只在组合后超过上限时另起一块；输出还能追溯到原段落。',
+    code: `type Chunk = { id: string; text: string; paragraphIds: number[] };
+
+function chunkParagraphs(markdown: string, maxChars = 600): Chunk[] {
+  const paragraphs = markdown.split(/\n{2,}/).map((text) => text.trim()).filter(Boolean);
+  const chunks: Chunk[] = [];
+  let text = '';
+  let paragraphIds: number[] = [];
+
+  const flush = () => {
+    if (!text) return;
+    chunks.push({ id: \`chunk-\${chunks.length + 1}\`, text, paragraphIds });
+    text = '';
+    paragraphIds = [];
+  };
+
+  paragraphs.forEach((paragraph, index) => {
+    const candidate = text ? \`\${text}\n\n\${paragraph}\` : paragraph;
+    if (text && candidate.length > maxChars) flush();
+    text = text ? \`\${text}\n\n\${paragraph}\` : paragraph;
+    paragraphIds.push(index);
+  });
+  flush();
+  return chunks;
+}`,
+  },
+  {
+    banks: ['frontend-ai-interviews'], title: /BM25.*语义搜索/,
+    language: 'ts', intro: 'RRF 不比较两路原始分数，只看各自第几名。下面两份名单里，B 在两路都靠前，因此融合后排在最前。',
+    code: `function rrf(rankings: string[][], k = 60) {
+  const scores = new Map<string, number>();
+  for (const ranking of rankings) {
+    ranking.forEach((id, index) => {
+      scores.set(id, (scores.get(id) ?? 0) + 1 / (k + index + 1));
+    });
+  }
+  return [...scores]
+    .sort((left, right) => right[1] - left[1])
+    .map(([id, score]) => ({ id, score: score.toFixed(4) }));
+}
+
+rrf([
+  ['A', 'B', 'C'], // BM25 名次
+  ['B', 'D', 'A'], // 语义搜索名次
+]);
+// => B、A、D、C；没有把 12 分和 0.82 直接相加`,
+  },
+  {
+    banks: ['frontend-ai-interviews'], title: /多模型.*质量、时延和成本.*路由/,
+    language: 'ts', intro: '路由不是“挑单价最低”：先用硬条件排除不能完成任务的模型，再在达标者中比较时延和成本。',
+    code: `type Candidate = {
+  name: string; quality: number; p95Ms: number; cost: number;
+  maxContext: number; supportsTools: boolean; region: string;
+};
+
+function chooseModel(models: Candidate[], task: {
+  minQuality: number; maxP95Ms: number; context: number;
+  needsTools: boolean; allowedRegions: string[];
+}) {
+  const eligible = models.filter((model) =>
+    model.quality >= task.minQuality
+    && model.p95Ms <= task.maxP95Ms
+    && model.maxContext >= task.context
+    && (!task.needsTools || model.supportsTools)
+    && task.allowedRegions.includes(model.region)
+  );
+  if (!eligible.length) throw new Error('没有满足硬条件的模型');
+  return eligible.sort((a, b) => a.cost - b.cost || b.quality - a.quality)[0];
+}`,
+  },
+  {
+    banks: ['frontend-ai-interviews'], title: /Fetch 流式响应/,
+    language: 'ts', intro: '下面只保留网络解析的完整主线：它会保留半包、合并多行 data，并把“用户停止”和“网络失败”分开处理。代码里的 appendDelta 和 stopButton 分别代表页面已有的“更新回答”函数与“停止”按钮。',
+    code: `type SseEvent = { event: string; data: string };
+
+function parseSseFrame(frame: string): SseEvent | null {
+  let event = 'message';
+  const data: string[] = [];
+
+  for (const line of frame.split(/\\r\\n|\\n|\\r/)) {
+    if (!line || line.startsWith(':')) continue;
+    const colon = line.indexOf(':');
+    const field = colon < 0 ? line : line.slice(0, colon);
+    const value = colon < 0 ? '' : line.slice(colon + 1).replace(/^ /, '');
+    if (field === 'event') event = value;
+    if (field === 'data') data.push(value);
+  }
+  return data.length ? { event, data: data.join('\\n') } : null;
+}
+
+async function readAnswer(signal: AbortSignal) {
+  const response = await fetch('/api/chat', { method: 'POST', signal });
+  if (!response.ok || !response.body) throw new Error(\`HTTP \${response.status}\`);
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = '';
+  try {
+    for (;;) {
+      const { value = '', done } = await reader.read();
+      if (done) break;
+      buffer += value;
+
+      // read() 边界不等于 SSE 事件边界；最后一个残片继续留在 buffer。
+      const frames = buffer.split(/\\r\\n\\r\\n|\\n\\n|\\r\\r/);
+      buffer = frames.pop() ?? '';
+      for (const frame of frames) {
+        const event = parseSseFrame(frame);
+        if (!event) continue;
+        if (event.event === 'done') return;
+        appendDelta(JSON.parse(event.data));
+      }
+    }
+    if (buffer.trim()) throw new Error('响应结束时仍有不完整事件');
+  } catch (error) {
+    if (!signal.aborted) throw error; // 用户停止不显示成网络失败
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+const controller = new AbortController();
+void readAnswer(controller.signal);
+stopButton.addEventListener('click', () => controller.abort());`,
   },
   {
     banks: ['frontend-ai-interviews'], title: /iframe 沙箱|postMessage/i,
@@ -663,13 +866,19 @@ try {
 
 const VISUAL_RULES = [
   {
+    banks: ['frontend-ai-interviews'], title: /Fetch 流式响应/,
+    src: '/content/diagrams/frontend-ai/sse-framing-buffer-v1.svg',
+    alt: '一条 SSE 消息被网络任意拆开，再经连续解码和缓冲区恢复成完整事件的过程图',
+    caption: '下面以 SSE 为例：网络块不是消息边界；连续解码负责汉字不乱码，buffer 负责等到空行后再交出完整事件。',
+  },
+  {
     banks: ['java-foundations'], title: /Stream 的执行模型/,
     src: '/content/diagrams/java-foundations/stream-pipeline-v1.svg',
     alt: 'Java Stream 从数据源经过惰性中间操作到终止操作的执行流程图',
     caption: '中间操作只描述流水线，终止操作才开始拉取元素；短路操作可以提前结束。',
   },
   {
-    banks: ['frontend-ai-interviews', 'java-ai-applications', '360-ai-frontend'], title: /BM25.*向量|混合检索|RRF/,
+    banks: ['frontend-ai-interviews', 'java-ai-applications', '360-ai-frontend'], title: /BM25.*(?:向量|语义)|(?:关键词|语义).*搜索|混合检索|RRF/,
     src: '/content/diagrams/ai/hybrid-retrieval-fusion-v1.svg',
     alt: 'BM25 关键词召回与向量语义召回经过排名融合和重排的流程图',
     caption: '两路原始分数量纲不同；可按名次用 RRF 融合，再由 Reranker 精排。',
@@ -679,6 +888,18 @@ const VISUAL_RULES = [
     src: '/content/diagrams/ai/mcp-agent-tool-boundary-v1.svg',
     alt: 'Agent、Skill、MCP 客户端、MCP Server 与外部系统之间的职责边界图',
     caption: 'Skill 说明做法，Agent 决定步骤，MCP 统一连接能力，真正的权限仍由可信应用与服务端控制。',
+  },
+  {
+    banks: ['frontend-ai-interviews'], title: /工具链执行到一半失败|工具调用.*最小权限/,
+    src: '/content/diagrams/java-ai/agent-execution-guardrails-v1.svg',
+    alt: 'Agent 在工具执行前经过权限、参数和人工确认，执行后记录结果并判断继续或停止的闭环图',
+    caption: '模型只提出下一步；重试、幂等、权限、人工确认和停止条件由应用强制执行。',
+  },
+  {
+    banks: ['frontend-ai-interviews'], title: /AI 生成任务.*防重复.*续传.*负载/,
+    src: '/content/diagrams/frontend-ai/idempotent-stream-control-v1.svg',
+    alt: 'AI 生成任务通过幂等键防重复、事件序号续传、有界队列背压和并发门禁控制负载的流程图',
+    caption: '幂等键、事件序号、背压和并发限制分别解决不同故障，不能用一个 loading 状态代替。',
   },
   {
     banks: ['java-backend-interviews'], title: /Spring MVC 一次请求/,
@@ -1055,6 +1276,9 @@ function practiceSentence(value, fallbackValue, excluded) {
 
 function glossaryTermApplies(label, haystack, bankId, title) {
   const javaBank = /^java(?:-|$)/i.test(bankId)
+  if (label === '网络 chunk' || label === 'Buffer / 半包') {
+    return /Fetch 流式响应|TextDecoderStream|response\.body|SSE.{0,80}(?:分帧|buffer|半包)|(?:分帧|半包).{0,80}SSE/i.test(`${title}\n${haystack}`)
+  }
   if (label === 'NIO Buffer') {
     return /\bNIO\b|ByteBuffer|(?:\bposition\b|\blimit\b|\bcapacity\b|\bflip\b).{0,80}\bBuffer\b|\bBuffer\b.{0,80}(?:\bposition\b|\blimit\b|\bcapacity\b|\bflip\b)/i.test(haystack)
   }
@@ -1197,7 +1421,7 @@ export function enhanceQuestionClarity(markdown, { title = '', bankId = '' } = {
   }
 
   if (authoredAnswerToRelocate) {
-    const relocatedIntro = '原题中更完整的解释、边界或代码如下：'
+    const relocatedIntro = '下面把这件事拆开说：'
     const currentMechanism = locateSections(lines).find((item) => item.kind === 'mechanism')
     if (currentMechanism) {
       lines = [

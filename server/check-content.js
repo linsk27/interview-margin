@@ -366,12 +366,12 @@ try {
     || incomplete.length || missingSections.length || missingMarkers.length
     || thinEnrichedQuestions.length || thinCommunityQuestions.length || thinFoundationQuestions.length
     || ai360MissingMarkers.length || thinAi360Questions.length
-    || genericTemplateCount || diagramQuestionCount < 48 || denseParagraphs.length
+    || genericTemplateCount || diagramQuestionCount < 53 || denseParagraphs.length
     || knownGlossaryCollisions.length
     || firstScreenReasonProblems.length
     || structuredAnswerCount !== questionCount || glossaryQuestionCount < 480
     || activeQuestions.some((question) => question.body_md.length < 620)
-    || (fencedCodeByBank['frontend-ai-interviews'] ?? 0) < 12
+    || (fencedCodeByBank['frontend-ai-interviews'] ?? 0) < 18
     || (fencedCodeByBank['java-foundations'] ?? 0) < 10
     || (fencedCodeByBank['java-backend-interviews'] ?? 0) < 8
     || (fencedCodeByBank['java-ai-applications'] ?? 0) < 6

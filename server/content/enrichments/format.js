@@ -98,7 +98,7 @@ export function formatEnrichedBody({
   verifiedAt = DEFAULT_VERIFIED_AT,
 }) {
   const visualMarkdown = visual
-    ? `\n\n![${visual.alt}](${visual.src} "${visual.caption}")`
+    ? `![${visual.alt}](${visual.src} "${visual.caption}")\n\n`
     : ''
   const body = `**短回答：**
 
@@ -106,7 +106,7 @@ ${summary.trim()}
 
 **原理：**
 
-${mechanism.trim()}${visualMarkdown}
+${visualMarkdown}${mechanism.trim()}
 
 **代码 / 场景：**
 
