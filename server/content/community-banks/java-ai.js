@@ -1,3 +1,5 @@
+import { enhanceJavaBankExamples } from './java-example-enrichment.js'
+
 const COMMUNITY = {
   aiBackend: {
     label: '牛客：快手 AI 应用服务端开发二面',
@@ -224,7 +226,7 @@ function question({ title, summary, mechanism, example, followUps, pitfalls, sou
   }
 }
 
-export const javaAiInterviewBank = {
+export const javaAiInterviewBank = enhanceJavaBankExamples({
   id: 'java-ai-applications',
   idPrefix: 'java-ai-applications-v2',
   title: 'Java + AI 应用高频 35 题',
@@ -871,4 +873,4 @@ export const javaAiInterviewBank = {
       ],
     },
   ],
-}
+})

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { QUESTION_SPECIFICS } from './360-ai-specifics.js'
 import { SUPPLEMENTAL_360_AI_MARKDOWN } from './360-ai-supplementals.js'
 import { assert360PublicContentSafe } from './public-content-policy.js'
+import { annotateTeachingCode, formatTeachingExample } from './teaching-examples.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '../..')
@@ -911,12 +912,12 @@ function renderQuestion(question, number) {
       || buckets.mechanism
       || mechanismFallback(question.sectionNumber, publicTitle),
   )
-  const practice = sanitizePersonalPlaceholders(
+  const practice = formatTeachingExample(sanitizePersonalPlaceholders(
     publicSpecific?.practice
       || buckets.practice
       || specific?.practice
       || practiceFallback(question.sectionNumber, publicTitle),
-  )
+  ), { summary: short, title: publicTitle })
   const followups = sanitizePersonalPlaceholders(
     publicSpecific?.followups
       || buckets.followups
@@ -935,7 +936,7 @@ function renderQuestion(question, number) {
     ? `\n\n![${visual.alt}](${visual.src} "${visual.caption}")`
     : ''
 
-  return `## Q${number}：${publicTitle}
+  return annotateTeachingCode(`## Q${number}：${publicTitle}
 
 **短回答：**
 
@@ -959,7 +960,34 @@ ${pitfalls}
 
 **参考来源：**
 
-${sources}`
+${sources}`, { title: publicTitle })
+}
+
+function formatSupplementalQuestions(markdown) {
+  const source = String(markdown ?? '').trim()
+  const matches = [...source.matchAll(/^## Q(\d+)[：:]([^\n]+)$/gm)]
+  if (!matches.length) return source
+
+  const rendered = [source.slice(0, matches[0].index).trimEnd()]
+  matches.forEach((match, index) => {
+    const start = match.index
+    const end = matches[index + 1]?.index ?? source.length
+    const title = match[2].trim()
+    let question = source.slice(start, end).trim()
+    const short = question.match(
+      /\*\*短回答[：:]\*\*\s*\n+([\s\S]*?)(?=\n\*\*原理[：:]\*\*)/u,
+    )?.[1] ?? ''
+
+    question = question.replace(
+      /(\*\*代码\s*\/\s*场景[：:]\*\*\s*\n+)([\s\S]*?)(?=\n\*\*递进追问[：:]\*\*)/u,
+      (_, heading, example) => `${heading}\n${formatTeachingExample(example, {
+        summary: short,
+        title,
+      })}\n`,
+    )
+    rendered.push(annotateTeachingCode(question, { title }))
+  })
+  return rendered.filter(Boolean).join('\n\n')
 }
 
 export function build360AiBankMarkdown(source) {
@@ -1014,7 +1042,7 @@ export function build360AiBankMarkdown(source) {
   if (sourceQuestionNumber - 1 !== SOURCE_QUESTION_COUNT) {
     throw new Error(`360 AI 题库源编号应覆盖 ${SOURCE_QUESTION_COUNT} 题，实际 ${sourceQuestionNumber - 1} 题`)
   }
-  const supplementalMarkdown = SUPPLEMENTAL_360_AI_MARKDOWN.trim()
+  const supplementalMarkdown = formatSupplementalQuestions(SUPPLEMENTAL_360_AI_MARKDOWN)
   const supplementalQuestionNumbers = [
     ...supplementalMarkdown.matchAll(/^## Q(\d+)[：:][^\n]*$/gm),
   ].map((match) => Number(match[1]))

@@ -1,4 +1,6 @@
-export default [
+import { strengthenFrontendExamples } from './frontend-example-quality.js'
+
+export default strengthenFrontendExamples([
   {
     number: 1,
     title: '浏览器从输入 URL 到页面可交互经历什么？',
@@ -2377,4 +2379,4 @@ export default [
     ]
   },
 
-]
+], { bankId: 'frontend-engineering' })

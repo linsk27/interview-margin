@@ -15,9 +15,10 @@ Proxy 可拦截对象级读取、写入、删除、in 和遍历等操作，无�
 
 **代码 / 场景：**
 
-新增 count 和删除 name 都会经过代理陷阱，因此依赖它们的渲染可更新；直接修改 raw 则绕过代理，不会触发已建立的响应式通知。
+**示例场景：** 新增 count 和删除 name 都会经过代理陷阱，因此依赖它们的渲染可更新；直接修改 raw 则绕过代理，不会触发已建立的响应式通知。
 
 ~~~js
+// 示例重点：新增 count 和删除 name 都会经过代理陷阱，因此依赖它们的渲染可更新；直接修改 raw 则绕过代理，不会触发已建立的响应式通…
 import { reactive, watchEffect } from 'vue'
 const raw = { name: 'A' }
 const state = reactive(raw)
@@ -26,6 +27,12 @@ state.count = 1 // 输出 1，新增属性可追踪
 delete state.name
 raw.count = 2   // 绕过代理，本次写入本身不触发 effect
 ~~~
+
+- **观察目标：** Proxy 可拦截对象级读取、写入、删除、in 和遍历等操作，无需预先遍历所有属性，也能处理新增属性和数组索引。
+
+**对照结果：**
+
+用这个结果回答“Vue 3 为什么使用 Proxy”：- 观察目标： Proxy 可拦截对象级读取、写入、删除、in 和遍历等操作，无需预先遍历所有属性，也能处理新增属性和数组索引。
 
 **递进追问：**
 
@@ -63,9 +70,10 @@ raw.count = 2   // 绕过代理，本次写入本身不触发 effect
 
 **代码 / 场景：**
 
-修改 deep.nested.count 会触发依赖；直接改 shallow.value.count 不会，替换整个 value 才触发。该差异能把大型对象的更新成本固定在根引用边界。
+**示例场景：** 修改 deep.nested.count 会触发依赖；直接改 shallow.value.count 不会，替换整个 value 才触发。该差异能把大型对象的更新成本固定在根引用边界。
 
 ~~~js
+// 示例重点：修改 deep.nested.count 会触发依赖；直接改 shallow.value.count 不会，替换整个 value 才触…
 import { reactive, shallowRef, watchEffect } from 'vue'
 const deep = reactive({ nested: { count: 0 } })
 const shallow = shallowRef({ count: 0 })
@@ -74,6 +82,10 @@ deep.nested.count++          // 触发
 shallow.value.count++        // 不触发
 shallow.value = { count: 2 } // 触发
 ~~~
+
+**对照结果：**
+
+用这个结果回答“reactive、ref 和 shallowRef 如何选择”：示例场景： 修改 deep.nested.count 会触发依赖；直接改 shallow.value.count 不会，替换整个 value 才触发。
 
 **递进追问：**
 
@@ -111,15 +123,20 @@ track 在活跃 effect 读取属性时记录 target-key-effect 关系，trigger 
 
 **代码 / 场景：**
 
-渲染 effect 读取 state.price 和 state.count 时建立两条依赖；修改无关的 state.note 不会重跑，修改 count 才输出新总价。
+**示例场景：** 渲染 effect 读取 state.price 和 state.count 时建立两条依赖；修改无关的 state.note 不会重跑，修改 count 才输出新总价。
 
 ~~~js
+// 示例重点：渲染 effect 读取 state.price 和 state.count 时建立两条依赖；修改无关的 state.note 不会重…
 import { reactive, watchEffect } from 'vue'
 const state = reactive({ price: 10, count: 2, note: '' })
 watchEffect(() => console.log(state.price * state.count)) // 20
 state.note = 'memo' // 未被读取，不触发这条 effect
 state.count = 3     // 输出 30
 ~~~
+
+**对照结果：**
+
+用这个结果回答“track 和 trigger 分别做什么”：示例场景： 渲染 effect 读取 state.price 和 state.count 时建立两条依赖；修改无关的 state.note 不会重跑，修改 count 才输出新总价。
 
 **递进追问：**
 
@@ -159,9 +176,10 @@ WeakMap 以原对象为键便于垃圾回收，Map 区分属性键，Set 对同�
 
 **代码 / 场景：**
 
-两个 effect 分别读取不同键，概念依赖图会把它们放进不同 Set；修改 age 只需定位 targetMap.get(user).get('age')，不必遍历所有组件。
+**示例场景：** 两个 effect 分别读取不同键，概念依赖图会把它们放进不同 Set；修改 age 只需定位 targetMap.get(user).get('age')，不必遍历所有组件。
 
 ~~~js
+// 示例重点：两个 effect 分别读取不同键，概念依赖图会把它们放进不同 Set；修改 age 只需定位 targetMap.get(user)…
 // 概念模型，不是 Vue 完整源码
 const targetMap = new WeakMap()
 function getDep(target, key) {
@@ -172,6 +190,10 @@ function getDep(target, key) {
   return dep
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“为什么依赖桶常用 WeakMap 到 Map 到 Set”：示例场景： 两个 effect 分别读取不同键，概念依赖图会把它们放进不同 Set；修改 age 只需定位 targetMap.get user .get 'age' ，不必遍历所有组件。
 
 **递进追问：**
 
@@ -209,9 +231,10 @@ function getDep(target, key) {
 
 **代码 / 场景：**
 
-outer 读取 price，又读取 computed total；total 的内部 effect 读取 count。computed 计算结束后必须恢复 outer，后续读取 tax 才会归到 outer，而不是错误归到 computed。
+**示例场景：** outer 读取 price，又读取 computed total；total 的内部 effect 读取 count。computed 计算结束后必须恢复 outer，后续读取 tax 才会归到 outer，而不是错误归到 computed。
 
 ~~~js
+// 示例重点：outer 读取 price，又读取 computed total；total 的内部 effect 读取 count。compute…
 import { reactive, computed, watchEffect } from 'vue'
 const s = reactive({ price: 10, count: 2, tax: 1 })
 const total = computed(() => s.price * s.count)
@@ -220,6 +243,10 @@ watchEffect(() => {
 })
 s.tax = 2 // 外层 effect 正确重跑并输出 22
 ~~~
+
+**对照结果：**
+
+用这个结果回答“effectStack 解决什么问题”：computed 计算结束后必须恢复 outer，后续读取 tax 才会归到 outer，而不是错误归到 computed。
 
 **递进追问：**
 
@@ -257,9 +284,10 @@ s.tax = 2 // 外层 effect 正确重跑并输出 22
 
 **代码 / 场景：**
 
-关闭 enabled 后，effect 不再读取 text；正确清理后修改 text 不应再次输出，只有修改 fallback 才触发。可用调用次数验证是否存在幽灵依赖。
+**示例场景：** 关闭 enabled 后，effect 不再读取 text；正确清理后修改 text 不应再次输出，只有修改 fallback 才触发。可用调用次数验证是否存在幽灵依赖。
 
 ~~~js
+// 示例重点：关闭 enabled 后，effect 不再读取 text；正确清理后修改 text 不应再次输出，只有修改 fallback 才触发…
 import { reactive, watchEffect } from 'vue'
 const s = reactive({ enabled: true, text: 'A', fallback: '-' })
 let runs = 0
@@ -270,6 +298,10 @@ watchEffect(() => {
 s.enabled = false // 输出 -
 s.text = 'B'       // 当前分支不依赖 text，不应重跑
 ~~~
+
+**对照结果：**
+
+用这个结果回答“为什么 effect 每次执行前要清理旧依赖”：示例场景： 关闭 enabled 后，effect 不再读取 text；正确清理后修改 text 不应再次输出，只有修改 fallback 才触发。
 
 **递进追问：**
 
@@ -307,9 +339,10 @@ computed 内部是 lazy effect，依赖变化时只把 dirty 标为 true；下�
 
 **代码 / 场景：**
 
-getter 在两次连续读取中只运行一次；count 改变后先失效，下一次读取才第二次计算并得到 4。calls 清楚展示惰性缓存边界。
+**示例场景：** getter 在两次连续读取中只运行一次；count 改变后先失效，下一次读取才第二次计算并得到 4。calls 清楚展示惰性缓存边界。
 
 ~~~js
+// 示例重点：getter 在两次连续读取中只运行一次；count 改变后先失效，下一次读取才第二次计算并得到 4。calls 清楚展示惰性缓存边界。
 import { ref, computed } from 'vue'
 const count = ref(1)
 let calls = 0
@@ -319,6 +352,12 @@ count.value = 2
 console.log(calls)          // 1，尚未重新读取
 console.log(doubled.value, calls) // 4 2
 ~~~
+
+- **观察目标：** computed 内部是 lazy effect，依赖变化时只把 dirty 标为 true；下次读取 value 才重新求值并恢复缓存。
+
+**对照结果：**
+
+用这个结果回答“computed 为什么能缓存”：- 观察目标： computed 内部是 lazy effect，依赖变化时只把 dirty 标为 true；下次读取 value 才重新求值并恢复缓存。
 
 **递进追问：**
 
@@ -356,9 +395,10 @@ watch 显式指定来源并能比较新旧值，watchEffect 立即运行并自�
 
 **代码 / 场景：**
 
-watch 只观察 query，并可对比新旧值；watchEffect 同时读取 query 与 page，任一变化都会重跑。清理函数在下一次请求前中止旧请求。
+**示例场景：** watch 只观察 query，并可对比新旧值；watchEffect 同时读取 query 与 page，任一变化都会重跑。清理函数在下一次请求前中止旧请求。
 
 ~~~js
+// 示例重点：watch 只观察 query，并可对比新旧值；watchEffect 同时读取 query 与 page，任一变化都会重跑。清理函数…
 const query = ref('vue')
 const page = ref(1)
 watch(query, (next, prev) => console.log(prev, '->', next))
@@ -368,6 +408,10 @@ watchEffect((onCleanup) => {
   onCleanup(() => controller.abort())
 })
 ~~~
+
+**对照结果：**
+
+用这个结果回答“watch 和 watchEffect 有什么区别”：示例场景： watch 只观察 query，并可对比新旧值；watchEffect 同时读取 query 与 page，任一变化都会重跑。
 
 **递进追问：**
 
@@ -405,9 +449,10 @@ watchEffect((onCleanup) => {
 
 **代码 / 场景：**
 
-只监听真正决定报价的 province 与 category，不会因 description、附件或其他无关字段变化遍历整份表单；数组 source 还能一次拿到两个字段的新旧组合。
+**示例场景：** 只监听真正决定报价的 province 与 category，不会因 description、附件或其他无关字段变化遍历整份表单；数组 source 还能一次拿到两个字段的新旧组合。
 
 ~~~js
+// 示例重点：只监听真正决定报价的 province 与 category，不会因 description、附件或其他无关字段变化遍历整份表单；数组…
 const form = reactive({
   address: { province: 'ZJ', detail: '' },
   category: 'A',
@@ -418,6 +463,10 @@ watch(
   ([province, category]) => reloadQuote(province, category),
 )
 ~~~
+
+**对照结果：**
+
+用这个结果回答“为什么不建议 deep watch 大对象”：示例场景： 只监听真正决定报价的 province 与 category，不会因 description、附件或其他无关字段变化遍历整份表单；数组 source 还能一次拿到两个字段的新旧组合。
 
 **递进追问：**
 
@@ -455,9 +504,10 @@ watch(
 
 **代码 / 场景：**
 
-普通 destructured 是一次快照，而 countRef 始终连接 state.count。把 state.count 改成 2 后，快照仍为 0，countRef.value 为 2；写 ref 也会回写源对象。
+**示例场景：** 普通 destructured 是一次快照，而 countRef 始终连接 state.count。把 state.count 改成 2 后，快照仍为 0，countRef.value 为 2；写 ref 也会回写源对象。
 
 ~~~js
+// 示例重点：普通 destructured 是一次快照，而 countRef 始终连接 state.count。把 state.count 改成…
 import { reactive, toRef } from 'vue'
 const state = reactive({ count: 0 })
 const { count: snapshot } = state
@@ -468,6 +518,10 @@ console.log(countRef.value) // 2
 countRef.value = 3
 console.log(state.count)    // 3
 ~~~
+
+**对照结果：**
+
+用这个结果回答“toRef、toRefs 解决什么问题”：把 state.count 改成 2 后，快照仍为 0，countRef.value 为 2；写 ref 也会回写源对象。
 
 **递进追问：**
 
@@ -506,9 +560,10 @@ console.log(state.count)    // 3
 
 **代码 / 场景：**
 
-count 改变时模板重新得到一棵 VNode 树，但静态 h1 可被提升复用，渲染器只更新动态文本节点。开发者无需手写 querySelector 与 textContent 同步。
+**示例场景：** count 改变时模板重新得到一棵 VNode 树，但静态 h1 可被提升复用，渲染器只更新动态文本节点。开发者无需手写 querySelector 与 textContent 同步。
 
 ~~~vue
+<!-- 示例重点：count 改变时模板重新得到一棵 VNode 树，但静态 h1 可被提升复用，渲染器只更新动态文本节点。开发者无需手写 queryS… -->
 <script setup>
 import { ref } from 'vue'
 const count = ref(0)
@@ -520,6 +575,10 @@ const count = ref(0)
   </section>
 </template>
 ~~~
+
+**对照结果：**
+
+用这个结果回答“虚拟 DOM 的价值是什么”：开发者无需手写 querySelector 与 textContent 同步。
 
 **递进追问：**
 
@@ -557,17 +616,23 @@ const count = ref(0)
 
 **代码 / 场景：**
 
-模板只有 class 与文本动态，编译结果会在相应 VNode 上附带标志，运行时更新 active 或 label 时可直达目标字段。下面是概念化输出，不应在业务代码硬编码数字。
+**示例场景：** 模板只有 class 与文本动态，编译结果会在相应 VNode 上附带标志，运行时更新 active 或 label 时可直达目标字段。下面是概念化输出，不应在业务代码硬编码数字。
 
 ~~~vue
+<!-- 示例重点：模板只有 class 与文本动态，编译结果会在相应 VNode 上附带标志，运行时更新 active 或 label 时可直达目标字段… -->
 <template>
   <button :class="{ active }">{{ label }}</button>
 </template>
 ~~~
 
 ~~~js
+// 示例重点：第 2 段：模板只有 class 与文本动态，编译结果会在相应 VNode 上附带标志，运行时更新 active 或 label 时可直达目标字段…
 // 概念：createElementBlock('button', { class: ... }, toDisplayString(label), CLASS | TEXT)
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Vue 3 patchFlag 有什么作用”：示例场景： 模板只有 class 与文本动态，编译结果会在相应 VNode 上附带标志，运行时更新 active 或 label 时可直达目标字段。
 
 **递进追问：**
 
@@ -604,9 +669,10 @@ const count = ref(0)
 
 **代码 / 场景：**
 
-删除第一项后，索引 key 会让原来第 2 行组件被当成第 1 行继续复用；使用 user.id，组件状态才随用户移动。输入行最容易暴露这种错误。
+**示例场景：** 删除第一项后，索引 key 会让原来第 2 行组件被当成第 1 行继续复用；使用 user.id，组件状态才随用户移动。输入行最容易暴露这种错误。
 
 ~~~vue
+<!-- 示例重点：删除第一项后，索引 key 会让原来第 2 行组件被当成第 1 行继续复用；使用 user.id，组件状态才随用户移动。输入行最容易暴… -->
 <!-- 正确：身份来自稳定业务 ID -->
 <UserRow
   v-for="user in users"
@@ -617,6 +683,10 @@ const count = ref(0)
 <!-- 风险：排序或头部插入会改变 index 与实体的对应 -->
 <UserRow v-for="(user, index) in users" :key="index" :user="user" />
 ~~~
+
+**对照结果：**
+
+用这个结果回答“key 在列表 diff 中为什么重要”：示例场景： 删除第一项后，索引 key 会让原来第 2 行组件被当成第 1 行继续复用；使用 user.id，组件状态才随用户移动。
 
 **递进追问：**
 
@@ -653,7 +723,9 @@ const count = ref(0)
 
 **代码 / 场景：**
 
-旧顺序 A B C D，新顺序 B C A D。按旧索引得到 [2,3,1,4]，递增子序列可保留 B、C、D，只需把 A 移到 C 后面，而不是重排四个节点。
+**示例场景：** 旧顺序 A B C D，新顺序 B C A D。按旧索引得到 [2,3,1,4]，递增子序列可保留 B、C、D，只需把 A 移到 C 后面，而不是重排四个节点。
+
+> 示例注解：旧顺序 A B C D，新顺序 B C A D。按旧索引得到 [2,3,1,4]，递增子序列可保留 B、C、D，只需把 A 移到 C…
 
 ~~~text
 old: A(1) B(2) C(3) D(4)
@@ -661,6 +733,10 @@ new: B    C    A    D
 map: 2    3    1    4
 LIS: 2 -> 3 -> 4，移动 A 即可
 ~~~
+
+**对照结果：**
+
+用这个结果回答“最长递增子序列在 Vue diff 中做什么”：按旧索引得到 2,3,1,4 ，递增子序列可保留 B、C、D，只需把 A 移到 C…
 
 **递进追问：**
 
@@ -699,9 +775,10 @@ Vue 把组件更新放进微任务调度队列去重，nextTick 等待当前刷�
 
 **代码 / 场景：**
 
-赋值后同步读取仍可能看到旧文本；await nextTick 后 Vue 已完成本轮 DOM patch，textContent 变为 1。无需用任意毫秒定时器猜更新时间。
+**示例场景：** 赋值后同步读取仍可能看到旧文本；await nextTick 后 Vue 已完成本轮 DOM patch，textContent 变为 1。无需用任意毫秒定时器猜更新时间。
 
 ~~~vue
+<!-- 示例重点：赋值后同步读取仍可能看到旧文本；await nextTick 后 Vue 已完成本轮 DOM patch，textContent 变为… -->
 <script setup>
 import { ref, nextTick, useTemplateRef } from 'vue'
 const count = ref(0)
@@ -715,6 +792,10 @@ async function increment() {
 </script>
 <template><span ref="label">{{ count }}</span></template>
 ~~~
+
+**对照结果：**
+
+用这个结果回答“nextTick 为什么不是 setTimeout 的同义词”：示例场景： 赋值后同步读取仍可能看到旧文本；await nextTick 后 Vue 已完成本轮 DOM patch，textContent 变为 1。
 
 **递进追问：**
 
@@ -752,9 +833,10 @@ async function increment() {
 
 **代码 / 场景：**
 
-一次点击里 count 连续加三次，最终 DOM 显示 3，但组件更新钩子通常只为这一轮执行一次；渲染不会依次提交 1、2、3 三个中间界面。
+**示例场景：** 一次点击里 count 连续加三次，最终 DOM 显示 3，但组件更新钩子通常只为这一轮执行一次；渲染不会依次提交 1、2、3 三个中间界面。
 
 ~~~vue
+<!-- 示例重点：一次点击里 count 连续加三次，最终 DOM 显示 3，但组件更新钩子通常只为这一轮执行一次；渲染不会依次提交 1、2、3 三个中… -->
 <script setup>
 import { ref, onUpdated } from 'vue'
 const count = ref(0)
@@ -767,6 +849,12 @@ function addThree() {
 </script>
 <template><button @click="addThree">{{ count }}</button></template>
 ~~~
+
+- **观察目标：** 同一同步调用栈内多次状态修改只需在微任务中执行一次去重后的更新，避免每次赋值都触发布局和渲染。
+
+**对照结果：**
+
+用这个结果回答“组件更新为什么会批处理”：- 观察目标： 同一同步调用栈内多次状态修改只需在微任务中执行一次去重后的更新，避免每次赋值都触发布局和渲染。
 
 **递进追问：**
 
@@ -804,14 +892,19 @@ v-if 控制挂载销毁，切换成本高但未显示时无组件开销；v-show
 
 **代码 / 场景：**
 
-HeavyChart 使用 v-if 时首次关闭不会 mounted，每次重新打开都会创建新实例；HelpTip 用 v-show 只切换 display，输入与内部状态保持。应通过切换频率测量而不是固定口诀选择。
+**示例场景：** HeavyChart 使用 v-if 时首次关闭不会 mounted，每次重新打开都会创建新实例；HelpTip 用 v-show 只切换 display，输入与内部状态保持。应通过切换频率测量而不是固定口诀选择。
 
 ~~~vue
+<!-- 示例重点：HeavyChart 使用 v-if 时首次关闭不会 mounted，每次重新打开都会创建新实例；HelpTip 用 v-show 只… -->
 <template>
   <HeavyChart v-if="chartOpen" />
   <HelpTip v-show="helpVisible" />
 </template>
 ~~~
+
+**对照结果：**
+
+用这个结果回答“v-if 和 v-show 如何选择”：示例场景： HeavyChart 使用 v-if 时首次关闭不会 mounted，每次重新打开都会创建新实例；HelpTip 用 v-show 只切换 display，输入与内部状态保持。
 
 **递进追问：**
 
@@ -849,18 +942,24 @@ HeavyChart 使用 v-if 时首次关闭不会 mounted，每次重新打开都会�
 
 **代码 / 场景：**
 
-两个动态面板在切换后保留输入值；max=2 时打开第三个不同实例会淘汰最久未访问项。日志应区分 activated/deactivated 与 mounted/unmounted。
+**示例场景：** 两个动态面板在切换后保留输入值；max=2 时打开第三个不同实例会淘汰最久未访问项。日志应区分 activated/deactivated 与 mounted/unmounted。
 
 ~~~vue
+<!-- 示例重点：两个动态面板在切换后保留输入值；max=2 时打开第三个不同实例会淘汰最久未访问项。日志应区分 activated/deactivat… -->
 <KeepAlive :max="2" include="EditorPanel,PreviewPanel">
   <component :is="activePanel" :key="documentId" />
 </KeepAlive>
 ~~~
 
 ~~~js
+// 示例重点：第 2 段：两个动态面板在切换后保留输入值；max=2 时打开第三个不同实例会淘汰最久未访问项。日志应区分 activated/deactivat…
 onDeactivated(() => pausePolling())
 onActivated(() => resumePolling())
 ~~~
+
+**对照结果：**
+
+用这个结果回答“KeepAlive 的缓存边界是什么”：日志应区分 activated/deactivated 与 mounted/unmounted。
 
 **递进追问：**
 
@@ -899,9 +998,10 @@ onActivated(() => resumePolling())
 
 **代码 / 场景：**
 
-Modal 的模板写在业务组件内，但实际节点进入 body 下的 #modals，不再被 card 的 overflow 裁剪；close 事件仍按组件关系通知父组件。
+**示例场景：** Modal 的模板写在业务组件内，但实际节点进入 body 下的 #modals，不再被 card 的 overflow 裁剪；close 事件仍按组件关系通知父组件。
 
 ~~~html
+<!-- 示例重点：Modal 的模板写在业务组件内，但实际节点进入 body 下的 modals，不再被 card 的 overflow 裁剪；clos… -->
 <body>
   <div id="app"></div>
   <div id="modals"></div>
@@ -909,10 +1009,15 @@ Modal 的模板写在业务组件内，但实际节点进入 body 下的 #modals
 ~~~
 
 ~~~vue
+<!-- 示例重点：第 2 段：Modal 的模板写在业务组件内，但实际节点进入 body 下的 modals，不再被 card 的 overflow 裁剪；clos… -->
 <Teleport to="#modals">
   <Modal v-if="open" @close="open = false" />
 </Teleport>
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Teleport 解决什么布局问题”：示例场景： Modal 的模板写在业务组件内，但实际节点进入 body 下的 modals，不再被 card 的 overflow 裁剪；close 事件仍按组件关系通知父组件。
 
 **递进追问：**
 
@@ -950,9 +1055,10 @@ Modal 的模板写在业务组件内，但实际节点进入 body 下的 #modals
 
 **代码 / 场景：**
 
-AsyncProfile 的 setup 等待数据时先显示“加载中”，依赖兑现后整块替换为真实内容；请求失败不能依赖 fallback 永久兜底，应由错误状态或错误边界处理。
+**示例场景：** AsyncProfile 的 setup 等待数据时先显示“加载中”，依赖兑现后整块替换为真实内容；请求失败不能依赖 fallback 永久兜底，应由错误状态或错误边界处理。
 
 ~~~vue
+<!-- 示例重点：AsyncProfile 的 setup 等待数据时先显示“加载中”，依赖兑现后整块替换为真实内容；请求失败不能依赖 fallback… -->
 <Suspense>
   <template #default>
     <AsyncProfile :id="userId" />
@@ -964,9 +1070,14 @@ AsyncProfile 的 setup 等待数据时先显示“加载中”，依赖兑现后
 ~~~
 
 ~~~js
+// 示例重点：第 2 段：AsyncProfile 的 setup 等待数据时先显示“加载中”，依赖兑现后整块替换为真实内容；请求失败不能依赖 fallback…
 // AsyncProfile.vue 的 setup
 const profile = await fetchProfile(props.id)
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Suspense 在 Vue 中负责什么”：示例场景： AsyncProfile 的 setup 等待数据时先显示“加载中”，依赖兑现后整块替换为真实内容；请求失败不能依赖 fallback 永久兜底，应由错误状态或错误边界处理。
 
 **递进追问：**
 
@@ -1005,9 +1116,10 @@ const profile = await fetchProfile(props.id)
 
 **代码 / 场景：**
 
-子组件不写 props.count，而是发出 increment；父组件持有 count 并更新，随后新 prop 再向下流。这样日志和测试都能定位唯一写入点。
+**示例场景：** 子组件不写 props.count，而是发出 increment；父组件持有 count 并更新，随后新 prop 再向下流。这样日志和测试都能定位唯一写入点。
 
 ~~~vue
+<!-- 示例重点：子组件不写 props.count，而是发出 increment；父组件持有 count 并更新，随后新 prop 再向下流。这样日志… -->
 <!-- CounterButton.vue -->
 <script setup>
 const props = defineProps({ count: Number })
@@ -1018,6 +1130,10 @@ const emit = defineEmits(['increment'])
 <!-- Parent.vue -->
 <CounterButton :count="count" @increment="count++" />
 ~~~
+
+**对照结果：**
+
+用这个结果回答“props 为什么强调单向数据流”：示例场景： 子组件不写 props.count，而是发出 increment；父组件持有 count 并更新，随后新 prop 再向下流。
 
 **递进追问：**
 
@@ -1056,9 +1172,10 @@ const emit = defineEmits(['increment'])
 
 **代码 / 场景：**
 
-父组件的 title 与子输入形成受控双向协议。用户输入 B 时，子组件发 update:modelValue，父 title 变成 B，再以 prop 形式回传。
+**示例场景：** 父组件的 title 与子输入形成受控双向协议。用户输入 B 时，子组件发 update:modelValue，父 title 变成 B，再以 prop 形式回传。
 
 ~~~vue
+<!-- 示例重点：父组件的 title 与子输入形成受控双向协议。用户输入 B 时，子组件发 update:modelValue，父 title 变成… -->
 <!-- TitleInput.vue -->
 <script setup>
 defineProps({ modelValue: String })
@@ -1071,6 +1188,10 @@ const emit = defineEmits(['update:modelValue'])
 <!-- Parent.vue -->
 <TitleInput v-model="title" />
 ~~~
+
+**对照结果：**
+
+用这个结果回答“组件的 v-model 如何实现”：用户输入 B 时，子组件发 update:modelValue，父 title 变成 B，再以 prop 形式回传。
 
 **递进追问：**
 
@@ -1108,9 +1229,10 @@ const emit = defineEmits(['update:modelValue'])
 
 **代码 / 场景：**
 
-FormRoot 提供只读状态与 updateField，任意深层 Field 可注入，但离开 FormRoot 就没有该上下文。这是局部依赖，不需要建立全局 Pinia store。
+**示例场景：** FormRoot 提供只读状态与 updateField，任意深层 Field 可注入，但离开 FormRoot 就没有该上下文。这是局部依赖，不需要建立全局 Pinia store。
 
 ~~~js
+// 示例重点：FormRoot 提供只读状态与 updateField，任意深层 Field 可注入，但离开 FormRoot 就没有该上下文。这是…
 // formContext.js
 export const formKey = Symbol('form')
 
@@ -1122,6 +1244,10 @@ provide(formKey, { state: readonly(state), updateField: (k, v) => { state.values
 const form = inject(formKey)
 form.updateField('email', 'a@example.com')
 ~~~
+
+**对照结果：**
+
+用这个结果回答“provide/inject 适合替代 Pinia 吗”：这是局部依赖，不需要建立全局 Pinia store。
 
 **递进追问：**
 
@@ -1159,9 +1285,10 @@ form.updateField('email', 'a@example.com')
 
 **代码 / 场景：**
 
-useOnlineStatus 只负责在线状态，挂载时注册、卸载时清理，并返回只读 ref；多次创建组件不会留下孤儿监听器，SSR 初始值也可受控。
+**示例场景：** useOnlineStatus 只负责在线状态，挂载时注册、卸载时清理，并返回只读 ref；多次创建组件不会留下孤儿监听器，SSR 初始值也可受控。
 
 ~~~js
+// 示例重点：useOnlineStatus 只负责在线状态，挂载时注册、卸载时清理，并返回只读 ref；多次创建组件不会留下孤儿监听器，SSR 初…
 import { readonly, ref, onMounted, onUnmounted } from 'vue'
 export function useOnlineStatus() {
   const online = ref(true)
@@ -1171,6 +1298,10 @@ export function useOnlineStatus() {
   return { online: readonly(online) }
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Composable 应如何设计边界”：示例场景： useOnlineStatus 只负责在线状态，挂载时注册、卸载时清理，并返回只读 ref；多次创建组件不会留下孤儿监听器，SSR 初始值也可受控。
 
 **递进追问：**
 
@@ -1208,9 +1339,10 @@ state 保存源数据，getter 表达派生值，action 封装同步或异步业
 
 **代码 / 场景：**
 
-total 是纯派生 getter，checkout 是业务 action；组件无需自己复制总价公式或直接拼接结算步骤。action 中可统一防重复提交与错误转换。
+**示例场景：** total 是纯派生 getter，checkout 是业务 action；组件无需自己复制总价公式或直接拼接结算步骤。action 中可统一防重复提交与错误转换。
 
 ~~~js
+// 示例重点：total 是纯派生 getter，checkout 是业务 action；组件无需自己复制总价公式或直接拼接结算步骤。action…
 export const useCartStore = defineStore('cart', {
   state: () => ({ items: [], submitting: false }),
   getters: {
@@ -1225,6 +1357,10 @@ export const useCartStore = defineStore('cart', {
   },
 })
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Pinia 的 state、getter 和 action 各负责什么”：示例场景： total 是纯派生 getter，checkout 是业务 action；组件无需自己复制总价公式或直接拼接结算步骤。
 
 **递进追问：**
 
@@ -1262,9 +1398,10 @@ export const useCartStore = defineStore('cart', {
 
 **代码 / 场景：**
 
-图表实例留在组件 shallowRef 中，store 只保存筛选条件。卸载时 dispose 能与 DOM 生命周期一致；若把 chart 放进持久化 store，JSON 与 SSR 都会失败。
+**示例场景：** 图表实例留在组件 shallowRef 中，store 只保存筛选条件。卸载时 dispose 能与 DOM 生命周期一致；若把 chart 放进持久化 store，JSON 与 SSR 都会失败。
 
 ~~~js
+// 示例重点：图表实例留在组件 shallowRef 中，store 只保存筛选条件。卸载时 dispose 能与 DOM 生命周期一致；若把 ch…
 const host = useTemplateRef('host')
 const chart = shallowRef(null)
 const filters = useChartFilterStore()
@@ -1274,6 +1411,10 @@ onMounted(() => {
 })
 onUnmounted(() => { chart.value?.dispose(); chart.value = null })
 ~~~
+
+**对照结果：**
+
+用这个结果回答“为什么 store 不应保存 DOM 节点和大型第三方实例”：卸载时 dispose 能与 DOM 生命周期一致；若把 chart 放进持久化 store，JSON 与 SSR 都会失败。
 
 **递进追问：**
 
@@ -1311,9 +1452,10 @@ schema 描述字段类型、默认值、校验和联动，运行时建立 source
 
 **代码 / 场景：**
 
-schema 只引用受控类型和规则 ID，values 独立保存。字段 component 由注册表选择，不能让服务端传任意模块路径；visibleWhen 可编译成受限表达式。
+**示例场景：** schema 只引用受控类型和规则 ID，values 独立保存。字段 component 由注册表选择，不能让服务端传任意模块路径；visibleWhen 可编译成受限表达式。
 
 ~~~js
+// 示例重点：schema 只引用受控类型和规则 ID，values 独立保存。字段 component 由注册表选择，不能让服务端传任意模块路径…
 const schema = {
   version: 2,
   fields: [
@@ -1324,6 +1466,10 @@ const schema = {
 const componentRegistry = { text: TextField, select: SelectField }
 const values = reactive(createDefaults(schema))
 ~~~
+
+**对照结果：**
+
+用这个结果回答“动态表单 schema 如何建模”：字段 component 由注册表选择，不能让服务端传任意模块路径；visibleWhen 可编译成受限表达式。
 
 **递进追问：**
 
@@ -1361,16 +1507,19 @@ const values = reactive(createDefaults(schema))
 
 **代码 / 场景：**
 
-fullName 纯粹由 firstName 和 lastName 推导，不写回源字段，因此没有循环。只有用户直接修改源字段才改变依赖方向。
+**示例场景：** fullName 纯粹由 firstName 和 lastName 推导，不写回源字段，因此没有循环。只有用户直接修改源字段才改变依赖方向。
 
 ~~~js
+// 示例重点：fullName 纯粹由 firstName 和 lastName 推导，不写回源字段，因此没有循环。只有用户直接修改源字段才改变依赖…
 const firstName = ref('Lin')
 const lastName = ref('Da')
 const fullName = computed(() => firstName.value + ' ' + lastName.value)
 // 避免：watch(fullName, splitAndWriteNames) 与反向 watch 同时存在
 ~~~
 
-若业务必须允许编辑 fullName，应设计单一 setter，在一次事务中解析并比较后写两个源字段。
+- **观察目标：** 构建依赖图时检测环，执行时记录批次和访问路径，变更前比较新旧值，并把规则限制为纯计算或显式动作。
+
+**对照结果：** 若业务必须允许编辑 fullName，应设计单一 setter，在一次事务中解析并比较后写两个源字段。
 
 **递进追问：**
 
@@ -1407,9 +1556,10 @@ const fullName = computed(() => firstName.value + ' ' + lastName.value)
 
 **代码 / 场景：**
 
-用户名从 lin 很快变为 linda 时，第一轮 watcher 被清理并 abort；即使旧服务未及时取消，ticket 比较也阻止旧结果覆盖 linda 的状态。
+**示例场景：** 用户名从 lin 很快变为 linda 时，第一轮 watcher 被清理并 abort；即使旧服务未及时取消，ticket 比较也阻止旧结果覆盖 linda 的状态。
 
 ~~~js
+// 示例重点：用户名从 lin 很快变为 linda 时，第一轮 watcher 被清理并 abort；即使旧服务未及时取消，ticket 比较也阻…
 let latest = 0
 watch(username, async (value, _, onCleanup) => {
   const ticket = ++latest
@@ -1423,6 +1573,10 @@ watch(username, async (value, _, onCleanup) => {
   }
 })
 ~~~
+
+**对照结果：**
+
+用这个结果回答“异步校验如何避免旧请求覆盖新结果”：示例场景： 用户名从 lin 很快变为 linda 时，第一轮 watcher 被清理并 abort；即使旧服务未及时取消，ticket 比较也阻止旧结果覆盖 linda 的状态。
 
 **递进追问：**
 
@@ -1459,13 +1613,15 @@ watch(username, async (value, _, onCleanup) => {
 
 **代码 / 场景：**
 
-路由 meta 与 v-if 只负责界面；删除接口仍调用服务端，服务端按用户和目标资源独立鉴权。攻击者即使手工 POST，也会得到 403。
+**示例场景：** 路由 meta 与 v-if 只负责界面；删除接口仍调用服务端，服务端按用户和目标资源独立鉴权。攻击者即使手工 POST，也会得到 403。
 
 ~~~vue
+<!-- 示例重点：路由 meta 与 v-if 只负责界面；删除接口仍调用服务端，服务端按用户和目标资源独立鉴权。攻击者即使手工 POST，也会得到 4… -->
 <button v-if="ability.can('delete', project)" @click="remove(project.id)">删除</button>
 ~~~
 
 ~~~js
+// 示例重点：第 2 段：路由 meta 与 v-if 只负责界面；删除接口仍调用服务端，服务端按用户和目标资源独立鉴权。攻击者即使手工 POST，也会得到 4…
 // 服务端概念代码
 app.delete('/projects/:id', requireSession, async (req, res) => {
   const project = await repo.findAuthorized(req.user, req.params.id, 'delete')
@@ -1474,6 +1630,12 @@ app.delete('/projects/:id', requireSession, async (req, res) => {
   res.sendStatus(204)
 })
 ~~~
+
+- **观察目标：** 前端隐藏改善体验但可被绕过，后端必须对每个写接口校验身份、资源范围和操作权限，返回一致的 401/403。
+
+**对照结果：**
+
+用这个结果回答“权限按钮为什么不能只在前端隐藏”：- 观察目标： 前端隐藏改善体验但可被绕过，后端必须对每个写接口校验身份、资源范围和操作权限，返回一致的 401/403。
 
 **递进追问：**
 
@@ -1513,16 +1675,17 @@ app.delete('/projects/:id', requireSession, async (req, res) => {
 
 **代码 / 场景：**
 
-对一次“输入筛选词后列表卡住”录制性能：若 180ms 都在 filter 与组件 patch，先记录列表长度和渲染行数，再切换虚拟列表复测；若时间在 Layout，则检查同步读写 DOM。
+**示例场景：** 对一次“输入筛选词后列表卡住”录制性能：若 180ms 都在 filter 与组件 patch，先记录列表长度和渲染行数，再切换虚拟列表复测；若时间在 Layout，则检查同步读写 DOM。
 
 ~~~js
+// 示例重点：对一次“输入筛选词后列表卡住”录制性能：若 180ms 都在 filter 与组件 patch，先记录列表长度和渲染行数，再切换虚拟列…
 // 开发诊断，不建议把详细依赖日志永久留在生产
 onRenderTriggered((event) => {
   console.table({ type: event.type, key: String(event.key) })
 })
 ~~~
 
-结论应包含基线、改动、同一设备数据和未覆盖场景，而不是只说“用了缓存后更快”。
+**对照结果：** 结论应包含基线、改动、同一设备数据和未覆盖场景，而不是只说“用了缓存后更快”。
 
 **递进追问：**
 
@@ -1559,9 +1722,10 @@ onRenderTriggered((event) => {
 
 **代码 / 场景：**
 
-一万条记录、每屏约二十行时，只渲染起止索引周围三十行，并用上、下 spacer 保持滚动条比例。DOM 节点稳定在几十而非一万。
+**示例场景：** 一万条记录、每屏约二十行时，只渲染起止索引周围三十行，并用上、下 spacer 保持滚动条比例。DOM 节点稳定在几十而非一万。
 
 ~~~js
+// 示例重点：一万条记录、每屏约二十行时，只渲染起止索引周围三十行，并用上、下 spacer 保持滚动条比例。DOM 节点稳定在几十而非一万。
 const rowHeight = 40
 const overscan = 5
 const start = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan)
@@ -1570,6 +1734,12 @@ const end = Math.min(items.length, start + visibleCount)
 const windowItems = computed(() => items.slice(start, end))
 const topPadding = start * rowHeight
 ~~~
+
+- **观察目标：** 只渲染视口附近元素，把 DOM 数量从总数据量降为窗口大小；必须处理动态高度、键值和滚动位置恢复。
+
+**对照结果：**
+
+用这个结果回答“大型列表为什么需要虚拟化”：- 观察目标： 只渲染视口附近元素，把 DOM 数量从总数据量降为窗口大小；必须处理动态高度、键值和滚动位置恢复。
 
 **递进追问：**
 
@@ -1607,9 +1777,10 @@ const topPadding = start * rowHeight
 
 **代码 / 场景：**
 
-若每行接收 activeId，activeId 每变所有行 prop 都变；父组件改为传 active={item.id===activeId} 后，只有旧激活和新激活两行的 active 真正变化。
+**示例场景：** 若每行接收 activeId，activeId 每变所有行 prop 都变；父组件改为传 active={item.id===activeId} 后，只有旧激活和新激活两行的 active 真正变化。
 
 ~~~vue
+<!-- 示例重点：若每行接收 activeId，activeId 每变所有行 prop 都变；父组件改为传 active={item.id===acti… -->
 <!-- 更稳定的子组件输入 -->
 <ListItem
   v-for="item in items"
@@ -1621,6 +1792,10 @@ const topPadding = start * rowHeight
 <!-- 昂贵且依赖明确时才考虑 -->
 <div v-for="item in items" :key="item.id" v-memo="[item.id, item.updatedAt]">…</div>
 ~~~
+
+**对照结果：**
+
+用这个结果回答“如何减少无效组件更新”：示例场景： 若每行接收 activeId，activeId 每变所有行 prop 都变；父组件改为传 active= item.id===activeId 后，只有旧激活和新激活两行的 active 真正变化。
 
 **递进追问：**
 
@@ -1658,9 +1833,10 @@ const topPadding = start * rowHeight
 
 **代码 / 场景：**
 
-相同 key 的并发调用拿到同一个 Promise；成功后进入 cache，后续在 TTL 内直接返回。失败或结束都从 inFlight 删除，下一次才有机会重试。
+**示例场景：** 相同 key 的并发调用拿到同一个 Promise；成功后进入 cache，后续在 TTL 内直接返回。失败或结束都从 inFlight 删除，下一次才有机会重试。
 
 ~~~js
+// 示例重点：相同 key 的并发调用拿到同一个 Promise；成功后进入 cache，后续在 TTL 内直接返回。失败或结束都从 inFligh…
 const cache = new Map()
 const inFlight = new Map()
 async function getDictionary(key, ttl = 60_000) {
@@ -1674,6 +1850,10 @@ async function getDictionary(key, ttl = 60_000) {
   return request
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“静态字典缓存和请求去重如何配合”：失败或结束都从 inFlight 删除，下一次才有机会重试。
 
 **递进追问：**
 
@@ -1711,9 +1891,10 @@ async function getDictionary(key, ttl = 60_000) {
 
 **代码 / 场景：**
 
-Dashboard 在首次进入路由时加载；Dashboard 内的 HeavyEditor 只有用户打开编辑模式才加载，两级边界互不替代。
+**示例场景：** Dashboard 在首次进入路由时加载；Dashboard 内的 HeavyEditor 只有用户打开编辑模式才加载，两级边界互不替代。
 
 ~~~js
+// 示例重点：Dashboard 在首次进入路由时加载；Dashboard 内的 HeavyEditor 只有用户打开编辑模式才加载，两级边界互不替…
 // router.js
 const routes = [
   { path: '/dashboard', component: () => import('./views/Dashboard.vue') },
@@ -1726,6 +1907,12 @@ const HeavyEditor = defineAsyncComponent({
   timeout: 10_000,
 })
 ~~~
+
+- **观察目标：** 路由懒加载按页面拆包，defineAsyncComponent 可细分非首屏重组件；都要配合 loading、error、超时和预加载策略。
+
+**对照结果：**
+
+用这个结果回答“异步组件和路由懒加载的区别是什么”：- 观察目标： 路由懒加载按页面拆包，defineAsyncComponent 可细分非首屏重组件；都要配合 loading、error、超时和预加载策略。
 
 **递进追问：**
 
@@ -1763,9 +1950,10 @@ const HeavyEditor = defineAsyncComponent({
 
 **代码 / 场景：**
 
-服务端和客户端各自调用 Math.random 会得到不同文本。应由服务端生成 seed 并随初始状态注入，客户端首次复用同一值；挂载后再刷新客户端随机数。
+**示例场景：** 服务端和客户端各自调用 Math.random 会得到不同文本。应由服务端生成 seed 并随初始状态注入，客户端首次复用同一值；挂载后再刷新客户端随机数。
 
 ~~~vue
+<!-- 示例重点：服务端和客户端各自调用 Math.random 会得到不同文本。应由服务端生成 seed 并随初始状态注入，客户端首次复用同一值；挂载… -->
 <script setup>
 // initialState.seed 来自 SSR 序列化，而不是在两端各自 Math.random()
 const seed = ref(initialState.seed)
@@ -1775,6 +1963,10 @@ onMounted(() => {
 </script>
 <template><span>{{ seed }}</span></template>
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Vue SSR 为什么会发生 hydration mismatch”：应由服务端生成 seed 并随初始状态注入，客户端首次复用同一值；挂载后再刷新客户端随机数。
 
 **递进追问：**
 
@@ -1812,9 +2004,10 @@ onMounted(() => {
 
 **代码 / 场景：**
 
-插值会把标签当文本，v-html 会解析节点。下面只允许经过 sanitizePolicy 的结果进入 v-html；策略测试应删除 onerror、javascript: URL 和未知 SVG，而不是只删 script。
+**示例场景：** 插值会把标签当文本，v-html 会解析节点。下面只允许经过 sanitizePolicy 的结果进入 v-html；策略测试应删除 onerror、javascript: URL 和未知 SVG，而不是只删 script。
 
 ~~~vue
+<!-- 示例重点：插值会把标签当文本，v-html 会解析节点。下面只允许经过 sanitizePolicy 的结果进入 v-html；策略测试应删除… -->
 <script setup>
 import DOMPurify from 'dompurify'
 const safeHtml = computed(() => DOMPurify.sanitize(props.html, {
@@ -1826,6 +2019,10 @@ const safeHtml = computed(() => DOMPurify.sanitize(props.html, {
   <article v-html="safeHtml"></article>
 </template>
 ~~~
+
+**对照结果：**
+
+用这个结果回答“v-html 的主要风险是什么”：下面只允许经过 sanitizePolicy 的结果进入 v-html；策略测试应删除 onerror、javascript: URL 和未知 SVG，而不是只删 script。
 
 **递进追问：**
 
@@ -1864,9 +2061,10 @@ const safeHtml = computed(() => DOMPurify.sanitize(props.html, {
 
 **代码 / 场景：**
 
-Boundary 捕获后代错误，发送一次脱敏报告并显示重试按钮；改变 childKey 可重建失败子树，而不是刷新整个应用。若返回 false，需确认全局监控不会因此漏报。
+**示例场景：** Boundary 捕获后代错误，发送一次脱敏报告并显示重试按钮；改变 childKey 可重建失败子树，而不是刷新整个应用。若返回 false，需确认全局监控不会因此漏报。
 
 ~~~js
+// 示例重点：Boundary 捕获后代错误，发送一次脱敏报告并显示重试按钮；改变 childKey 可重建失败子树，而不是刷新整个应用。若返回 f…
 const failed = ref(false)
 const childKey = ref(0)
 onErrorCaptured((error, instance, info) => {
@@ -1881,9 +2079,14 @@ function retry() {
 ~~~
 
 ~~~vue
+<!-- 示例重点：第 2 段：Boundary 捕获后代错误，发送一次脱敏报告并显示重试按钮；改变 childKey 可重建失败子树，而不是刷新整个应用。若返回 f… -->
 <ProblemPanel v-if="failed" @retry="retry" />
 <FeatureArea v-else :key="childKey" />
 ~~~
+
+**对照结果：**
+
+用这个结果回答“错误边界如何设计”：若返回 false，需确认全局监控不会因此漏报。
 
 **递进追问：**
 
@@ -1922,9 +2125,10 @@ function retry() {
 
 **代码 / 场景：**
 
-全局入口只规范化与排队，不在用户请求路径同步等待网络。事件带 release 和 route，服务端按 fingerprint 去重；敏感字段在进入队列前删除。
+**示例场景：** 全局入口只规范化与排队，不在用户请求路径同步等待网络。事件带 release 和 route，服务端按 fingerprint 去重；敏感字段在进入队列前删除。
 
 ~~~js
+// 示例重点：全局入口只规范化与排队，不在用户请求路径同步等待网络。事件带 release 和 route，服务端按 fingerprint 去重…
 app.config.errorHandler = (error, instance, info) => {
   monitor.enqueue({
     type: 'vue-error',
@@ -1938,6 +2142,10 @@ window.addEventListener('unhandledrejection', (event) => {
   monitor.enqueue({ type: 'unhandled-rejection', error: normalizeError(event.reason) })
 })
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Vue 应用如何做运行时监控”：事件带 release 和 route，服务端按 fingerprint 去重；敏感字段在进入队列前删除。
 
 **递进追问：**
 
@@ -1975,7 +2183,9 @@ window.addEventListener('unhandledrejection', (event) => {
 
 **代码 / 场景：**
 
-以“国家改变后税号规则和省份选项同时变化”为例，证据应包含依赖图、旧请求取消和回归断言，而不是只展示 select。
+**示例场景：** 以“国家改变后税号规则和省份选项同时变化”为例，证据应包含依赖图、旧请求取消和回归断言，而不是只展示 select。
+
+> 示例注解：以“国家改变后税号规则和省份选项同时变化”为例，证据应包含依赖图、旧请求取消和回归断言，而不是只展示 select。
 
 ~~~text
 用户改 country
@@ -1986,7 +2196,7 @@ window.addEventListener('unhandledrejection', (event) => {
   -> 保存时服务端按同一国家规则再次校验
 ~~~
 
-测试应模拟旧请求后返回，断言不会覆盖当前选项，并检查键盘焦点仍停在可理解位置。
+**对照结果：** 测试应模拟旧请求后返回，断言不会覆盖当前选项，并检查键盘焦点仍停在可理解位置。
 
 **递进追问：**
 
@@ -2026,9 +2236,10 @@ window.addEventListener('unhandledrejection', (event) => {
 
 **代码 / 场景：**
 
-fullName 是原对象 getter。用 Reflect.get 传 receiver 后，getter 里的 this.first 和 this.last 都从 proxy 读取；修改 first 能让依赖 fullName 的 effect 正确更新。
+**示例场景：** fullName 是原对象 getter。用 Reflect.get 传 receiver 后，getter 里的 this.first 和 this.last 都从 proxy 读取；修改 first 能让依赖 fullName 的 effect 正确更新。
 
 ~~~js
+// 示例重点：fullName 是原对象 getter。用 Reflect.get 传 receiver 后，getter 里的 this.firs…
 const raw = {
   first: 'Lin',
   last: 'Da',
@@ -2042,6 +2253,10 @@ const proxy = new Proxy(raw, {
 })
 console.log(proxy.fullName) // Lin Da，内部读取仍经过 proxy
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Reflect.get 的 receiver 为什么重要”：用 Reflect.get 传 receiver 后，getter 里的 this.first 和 this.last 都从 proxy 读取；修改 first 能让依赖 fullName 的 effect 正确更新。
 
 **递进追问：**
 
@@ -2079,9 +2294,10 @@ console.log(proxy.fullName) // Lin Da，内部读取仍经过 proxy
 
 **代码 / 场景：**
 
-effect A 只读 state.name，effect B 枚举所有键。修改 name 应重跑二者中的相关值观察；新增 age 必须让枚举 effect 也重跑，否则 UI 不会出现新字段。
+**示例场景：** effect A 只读 state.name，effect B 枚举所有键。修改 name 应重跑二者中的相关值观察；新增 age 必须让枚举 effect 也重跑，否则 UI 不会出现新字段。
 
 ~~~js
+// 示例重点：effect A 只读 state.name，effect B 枚举所有键。修改 name 应重跑二者中的相关值观察；新增 age 必…
 const state = reactive({ name: 'A' })
 watchEffect(() => console.log('name:', state.name))
 watchEffect(() => console.log('keys:', Object.keys(state).join(',')))
@@ -2089,6 +2305,10 @@ state.name = 'B' // SET：name 值变化
 state.age = 18   // ADD：age 与键迭代都变化，keys 输出 name,age
 delete state.age // DELETE：键迭代再次变化
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Proxy set 为什么要区分新增和修改”：修改 name 应重跑二者中的相关值观察；新增 age 必须让枚举 effect 也重跑，否则 UI 不会出现新字段。
 
 **递进追问：**
 
@@ -2126,9 +2346,10 @@ delete state.age // DELETE：键迭代再次变化
 
 **代码 / 场景：**
 
-list 的底层存 raw，item 是它的代理；Vue instrumentation 让 list.includes(item) 返回 true。普通原生数组 [raw].includes(item) 则为 false，展示为何需要 raw 参数重试。
+**示例场景：** list 的底层存 raw，item 是它的代理；Vue instrumentation 让 list.includes(item) 返回 true。普通原生数组 [raw].includes(item) 则为 false，展示为何需要 raw 参数重试。
 
 ~~~js
+// 示例重点：list 的底层存 raw，item 是它的代理；Vue instrumentation 让 list.includes(item)…
 import { reactive, toRaw } from 'vue'
 const raw = { id: 1 }
 const item = reactive(raw)
@@ -2137,6 +2358,10 @@ console.log(list.includes(item))            // true，Vue 失败后以 raw 参�
 console.log([raw].includes(item))           // false，原生只比较引用
 console.log([raw].includes(toRaw(item)))    // true
 ~~~
+
+**对照结果：**
+
+用这个结果回答“数组 includes 为什么需要对原数组重试”：普通原生数组 raw .includes item 则为 false，展示为何需要 raw 参数重试。
 
 **递进追问：**
 
@@ -2175,9 +2400,10 @@ push 内部会读取并写 length，若 effect 同时因 length 收集又触发�
 
 **代码 / 场景：**
 
-下面的 watchEffect 同时读写 items，是危险结构；它每次运行都 push，数组变化又使 effect 失效。即使框架阻止部分 length 自依赖，也会不断改变业务状态，应改成显式 addItem。
+**示例场景：** 下面的 watchEffect 同时读写 items，是危险结构；它每次运行都 push，数组变化又使 effect 失效。即使框架阻止部分 length 自依赖，也会不断改变业务状态，应改成显式 addItem。
 
 ~~~js
+// 示例重点：下面的 watchEffect 同时读写 items，是危险结构；它每次运行都 push，数组变化又使 effect 失效。即使框架阻…
 const items = reactive([])
 // 错误设计：派生 effect 内修改自己的依赖
 // watchEffect(() => {
@@ -2189,6 +2415,10 @@ function addItem(value) {
 }
 const count = computed(() => items.length)
 ~~~
+
+**对照结果：**
+
+用这个结果回答“数组 push 为什么可能造成依赖递归”：即使框架阻止部分 length 自依赖，也会不断改变业务状态，应改成显式 addItem。
 
 **递进追问：**
 
@@ -2227,9 +2457,10 @@ const count = computed(() => items.length)
 
 **代码 / 场景：**
 
-effect A 读取指定键 a，effect B 迭代 keys。修改 a 的值应更新 A，但 keys 集合未变；新增 b 必须同时更新键迭代与 size。
+**示例场景：** effect A 读取指定键 a，effect B 迭代 keys。修改 a 的值应更新 A，但 keys 集合未变；新增 b 必须同时更新键迭代与 size。
 
 ~~~js
+// 示例重点：effect A 读取指定键 a，effect B 迭代 keys。修改 a 的值应更新 A，但 keys 集合未变；新增 b 必须同…
 const scores = reactive(new Map([['a', 1]]))
 watchEffect(() => console.log('a=', scores.get('a')))
 watchEffect(() => console.log('keys=', [...scores.keys()].join(',')))
@@ -2237,6 +2468,10 @@ scores.set('a', 2) // 指定键值变化；keys 仍是 a
 scores.set('b', 3) // ADD；keys 变成 a,b，size 也变化
 scores.delete('a') // DELETE；指定键和迭代依赖都变化
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Map 的响应式为什么比对象复杂”：修改 a 的值应更新 A，但 keys 集合未变；新增 b 必须同时更新键迭代与 size。
 
 **递进追问：**
 
@@ -2274,9 +2509,10 @@ scores.delete('a') // DELETE；指定键和迭代依赖都变化
 
 **代码 / 场景：**
 
-consumer 只能读 state，调用 consumer.count++ 会警告且不改变；owner 修改原 reactive state 后，consumer 立即看到新值。这样 provider 可暴露读取视图与命令方法。
+**示例场景：** consumer 只能读 state，调用 consumer.count++ 会警告且不改变；owner 修改原 reactive state 后，consumer 立即看到新值。这样 provider 可暴露读取视图与命令方法。
 
 ~~~js
+// 示例重点：consumer 只能读 state，调用 consumer.count++ 会警告且不改变；owner 修改原 reactive s…
 const state = reactive({ count: 0, nested: { ready: false } })
 const consumer = readonly(state)
 consumer.count++           // 开发环境警告，写入被阻止
@@ -2284,6 +2520,10 @@ console.log(state.count)   // 0
 state.count = 2            // 所有者合法修改
 console.log(consumer.count) // 2
 ~~~
+
+**对照结果：**
+
+用这个结果回答“readonly 是如何实现的”：这样 provider 可暴露读取视图与命令方法。
 
 **递进追问：**
 
@@ -2321,9 +2561,10 @@ markRaw 跳过代理，toRaw 取回原对象；长期混用原对象与代理会
 
 **代码 / 场景：**
 
-foo 被 markRaw 后放入 reactive 仍保持同一身份；foo.nested 没标记，单独放入 reactive 时会成为代理，出现嵌套身份差异。直接写 toRaw(state).count 不会通知 effect。
+**示例场景：** foo 被 markRaw 后放入 reactive 仍保持同一身份；foo.nested 没标记，单独放入 reactive 时会成为代理，出现嵌套身份差异。直接写 toRaw(state).count 不会通知 effect。
 
 ~~~js
+// 示例重点：foo 被 markRaw 后放入 reactive 仍保持同一身份；foo.nested 没标记，单独放入 reactive 时会成…
 const foo = markRaw({ nested: {} })
 const box = reactive({ foo, nested: foo.nested })
 console.log(box.foo === foo)                 // true
@@ -2333,6 +2574,10 @@ const state = reactive({ count: 0 })
 const raw = toRaw(state)
 raw.count = 1 // 绕过响应式触发，不应作为正常写入路径
 ~~~
+
+**对照结果：**
+
+用这个结果回答“markRaw 和 toRaw 的风险是什么”：直接写 toRaw state .count 不会通知 effect。
 
 **递进追问：**
 
@@ -2371,9 +2616,10 @@ raw.count = 1 // 绕过响应式触发，不应作为正常写入路径
 
 **代码 / 场景：**
 
-createFeature 创建两个 watcher 和一个定时器，调用 stop 后统一终止，不必向外暴露三个清理句柄。onScopeDispose 把非响应式资源也纳入相同所有权。
+**示例场景：** createFeature 创建两个 watcher 和一个定时器，调用 stop 后统一终止，不必向外暴露三个清理句柄。onScopeDispose 把非响应式资源也纳入相同所有权。
 
 ~~~js
+// 示例重点：createFeature 创建两个 watcher 和一个定时器，调用 stop 后统一终止，不必向外暴露三个清理句柄。onScop…
 function createFeature(source) {
   const scope = effectScope()
   scope.run(() => {
@@ -2387,6 +2633,10 @@ function createFeature(source) {
 const feature = createFeature(activeId)
 feature.stop() // watcher 与 timer 一并释放
 ~~~
+
+**对照结果：**
+
+用这个结果回答“effectScope 解决什么生命周期问题”：onScopeDispose 把非响应式资源也纳入相同所有权。
 
 **递进追问：**
 
@@ -2425,15 +2675,20 @@ Object.defineProperty 无法拦截数组索引和 length，Vue 2 通过原型增
 
 **代码 / 场景：**
 
-push 会经过增强方法并通知视图；直接写索引可能不更新。Vue.set 与 splice 都能把“替换索引 1”转换为可观察操作。Vue 3 的 Proxy 则可直接拦截索引写。
+**示例场景：** push 会经过增强方法并通知视图；直接写索引可能不更新。Vue.set 与 splice 都能把“替换索引 1”转换为可观察操作。Vue 3 的 Proxy 则可直接拦截索引写。
 
 ~~~js
+// 示例重点：push 会经过增强方法并通知视图；直接写索引可能不更新。Vue.set 与 splice 都能把“替换索引 1”转换为可观察操作。V…
 // Vue 2
 vm.items.push({ id: 3 })      // 可检测：增强 push 观察新项并 notify
 vm.items[1] = { id: 9 }      // 检测限制：可能不触发更新
 Vue.set(vm.items, 1, { id: 9 }) // 可检测
 vm.items.splice(1, 1, { id: 8 }) // 可检测
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Vue 2 数组为什么要改写七个方法”：Vue 3 的 Proxy 则可直接拦截索引写。
 
 **递进追问：**
 
@@ -2471,9 +2726,10 @@ vm.items.splice(1, 1, { id: 8 }) // 可检测
 
 **代码 / 场景：**
 
-研究 nextTick 时，不从背 scheduler.ts 函数名开始，而是建立可重复实验，再逐步解释状态写入、job 去重、微任务 flush 和 DOM 可见时机。
+**示例场景：** 研究 nextTick 时，不从背 scheduler.ts 函数名开始，而是建立可重复实验，再逐步解释状态写入、job 去重、微任务 flush 和 DOM 可见时机。
 
 ~~~js
+// 示例重点：研究 nextTick 时，不从背 scheduler.ts 函数名开始，而是建立可重复实验，再逐步解释状态写入、job 去重、微任务…
 const count = ref(0)
 let updated = 0
 onUpdated(() => { updated += 1 })
@@ -2484,7 +2740,7 @@ await nextTick()
 console.assert(updated === 1)
 ~~~
 
-随后在固定 Vue 版本对 scheduler 测试与源码打断点，若升级版本仍先跑该行为测试，而不是假设内部队列字段永远不变。
+**对照结果：** 随后在固定 Vue 版本对 scheduler 测试与源码打断点，若升级版本仍先跑该行为测试，而不是假设内部队列字段永远不变。
 
 **递进追问：**
 

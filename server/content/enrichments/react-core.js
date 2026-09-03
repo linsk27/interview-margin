@@ -1,4 +1,6 @@
-export default [
+import { strengthenFrontendExamples } from './frontend-example-quality.js'
+
+export default strengthenFrontendExamples([
   {
     number: 1,
     title: 'React 组件为什么应当是纯函数？',
@@ -903,4 +905,4 @@ export default [
       { label: 'Vue：Reactivity in Depth', url: 'https://vuejs.org/guide/extras/reactivity-in-depth.html' },
     ],
   },
-]
+], { bankId: 'react-core' })

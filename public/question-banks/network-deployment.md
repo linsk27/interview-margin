@@ -16,9 +16,12 @@
 
 **代码 / 场景：**
 
-访问 `api.example.com` 超时时，可以先解析一次地址，再让路由检查和 HTTPS 请求都使用这一个地址，避免“查的是 A 地址、请求却走 B 地址”。
+**示例场景：** 访问 `api.example.com` 超时时，可以先解析一次地址，再让路由检查和 HTTPS 请求都使用这一个地址，避免“查的是 A 地址、请求却走 B 地址”。
+
+**观察目标：** 围绕“OSI 七层模型分别是什么？”，重点验证：OSI 从低到高是物理层、数据链路层、网络层、传输层、会话层、表示层和应用层。
 
 ~~~bash
+# 示例重点：访问 api.example.com 超时时，可以先解析一次地址，再让路由检查和 HTTPS 请求都使用这一个地址，避免“查的是 A 地址、请求却走…
 target_host=api.example.com
 target_ip=$(getent ahostsv4 "$target_host" | awk 'NR == 1 { print $1 }')
 test -n "$target_ip" || { echo "DNS 未返回 IPv4 地址"; exit 1; }
@@ -31,7 +34,7 @@ curl -v --connect-timeout 3 \
   "https://$target_host/health"                  # TLS/HTTP：强制使用同一个 IP，仍保留正确 SNI
 ~~~
 
-`ip route get` 成功但 curl 报 `Connection refused`，说明 IP 路径大体可达、目标端口主动拒绝；若 TLS 已协商而 `/health` 返回 503，则应转向代理或应用层，而不是继续修改网卡。
+**对照结果：** `ip route get` 成功但 curl 报 `Connection refused`，说明 IP 路径大体可达、目标端口主动拒绝；若 TLS 已协商而 `/health` 返回 503，则应转向代理或应用层，而不是继续修改网卡。
 
 **递进追问：**
 
@@ -69,9 +72,12 @@ TCP 提供面向连接的可靠有序字节流与拥塞控制，UDP 提供无连
 
 **代码 / 场景：**
 
-在测试机上可用网络仿真比较两种协议面对丢包时的表现，操作前确认接口只承载测试流量。
+**示例场景：** 在测试机上可用网络仿真比较两种协议面对丢包时的表现，操作前确认接口只承载测试流量。
+
+**观察目标：** 围绕“TCP 和 UDP 的核心区别是什么？”，重点验证：TCP 是面向连接、可靠、有序的双向字节流：握手后用序列号、累计确认、重传、接收窗口和拥塞窗口控制发送，应用看不到原始报文边界；一个字节丢失会阻塞其后的有序交付。
 
 ~~~bash
+# 示例重点：在测试机上可用网络仿真比较两种协议面对丢包时的表现，操作前确认接口只承载测试流量。
 sudo tc qdisc add dev lo root netem loss 10%
 iperf3 -s &
 iperf3 -c 127.0.0.1 -t 5       # TCP 会重传并调整拥塞窗口
@@ -79,7 +85,7 @@ iperf3 -c 127.0.0.1 -u -b 20M -t 5  # UDP 报告丢包/乱序，不重传
 sudo tc qdisc del dev lo root
 ~~~
 
-比较 TCP 的 retransmits 与 UDP 的 Lost/Total Datagrams，而不是只比较吞吐；后者可能显示更高发送速率，却已经缺少业务数据。
+**对照结果：** 比较 TCP 的 retransmits 与 UDP 的 Lost/Total Datagrams，而不是只比较吞吐；后者可能显示更高发送速率，却已经缺少业务数据。
 
 **递进追问：**
 
@@ -118,16 +124,19 @@ sudo tc qdisc del dev lo root
 
 **代码 / 场景：**
 
-在服务端抓取一个新连接，可以直接核对标志位、序列号和确认号；`-S` 保留绝对序列号便于学习。
+**示例场景：** 在服务端抓取一个新连接，可以直接核对标志位、序列号和确认号；`-S` 保留绝对序列号便于学习。
+
+**观察目标：** 围绕“TCP 三次握手为什么需要三次？”，重点验证：三次握手同步双方的初始序列号并确认双向收发能力。
 
 ~~~bash
+# 示例重点：在服务端抓取一个新连接，可以直接核对标志位、序列号和确认号；-S 保留绝对序列号便于学习。
 sudo tcpdump -ni any -S "tcp port 443 and (tcp[tcpflags] & (tcp-syn|tcp-ack) != 0)"
 # 198.51.100.8.53000 > 203.0.113.10.443: Flags [S],  seq 1000
 # 203.0.113.10.443 > 198.51.100.8.53000: Flags [S.], seq 7000, ack 1001
 # 198.51.100.8.53000 > 203.0.113.10.443: Flags [.],  ack 7001
 ~~~
 
-若只看到 SYN 重复而没有 SYN+ACK，优先查路由、防火墙或监听；看到 SYN+ACK 重传却无最终 ACK，故障多在返回路径或客户端侧过滤。
+**对照结果：** 若只看到 SYN 重复而没有 SYN+ACK，优先查路由、防火墙或监听；看到 SYN+ACK 重传却无最终 ACK，故障多在返回路径或客户端侧过滤。
 
 **递进追问：**
 
@@ -165,15 +174,18 @@ TCP 全双工两方向独立关闭，一方 FIN 只表示不再发送，对端�
 
 **代码 / 场景：**
 
-出现连接迟迟不释放时，先按 TCP 状态判断是哪一端没有完成应用动作，再抓取 FIN/ACK 证实。
+**示例场景：** 出现连接迟迟不释放时，先按 TCP 状态判断是哪一端没有完成应用动作，再抓取 FIN/ACK 证实。
+
+**观察目标：** 围绕“TCP 四次挥手为什么常见？”，重点验证：TCP 是全双工字节流，两个发送方向必须分别关闭，因此 FIN 与对端 FIN 的确认在语义上是两件事。
 
 ~~~bash
+# 示例重点：出现连接迟迟不释放时，先按 TCP 状态判断是哪一端没有完成应用动作，再抓取 FIN/ACK 证实。
 ss -tanp state close-wait    # 本机已收到 FIN，但进程尚未关闭本端
 ss -tanp state fin-wait-2    # 本机 FIN 已确认，等待对端自己的 FIN
 sudo tcpdump -ni any "tcp port 8080 and (tcp[tcpflags] & tcp-fin != 0)"
 ~~~
 
-若大量 `CLOSE-WAIT` 都属于同一 PID，通常是该进程未在 EOF/异常路径关闭 socket；调小系统超时并不能修复应用的文件描述符泄漏。
+**对照结果：** 若大量 `CLOSE-WAIT` 都属于同一 PID，通常是该进程未在 EOF/异常路径关闭 socket；调小系统超时并不能修复应用的文件描述符泄漏。
 
 **递进追问：**
 
@@ -211,16 +223,19 @@ sudo tcpdump -ni any "tcp port 8080 and (tcp[tcpflags] & tcp-fin != 0)"
 
 **代码 / 场景：**
 
-先确认数量、四元组和谁是主动关闭方，再决定是否真有临时端口压力。
+**示例场景：** 先确认数量、四元组和谁是主动关闭方，再决定是否真有临时端口压力。
+
+**观察目标：** 围绕“TIME_WAIT 的作用是什么？”，重点验证：TIME-WAIT 通常出现在主动关闭且发送最后 ACK 的一端，它至少解决两个问题。
 
 ~~~bash
+# 示例重点：先确认数量、四元组和谁是主动关闭方，再决定是否真有临时端口压力。
 ss -tan state time-wait | head
 ss -tan state time-wait | wc -l
 cat /proc/sys/net/ipv4/ip_local_port_range
 ss -s
 ~~~
 
-若大量记录的本地端口是随机高端口、远端都是同一 API，说明本机客户端频繁主动关闭；启用客户端连接池后再比较 TIME-WAIT 数量和请求延迟，比直接缩短等待时间更安全。
+**对照结果：** 若大量记录的本地端口是随机高端口、远端都是同一 API，说明本机客户端频繁主动关闭；启用客户端连接池后再比较 TIME-WAIT 数量和请求延迟，比直接缩短等待时间更安全。
 
 **递进追问：**
 
@@ -258,16 +273,19 @@ ss -s
 
 **代码 / 场景：**
 
-在隔离测试环境注入丢包，并观察发送连接的重传、拥塞窗口与 RTT 变化。
+**示例场景：** 在隔离测试环境注入丢包，并观察发送连接的重传、拥塞窗口与 RTT 变化。
+
+**观察目标：** 围绕“TCP 如何保证可靠传输？”，重点验证：TCP 的可靠性是“把对端发送的字节按序、无重复地交给应用”，由多种机制共同完成。
 
 ~~~bash
+# 示例重点：在隔离测试环境注入丢包，并观察发送连接的重传、拥塞窗口与 RTT 变化。
 sudo tc qdisc add dev eth0 root netem loss 3% delay 40ms
 curl -o /dev/null http://test-origin.example/large.bin &
 ss -ti dst 203.0.113.20   # 观察 cwnd、rtt、retrans 等字段
 sudo tc qdisc del dev eth0 root
 ~~~
 
-抓包会看到某个序列区间缺失后被再次发送；curl 最终文件仍完整，但耗时上升。测试结束必须删除 qdisc，且不要在共享生产接口直接注入丢包。
+**对照结果：** 抓包会看到某个序列区间缺失后被再次发送；curl 最终文件仍完整，但耗时上升。测试结束必须删除 qdisc，且不要在共享生产接口直接注入丢包。
 
 **递进追问：**
 
@@ -305,15 +323,18 @@ sudo tc qdisc del dev eth0 root
 
 **代码 / 场景：**
 
-Linux 的 `ss -ti` 能同时看到拥塞信息与接收窗口缩放，结合抓包可判定瓶颈。
+**示例场景：** Linux 的 `ss -ti` 能同时看到拥塞信息与接收窗口缩放，结合抓包可判定瓶颈。
+
+**观察目标：** 围绕“拥塞控制和流量控制有什么区别？”，重点验证：流量控制保护接收端：接收方根据缓冲区剩余容量在 ACK 中通告接收窗口 rwnd，窗口为零时发送方暂停并通过窗口探测等待恢复，避免快速发送者压垮慢速消费者。
 
 ~~~bash
+# 示例重点：Linux 的 ss -ti 能同时看到拥塞信息与接收窗口缩放，结合抓包可判定瓶颈。
 ss -ti dst 203.0.113.30
 # cubic wscale:7,7 rto:220 rtt:18/3 cwnd:4 bytes_acked:... retrans:0/6
 sudo tcpdump -ni eth0 -vv "host 203.0.113.30 and tcp"
 ~~~
 
-若 ACK 通告 `win 0`，应检查接收进程为何不读数据；若 rwnd 充足但 cwnd 在丢包后降到 4，则应查路径拥塞或丢包，增加接收缓冲不会解决后者。
+**对照结果：** 若 ACK 通告 `win 0`，应检查接收进程为何不读数据；若 rwnd 充足但 cwnd 在丢包后降到 4，则应查路径拥塞或丢包，增加接收缓冲不会解决后者。
 
 **递进追问：**
 
@@ -350,9 +371,12 @@ TCP 只提供连续字节流，不保留应用 write 边界；应用协议必须
 
 **代码 / 场景：**
 
-下面的长度前缀解码器无论一个 chunk 含半帧还是多帧，都只在收齐完整载荷后交付消息。
+**示例场景：** 下面的长度前缀解码器无论一个 chunk 含半帧还是多帧，都只在收齐完整载荷后交付消息。
+
+**观察目标：** 围绕“粘包为什么不是 TCP 的错误？”，重点验证：TCP 的契约是有序字节流，不保留应用每次 write 的调用边界。
 
 ~~~js
+// 示例重点：下面的长度前缀解码器无论一个 chunk 含半帧还是多帧，都只在收齐完整载荷后交付消息。
 let pending = Buffer.alloc(0)
 socket.on("data", chunk => {
   pending = Buffer.concat([pending, chunk])
@@ -366,7 +390,7 @@ socket.on("data", chunk => {
 })
 ~~~
 
-测试时应分别把同一帧切成多个 chunk、把三帧放进一个 chunk，并断言输出消息顺序和内容完全相同。
+**对照结果：** 测试时应分别把同一帧切成多个 chunk、把三帧放进一个 chunk，并断言输出消息顺序和内容完全相同。
 
 **递进追问：**
 
@@ -406,9 +430,12 @@ socket.on("data", chunk => {
 
 **代码 / 场景：**
 
-用 curl 的 Cookie jar 可以观察应用如何在两个彼此独立的 HTTP 请求间显式传递会话标识。
+**示例场景：** 用 curl 的 Cookie jar 可以观察应用如何在两个彼此独立的 HTTP 请求间显式传递会话标识。
+
+**观察目标：** 围绕“HTTP 为什么称为无状态协议？”，重点验证：HTTP 的“无状态”指协议不要求服务器为了理解当前请求而记住先前请求：方法、目标 URI、头字段和消息体应提供完成本次处理所需的语义。
 
 ~~~bash
+# 示例重点：用 curl 的 Cookie jar 可以观察应用如何在两个彼此独立的 HTTP 请求间显式传递会话标识。
 curl -i -c cookies.txt -X POST https://app.example.com/login \
   -d "username=linda&password=example"
 # 响应：Set-Cookie: sid=abc123; HttpOnly; Secure; SameSite=Lax
@@ -416,7 +443,7 @@ curl -i -b cookies.txt https://app.example.com/profile
 # 请求：Cookie: sid=abc123；服务端据此加载会话
 ~~~
 
-删除 `cookies.txt` 后再次访问 profile 应得到 401；这说明第二次请求不会天然继承第一次登录，状态来自显式 Cookie，而不是 HTTP 自动记忆。
+**对照结果：** 删除 `cookies.txt` 后再次访问 profile 应得到 401；这说明第二次请求不会天然继承第一次登录，状态来自显式 Cookie，而不是 HTTP 自动记忆。
 
 **递进追问：**
 
@@ -457,16 +484,19 @@ curl -i -b cookies.txt https://app.example.com/profile
 
 **代码 / 场景：**
 
-下面的命令会同时验证 SNI、证书链、协议版本、密码套件和 ALPN，不要使用不带 `-servername` 的结果判断多域名站点。
+**示例场景：** 下面的命令会同时验证 SNI、证书链、协议版本、密码套件和 ALPN，不要使用不带 `-servername` 的结果判断多域名站点。
+
+**观察目标：** 围绕“HTTPS 建立连接做了什么？”，重点验证：因为 TCP 只保证字节尽量可靠、有序地到达，并不验证域名身份，也不加密内容，所以 HTTPS 不能连上 TCP 就直接发送敏感 HTTP，而要先做 TLS 握手，再允许双方交换受保护的应用数据。
 
 ~~~bash
+# 示例重点：下面的命令会同时验证 SNI、证书链、协议版本、密码套件和 ALPN，不要使用不带 -servername 的结果判断多域名站点。
 openssl s_client -connect interview.example.com:443 \
   -servername interview.example.com -alpn "h2,http/1.1" -showcerts </dev/null
 # 重点检查：Protocol TLSv1.3、Cipher、ALPN protocol、Verify return code: 0 (ok)
 curl -vI https://interview.example.com/
 ~~~
 
-若 TCP 已连接但证书名称只包含另一个域名，问题在证书/SNI 路由；若校验为 0 而 HTTP 返回 502，TLS 已成功，应继续检查代理到上游。
+**对照结果：** 若 TCP 已连接但证书名称只包含另一个域名，问题在证书/SNI 路由；若校验为 0 而 HTTP 返回 502，TLS 已成功，应继续检查代理到上游。
 
 **递进追问：**
 
@@ -504,16 +534,19 @@ curl -vI https://interview.example.com/
 
 **代码 / 场景：**
 
-用 curl 在同一次调用中请求两个资源，并从详细日志确认第二个请求复用了连接。
+**示例场景：** 用 curl 在同一次调用中请求两个资源，并从详细日志确认第二个请求复用了连接。
+
+**观察目标：** 围绕“HTTP keep-alive 的价值是什么？”，重点验证：持久连接允许多个 HTTP 请求复用已经建立的 TCP/TLS 连接，省去重复握手、证书验证和 TCP 慢启动，尤其能降低高 RTT 网络上的首包延迟。
 
 ~~~bash
+# 示例重点：用 curl 在同一次调用中请求两个资源，并从详细日志确认第二个请求复用了连接。
 curl -sv -o /dev/null https://app.example.com/health \
   --next -o /dev/null https://app.example.com/version 2>&1 | grep -E "Connected|Re-using"
 ss -tn dst :443
 # Nginx 示例：keepalive_timeout 30s; keepalive_requests 1000;
 ~~~
 
-日志应出现一次 Connected 和后续 Re-using existing connection。若每个请求都重新连接，要检查客户端是否复用同一个连接池、响应是否正确给出长度，以及服务端是否发送 `Connection: close`。
+**对照结果：** 日志应出现一次 Connected 和后续 Re-using existing connection。若每个请求都重新连接，要检查客户端是否复用同一个连接池、响应是否正确给出长度，以及服务端是否发送 `Connection: close`。
 
 **递进追问：**
 
@@ -551,9 +584,12 @@ ss -tn dst :443
 
 **代码 / 场景：**
 
-假设客户端已处理到 1042，可用 curl 模拟重连，并验证服务端从 1043 开始输出。
+**示例场景：** 假设客户端已处理到 1042，可用 curl 模拟重连，并验证服务端从 1043 开始输出。
+
+**观察目标：** 围绕“SSE 断线续传如何实现？”，重点验证：SSE 的响应使用 text/event-stream，服务端用空行分隔事件，可为每条事件发送 id:。
 
 ~~~bash
+# 示例重点：假设客户端已处理到 1042，可用 curl 模拟重连，并验证服务端从 1043 开始输出。
 curl -N -H "Accept: text/event-stream" \
   -H "Last-Event-ID: 1042" https://app.example.com/api/events
 # id: 1043
@@ -562,7 +598,7 @@ curl -N -H "Accept: text/event-stream" \
 # （随后一个空行结束事件）
 ~~~
 
-测试还应在发送 data 后、客户端确认处理前强制断网，重连后即使重复收到 1043，也必须靠事件 ID 或版本号避免重复写入。
+**对照结果：** 测试还应在发送 data 后、客户端确认处理前强制断网，重连后即使重复收到 1043，也必须靠事件 ID 或版本号避免重复写入。
 
 **递进追问：**
 
@@ -602,9 +638,12 @@ curl -N -H "Accept: text/event-stream" \
 
 **代码 / 场景：**
 
-可手工检查升级响应；`Sec-WebSocket-Key` 必须是 16 字节随机值的 Base64，下面仅用于诊断。
+**示例场景：** 可手工检查升级响应；`Sec-WebSocket-Key` 必须是 16 字节随机值的 Base64，下面仅用于诊断。
+
+**观察目标：** 围绕“WebSocket 握手后为何不再是普通 HTTP？”，重点验证：经典 RFC 6455 WebSocket 握手从 HTTP/1.1 Upgrade 请求开始，以复用现有 80/443 端口和代理能力。
 
 ~~~bash
+# 示例重点：可手工检查升级响应；Sec-WebSocket-Key 必须是 16 字节随机值的 Base64，下面仅用于诊断。
 curl --http1.1 -i https://ws.example.com/socket \
   -H "Connection: Upgrade" -H "Upgrade: websocket" \
   -H "Sec-WebSocket-Version: 13" \
@@ -612,7 +651,7 @@ curl --http1.1 -i https://ws.example.com/socket \
 # 预期：HTTP/1.1 101 Switching Protocols 与 Sec-WebSocket-Accept
 ~~~
 
-若返回 200 HTML，通常是 Upgrade 头未被代理转发或路由落到普通页面；返回 101 后再用 curl 当普通 HTTP 读取并不能正确解析 WebSocket 帧。
+**对照结果：** 若返回 200 HTML，通常是 Upgrade 头未被代理转发或路由落到普通页面；返回 101 后再用 curl 当普通 HTTP 读取并不能正确解析 WebSocket 帧。
 
 **递进追问：**
 
@@ -653,16 +692,19 @@ curl --http1.1 -i https://ws.example.com/socket \
 
 **代码 / 场景：**
 
-先获得目标 PID，再列出该线程组中每个 TID 的状态、CPU 核和占用，并与 `/proc` 对照。
+**示例场景：** 先获得目标 PID，再列出该线程组中每个 TID 的状态、CPU 核和占用，并与 `/proc` 对照。
+
+**观察目标：** 围绕“Linux 进程和线程有什么关系？”，重点验证：Linux 内核把进程和线程都表示为可调度 task，每个 task 有独立的 TID、寄存器、内核栈、调度状态和信号掩码。
 
 ~~~bash
+# 示例重点：先获得目标 PID，再列出该线程组中每个 TID 的状态、CPU 核和占用，并与 /proc 对照。
 pid=4242
 ps -eLo pid,tid,psr,stat,pcpu,comm | awk -v p="$pid" "$1 == p"
 ls /proc/$pid/task
 cat /proc/$pid/status | grep -E "^(Pid|Tgid|Threads):"
 ~~~
 
-若 PID 4242 有 TID 4271 持续占满一个核，采样栈时应针对 4271；只对进程总 CPU 做平均会掩盖单线程死循环。线程数不断增长还需检查线程池上限和未回收 worker。
+**对照结果：** 若 PID 4242 有 TID 4271 持续占满一个核，采样栈时应针对 4271；只对进程总 CPU 做平均会掩盖单线程死循环。线程数不断增长还需检查线程池上限和未回收 worker。
 
 **递进追问：**
 
@@ -700,9 +742,12 @@ cat /proc/$pid/status | grep -E "^(Pid|Tgid|Threads):"
 
 **代码 / 场景：**
 
-下面是一条从系统到线程再到栈的只读诊断链；生产采样时间应短，并留存原始结果。
+**示例场景：** 下面是一条从系统到线程再到栈的只读诊断链；生产采样时间应短，并留存原始结果。
+
+**观察目标：** 围绕“线上 CPU 飙高如何排查？”，重点验证：排查要先确认范围和时间，再逐级缩小：用监控、uptime、mpstat 区分单核打满、整机 user/system 升高、steal 或 iowait；用 pidstat/top 找到 PID，再切到线程视角找 TID；最后用语言运行…
 
 ~~~bash
+# 示例重点：下面是一条从系统到线程再到栈的只读诊断链；生产采样时间应短，并留存原始结果。
 uptime; mpstat -P ALL 1 5
 pidstat -u -p ALL 1 5
 top -H -p 4242                 # 找到高 CPU 的 TID
@@ -711,7 +756,7 @@ sudo perf record -F 99 -g -p 4242 -- sleep 20
 sudo perf report
 ~~~
 
-若只有 TID 4271 的 user CPU 接近 100%，perf 主要落在 JSON 序列化函数，应结合对应接口流量和大对象输入验证，而不是先重启抹掉现场。
+**对照结果：** 若只有 TID 4271 的 user CPU 接近 100%，perf 主要落在 JSON 序列化函数，应结合对应接口流量和大对象输入验证，而不是先重启抹掉现场。
 
 **递进追问：**
 
@@ -749,16 +794,19 @@ sudo perf report
 
 **代码 / 场景：**
 
-以 PID 4242 为例，先每分钟记录系统与进程分解，再决定是否进入语言堆快照，而不是直接宣判泄漏。
+**示例场景：** 以 PID 4242 为例，先每分钟记录系统与进程分解，再决定是否进入语言堆快照，而不是直接宣判泄漏。
+
+**观察目标：** 围绕“内存持续增长如何判断泄漏？”，重点验证：先拆分指标：RSS 是当前驻留物理内存，虚拟地址空间 VIRT 可能包含尚未驻留的映射；语言堆只是 RSS 的一部分，此外还有线程栈、原生库、直接缓冲、mmap 和共享页。
 
 ~~~bash
+# 示例重点：以 PID 4242 为例，先每分钟记录系统与进程分解，再决定是否进入语言堆快照，而不是直接宣判泄漏。
 grep -E "^(VmRSS|VmSize|VmSwap|Threads):" /proc/4242/status
 cat /proc/4242/smaps_rollup | grep -E "^(Rss|Pss|Private_Dirty|Shared_Clean):"
 pmap -x 4242 | tail -n 1
 cat /proc/meminfo | grep -E "^(MemAvailable|Cached|SwapFree):"
 ~~~
 
-若 V8 heapUsed 在强制完整 GC 后回落到稳定基线，但 Private_Dirty 和外部 Buffer 随请求持续上升，应查原生缓冲释放路径，而不是继续扩大 JS 堆。
+**对照结果：** 若 V8 heapUsed 在强制完整 GC 后回落到稳定基线，但 Private_Dirty 和外部 Buffer 随请求持续上升，应查原生缓冲释放路径，而不是继续扩大 JS 堆。
 
 **递进追问：**
 
@@ -796,9 +844,12 @@ Linux 负载还包含不可中断睡眠任务，可能是磁盘或网络存储 I
 
 **代码 / 场景：**
 
-下面组合能区分 CPU 运行队列与不可中断 I/O 队列，并找到阻塞任务。
+**示例场景：** 下面组合能区分 CPU 运行队列与不可中断 I/O 队列，并找到阻塞任务。
+
+**观察目标：** 围绕“load average 很高一定是 CPU 不够吗？”，重点验证：不一定。
 
 ~~~bash
+# 示例重点：下面组合能区分 CPU 运行队列与不可中断 I/O 队列，并找到阻塞任务。
 uptime
 nproc
 vmstat 1 5                 # 看 r、b、us、sy、id、wa
@@ -806,7 +857,7 @@ ps -e -o state,pid,wchan:32,comm | awk "$1 ~ /^D/"
 iostat -xz 1 5             # 看设备 await、aqu-sz、%util
 ~~~
 
-若 load 30、CPU idle 70%、vmstat 的 b 很高，D 状态都停在 `nfs_*` 等待通道，应查 NFS 延迟；此时增加 CPU 核通常没有效果。
+**对照结果：** 若 load 30、CPU idle 70%、vmstat 的 b 很高，D 状态都停在 `nfs_*` 等待通道，应查 NFS 延迟；此时增加 CPU 核通常没有效果。
 
 **递进追问：**
 
@@ -844,9 +895,12 @@ iostat -xz 1 5             # 看设备 await、aqu-sz、%util
 
 **代码 / 场景：**
 
-假设公网 `app.example.com:443` 失败、应用本地监听 8080，可按下面顺序切分故障域。
+**示例场景：** 假设公网 `app.example.com:443` 失败、应用本地监听 8080，可按下面顺序切分故障域。
+
+**观察目标：** 围绕“端口无法访问如何分层排查？”，重点验证：应从“进程是否监听”逐层走到客户端，而不是一次性归因于防火墙。
 
 ~~~bash
+# 示例重点：假设公网 app.example.com:443 失败、应用本地监听 8080，可按下面顺序切分故障域。
 sudo ss -lntp | grep -E ":(443|8080)\b"
 curl -sv http://127.0.0.1:8080/health
 dig +short A app.example.com; dig +short AAAA app.example.com
@@ -855,7 +909,7 @@ nc -vz -w 3 app.example.com 443
 curl -vk --resolve app.example.com:443:203.0.113.10 https://app.example.com/health
 ~~~
 
-本机 8080 返回 200、公网 TCP 443 超时说明问题在监听 443 或网络边界；若 443 握手成功但返回 Nginx 502，再查看 error.log 与 upstream 地址。
+**对照结果：** 本机 8080 返回 200、公网 TCP 443 超时说明问题在监听 443 或网络边界；若 443 握手成功但返回 Nginx 502，再查看 error.log 与 upstream 地址。
 
 **递进追问：**
 
@@ -895,9 +949,12 @@ curl -vk --resolve app.example.com:443:203.0.113.10 https://app.example.com/heal
 
 **代码 / 场景：**
 
-下面配置把公网 `/api/` 转给本机应用，并记录实际命中的上游、状态和响应时间。
+**示例场景：** 下面配置把公网 `/api/` 转给本机应用，并记录实际命中的上游、状态和响应时间。
+
+**观察目标：** 围绕“Nginx 反向代理解决什么问题？”，重点验证：反向代理在客户端和应用之间提供统一入口：它接受公网 TCP/TLS，按主机名和路径选择 upstream，把请求转发给只监听内网或本机端口的应用。
 
 ~~~nginx
+# 示例重点：下面配置把公网 /api/ 转给本机应用，并记录实际命中的上游、状态和响应时间。
 log_format upstream "$host $request status=$status upstream=$upstream_addr "
                     "us=$upstream_status rt=$request_time urt=$upstream_response_time";
 location /api/ {
@@ -910,7 +967,7 @@ location /api/ {
 }
 ~~~
 
-先执行 `nginx -t`，再 reload，并用 `curl -i https://app.example.com/api/health` 对照 access/error log；不要只看浏览器页面。
+**对照结果：** 先执行 `nginx -t`，再 reload，并用 `curl -i https://app.example.com/api/health` 对照 access/error log；不要只看浏览器页面。
 
 **递进追问：**
 
@@ -948,9 +1005,12 @@ location /api/ {
 
 **代码 / 场景：**
 
-只对 SSE location 关闭缓冲，不要为了一个实时接口全局关闭普通响应的代理优化。
+**示例场景：** 只对 SSE location 关闭缓冲，不要为了一个实时接口全局关闭普通响应的代理优化。
+
+**观察目标：** 围绕“proxy_buffering 对 SSE 有何影响？”，重点验证：开启 proxybuffering 时，Nginx 会尽快从上游读取响应并暂存在内存 buffer，必要时写临时文件，再按自己的节奏发送给慢客户端；这对普通大响应能释放上游连接，却会让 SSE 的小事件在缓冲区积累，用户迟迟看不到实时…
 
 ~~~nginx
+# 示例重点：只对 SSE location 关闭缓冲，不要为了一个实时接口全局关闭普通响应的代理优化。
 location /api/events {
   proxy_pass http://app_backend;
   proxy_http_version 1.1;
@@ -961,7 +1021,7 @@ location /api/events {
 }
 ~~~
 
-用 `curl -N https://app.example.com/api/events` 观察每条 `data:` 是否立刻出现；服务端每 20 秒发送 `: heartbeat\n\n`，若 75 秒后仍断开，应继续检查 CDN/隧道的空闲超时。
+**对照结果：** 用 `curl -N https://app.example.com/api/events` 观察每条 `data:` 是否立刻出现；服务端每 20 秒发送 `: heartbeat\n\n`，若 75 秒后仍断开，应继续检查 CDN/隧道的空闲超时。
 
 **递进追问：**
 
@@ -999,9 +1059,12 @@ location /api/events {
 
 **代码 / 场景：**
 
-下面给两台容量不同的实例使用 least_conn，并把实际上游写进响应头和日志用于验证。
+**示例场景：** 下面给两台容量不同的实例使用 least_conn，并把实际上游写进响应头和日志用于验证。
+
+**观察目标：** 围绕“Nginx 负载均衡有哪些常见策略？”，重点验证：默认策略是加权轮询，请求按权重在可用上游间分配；leastconn 选择当前活动连接较少的实例，适合请求耗时差异大但连接数能反映压力的场景；iphash 或一致性 hash 可让相同键倾向同一实例，用于有限的会话亲和或缓存命中。
 
 ~~~nginx
+# 示例重点：下面给两台容量不同的实例使用 leastconn，并把实际上游写进响应头和日志用于验证。
 upstream interview_api {
   least_conn;
   server 10.0.0.11:3000 weight=2 max_fails=3 fail_timeout=10s;
@@ -1016,7 +1079,7 @@ location /api/ {
 }
 ~~~
 
-运行多次 `curl -sI https://app.example.com/api/health | grep X-Debug`，确认两台都被命中；再安全摘除一台并观察失败窗口和 5xx。
+**对照结果：** 运行多次 `curl -sI https://app.example.com/api/health | grep X-Debug`，确认两台都被命中；再安全摘除一台并观察失败窗口和 5xx。
 
 **递进追问：**
 
@@ -1054,9 +1117,12 @@ location /api/ {
 
 **代码 / 场景：**
 
-一个安全的最小配置会把 API、静态资源和页面回退分开，并对入口与哈希资源设置不同缓存。
+**示例场景：** 一个安全的最小配置会把 API、静态资源和页面回退分开，并对入口与哈希资源设置不同缓存。
+
+**观察目标：** 围绕“静态 SPA 为什么要配置 try_files？”，重点验证：SPA 的 /questions/42 是客户端路由，构建产物中通常没有名为 questions/42 的真实文件。
 
 ~~~nginx
+# 示例重点：一个安全的最小配置会把 API、静态资源和页面回退分开，并对入口与哈希资源设置不同缓存。
 location /api/ { proxy_pass http://127.0.0.1:3000; }
 location /assets/ {
   try_files $uri =404;
@@ -1066,7 +1132,7 @@ location = /index.html { add_header Cache-Control "no-cache"; }
 location / { try_files $uri $uri/ /index.html; }
 ~~~
 
-发布后验证 `curl -I /questions/42` 返回 HTML 200，而 `curl -I /assets/missing.js` 返回 404、`curl -I /api/missing` 不会回退成首页。
+**对照结果：** 发布后验证 `curl -I /questions/42` 返回 HTML 200，而 `curl -I /assets/missing.js` 返回 404、`curl -I /api/missing` 不会回退成首页。
 
 **递进追问：**
 
@@ -1107,9 +1173,12 @@ location / { try_files $uri $uri/ /index.html; }
 
 **代码 / 场景：**
 
-排查时按“本地源站→connector→公网边缘”顺序验证，能快速区分 502 与 1033。
+**示例场景：** 排查时按“本地源站→connector→公网边缘”顺序验证，能快速区分 502 与 1033。
+
+**观察目标：** 围绕“Cloudflare Tunnel 的工作原理是什么？”，重点验证：cloudflared 在源站网络内主动向 Cloudflare 边缘建立多条长连接，因方向是出站，家庭路由器或主机无需把 80/443 入站端口暴露公网。
 
 ~~~bash
+# 示例重点：排查时按“本地源站→connector→公网边缘”顺序验证，能快速区分 502 与 1033。
 curl -sv http://127.0.0.1:3000/health
 cloudflared tunnel list
 cloudflared tunnel info interview-tunnel
@@ -1117,7 +1186,7 @@ cloudflared --config /etc/cloudflared/config.yml tunnel run interview-tunnel
 curl -sv https://interview.example.com/health
 ~~~
 
-若本地 200、tunnel info 没有活跃 connector，修复服务/凭据与进程自启动；若 connector 在线但日志报 `connect: connection refused`，核对 ingress 的 service 端口和地址族。
+**对照结果：** 若本地 200、tunnel info 没有活跃 connector，修复服务/凭据与进程自启动；若 connector 在线但日志报 `connect: connection refused`，核对 ingress 的 service 端口和地址族。
 
 **递进追问：**
 
@@ -1156,22 +1225,26 @@ curl -sv https://interview.example.com/health
 
 **代码 / 场景：**
 
-Nginx 重写转发头，Express 只信任明确的环回/内网代理，而不是无条件 `true`。
+**示例场景：** Nginx 重写转发头，Express 只信任明确的环回/内网代理，而不是无条件 `true`。
+
+**观察目标：** 围绕“HTTPS 终止在代理后应用要注意什么？”，重点验证：TLS 在 CDN 或 Nginx 终止后，应用到代理之间可能是 HTTP，因此 socket 的本地协议不能代表用户原始协议。
 
 ~~~nginx
+# 示例重点：Nginx 重写转发头，Express 只信任明确的环回/内网代理，而不是无条件 true。
 proxy_set_header Host $host;
 proxy_set_header X-Forwarded-Proto $scheme;
 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 ~~~
 
 ~~~js
+// 示例重点：第 2 段：Nginx 重写转发头，Express 只信任明确的环回/内网代理，而不是无条件 true。
 app.set("trust proxy", ip => ip === "127.0.0.1" || ip.startsWith("10.0.0."))
 app.get("/debug-request", (req, res) => res.json({
   protocol: req.protocol, secure: req.secure, ip: req.ip, host: req.hostname
 }))
 ~~~
 
-分别经公网 HTTPS 和直接访问内网端口测试；后者伪造转发头不应被当成安全公网请求，生产应进一步用防火墙禁止直连。
+**对照结果：** 分别经公网 HTTPS 和直接访问内网端口测试；后者伪造转发头不应被当成安全公网请求，生产应进一步用防火墙禁止直连。
 
 **递进追问：**
 
@@ -1210,9 +1283,12 @@ app.get("/debug-request", (req, res) => res.json({
 
 **代码 / 场景：**
 
-假设新入口 IP 为 203.0.113.20，先绕过 DNS 对三个域名做 SNI/Host 冒烟，再比较正式解析。
+**示例场景：** 假设新入口 IP 为 203.0.113.20，先绕过 DNS 对三个域名做 SNI/Host 冒烟，再比较正式解析。
+
+**观察目标：** 围绕“如何验证一次部署没有影响其他域名？”，重点验证：把域名视为彼此独立的 DNS、TLS SNI 和 HTTP Host 三层路由。
 
 ~~~bash
+# 示例重点：假设新入口 IP 为 203.0.113.20，先绕过 DNS 对三个域名做 SNI/Host 冒烟，再比较正式解析。
 for host in example.com interview.example.com api.example.com; do
   echo "=== $host ==="
   dig +short "$host"
@@ -1224,7 +1300,7 @@ for host in example.com interview.example.com api.example.com; do
 done
 ~~~
 
-再请求随机 Host，预期被拒绝或落到安全空站点，而不是泄露任一业务站；DNS 生效后重复公网请求并核对监控。
+**对照结果：** 再请求随机 Host，预期被拒绝或落到安全空站点，而不是泄露任一业务站；DNS 生效后重复公网请求并核对监控。
 
 **递进追问：**
 

@@ -18,7 +18,29 @@ Java 能跨平台，是因为编译器生成统一的 JVM 字节码，而 Window
 
 **代码 / 场景：**
 
-同一个 Spring Boot jar 可以在安装了兼容 JRE 的 Windows 和 Linux 上启动。若代码硬编码 C 盘路径、调用仅 Windows 存在的命令，或加载某个平台的 JNI 动态库，应用层仍会失去跨平台能力；上线前需要在目标 JDK、操作系统和容器限制下测试。
+**示例场景：**
+
+- **前提：** 同一个 Spring Boot jar 可以在安装了兼容 JRE 的 Windows 和 Linux 上启动。
+- **过程：** 若代码硬编码 C 盘路径、调用仅 Windows 存在的命令，或加载某个平台的 JNI 动态库，应用层仍会失去跨平台能力；
+- **结果：** 上线前需要在目标 JDK、操作系统和容器限制下测试。
+
+**对照结果：** Java 能跨平台，是因为编译器生成统一的 JVM 字节码，而 Windows、Linux 等系统各自用本平台的 JVM 把字节码翻译成本机指令。
+
+**补充代码示例：**
+
+同一份源码先编译成字节码，再由不同系统上的 JVM 执行：
+
+```java
+// 示例重点：用这段最小代码验证“Java 有哪些核心特点，为什么能跨平台”
+// javac 把源码编译为 Main.class（字节码）
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("同一个 .class 可交给不同平台的 JVM");
+    }
+}
+```
+
+**对照结果：** Windows 和 Linux 使用各自的 JVM，但读取的是同一份 `Main.class`；跨平台的是字节码，不是 JVM 本身。
 
 **递进追问：**
 
@@ -59,7 +81,28 @@ JVM 负责执行字节码，JRE 表示运行 Java 程序所需的虚拟机和类
 
 **代码 / 场景：**
 
-CI 环境需要 javac 和测试工具，所以使用 JDK；生产容器可用同版本 JDK 运行，也可通过 jlink 生成只含所需模块的运行时。若线上只留下极度裁剪的镜像，发生故障时可能缺少 jcmd 等工具，部署设计应提前考虑诊断能力。
+**示例场景：**
+
+- **前提：** CI 环境需要 javac 和测试工具，所以使用 JDK；
+- **过程：** 生产容器可用同版本 JDK 运行，也可通过 jlink 生成只含所需模块的运行时。
+- **结果：** 若线上只留下极度裁剪的镜像，发生故障时可能缺少 jcmd 等工具，部署设计应提前考虑诊断能力。
+
+**对照结果：** JVM 负责执行字节码，JRE 表示运行 Java 程序所需的虚拟机和类库，JDK 则在运行能力之上提供编译、诊断和打包等开发工具。
+
+**补充代码示例：**
+
+用命令的位置就能区分“开发工具”和“运行环境”：
+
+```bash
+# 示例重点：用这段最小代码验证“JDK、JRE 和 JVM 有什么区别”
+# javac 属于 JDK：把源码编译成字节码
+javac Main.java
+
+# java 启动 JVM：加载并执行 Main.class
+java Main
+```
+
+**对照结果：** 只有运行需求时不需要编译器；开发时则需要包含编译、诊断工具的 JDK。
 
 **递进追问：**
 
@@ -101,9 +144,28 @@ CI 环境需要 javac 和测试工具，所以使用 JDK；生产容器可用同
 
 **代码 / 场景：**
 
-复制数字列表时可把方法参数写成 `List<? extends T> source` 与 `List<? super T> target`：`List<Integer>` 可以作为来源，`List<Number>` 可以作为目标。
+**示例场景：**
 
-若直接使用原始类型 `List`，错误元素可能直到取值和隐式转换时才暴露为 ClassCastException。
+- **前提：** 复制数字列表时可把方法参数写成 `List<? extends T> source` 与 `List<? super T> target`：`List<Integer>` 可以作为来源，`List<Number>` 可以作为目标。
+- **结果：** 若直接使用原始类型 `List`，错误元素可能直到取值和隐式转换时才暴露为 ClassCastException。
+
+**对照结果：** 泛型把类型作为参数，在编译期提供类型检查并减少强制转换；Java 泛型主要通过类型擦除实现，多数类型参数不会原样保留到运行时。
+
+**补充代码示例：**
+
+泛型在编译期拦住类型错误，运行时通常只保留擦除后的边界：
+
+```java
+// 示例重点：用这段最小代码验证“什么是 Java 泛型，类型擦除是什么意思”
+List<String> names = new ArrayList<>();
+names.add("小林"); // 编译器只允许放 String
+String first = names.get(0); // 编译器补上必要的类型转换
+
+System.out.println(names.getClass()
+    == new ArrayList<Integer>().getClass()); // true：运行时类型相同
+```
+
+**对照结果：** 擦除不等于“泛型没用”；它已经在编译期提供了约束，只是多数类型实参不会保留到普通运行时对象中。
 
 **递进追问：**
 
@@ -140,7 +202,30 @@ CI 环境需要 javac 和测试工具，所以使用 JDK；生产容器可用同
 
 **代码 / 场景：**
 
-成员字段 int count 初始为 0，String name 初始为 null；方法内写 int n 后直接读取会编译失败。List<int> 不合法，需要 List<Integer>。判断一个可能为空的 Integer 是否等于 1 时要先处理 null，避免拆箱触发空指针。
+**示例场景：**
+
+- **前提：** 成员字段 int count 初始为 0，String name 初始为 null；
+- **过程：** 方法内写 int n 后直接读取会编译失败。List<int> 不合法，需要 List<Integer>。
+- **结果：** 判断一个可能为空的 Integer 是否等于 1 时要先处理 null，避免拆箱触发空指针。
+
+**对照结果：** 八种基本类型直接表示布尔、整数、浮点或字符值；引用类型变量保存对象或数组的引用，两者在默认值、空值、泛型和相等比较上表现不同。
+
+**补充代码示例：**
+
+赋值后分别修改变量，可以直接看到两类值保存的内容不同：
+
+```java
+// 示例重点：用这段最小代码验证“Java 的基本类型和引用类型有什么区别”
+int a = 10;
+int b = a;       // 复制数值 10
+b = 20;          // 不会影响 a
+
+int[] x = {10};
+int[] y = x;     // 复制的是同一数组的引用
+y[0] = 20;       // x[0] 也变成 20
+```
+
+**对照结果：** `b` 有自己的整数值；`x` 和 `y` 则通过两个引用访问同一个数组对象。
 
 **递进追问：**
 
@@ -182,7 +267,29 @@ int 是不能为 null 的基本类型，Integer 是对象包装类型；自动�
 
 **代码 / 场景：**
 
-Integer a = 127 与 b = 127 可能因缓存使 a == b 为 true，而 128 的两个对象常为 false，业务不能依赖这一差异。Map.get 返回 Integer，直接赋给 int 时若键不存在就会空指针，可用 getOrDefault 或显式判断 null。
+**示例场景：**
+
+- **前提：** Integer a = 127 与 b = 127 可能因缓存使 a == b 为 true，而 128 的两个对象常为 false，业务不能依赖这一差异。
+- **结果：** Map.get 返回 Integer，直接赋给 int 时若键不存在就会空指针，可用 getOrDefault 或显式判断 null。
+
+**对照结果：** int 是不能为 null 的基本类型，Integer 是对象包装类型；自动装箱简化转换，但缓存、引用比较和 null 拆箱容易制造隐藏错误。
+
+**补充代码示例：**
+
+拆箱和缓存最容易用两个小实验看明白：
+
+```java
+// 示例重点：用这段最小代码验证“int 和 Integer 有什么区别，自动装箱有哪些坑”
+Integer cachedA = 127;
+Integer cachedB = 127;
+System.out.println(cachedA == cachedB); // 常见结果 true：命中缓存
+
+Integer value = null;
+// int n = value; // 自动拆箱会抛 NullPointerException
+System.out.println(Objects.equals(value, null)); // 安全比较
+```
+
+**对照结果：** 包装对象用 `equals`/`Objects.equals` 比值；拆箱前必须考虑 `null`，不要依赖整数缓存范围判断业务相等。
 
 **递进追问：**
 
@@ -223,9 +330,28 @@ double 无法精确表示多数十进制小数，金额需要明确的小数精�
 
 **代码 / 场景：**
 
-订单金额可写 `new BigDecimal("19.90")` 乘 `BigDecimal.valueOf(3)`，分摊时显式保留两位并指定 HALF_UP 或财务要求的模式。
+**示例场景：**
 
-`new BigDecimal("1.0")` 与 `new BigDecimal("1.00")` 用 equals 不相等，但 compareTo 返回 0。
+- **前提：** 订单金额可写 `new BigDecimal("19.90")` 乘 `BigDecimal.valueOf(3)`，分摊时显式保留两位并指定 HALF_UP 或财务要求的模式。
+- **结果：** `new BigDecimal("1.0")` 与 `new BigDecimal("1.00")` 用 equals 不相等，但 compareTo 返回 0。
+
+**对照结果：** double 无法精确表示多数十进制小数，金额需要明确的小数精度与舍入规则，因此通常使用以十进制数值语义工作的 BigDecimal。
+
+**补充代码示例：**
+
+金额使用字符串构造，并在除法或落库前明确精度和舍入规则：
+
+```java
+// 示例重点：用这段最小代码验证“为什么金额计算通常使用 BigDecimal”
+BigDecimal price = new BigDecimal("19.90"); // 避免 double 误差
+BigDecimal count = new BigDecimal("3");
+BigDecimal total = price.multiply(count)
+    .setScale(2, RoundingMode.HALF_UP); // 明确保留两位
+
+System.out.println(total); // 59.70
+```
+
+**对照结果：** 金额规则不是 BigDecimal 自动决定的；币种精度、舍入方式仍应由业务明确。
 
 **递进追问：**
 
@@ -263,7 +389,31 @@ Java 只有值传递：基本类型复制具体值，引用类型复制引用值
 
 **代码 / 场景：**
 
-方法 `rename(User u)` 先执行 `u.name = "Li"`，再执行 `u = new User("Wang")`。调用后原 User 的 name 变为 Li，但调用方变量不会指向 Wang。想交换两个调用方引用，应该返回结果并由调用方重新赋值。
+**示例场景：**
+
+- **前提：** 方法 `rename(User u)` 先执行 `u.name = "Li"`，再执行 `u = new User("Wang")`。
+- **过程：** 调用后原 User 的 name 变为 Li，但调用方变量不会指向 Wang。
+- **结果：** 想交换两个调用方引用，应该返回结果并由调用方重新赋值。
+
+**对照结果：** Java 只有值传递：基本类型复制具体值，引用类型复制引用值；方法能修改双方共同指向的对象，却不能替调用方变量重新绑定。
+
+**补充代码示例：**
+
+下面同时验证“改对象内容”和“改形参指向”是两回事：
+
+```java
+// 示例重点：用这段最小代码验证“Java 是值传递还是引用传递”
+static void change(List<String> value) {
+    value.add("inside");        // 修改双方都能访问的同一对象
+    value = new ArrayList<>();  // 只改形参副本的指向
+}
+
+List<String> names = new ArrayList<>();
+change(names);
+System.out.println(names); // [inside]
+```
+
+**对照结果：** Java 始终复制实参的值；引用变量里保存的值恰好是对象引用，所以可以借它修改对象，但不能换掉调用方变量的指向。
 
 **递进追问：**
 
@@ -302,7 +452,13 @@ Java 只有值传递：基本类型复制具体值，引用类型复制引用值
 
 **代码 / 场景：**
 
-支付模块定义 PaymentMethod.pay，银行卡和余额分别实现，订单服务只依赖接口。账户余额通过 debit 方法检查余额并更新，不能只暴露 setBalance。若 OrderService 只是想复用日志能力，应组合 Logger，而不是让它继承 Logger。
+**示例场景：**
+
+- **前提：** 支付模块定义 PaymentMethod.pay，银行卡和余额分别实现，订单服务只依赖接口。
+- **过程：** 账户余额通过 debit 方法检查余额并更新，不能只暴露 setBalance。
+- **结果：** 若 OrderService 只是想复用日志能力，应组合 Logger，而不是让它继承 Logger。
+
+**对照结果：** 封装保护状态与不变量，继承建立可替换的类型关系，多态让调用方依赖抽象并在运行时选择具体实现；三者共同降低变化传播。
 
 **递进追问：**
 
@@ -341,7 +497,32 @@ static 方法是隐藏，private 方法不被子类继承，final 方法明确�
 
 **代码 / 场景：**
 
-同时存在 print(long) 和 print(Integer) 时，传入 int 字面量通常选择 long，因为无需装箱的宽化阶段先适用。Animal a = new Dog() 调用 a.sound() 时，编译器确认 Animal 有该签名，运行时执行 Dog 的重写实现。
+**示例场景：**
+
+- **前提：** 同时存在 print(long) 和 print(Integer) 时，传入 int 字面量通常选择 long，因为无需装箱的宽化阶段先适用。
+- **结果：** Animal a = new Dog() 调用 a.sound() 时，编译器确认 Animal 有该签名，运行时执行 Dog 的重写实现。
+
+**对照结果：** 重载是在同一作用域用不同参数列表提供多个方法，编译期决定调用哪一个；重写是子类替换可继承实例方法实现，运行时动态分派。
+
+**补充代码示例：**
+
+重载看编译期参数，重写看运行时对象：
+
+```java
+// 示例重点：用这段最小代码验证“方法重载和方法重写有什么区别”
+class Parent { String name() { return "parent"; } }
+class Child extends Parent {
+    @Override String name() { return "child"; } // 重写
+}
+static String show(int n) { return "int"; }     // 重载 1
+static String show(long n) { return "long"; }   // 重载 2
+
+Parent p = new Child();
+System.out.println(p.name()); // child：运行时分派
+System.out.println(show(1));  // int：编译期选签名
+```
+
+**对照结果：** 同名不代表同一机制：参数列表不同是重载；子类替换可覆盖实例方法才是重写。
 
 **递进追问：**
 
@@ -380,7 +561,31 @@ default 方法用于兼容演进而非替代完整基类。若调用方只需要
 
 **代码 / 场景：**
 
-不同存储实现都具备 Repository 能力，可以实现同一接口；若多种账户共享 id、开户规则和受保护状态迁移，可由 AbstractAccount 提供模板。不要创建只有空实现的巨大接口，也不要为了复用两个工具方法强迫无关类继承共同父类。
+**示例场景：**
+
+- **前提：** 不同存储实现都具备 Repository 能力，可以实现同一接口；
+- **过程：** 若多种账户共享 id、开户规则和受保护状态迁移，可由 AbstractAccount 提供模板。
+- **结果：** 不要创建只有空实现的巨大接口，也不要为了复用两个工具方法强迫无关类继承共同父类。
+
+**对照结果：** 接口侧重定义跨类型能力与契约，抽象类适合共享受控状态和模板实现；选择关键是领域关系与演进边界，而不是简单比较是否能写方法。
+
+**补充代码示例：**
+
+用“能力契约 + 共享骨架”能看出两者可以配合：
+
+```java
+// 示例重点：用这段最小代码验证“接口和抽象类有什么区别，应该怎样选择”
+interface Payable {
+    Receipt pay(Money money); // 只定义支付能力
+}
+abstract class BaseAccount {
+    protected final long id;  // 家族共享的状态
+    BaseAccount(long id) { this.id = id; }
+    abstract void verify();   // 子类补充差异步骤
+}
+```
+
+**对照结果：** 调用方只需要能力时依赖小接口；确有稳定父子关系和共享状态时才使用抽象类。
 
 **递进追问：**
 
@@ -421,7 +626,29 @@ Object.equals 默认仍是身份相等，值对象需要按业务身份重写，
 
 **代码 / 场景：**
 
-UserId 值对象按 id 重写 equals 和 hashCode 后，两次反序列化得到的对象可作为同一 Map 键。若对象放进 HashSet 后修改参与哈希的 id，集合可能无法在新旧桶位置正确找到或删除它，因此更适合使用不可变键。
+**示例场景：**
+
+- **前提：** UserId 值对象按 id 重写 equals 和 hashCode 后，两次反序列化得到的对象可作为同一 Map 键。
+- **结果：** 若对象放进 HashSet 后修改参与哈希的 id，集合可能无法在新旧桶位置正确找到或删除它，因此更适合使用不可变键。
+
+**对照结果：** 基本类型的双等号比较数值，引用类型的双等号比较身份；equals 定义逻辑相等，而相等对象必须返回相同 hashCode 才能正确用于哈希容器。
+
+**补充代码示例：**
+
+不可变值对象同时实现逻辑相等与哈希契约：
+
+```java
+// 示例重点：用这段最小代码验证“双等号、equals 和 hashCode 有什么关系”
+record UserId(long value) {} // record 自动生成 equals/hashCode
+
+Set<UserId> ids = new HashSet<>();
+ids.add(new UserId(7));
+
+System.out.println(ids.contains(new UserId(7))); // true
+// 两个对象身份不同，但业务值相等且哈希一致
+```
+
+**对照结果：** 哈希容器先按 hashCode 缩小范围，再用 equals 最终确认；两者必须使用同一组稳定字段。
 
 **递进追问：**
 
@@ -460,7 +687,30 @@ StringBuffer 的公开操作带同步，单次方法线程安全，但多步复�
 
 **代码 / 场景：**
 
-生成一万行 CSV 时，应在方法内创建 StringBuilder 并连续 append，最后一次 toString；直接在循环中 result = result + line 会不断复制已有内容。若缓冲区只属于当前请求，没有理由使用 StringBuffer 增加同步开销。
+**示例场景：**
+
+- **前提：** 生成一万行 CSV 时，应在方法内创建 StringBuilder 并连续 append，最后一次 toString；
+- **过程：** 直接在循环中 result = result + line 会不断复制已有内容。
+- **结果：** 若缓冲区只属于当前请求，没有理由使用 StringBuffer 增加同步开销。
+
+**对照结果：** String 创建后内容不再变化，便于共享、缓存、哈希与并发读取；频繁拼接用可变缓冲区，单线程优先 StringBuilder，需要同步语义才考虑 StringBuffer。
+
+**补充代码示例：**
+
+字符串拼接与可变缓冲区的差别可以直接观察：
+
+```java
+// 示例重点：用这段最小代码验证“String 为什么不可变，StringBuilder 和 StringBuffer 怎么选”
+String text = "A";
+text.concat("B");              // 返回新字符串，原值不变
+System.out.println(text);       // A
+
+StringBuilder builder = new StringBuilder("A");
+builder.append("B");           // 原地修改同一个缓冲区
+System.out.println(builder);    // AB
+```
+
+**对照结果：** 循环拼接优先用 StringBuilder；只有多个线程确实共享同一个缓冲区时才考虑 StringBuffer 的同步成本。
 
 **递进追问：**
 
@@ -499,7 +749,32 @@ Throwable 分为 Error 与 Exception；Exception 中除 RuntimeException 体系�
 
 **代码 / 场景：**
 
-读取配置文件失败可在基础设施层捕获 IOException，附带文件名后转换为领域启动异常并保留 cause；不能空 catch 后返回默认值掩盖错误。数据库连接和输入流放入 try-with-resources，确保正常与异常路径都释放。
+**示例场景：**
+
+- **前提：** 读取配置文件失败可在基础设施层捕获 IOException，附带文件名后转换为领域启动异常并保留 cause；
+- **过程：** 不能空 catch 后返回默认值掩盖错误。
+- **结果：** 数据库连接和输入流放入 try-with-resources，确保正常与异常路径都释放。
+
+**对照结果：** Throwable 分为 Error 与 Exception；Exception 中除 RuntimeException 体系外通常属于受检异常，编译器要求捕获或声明，非受检异常则不强制处理。
+
+**补充代码示例：**
+
+受检异常要求显式处理，业务校验失败通常使用非受检异常：
+
+```java
+// 示例重点：用这段最小代码验证“Java 的异常体系是怎样的，受检异常和非受检异常有何区别”
+String load(Path path) throws IOException { // 调用方必须处理或继续声明
+    return Files.readString(path);
+}
+
+void withdraw(BigDecimal amount) {
+    if (amount.signum() <= 0) {
+        throw new IllegalArgumentException("金额必须大于 0"); // 参数错误
+    }
+}
+```
+
+**对照结果：** 不要用异常替代普通分支，也不要空 catch；异常类型应帮助调用方判断能否恢复。
 
 **递进追问：**
 
@@ -538,7 +813,29 @@ Throwable 分为 Error 与 Exception；Exception 中除 RuntimeException 体系�
 
 **代码 / 场景：**
 
-测试框架可扫描带 Test 注解的方法并动态执行，ORM 可依据映射创建实体。生产代码应缓存已解析的 Method 或元数据，启动时校验签名并给出清晰错误；不要在每条高频请求上重复扫描所有类。
+**示例场景：**
+
+- **前提：** 测试框架可扫描带 Test 注解的方法并动态执行，ORM 可依据映射创建实体。
+- **过程：** 生产代码应缓存已解析的 Method 或元数据，启动时校验签名并给出清晰错误；
+- **结果：** 不要在每条高频请求上重复扫描所有类。
+
+**对照结果：** 反射让程序在运行时检查类、方法、字段和构造器并进行动态调用，常用于框架装配、序列化和测试，但会削弱静态检查与封装边界。
+
+**补充代码示例：**
+
+框架可在运行时读取注解并调用目标方法：
+
+```java
+// 示例重点：用这段最小代码验证“什么是反射，它有哪些典型用途和代价”
+Method method = UserService.class.getDeclaredMethod("find", long.class);
+if (method.isAnnotationPresent(Audited.class)) {
+    System.out.println("记录审计日志"); // 根据运行时元数据增强行为
+}
+Object result = method.invoke(userService, 7L); // 反射调用
+System.out.println(result);
+```
+
+**对照结果：** 反射适合框架扩展点；普通业务代码优先直接调用，保留编译期类型检查和更清晰的重构路径。
 
 **递进追问：**
 
@@ -582,7 +879,29 @@ List 表达有位置的有序序列，Set 表达不重复元素，Map 表达键�
 
 **代码 / 场景：**
 
-订单明细需要保序且允许同一商品多行，可用 List；用户权限去重可用 Set；通过用户编号查资料用 Map；异步任务按优先级消费可用 PriorityQueue。不能因为“Map 查找快”就把所有数据都塞进 Map，否则可能丢失重复和顺序语义。
+**示例场景：**
+
+- **前提：** 订单明细需要保序且允许同一商品多行，可用 List；
+- **过程：** 用户权限去重可用 Set；通过用户编号查资料用 Map；异步任务按优先级消费可用 PriorityQueue。
+- **结果：** 不能因为“Map 查找快”就把所有数据都塞进 Map，否则可能丢失重复和顺序语义。
+
+**对照结果：** List 表达有位置的有序序列，Set 表达不重复元素，Map 表达键值映射，Queue 表达待处理次序；应先按业务语义选接口，再比较实现性能。
+
+**补充代码示例：**
+
+同一批数据放入四种容器后，关注点完全不同：
+
+```java
+// 示例重点：用这段最小代码验证“List、Set、Map 和 Queue 有什么区别”
+List<String> steps = new ArrayList<>(); steps.add("支付"); // 保序、可重复
+Set<String> tags = new HashSet<>(); tags.add("Java");          // 去重
+Map<Long, String> users = new HashMap<>(); users.put(7L, "林"); // 键找值
+Queue<String> jobs = new ArrayDeque<>(); jobs.offer("生成报表"); // 先进先出
+
+System.out.println(jobs.poll()); // 生成报表
+```
+
+**对照结果：** 先按访问方式选接口，再按并发、排序和复杂度选择具体实现。
 
 **递进追问：**
 
@@ -620,7 +939,29 @@ ArrayList 的 get、set 通常是常数时间，尾部追加摊销常数时间�
 
 **代码 / 场景：**
 
-读取数据库后形成结果列表并按下标访问，使用 ArrayList 更合适。若任务只需不断在队首队尾加入移除，ArrayDeque 往往比 LinkedList 更紧凑。不要为了偶尔在中间删除一项就默认使用 LinkedList，应以真实访问模式和基准验证。
+**示例场景：**
+
+- **前提：** 读取数据库后形成结果列表并按下标访问，使用 ArrayList 更合适。
+- **过程：** 若任务只需不断在队首队尾加入移除，ArrayDeque 往往比 LinkedList 更紧凑。
+- **结果：** 不要为了偶尔在中间删除一项就默认使用 LinkedList，应以真实访问模式和基准验证。
+
+**对照结果：** ArrayList 基于连续逻辑数组，随机访问快且缓存友好；LinkedList 是双向链表，已定位节点后的插入删除便捷，但按索引访问和内存局部性较差。
+
+**补充代码示例：**
+
+不要只背复杂度，用常见访问模式做对照：
+
+```java
+// 示例重点：用这段最小代码验证“ArrayList 和 LinkedList 有什么区别”
+List<Integer> array = new ArrayList<>(1000);
+for (int i = 0; i < 1000; i++) array.add(i); // 连续追加很合适
+int middle = array.get(500);                 // 可直接按下标访问
+
+Deque<Integer> deque = new LinkedList<>();
+deque.addFirst(1); // 真正需要两端插入时，按 Deque 使用更清楚
+```
+
+**对照结果：** 业务中 ArrayList 往往更常用；LinkedList 的节点开销与缓存局部性会抵消纸面上的插入优势。
 
 **递进追问：**
 
@@ -659,7 +1000,28 @@ ensureCapacity 可在已知规模时减少重复扩容，trimToSize 可缩小闲
 
 **代码 / 场景：**
 
-导入十万行数据且数量已知时，可使用 `new ArrayList<>(100000)` 或提前调用 ensureCapacity，减少扩容和瞬时旧数组。仅预估“可能很大”就一次分配极大容量也会浪费堆内存，应基于上限、常见值和监控选择。
+**示例场景：**
+
+- **前提：** 导入十万行数据且数量已知时，可使用 `new ArrayList<>(100000)` 或提前调用 ensureCapacity，减少扩容和瞬时旧数组。
+- **结果：** 仅预估“可能很大”就一次分配极大容量也会浪费堆内存，应基于上限、常见值和监控选择。
+
+**对照结果：** ArrayList 用 Object 数组保存元素，并记录实际 size；容量不足时创建更大的数组并复制旧元素，所以追加是摊销常数而非每次绝对常数。
+
+**补充代码示例：**
+
+已知数据量时预设容量，可以避免中途多次复制数组：
+
+```java
+// 示例重点：用这段最小代码验证“ArrayList 的底层结构和扩容过程是什么”
+int expected = rows.size();
+List<Result> results = new ArrayList<>(expected); // 提前给出容量
+for (Row row : rows) {
+    results.add(convert(row)); // 容量足够时无需扩容复制
+}
+System.out.println(results.size());
+```
+
+**对照结果：** size 是元素数量，capacity 是内部数组容量；扩容改变后者，不会凭空增加元素。
 
 **递进追问：**
 
@@ -697,7 +1059,12 @@ key 的 hash 会经过扰动后映射到长度为 2 的幂的桶数组。桶为�
 
 **代码 / 场景：**
 
-使用自定义 OrderKey 作为键时，应实现稳定的 equals 与 hashCode，并在入 Map 后不要修改参与计算的字段。若大量键故意返回同一 hash，所有请求会集中到少数桶，即使树化也会增加比较和内存开销。
+**示例场景：**
+
+- **前提：** 使用自定义 OrderKey 作为键时，应实现稳定的 equals 与 hashCode，并在入 Map 后不要修改参与计算的字段。
+- **结果：** 若大量键故意返回同一 hash，所有请求会集中到少数桶，即使树化也会增加比较和内存开销。
+
+**对照结果：** JDK 8 常见实现以数组作为桶表，桶内用链表解决哈希冲突，冲突严重且容量达到条件时可转换为红黑树以限制最坏查询成本。
 
 **递进追问：**
 
@@ -737,7 +1104,28 @@ HashMap 判断键相等通常先比 hash，再满足引用相同或 equals 为 t
 
 **代码 / 场景：**
 
-实现缓存覆盖时，put 同一个逻辑 key 会返回或替换旧 value，而不是新增第二个键。若 key 重写了 equals 却没有重写 hashCode，put 和 get 可能定位到不同桶，表现为“明明相等却取不到”。
+**示例场景：**
+
+- **前提：** 实现缓存覆盖时，put 同一个逻辑 key 会返回或替换旧 value，而不是新增第二个键。
+- **结果：** 若 key 重写了 equals 却没有重写 hashCode，put 和 get 可能定位到不同桶，表现为“明明相等却取不到”。
+
+**对照结果：** put 先计算哈希与桶索引，再按空桶、同键、链表或树分支新增或覆盖；get 用相同定位规则缩小候选范围并通过 equals 确认键。
+
+**补充代码示例：**
+
+两个逻辑相等的键应落到同一查找链路：
+
+```java
+// 示例重点：用这段最小代码验证“HashMap 的 put 和 get 流程是什么”
+record Key(long id) {} // 自动生成匹配的 equals/hashCode
+Map<Key, String> map = new HashMap<>();
+map.put(new Key(7), "订单"); // 先算 hash，再定位桶
+
+String value = map.get(new Key(7)); // 同桶内再用 equals 确认
+System.out.println(value);           // 订单
+```
+
+**对照结果：** put/get 都不是只算一次 hash 就结束；桶内冲突仍要靠 equals 区分真正的键。
 
 **递进追问：**
 
@@ -776,7 +1164,13 @@ HashMap 判断键相等通常先比 hash，再满足引用相同或 equals 为 t
 
 **代码 / 场景：**
 
-预计保存 1000 个条目时，直接传入 1000 仍可能因阈值不足而扩容；可以按预期数量除以负载因子并向上取合适容量。若键分布极差，仅增加容量不能替代修复 hashCode。
+**示例场景：**
+
+- **前提：** 预计保存 1000 个条目时，直接传入 1000 仍可能因阈值不足而扩容；
+- **过程：** 可以按预期数量除以负载因子并向上取合适容量。
+- **结果：** 若键分布极差，仅增加容量不能替代修复 hashCode。
+
+**对照结果：** 2 的幂容量让索引可用位与高效计算，并简化扩容后的桶拆分；负载因子在空间占用与冲突概率之间取平衡，达到阈值后扩容。
 
 **递进追问：**
 
@@ -814,7 +1208,13 @@ HashMap 判断键相等通常先比 hash，再满足引用相同或 equals 为 t
 
 **代码 / 场景：**
 
-构造多个 hashCode 相同的键，在较小 HashMap 中连续加入，可能先看到整表扩容而不是立刻红黑树化；表足够大后继续冲突才会树化。生产排障应先检查键设计和输入分布，而不是依赖树化兜底。
+**示例场景：**
+
+- **前提：** 构造多个 hashCode 相同的键，在较小 HashMap 中连续加入，可能先看到整表扩容而不是立刻红黑树化；
+- **过程：** 表足够大后继续冲突才会树化。
+- **结果：** 生产排障应先检查键设计和输入分布，而不是依赖树化兜底。
+
+**对照结果：** 新映射数量超过容量乘负载因子的阈值时通常扩容；单桶冲突链达到树化阈值且表容量足够时才树化，否则优先扩容分散节点。
 
 **递进追问：**
 
@@ -852,7 +1252,12 @@ HashMap 没有为并发读写建立原子性与可见性保证，多个线程同
 
 **代码 / 场景：**
 
-把 HashMap 作为单例缓存并在请求线程中边查边 put，即使压测偶尔正确也可能丢数据。改用 ConcurrentHashMap 后，仍不能用 get 后再 put 实现原子计数，应使用 compute、merge 或更合适的原子结构。
+**示例场景：**
+
+- **前提：** 把 HashMap 作为单例缓存并在请求线程中边查边 put，即使压测偶尔正确也可能丢数据。
+- **结果：** 改用 ConcurrentHashMap 后，仍不能用 get 后再 put 实现原子计数，应使用 compute、merge 或更合适的原子结构。
+
+**对照结果：** HashMap 没有为并发读写建立原子性与可见性保证，多个线程同时 put、resize 或遍历可能丢更新、读到不一致状态或触发迭代异常。
 
 **递进追问：**
 
@@ -891,7 +1296,29 @@ HashSet 常以 HashMap 的键保存元素，先用 hashCode 定位候选桶，�
 
 **代码 / 场景：**
 
-邮箱地址值对象若按标准化邮箱重写 equals 与 hashCode，HashSet 可过滤重复地址。若只重写 equals，不重写 hashCode，相等对象可能进入不同桶而重复出现；若加入后修改邮箱字段，也可能再也无法正常删除。
+**示例场景：**
+
+- **前提：** 邮箱地址值对象若按标准化邮箱重写 equals 与 hashCode，HashSet 可过滤重复地址。
+- **过程：** 若只重写 equals，不重写 hashCode，相等对象可能进入不同桶而重复出现；
+- **结果：** 若加入后修改邮箱字段，也可能再也无法正常删除。
+
+**对照结果：** HashSet 常以 HashMap 的键保存元素，先用 hashCode 定位候选桶，再用 equals 判断逻辑相等；因此元素必须遵守相等与哈希契约。
+
+**补充代码示例：**
+
+去重结果取决于元素自己的 equals/hashCode：
+
+```java
+// 示例重点：用这段最小代码验证“HashSet 如何实现去重”
+record Email(String value) {}
+Set<Email> emails = new HashSet<>();
+
+emails.add(new Email("a@example.com"));
+emails.add(new Email("a@example.com")); // 逻辑相等，不会重复加入
+System.out.println(emails.size());       // 1
+```
+
+**对照结果：** 若业务对象没有正确实现相等契约，HashSet 就无法按业务含义去重。
 
 **递进追问：**
 
@@ -930,7 +1357,12 @@ JDK 7 的 Segment 本身近似一个可重入锁保护的子 Map，并发度受�
 
 **代码 / 场景：**
 
-并发累计标签次数时，用 map.merge(tag, 1, Integer::sum) 比 get 后 put 更可靠。若业务要求“仅当账户状态为启用时同时修改两个键”，仍需更高层锁、状态对象或持久层事务，不能仅靠 ConcurrentHashMap。
+**示例场景：**
+
+- **前提：** 并发累计标签次数时，用 map.merge(tag, 1, Integer::sum) 比 get 后 put 更可靠。
+- **结果：** 若业务要求“仅当账户状态为启用时同时修改两个键”，仍需更高层锁、状态对象或持久层事务，不能仅靠 ConcurrentHashMap。
+
+**对照结果：** JDK 7 主要通过 Segment 分段锁降低竞争；JDK 8 改为桶数组加 CAS、桶级 synchronized 和树结构，读取多为无锁，并支持线程协助扩容。
 
 **递进追问：**
 
@@ -968,9 +1400,30 @@ fail-fast 是迭代器发现集合被非预期结构修改后尽力快速抛出�
 
 **代码 / 场景：**
 
-删除所有失效会话可写 sessions.removeIf(Session::expired)，或显式 Iterator 遍历后调用 iterator.remove。增强 for 中直接 sessions.remove(item) 可能抛异常。
+**示例场景：**
 
-CopyOnWriteArrayList 适合读多写少的快照遍历，但每次写会复制数组，不适合高频更新。
+- **前提：** 删除所有失效会话可写 sessions.removeIf(Session::expired)，或显式 Iterator 遍历后调用 iterator.remove。
+- **过程：** 增强 for 中直接 sessions.remove(item) 可能抛异常。
+- **结果：** CopyOnWriteArrayList 适合读多写少的快照遍历，但每次写会复制数组，不适合高频更新。
+
+**对照结果：** fail-fast 是迭代器发现集合被非预期结构修改后尽力快速抛出异常的诊断机制，不是线程安全保证；单线程删除当前项应使用 Iterator.remove。
+
+**补充代码示例：**
+
+遍历时通过当前 Iterator 删除，才能同步维护游标和修改计数：
+
+```java
+// 示例重点：用这段最小代码验证“什么是 fail-fast，遍历集合时怎样安全删除元素”
+Iterator<String> iterator = names.iterator();
+while (iterator.hasNext()) {
+    String name = iterator.next();
+    if (name.isBlank()) {
+        iterator.remove(); // 使用当前迭代器删除，避免并发修改异常
+    }
+}
+```
+
+**对照结果：** 单线程里直接调用 `list.remove` 也可能触发 fail-fast；它是尽早暴露结构被意外修改，不是线程安全机制。
 
 **递进追问：**
 
@@ -1011,7 +1464,13 @@ CopyOnWriteArrayList 适合读多写少的快照遍历，但每次写会复制�
 
 **代码 / 场景：**
 
-图片压缩主要消耗 CPU，线程数接近有效核心数通常更合理；调用多个远程接口时，任务经常等待网络，可以提高受控并发度。无论哪种场景都应使用有界线程池，并用吞吐、p99、上下文切换和队列长度验证。
+**示例场景：**
+
+- **前提：** 图片压缩主要消耗 CPU，线程数接近有效核心数通常更合理；
+- **过程：** 调用多个远程接口时，任务经常等待网络，可以提高受控并发度。
+- **结果：** 无论哪种场景都应使用有界线程池，并用吞吐、p99、上下文切换和队列长度验证。
+
+**对照结果：** 进程是资源分配与隔离的运行实体，线程是进程内被调度的执行单元；并发强调任务交替推进，并行强调同一时刻真正同时执行。
 
 **递进追问：**
 
@@ -1049,7 +1508,13 @@ Thread.State 包含 NEW、RUNNABLE、BLOCKED、WAITING、TIMED_WAITING 和 TERMI
 
 **代码 / 场景：**
 
-线程 dump 中大量 BLOCKED 通常提示监视器竞争；大量 WAITING 不一定异常，线程池空闲工作线程可能在队列上等待。排障要结合锁拥有者、队列长度、CPU 和业务吞吐，而不是只看到某个状态就直接定性。
+**示例场景：**
+
+- **前提：** 线程 dump 中大量 BLOCKED 通常提示监视器竞争；
+- **过程：** 大量 WAITING 不一定异常，线程池空闲工作线程可能在队列上等待。
+- **结果：** 排障要结合锁拥有者、队列长度、CPU 和业务吞吐，而不是只看到某个状态就直接定性。
+
+**对照结果：** Thread.State 包含 NEW、RUNNABLE、BLOCKED、WAITING、TIMED_WAITING 和 TERMINATED；它描述 JVM 视角状态，不等同操作系统调度状态。
 
 **递进追问：**
 
@@ -1087,7 +1552,30 @@ Callable.call 可返回泛型结果并抛 Exception，提交给 ExecutorService 
 
 **代码 / 场景：**
 
-发送日志这类无需返回结果的工作可实现 Runnable；并行查询价格需要结果和异常时可提交 Callable。Web 服务不要为每个请求 new Thread，应由有界线程池统一控制并发、命名、拒绝和关闭。
+**示例场景：**
+
+- **前提：** 发送日志这类无需返回结果的工作可实现 Runnable；
+- **过程：** 并行查询价格需要结果和异常时可提交 Callable。
+- **结果：** Web 服务不要为每个请求 new Thread，应由有界线程池统一控制并发、命名、拒绝和关闭。
+
+**对照结果：** Thread 表示线程及其生命周期，Runnable 表示无返回任务，Callable 可返回结果并抛受检异常；业务通常应提交任务给执行器而非手工管理线程。
+
+**补充代码示例：**
+
+把任务与线程分离后，线程池既能执行无返回任务，也能接收有返回任务：
+
+```java
+// 示例重点：用这段最小代码验证“Thread、Runnable 和 Callable 有什么区别”
+Runnable logTask = () -> audit("done"); // 无返回值
+Callable<Integer> countTask = () -> repository.count(); // 可返回且可抛异常
+
+ExecutorService pool = Executors.newFixedThreadPool(2);
+pool.execute(logTask);
+Future<Integer> result = pool.submit(countTask);
+System.out.println(result.get()); // 等待并取得结果
+```
+
+**对照结果：** 业务代码通常提交 Runnable/Callable 给执行器，而不是为每次任务手动继承 Thread。
 
 **递进追问：**
 
@@ -1127,7 +1615,31 @@ synchronized、volatile、锁、原子类和并发容器分别提供不同组合
 
 **代码 / 场景：**
 
-库存扣减要求“检查大于零并减一”整体原子，只把库存字段声明 volatile 仍会超卖；可在同一锁内完成或用原子条件更新。配置快照是构建后整体替换引用，则 volatile 引用可提供发布可见性，但快照内部应不可变。
+**示例场景：**
+
+- **前提：** 库存扣减要求“检查大于零并减一”整体原子，只把库存字段声明 volatile 仍会超卖；
+- **过程：** 可在同一锁内完成或用原子条件更新。
+- **结果：** 配置快照是构建后整体替换引用，则 volatile 引用可提供发布可见性，但快照内部应不可变。
+
+**对照结果：** 线程安全要求并发调用仍满足对象契约；原子性是不被中间观察的操作边界，可见性是写入能被其他线程看到，有序性是关键动作按约束顺序发生。
+
+**补充代码示例：**
+
+自增看似一行，实际是“读—改—写”三个动作：
+
+```java
+// 示例重点：用这段最小代码验证“什么是线程安全，原子性、可见性和有序性分别指什么”
+class Counter {
+    private final AtomicInteger value = new AtomicInteger();
+
+    int increment() {
+        return value.incrementAndGet(); // 原子地完成读、加一、写回
+    }
+}
+// 若写成 volatile int value; value++ 仍可能丢更新
+```
+
+**对照结果：** volatile 解决可见性并限制重排序，但复合操作需要锁或原子类保证不可分割。
 
 **递进追问：**
 
@@ -1165,7 +1677,34 @@ synchronized 互斥的是某个对象监视器：实例同步方法锁当前对�
 
 **代码 / 场景：**
 
-单例计数器的 synchronized 实例方法都锁单例本身；普通多实例服务若要保护共享静态缓存，锁 this 无效，应锁共同的私有 static final 对象或改用并发容器。不要写 `synchronized ("LOCK")`，字符串池可能让无关代码竞争同一对象。
+**示例场景：**
+
+- **前提：** 单例计数器的 synchronized 实例方法都锁单例本身；
+- **过程：** 普通多实例服务若要保护共享静态缓存，锁 this 无效，应锁共同的私有 static final 对象或改用并发容器。
+- **结果：** 不要写 `synchronized ("LOCK")`，字符串池可能让无关代码竞争同一对象。
+
+**对照结果：** synchronized 互斥的是某个对象监视器：实例同步方法锁当前对象，静态同步方法锁对应 Class 对象，同步代码块锁显式给出的引用。
+
+**补充代码示例：**
+
+实例方法和类方法使用的监视器不是同一个：
+
+```java
+// 示例重点：用这段最小代码验证“synchronized 锁住的到底是什么”
+class Counter {
+    synchronized void add() { /* 锁住当前 this */ }
+
+    static synchronized void resetAll() {
+        /* 锁住 Counter.class，不是某个实例 */
+    }
+
+    void read() {
+        synchronized (this) { /* 与 add() 竞争同一把锁 */ }
+    }
+}
+```
+
+**对照结果：** 是否互斥取决于多个线程最终拿的是不是同一个监视器对象，而不是代码里都写了 synchronized。
 
 **递进追问：**
 
@@ -1204,7 +1743,31 @@ volatile 也不等于把对象内部所有字段都自动变成同步变量；�
 
 **代码 / 场景：**
 
-后台线程循环检查 volatile boolean stopped，控制线程写 true 后能让它看到退出信号。并发计数不能只写 volatile int count 后执行 count++，应使用 AtomicInteger.incrementAndGet 或锁。配置对象若通过 volatile 引用整体替换，最好让配置本身不可变。
+**示例场景：**
+
+- **前提：** 后台线程循环检查 volatile boolean stopped，控制线程写 true 后能让它看到退出信号。
+- **过程：** 并发计数不能只写 volatile int count 后执行 count++，应使用 AtomicInteger.incrementAndGet 或锁。
+- **结果：** 配置对象若通过 volatile 引用整体替换，最好让配置本身不可变。
+
+**对照结果：** volatile 保证对该变量的写对后续读可见，并参与限制相关重排序；它不为读取—计算—写回这样的复合操作提供整体原子性。
+
+**补充代码示例：**
+
+volatile 适合发布停止信号，但不能让自增变成原子操作：
+
+```java
+// 示例重点：用这段最小代码验证“volatile 能保证什么，不能保证什么”
+private volatile boolean running = true;
+
+void stop() { running = false; } // 写入能被工作线程及时看到
+void loop() {
+    while (running) doOneStep();
+}
+
+// volatile int count; count++ 仍可能丢失更新
+```
+
+**对照结果：** 一个线程写 running、另一个线程读 running 是典型用法；涉及多个变量共同不变量时仍需同步。
 
 **递进追问：**
 
@@ -1242,7 +1805,33 @@ synchronized 语法简单，正常返回或异常时 JVM 都会退出监视器�
 
 **代码 / 场景：**
 
-普通账户状态更新用 synchronized 即可保持代码简洁。需要等待锁最多 100 毫秒并在超时后降级时，可使用 tryLock；成功后必须在 finally 里 unlock。多个条件队列的生产者消费者可用不同 Condition 减少无关唤醒。
+**示例场景：**
+
+- **前提：** 普通账户状态更新用 synchronized 即可保持代码简洁。
+- **过程：** 需要等待锁最多 100 毫秒并在超时后降级时，可使用 tryLock；成功后必须在 finally 里 unlock。
+- **结果：** 多个条件队列的生产者消费者可用不同 Condition 减少无关唤醒。
+
+**对照结果：** 两者都能提供可重入互斥与可见性；synchronized 由语言结构自动释放，ReentrantLock 额外提供可中断、超时、公平策略和多个 Condition。
+
+**补充代码示例：**
+
+需要可中断或限时获取锁时，ReentrantLock 更容易表达：
+
+```java
+// 示例重点：用这段最小代码验证“synchronized 和 ReentrantLock 有什么区别”
+Lock lock = new ReentrantLock();
+if (lock.tryLock(200, TimeUnit.MILLISECONDS)) { // 最多等待 200ms
+    try {
+        updateBalance();
+    } finally {
+        lock.unlock(); // 必须在 finally 释放
+    }
+} else {
+    rejectBusyRequest();
+}
+```
+
+**对照结果：** 只需要普通互斥时 synchronized 更简洁；选择 Lock 是为了明确需要它的额外能力。
 
 **递进追问：**
 
@@ -1283,7 +1872,13 @@ happens-before 不是墙钟时间，而是内存可见性与排序关系。常�
 
 **代码 / 场景：**
 
-主线程先写入配置对象，再调用 worker.start，工作线程可依据 start 规则看到此前写入。任务线程完成计算后退出，主线程 join 成功返回后可看到结果。单纯 sleep 一段时间不建立这种确定关系，不能用于发布共享数据。
+**示例场景：**
+
+- **前提：** 主线程先写入配置对象，再调用 worker.start，工作线程可依据 start 规则看到此前写入。
+- **过程：** 任务线程完成计算后退出，主线程 join 成功返回后可看到结果。
+- **结果：** 单纯 sleep 一段时间不建立这种确定关系，不能用于发布共享数据。
+
+**对照结果：** Java 内存模型（JMM）规定多个线程读写同一份数据时，哪些结果必须彼此可见，以及编译器和 CPU 可以怎样调整执行顺序。
 
 **递进追问：**
 
@@ -1323,7 +1918,29 @@ join 在语义上等待指定线程终止，并建立目标线程动作到 join 
 
 **代码 / 场景：**
 
-生产者消费者使用 wait 时必须放在 while 条件循环中，醒来后重新检查队列，防止虚假唤醒和条件被其他线程抢先改变。不要在 synchronized 内 sleep 来“让出锁”，它会占着锁休眠。聚合子任务可 join，但生产代码通常优先使用 Future 或结构化执行。
+**示例场景：**
+
+- **前提：** 生产者消费者使用 wait 时必须放在 while 条件循环中，醒来后重新检查队列，防止虚假唤醒和条件被其他线程抢先改变。
+- **过程：** 不要在 synchronized 内 sleep 来“让出锁”，它会占着锁休眠。
+- **结果：** 聚合子任务可 join，但生产代码通常优先使用 Future 或结构化执行。
+
+**对照结果：** wait 在持有对象监视器时进入等待并释放该监视器，sleep 只让当前线程定时休眠且不释放已持有锁，join 用于等待目标线程结束。
+
+**补充代码示例：**
+
+三个调用等待的对象和释放锁的行为不同：
+
+```java
+// 示例重点：用这段最小代码验证“wait、sleep 和 join 有什么区别”
+synchronized (queue) {
+    while (queue.isEmpty()) queue.wait(); // 释放 queue 监视器并等待通知
+}
+
+Thread.sleep(100); // 只让当前线程暂停，不会释放已经持有的锁
+worker.join();     // 当前线程等待 worker 结束
+```
+
+**对照结果：** wait 必须配合相同监视器和条件循环；sleep 只是计时暂停；join 表达线程完成依赖。
 
 **递进追问：**
 
@@ -1363,7 +1980,30 @@ join 在语义上等待指定线程终止，并建立目标线程动作到 join 
 
 **代码 / 场景：**
 
-订单接口调用数据库时，线程池不能只按 CPU 核心数机械设置，也不能超过连接池和下游可承载并发。使用有界队列与带业务指标的拒绝策略，压测观察活跃线程、队列等待、拒绝数和 p99，找到系统饱和点。
+**示例场景：**
+
+- **前提：** 订单接口调用数据库时，线程池不能只按 CPU 核心数机械设置，也不能超过连接池和下游可承载并发。
+- **结果：** 使用有界队列与带业务指标的拒绝策略，压测观察活跃线程、队列等待、拒绝数和 p99，找到系统饱和点。
+
+**对照结果：** 核心参数决定常驻线程、最大线程、空闲回收、队列、线程工厂和拒绝策略；提交流程通常是先核心线程，再入队，再扩到最大，最后拒绝。
+
+**补充代码示例：**
+
+生产线程池要把并发、队列和过载行为一起写清楚：
+
+```java
+// 示例重点：用这段最小代码验证“ThreadPoolExecutor 的核心参数和执行流程是什么”
+ExecutorService pool = new ThreadPoolExecutor(
+    4, 8, 30, TimeUnit.SECONDS,
+    new ArrayBlockingQueue<>(200), // 有界队列，避免无限堆积
+    new ThreadPoolExecutor.CallerRunsPolicy() // 过载时让提交方承担压力
+);
+
+pool.execute(task);
+pool.shutdown(); // 应用关闭时停止接收新任务
+```
+
+**对照结果：** 参数不是越大越好；应按任务阻塞比例、下游容量和延迟目标压测，并监控活跃线程、队列与拒绝数。
 
 **递进追问：**
 
@@ -1401,7 +2041,13 @@ newFixedThreadPool 常配无界 LinkedBlockingQueue，过载时任务持续堆�
 
 **代码 / 场景：**
 
-邮件发送服务若用 newFixedThreadPool，供应商变慢时队列可积压百万任务。改为有界队列、命名线程工厂和明确拒绝或落盘策略，并监控队列等待；容量按供应商限额而不是服务器 CPU 单独决定。
+**示例场景：**
+
+- **前提：** 邮件发送服务若用 newFixedThreadPool，供应商变慢时队列可积压百万任务。
+- **过程：** 改为有界队列、命名线程工厂和明确拒绝或落盘策略，并监控队列等待；
+- **结果：** 容量按供应商限额而不是服务器 CPU 单独决定。
+
+**对照结果：** 常用 Executors 工厂隐藏了关键容量选择，可能创建无界队列或数量快速增长的线程；生产环境更需要显式、可审计地配置 ThreadPoolExecutor。
 
 **递进追问：**
 
@@ -1440,7 +2086,32 @@ ThreadLocal 为每个线程维护独立值，数据实际存在线程持有的 T
 
 **代码 / 场景：**
 
-Web 过滤器把 traceId 放入 ThreadLocal，链路结束时无论正常还是异常都在 finally remove。若只 set 不清理，线程池复用后另一个用户请求可能继承旧 traceId，造成日志串号甚至权限上下文泄漏。
+**示例场景：**
+
+- **前提：** Web 过滤器把 traceId 放入 ThreadLocal，链路结束时无论正常还是异常都在 finally remove。
+- **结果：** 若只 set 不清理，线程池复用后另一个用户请求可能继承旧 traceId，造成日志串号甚至权限上下文泄漏。
+
+**对照结果：** ThreadLocal 为每个线程维护独立值，数据实际存在线程持有的 ThreadLocalMap 中；线程池会复用线程，因此任务结束应 remove 防止串数据和滞留。
+
+**补充代码示例：**
+
+在线程池任务里用 finally 清理，避免下一次请求复用旧值：
+
+```java
+// 示例重点：用这段最小代码验证“ThreadLocal 的原理是什么，为什么要调用 remove”
+private static final ThreadLocal<String> TRACE_ID = new ThreadLocal<>();
+
+void handle(String traceId) {
+    try {
+        TRACE_ID.set(traceId); // 当前线程保存自己的值
+        service.call();
+    } finally {
+        TRACE_ID.remove();     // 线程会复用，因此必须清理
+    }
+}
+```
+
+**对照结果：** ThreadLocal 不是全局 Map；值挂在当前 Thread 的 ThreadLocalMap 上，长生命周期线程更需要显式 remove。
 
 **递进追问：**
 
@@ -1479,7 +2150,31 @@ Web 过滤器把 traceId 放入 ThreadLocal，链路结束时无论正常还是�
 
 **代码 / 场景：**
 
-转账同时锁两个账户时，所有线程按 accountId 从小到大加锁，而不是按转出、转入顺序。线上无响应时用 jcmd Thread.print 或 ThreadMXBean 获取锁图，先保留证据再决定重启，并补并发回归测试。
+**示例场景：**
+
+- **前提：** 转账同时锁两个账户时，所有线程按 accountId 从小到大加锁，而不是按转出、转入顺序。
+- **结果：** 线上无响应时用 jcmd Thread.print 或 ThreadMXBean 获取锁图，先保留证据再决定重启，并补并发回归测试。
+
+**对照结果：** 死锁常由互斥、占有且等待、不可剥夺和循环等待同时成立；工程上通过固定锁顺序、缩小锁范围、超时尝试和线程转储来预防与定位。
+
+**补充代码示例：**
+
+固定全局加锁顺序，可以直接破坏循环等待条件：
+
+```java
+// 示例重点：用这段最小代码验证“死锁产生的条件是什么，怎样预防和排查”
+void transfer(Account a, Account b) {
+    Account first = a.id() < b.id() ? a : b;  // 所有线程按 id 排序
+    Account second = first == a ? b : a;
+    synchronized (first) {
+        synchronized (second) {
+            moveMoney(a, b); // 不会出现 A 等 B、B 又等 A
+        }
+    }
+}
+```
+
+**对照结果：** 线上排查要用线程 dump 找到锁等待环；预防优先缩小锁范围、统一顺序或使用超时锁。
 
 **递进追问：**
 
@@ -1518,7 +2213,30 @@ AtomicStampedReference 等把值与版本一起比较，或通过不可复用标
 
 **代码 / 场景：**
 
-计数器可用 AtomicInteger.incrementAndGet。无锁栈弹出节点时，如果节点 A 被移除又重新压回，旧线程仅比较头引用可能错误成功；将头引用与递增 stamp 作为整体检查，可识别中间发生过变化。
+**示例场景：**
+
+- **前提：** 计数器可用 AtomicInteger.incrementAndGet。
+- **过程：** 无锁栈弹出节点时，如果节点 A 被移除又重新压回，旧线程仅比较头引用可能错误成功；
+- **结果：** 将头引用与递增 stamp 作为整体检查，可识别中间发生过变化。
+
+**对照结果：** CAS 原子比较内存位置的当前值与期望值，相等才写入新值，失败由调用方重试；ABA 是值变回原样却掩盖了中间变化，可加入版本号解决。
+
+**补充代码示例：**
+
+只比较数值会漏掉 A→B→A，加入版本号后能识别中间变化：
+
+```java
+// 示例重点：用这段最小代码验证“CAS 的原理是什么，ABA 问题怎样解决”
+AtomicStampedReference<String> ref =
+    new AtomicStampedReference<>("A", 0);
+int[] stamp = new int[1];
+String old = ref.get(stamp); // 同时读取值与版本
+
+boolean ok = ref.compareAndSet(old, "C", stamp[0], stamp[0] + 1);
+System.out.println(ok); // 版本不匹配时更新失败
+```
+
+**对照结果：** CAS 适合竞争可控的短操作；高竞争下持续自旋会消耗 CPU，不应把无锁等同于永远更快。
 
 **递进追问：**
 
@@ -1561,7 +2279,13 @@ AtomicStampedReference 等把值与版本一起比较，或通过不可复用标
 
 **代码 / 场景：**
 
-堆使用正常但容器仍被 OOM Kill 时，不能只调大 Xmx；还要检查线程数量乘 Xss、DirectByteBuffer、Metaspace、JIT 代码缓存和本地库。通过进程 RSS、NMT、GC 日志和线程数逐层对账。
+**示例场景：**
+
+- **前提：** 堆使用正常但容器仍被 OOM Kill 时，不能只调大 Xmx；
+- **过程：** 还要检查线程数量乘 Xss、DirectByteBuffer、Metaspace、JIT 代码缓存和本地库。
+- **结果：** 通过进程 RSS、NMT、GC 日志和线程数逐层对账。
+
+**对照结果：** 常见运行时区域包括线程私有的程序计数器、Java 虚拟机栈和本地方法栈，以及线程共享的堆和方法区；直接内存则位于规范数据区之外。
 
 **递进追问：**
 
@@ -1599,7 +2323,13 @@ AtomicStampedReference 等把值与版本一起比较，或通过不可复用标
 
 **代码 / 场景：**
 
-无限递归通常迅速抛 StackOverflowError；把百万个大对象持续放入静态 List 更可能造成堆 OOM。线上创建数千线程时，即使堆未满，线程栈和系统线程资源也可能先耗尽，需结合 Xss 与并发模型分析。
+**示例场景：**
+
+- **前提：** 无限递归通常迅速抛 StackOverflowError；
+- **过程：** 把百万个大对象持续放入静态 List 更可能造成堆 OOM。
+- **结果：** 线上创建数千线程时，即使堆未满，线程栈和系统线程资源也可能先耗尽，需结合 Xss 与并发模型分析。
+
+**对照结果：** 堆由线程共享，主要承载对象并由 GC 管理；每个线程拥有自己的虚拟机栈，方法调用创建栈帧，返回后帧随即弹出。
 
 **递进追问：**
 
@@ -1637,7 +2367,13 @@ new 指令解析类符号引用，必要时触发类加载、链接和初始化�
 
 **代码 / 场景：**
 
-Repository 构造器若先把 this 放入静态监听器，再初始化连接字段，其他线程可能提前回调并读到 null。应完成构造后由工厂注册，并通过 final 字段、锁或安全容器发布。对象很大或创建频繁时，再结合分配率和逃逸分析判断优化点。
+**示例场景：**
+
+- **前提：** Repository 构造器若先把 this 放入静态监听器，再初始化连接字段，其他线程可能提前回调并读到 null。
+- **过程：** 应完成构造后由工厂注册，并通过 final 字段、锁或安全容器发布。
+- **结果：** 对象很大或创建频繁时，再结合分配率和逃逸分析判断优化点。
+
+**对照结果：** 执行 new 前要确保目标类已初始化，随后为对象分配内存、设置零值和对象头、执行构造初始化，最后把引用交给调用代码。
 
 **递进追问：**
 
@@ -1676,7 +2412,13 @@ Repository 构造器若先把 this 放入静态监听器，再初始化连接字
 
 **代码 / 场景：**
 
-双向链表的节点彼此引用，但业务根不再持有整条链后可被 GC 回收。相反，静态 Map 持续保存已经下线租户对象，它们始终从类静态字段可达，会形成内存泄漏；堆转储应查看到 GC Root 的保留路径。
+**示例场景：**
+
+- **前提：** 双向链表的节点彼此引用，但业务根不再持有整条链后可被 GC 回收。
+- **过程：** 相反，静态 Map 持续保存已经下线租户对象，它们始终从类静态字段可达，会形成内存泄漏；
+- **结果：** 堆转储应查看到 GC Root 的保留路径。
+
+**对照结果：** 可达性分析从一组 GC Roots 沿引用关系遍历，能到达的对象视为存活候选，无法到达的对象才可能被回收。
 
 **递进追问：**
 
@@ -1717,7 +2459,13 @@ Repository 构造器若先把 this 放入静态监听器，再初始化连接字
 
 **代码 / 场景：**
 
-年轻代多数对象很快死亡，复制少量存活对象通常划算；老年代存活率较高，若每次复制全部存活对象成本更大。G1 按 Region 选择回收集合并转移存活对象，本质上组合分区、标记和复制整理思想。
+**示例场景：**
+
+- **前提：** 年轻代多数对象很快死亡，复制少量存活对象通常划算；
+- **过程：** 老年代存活率较高，若每次复制全部存活对象成本更大。
+- **结果：** G1 按 Region 选择回收集合并转移存活对象，本质上组合分区、标记和复制整理思想。
+
+**对照结果：** 标记—清除直接回收不可达区域但可能产生碎片，复制把存活对象搬到新区域，标记—整理则把存活对象压缩后统一释放尾部空间。
 
 **递进追问：**
 
@@ -1755,7 +2503,13 @@ Repository 构造器若先把 this 放入静态监听器，再初始化连接字
 
 **代码 / 场景：**
 
-接口每次创建的大量临时 DTO 很快失效，适合在年轻代回收；静态缓存长期持有的数据会进入老年代。若缓存无界增长，调大年轻代无法解决，必须控制缓存生命周期并观察晋升率和老年代占用。
+**示例场景：**
+
+- **前提：** 接口每次创建的大量临时 DTO 很快失效，适合在年轻代回收；
+- **过程：** 静态缓存长期持有的数据会进入老年代。
+- **结果：** 若缓存无界增长，调大年轻代无法解决，必须控制缓存生命周期并观察晋升率和老年代占用。
+
+**对照结果：** 分代利用“大多数对象朝生夕死、熬过多次回收的对象更可能长寿”的经验规律，让不同存活特征的区域采用不同回收频率与策略。
 
 **递进追问：**
 
@@ -1793,7 +2547,13 @@ Minor GC 通常指年轻代回收，Major GC 常被用于老年代回收，Full 
 
 **代码 / 场景：**
 
-监控显示“Major GC 次数增加”时，先核对采集器如何定义指标，并查看原始 GC 日志的 cause、回收前后占用和暂停。G1 连续 Young GC 本身不等于故障；若最终出现 to-space exhausted 后 Full GC，才需要结合分配与标记进度分析。
+**示例场景：**
+
+- **前提：** 监控显示“Major GC 次数增加”时，先核对采集器如何定义指标，并查看原始 GC 日志的 cause、回收前后占用和暂停。
+- **过程：** G1 连续 Young GC 本身不等于故障；
+- **结果：** 若最终出现 to-space exhausted 后 Full GC，才需要结合分配与标记进度分析。
+
+**对照结果：** Minor GC 通常指年轻代回收，Major GC 常被用于老年代回收，Full GC 通常覆盖整个堆并可能处理更多区域；后两者名称在工具和收集器间并不完全统一。
 
 **递进追问：**
 
@@ -1831,7 +2591,12 @@ Minor GC 通常指年轻代回收，Major GC 常被用于老年代回收，Full 
 
 **代码 / 场景：**
 
-声明 static int x = compute() 时，准备阶段先给 x 零值，初始化阶段才调用 compute 赋业务值。仅定义 Class 类型字面量或创建数组不一定触发目标类初始化，而 new、访问非编译期常量静态字段等通常属于主动使用。
+**示例场景：**
+
+- **前提：** 声明 static int x = compute() 时，准备阶段先给 x 零值，初始化阶段才调用 compute 赋业务值。
+- **结果：** 仅定义 Class 类型字面量或创建数组不一定触发目标类初始化，而 new、访问非编译期常量静态字段等通常属于主动使用。
+
+**对照结果：** 类从字节流进入可用状态通常经历加载、链接和初始化；链接又分验证、准备与解析，初始化执行类变量赋值和静态初始化块。
 
 **递进追问：**
 
@@ -1869,7 +2634,13 @@ Minor GC 通常指年轻代回收，Major GC 常被用于老年代回收，Full 
 
 **代码 / 场景：**
 
-插件系统可为每个插件建立独立 ClassLoader，使不同版本依赖隔离；跨加载器交互通过父加载器可见的公共接口。若直接把插件实现类强转为主应用中“同名”类，可能出现 ClassCastException，因为定义加载器不同。
+**示例场景：**
+
+- **前提：** 插件系统可为每个插件建立独立 ClassLoader，使不同版本依赖隔离；
+- **过程：** 跨加载器交互通过父加载器可见的公共接口。
+- **结果：** 若直接把插件实现类强转为主应用中“同名”类，可能出现 ClassCastException，因为定义加载器不同。
+
+**对照结果：** 类加载器接到加载请求时通常先委派父加载器，父级无法完成才自行查找；这样能复用已加载类并保护 Java 核心类型的一致性。
 
 **递进追问：**
 
@@ -1907,7 +2678,13 @@ StackOverflowError 通常来自单线程调用栈过深，OutOfMemoryError 表�
 
 **代码 / 场景：**
 
-递归解析深层树导致 StackOverflow，应改迭代或限制深度，而不是只调大 Xss。堆 OOM 时先比较对象数量和到 GC Root 的路径；若容器被杀却没有 Java 堆 OOM，则核对 RSS、线程栈和直接内存。
+**示例场景：**
+
+- **前提：** 递归解析深层树导致 StackOverflow，应改迭代或限制深度，而不是只调大 Xss。
+- **过程：** 堆 OOM 时先比较对象数量和到 GC Root 的路径；
+- **结果：** 若容器被杀却没有 Java 堆 OOM，则核对 RSS、线程栈和直接内存。
+
+**对照结果：** StackOverflowError 通常来自单线程调用栈过深，OutOfMemoryError 表示 JVM 无法在某个内存区域满足分配；OOM 不只可能发生在 Java 堆。
 
 **递进追问：**
 
@@ -1948,7 +2725,13 @@ Full GC 常见线索包括并发周期启动过晚、分配或晋升速度过快
 
 **代码 / 场景：**
 
-若日志显示大量 Humongous 分配后触发并发模式失败，应定位超大 byte 数组来源，而不是只增加并发 GC 线程。若老年代回收后仍接近上限，获取 heap dump 分析 dominator 与 GC Root；若回收效果好但很快涨满，则重点查分配率和流量。
+**示例场景：**
+
+- **前提：** 若日志显示大量 Humongous 分配后触发并发模式失败，应定位超大 byte 数组来源，而不是只增加并发 GC 线程。
+- **过程：** 若老年代回收后仍接近上限，获取 heap dump 分析 dominator 与 GC Root；
+- **结果：** 若回收效果好但很快涨满，则重点查分配率和流量。
+
+**对照结果：** G1 是面向较大堆的垃圾收集器，它把堆切成许多小区域（Region），每次优先回收预计收益高的区域，以尽量满足停顿目标。
 
 **递进追问：**
 
@@ -1992,7 +2775,28 @@ Lambda 是对“可作为值传递的一段行为”的简洁表达；它的目�
 
 **代码 / 场景：**
 
-把订单筛选规则声明为 `Predicate<Order> paid = order -> order.isPaid()`，再传给通用过滤方法，调用方无需创建只使用一次的实现类。若 Lambda 捕获局部阈值 `limit`，后续不能再给 limit 赋值；需要可变计数时应重新设计状态归属，而不是用单元素数组绕过限制。
+**示例场景：**
+
+- **前提：** 把订单筛选规则声明为 `Predicate<Order> paid = order -> order.isPaid()`，再传给通用过滤方法，调用方无需创建只使用一次的实现类。
+- **过程：** 若 Lambda 捕获局部阈值 `limit`，后续不能再给 limit 赋值；
+- **结果：** 需要可变计数时应重新设计状态归属，而不是用单元素数组绕过限制。
+
+**对照结果：** Lambda 是对“可作为值传递的一段行为”的简洁表达；它的目标类型必须是函数式接口，即只有一个抽象方法的接口，default、static 和与 Object 等价的方法不计入这个数量。
+
+**补充代码示例：**
+
+Lambda 是函数式接口实例的简写，而不是脱离类型存在的函数：
+
+```java
+// 示例重点：用这段最小代码验证“Lambda 表达式和函数式接口是什么”
+@FunctionalInterface
+interface Formatter { String format(String value); }
+
+Formatter trim = value -> value.trim(); // Lambda 实现唯一抽象方法
+System.out.println(trim.format("  Java  ")); // Java
+```
+
+**对照结果：** 目标接口只能有一个抽象方法；default/static 方法不影响函数式接口资格。
 
 **递进追问：**
 
@@ -2034,7 +2838,28 @@ Stream 是一次性的声明式数据处理管道：中间操作通常惰性组�
 
 **代码 / 场景：**
 
-统计有效订单总额可写成 `orders.stream().filter(Order::isValid).map(Order::amount).reduce(BigDecimal.ZERO, BigDecimal::add)`。如果处理过程需要逐步修改多份共享状态、频繁阻塞远程接口，显式循环或受控线程池通常更清晰，也更容易限流与排障。
+**示例场景：**
+
+- **前提：** 统计有效订单总额可写成 `orders.stream().filter(Order::isValid).map(Order::amount).reduce(BigDecimal.ZERO, BigDecimal::add)`。
+- **结果：** 如果处理过程需要逐步修改多份共享状态、频繁阻塞远程接口，显式循环或受控线程池通常更清晰，也更容易限流与排障。
+
+**对照结果：** Stream 是一次性的声明式数据处理管道：中间操作通常惰性组装，终止操作才触发遍历；它强调无干扰、少副作用，不等同于集合，也不会默认并行。
+
+**补充代码示例：**
+
+中间操作是惰性的，终止操作才真正拉取数据：
+
+```java
+// 示例重点：用这段最小代码验证“Stream 的执行模型是什么，什么时候不适合使用”
+List<String> result = names.stream()
+    .filter(name -> !name.isBlank()) // 中间操作：先记录规则
+    .map(String::trim)               // 中间操作：仍未立即遍历
+    .distinct()
+    .limit(10)
+    .toList();                       // 终止操作：开始执行流水线
+```
+
+**对照结果：** Stream 适合无副作用的数据变换；复杂异常、共享状态修改或必须精确控制循环时普通循环更清楚。
 
 **递进追问：**
 
@@ -2075,7 +2900,30 @@ Optional 用显式的“可能没有结果”替代部分裸 null 返回值，�
 
 **代码 / 场景：**
 
-仓储接口可返回 `Optional<User>`，服务层用 `orElseThrow(() -> new UserNotFoundException(id))` 转成领域错误。不要写 `optional.isPresent()` 后紧接 `get()` 模拟 null 判断；可以用 map、flatMap 或显式分支直接表达后续动作。
+**示例场景：**
+
+- **前提：** 仓储接口可返回 `Optional<User>`，服务层用 `orElseThrow(() -> new UserNotFoundException(id))` 转成领域错误。
+- **过程：** 不要写 `optional.isPresent()` 后紧接 `get()` 模拟 null 判断；
+- **结果：** 可以用 map、flatMap 或显式分支直接表达后续动作。
+
+**对照结果：** Optional 用显式的“可能没有结果”替代部分裸 null 返回值，适合方法返回边界；它不是通用字段容器，也不应靠 get 或层层包装掩盖数据模型问题。
+
+**补充代码示例：**
+
+Optional 适合作为“可能没有查询结果”的返回值：
+
+```java
+// 示例重点：用这段最小代码验证“Optional 应该怎样使用，为什么不建议到处使用”
+Optional<User> findUser(long id) {
+    return repository.findById(id); // 调用方一眼看到“可能为空”
+}
+
+String displayName = findUser(id)
+    .map(User::displayName)
+    .orElse("游客"); // 在边界统一给默认值
+```
+
+**对照结果：** 不要把 Optional 当万能防空包装器；实体字段、集合元素和方法参数通常有更清楚的建模方式。
 
 **递进追问：**
 
@@ -2116,7 +2964,31 @@ Optional 用显式的“可能没有结果”替代部分裸 null 返回值，�
 
 **代码 / 场景：**
 
-运行时路由框架若要通过反射读取自定义 `@Route`，必须把保留策略设为 RUNTIME，并把 Target 设为 METHOD 或 TYPE。编译期生成代码的注解可以使用 SOURCE 或 CLASS，再由 annotation processor 处理，不必为运行时反射付出成本。
+**示例场景：**
+
+- **前提：** 运行时路由框架若要通过反射读取自定义 `@Route`，必须把保留策略设为 RUNTIME，并把 Target 设为 METHOD 或 TYPE。
+- **结果：** 编译期生成代码的注解可以使用 SOURCE 或 CLASS，再由 annotation processor 处理，不必为运行时反射付出成本。
+
+**对照结果：** 注解是附着在程序元素上的结构化元数据；元注解约束注解自身的使用方式，其中 Retention 决定信息保留到源码、class 文件还是运行时。
+
+**补充代码示例：**
+
+只有保留到运行时的注解，反射才能读取：
+
+```java
+// 示例重点：用这段最小代码验证“Java 注解、元注解和保留策略分别是什么”
+@Target(ElementType.METHOD)       // 只能标在方法上
+@Retention(RetentionPolicy.RUNTIME)   // 运行时仍保留
+@interface Audited {}
+
+@Audited
+void pay() {}
+
+boolean enabled = getClass().getDeclaredMethod("pay")
+    .isAnnotationPresent(Audited.class); // true
+```
+
+**对照结果：** SOURCE 适合编译前工具，CLASS 会进 class 文件但运行时不保证可见，RUNTIME 才能被常规反射消费。
 
 **递进追问：**
 
@@ -2158,7 +3030,31 @@ Queue 抽象队列访问，Deque 支持两端插入删除并可实现栈，Block
 
 **代码 / 场景：**
 
-日志生产者可向 `ArrayBlockingQueue` 执行带超时 offer，消费者用 take 获取；队列满时记录丢弃、降级或回压指标。需要头尾都操作的滑动窗口可使用 ArrayDeque，但它不是线程安全容器。
+**示例场景：**
+
+- **前提：** 日志生产者可向 `ArrayBlockingQueue` 执行带超时 offer，消费者用 take 获取；
+- **过程：** 队列满时记录丢弃、降级或回压指标。
+- **结果：** 需要头尾都操作的滑动窗口可使用 ArrayDeque，但它不是线程安全容器。
+
+**对照结果：** Queue 抽象队列访问，Deque 支持两端插入删除并可实现栈，BlockingQueue 则为生产者—消费者增加阻塞等待和容量协作语义。
+
+**补充代码示例：**
+
+三种接口分别表达单端、双端和带等待的生产消费：
+
+```java
+// 示例重点：用这段最小代码验证“Queue、Deque 和 BlockingQueue 有什么区别”
+Queue<Job> ready = new ArrayDeque<>();
+ready.offer(job);               // 入队；失败时返回 false
+
+Deque<Page> history = new ArrayDeque<>();
+history.push(page);             // 双端队列可当栈使用
+
+BlockingQueue<Job> work = new ArrayBlockingQueue<>(100);
+work.put(job);                  // 队列满时等待，形成背压
+```
+
+**对照结果：** 选接口是在表达访问语义；跨线程生产消费优先 BlockingQueue，并明确容量和停止策略。
 
 **递进追问：**
 
@@ -2200,7 +3096,30 @@ LinkedHashMap 在哈希查找基础上维护插入序或访问序，TreeMap 按�
 
 **代码 / 场景：**
 
-接口需要按用户提交顺序输出字段时使用 LinkedHashMap；做价格区间索引并查找不高于目标价的最近档位时使用 TreeMap.floorEntry。简单本地 LRU 可借助访问序 LinkedHashMap，但并发缓存、过期和统计应交给专门缓存库。
+**示例场景：**
+
+- **前提：** 接口需要按用户提交顺序输出字段时使用 LinkedHashMap；
+- **过程：** 做价格区间索引并查找不高于目标价的最近档位时使用 TreeMap.floorEntry。
+- **结果：** 简单本地 LRU 可借助访问序 LinkedHashMap，但并发缓存、过期和统计应交给专门缓存库。
+
+**对照结果：** LinkedHashMap 在哈希查找基础上维护插入序或访问序，TreeMap 按自然顺序或 Comparator 维护有序键；前者适合稳定遍历与简单 LRU，后者适合排序和范围查询。
+
+**补充代码示例：**
+
+一个维护访问顺序，一个按键比较规则排序：
+
+```java
+// 示例重点：用这段最小代码验证“LinkedHashMap 和 TreeMap 的适用场景有什么不同”
+Map<String, Integer> sorted = new TreeMap<>();
+sorted.put("b", 2); sorted.put("a", 1);
+System.out.println(sorted.keySet()); // [a, b]：按键排序
+
+Map<String, Integer> lru = new LinkedHashMap<>(16, .75f, true);
+lru.put("A", 1); lru.put("B", 2); lru.get("A");
+System.out.println(lru.keySet());    // [B, A]：A 刚被访问
+```
+
+**对照结果：** 需要范围查询/排序选 TreeMap；需要可预测迭代或简单 LRU 顺序选 LinkedHashMap。
 
 **递进追问：**
 
@@ -2242,7 +3161,30 @@ CopyOnWriteArrayList 每次写入都会复制底层数组，再一次性发布�
 
 **代码 / 场景：**
 
-事件总线保存几十个、很少变化的监听器时，分发线程可遍历稳定快照，不必与偶发注册争用。若订单明细每秒更新成千上万次，写时复制会产生大量数组和 GC 压力，应换成更匹配的并发结构。
+**示例场景：**
+
+- **前提：** 事件总线保存几十个、很少变化的监听器时，分发线程可遍历稳定快照，不必与偶发注册争用。
+- **结果：** 若订单明细每秒更新成千上万次，写时复制会产生大量数组和 GC 压力，应换成更匹配的并发结构。
+
+**对照结果：** CopyOnWriteArrayList 每次写入都会复制底层数组，再一次性发布新快照；普通读取不用争写锁，迭代器也能稳定遍历创建时的快照，所以适合列表不大、读取远多于修改的场景。
+
+**补充代码示例：**
+
+遍历读取的是稳定快照，写入则复制底层数组：
+
+```java
+// 示例重点：用这段最小代码验证“进阶：CopyOnWriteArrayList 为什么适合读多写少”
+CopyOnWriteArrayList<String> listeners = new CopyOnWriteArrayList<>();
+listeners.add("A");
+
+for (String listener : listeners) {
+    listeners.addIfAbsent("B"); // 写入新数组，不破坏本次快照遍历
+    notify(listener);
+}
+System.out.println(listeners); // [A, B]
+```
+
+**对照结果：** 它适合监听器等读远多于写且集合不大的场景；高频写或大数组会产生明显复制与 GC 成本。
 
 **递进追问：**
 
@@ -2285,7 +3227,12 @@ AQS（AbstractQueuedSynchronizer）可以理解为实现锁和同步器的通用
 
 **代码 / 场景：**
 
-ReentrantLock、Semaphore、CountDownLatch 都可借助 AQS，但 state 语义不同：锁可表示重入次数，信号量表示许可数，倒计时器表示剩余计数。业务代码通常使用这些成熟同步器，而不是直接继承 AQS。
+**示例场景：**
+
+- **前提：** ReentrantLock、Semaphore、CountDownLatch 都可借助 AQS，但 state 语义不同：锁可表示重入次数，信号量表示许可数，倒计时器表示剩余计数。
+- **结果：** 业务代码通常使用这些成熟同步器，而不是直接继承 AQS。
+
+**对照结果：** AQS（AbstractQueuedSynchronizer）可以理解为实现锁和同步器的通用骨架。
 
 **递进追问：**
 
@@ -2325,7 +3272,32 @@ CompletableFuture 同时表示异步结果和可组合阶段，可串行转换�
 
 **代码 / 场景：**
 
-查询用户和权限互不依赖，可分别 supplyAsync 到隔离线程池，再用 thenCombine 组装视图；依赖用户 ID 再查订单时用 thenCompose。出口通过 orTimeout 限制等待，并在 handle 中区分超时、业务失败和成功，避免一律返回空对象。
+**示例场景：**
+
+- **前提：** 查询用户和权限互不依赖，可分别 supplyAsync 到隔离线程池，再用 thenCombine 组装视图；
+- **过程：** 依赖用户 ID 再查订单时用 thenCompose。
+- **结果：** 出口通过 orTimeout 限制等待，并在 handle 中区分超时、业务失败和成功，避免一律返回空对象。
+
+**对照结果：** CompletableFuture 同时表示异步结果和可组合阶段，可串行转换、并行汇合与统一恢复；正确使用的重点是线程池、依赖关系、异常和超时，而不只是把任务丢到后台。
+
+**补充代码示例：**
+
+并行任务应把组合、超时和异常出口写在同一条链上：
+
+```java
+// 示例重点：用这段最小代码验证“CompletableFuture 怎样组织异步任务和异常处理”
+CompletableFuture<User> user = CompletableFuture
+    .supplyAsync(() -> loadUser(id), ioPool); // 指定 I/O 线程池
+CompletableFuture<List<Order>> orders = CompletableFuture
+    .supplyAsync(() -> loadOrders(id), ioPool);
+
+CompletableFuture<Profile> profile = user
+    .thenCombine(orders, Profile::new)        // 两个结果都成功后合并
+    .orTimeout(800, TimeUnit.MILLISECONDS)    // 限制总等待
+    .exceptionally(error -> Profile.fallback(id)); // 明确降级
+```
+
+**对照结果：** 不要默认把阻塞 I/O 都丢进公共池；线程池、超时、取消和异常语义应一起设计。
 
 **递进追问：**
 
@@ -2366,7 +3338,13 @@ JVM 启动时可以先逐条解释字节码，让程序快速开始运行；当�
 
 **代码 / 场景：**
 
-基准测试若只运行一次，测到的主要是类加载、解释执行和编译预热，不代表稳态吞吐。应使用 JMH 处理预热、迭代和防止无用代码消除；线上则结合 JFR、编译日志和延迟分位数判断是否真是 JIT 问题。
+**示例场景：**
+
+- **前提：** 基准测试若只运行一次，测到的主要是类加载、解释执行和编译预热，不代表稳态吞吐。
+- **过程：** 应使用 JMH 处理预热、迭代和防止无用代码消除；
+- **结果：** 线上则结合 JFR、编译日志和延迟分位数判断是否真是 JIT 问题。
+
+**对照结果：** JVM 启动时可以先逐条解释字节码，让程序快速开始运行；当某段代码被反复执行成为热点后，JIT（即时编译器）再把它编译成更快的机器码。
 
 **递进追问：**
 

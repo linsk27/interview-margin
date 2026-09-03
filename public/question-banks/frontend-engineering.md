@@ -18,9 +18,10 @@
 
 **代码 / 场景：**
 
-以下代码在页面加载后读取导航阶段和主线程时间；不同协议可能没有完整 DNS/TLS 字段，但总时序仍可核对。
+**示例场景：** 以下代码在页面加载后读取导航阶段和主线程时间；不同协议可能没有完整 DNS/TLS 字段，但总时序仍可核对。
 
 ~~~js
+// 示例重点：以下代码在页面加载后读取导航阶段和主线程时间；不同协议可能没有完整 DNS/TLS 字段，但总时序仍可核对。
 addEventListener("load", () => {
   const nav = performance.getEntriesByType("navigation")[0]
   console.table({
@@ -33,7 +34,9 @@ addEventListener("load", () => {
 })
 ~~~
 
-若 domReady 很早但点击仍延迟，应继续用 Performance 面板定位 hydration 或长任务，而不是继续优化 DNS。
+- **观察目标：** 依次涉及 URL 解析、DNS、连接与 TLS、HTTP、HTML 流式解析、资源加载、样式布局绘制和脚本执行；可交互还取决于主线程长任务。
+
+**对照结果：** 若 domReady 很早但点击仍延迟，应继续用 Performance 面板定位 hydration 或长任务，而不是继续优化 DNS。
 
 **递进追问：**
 
@@ -72,7 +75,9 @@ addEventListener("load", () => {
 
 **代码 / 场景：**
 
-可用浏览器任务管理器与 Performance 面板验证，而不是根据“一个 Tab 一个进程”猜测。
+**示例场景：** 可用浏览器任务管理器与 Performance 面板验证，而不是根据“一个 Tab 一个进程”猜测。
+
+> 示例注解：可用浏览器任务管理器与 Performance 面板验证，而不是根据“一个 Tab 一个进程”猜测。
 
 ~~~text
 验证步骤：
@@ -83,7 +88,7 @@ addEventListener("load", () => {
 5. 在 DevTools Performance 中检查长任务位于 Main 轨道，而非 Network。
 ~~~
 
-实验只能说明当前浏览器与配置，不能把观察结果写成所有浏览器固定进程模型。
+**对照结果：** 实验只能说明当前浏览器与配置，不能把观察结果写成所有浏览器固定进程模型。
 
 **递进追问：**
 
@@ -122,9 +127,10 @@ addEventListener("load", () => {
 
 **代码 / 场景：**
 
-以下输出严格展示当前脚本、微任务检查点和下一定时器任务的边界。
+**示例场景：** 以下输出严格展示当前脚本、微任务检查点和下一定时器任务的边界。
 
 ~~~js
+// 示例重点：以下输出严格展示当前脚本、微任务检查点和下一定时器任务的边界。
 console.log("A")
 setTimeout(() => console.log("timeout"), 0)
 Promise.resolve().then(() => {
@@ -137,7 +143,9 @@ console.log("B")
 // 输出：A、B、promise-1、microtask-2、nested-microtask、timeout
 ~~~
 
-nested-microtask 虽后创建，仍在进入 timeout 任务前由同一个微任务检查点清空。
+- **观察目标：** 每个任务执行到调用栈清空后，事件循环会清空微任务队列，再给浏览器渲染机会并进入下一个任务；Promise 回调属于微任务。
+
+**对照结果：** nested-microtask 虽后创建，仍在进入 timeout 任务前由同一个微任务检查点清空。
 
 **递进追问：**
 
@@ -176,9 +184,10 @@ nested-microtask 虽后创建，仍在进入 timeout 任务前由同一个微任
 
 **代码 / 场景：**
 
-动画按真实时间推进 300 像素/秒；即使刷新率变化，速度仍近似一致，并在一秒后结束。
+**示例场景：** 动画按真实时间推进 300 像素/秒；即使刷新率变化，速度仍近似一致，并在一秒后结束。
 
 ~~~js
+// 示例重点：动画按真实时间推进 300 像素/秒；即使刷新率变化，速度仍近似一致，并在一秒后结束。
 const box = document.querySelector(".box")
 let start
 let frameId
@@ -193,7 +202,9 @@ frameId = requestAnimationFrame(step)
 // 组件卸载时：cancelAnimationFrame(frameId)
 ~~~
 
-若固定每帧加 5px，120Hz 屏幕会比 60Hz 屏幕运动更快。
+- **观察目标：** 它在下一次绘制前调用，适合按刷新节奏更新动画；后台标签可能降频，时间推进应使用回调时间戳而不是假设固定帧率。
+
+**对照结果：** 若固定每帧加 5px，120Hz 屏幕会比 60Hz 屏幕运动更快。
 
 **递进追问：**
 
@@ -233,9 +244,10 @@ frameId = requestAnimationFrame(step)
 
 **代码 / 场景：**
 
-观察器记录长任务开始时间与阻塞时长；测试按钮故意执行循环后，应出现 duration 大于 50ms 的条目。
+**示例场景：** 观察器记录长任务开始时间与阻塞时长；测试按钮故意执行循环后，应出现 duration 大于 50ms 的条目。
 
 ~~~js
+// 示例重点：观察器记录长任务开始时间与阻塞时长；测试按钮故意执行循环后，应出现 duration 大于 50ms 的条目。
 const observer = new PerformanceObserver((list) => {
   for (const entry of list.getEntries()) {
     console.log({
@@ -253,7 +265,9 @@ button.onclick = () => {
 }
 ~~~
 
-修复后应在同设备和操作脚本下比较长任务数量、INP 分位数与功能正确性。
+- **观察目标：** 主线程连续执行超过约 50ms 会阻塞输入和渲染；用 Performance 火焰图定位脚本、样式和布局热点，再拆分或移出主线程。
+
+**对照结果：** 修复后应在同设备和操作脚本下比较长任务数量、INP 分位数与功能正确性。
 
 **递进追问：**
 
@@ -292,9 +306,10 @@ button.onclick = () => {
 
 **代码 / 场景：**
 
-用同一元素分别改变 width、background 与 transform，并在 DevTools 录制三次操作，可观察不同流水线阶段。
+**示例场景：** 用同一元素分别改变 width、background 与 transform，并在 DevTools 录制三次操作，可观察不同流水线阶段。
 
 ~~~js
+// 示例重点：用同一元素分别改变 width、background 与 transform，并在 DevTools 录制三次操作，可观察不同流水线阶…
 const box = document.querySelector(".box")
 
 box.style.width = "400px"
@@ -307,7 +322,9 @@ box.style.transform = "translateX(100px)"
 // 若已合成，通常只更新合成；以 Performance 记录为准
 ~~~
 
-比较前先固定页面、设备与动画帧，否则缓存和首次层创建会污染结论。
+- **观察目标：** 几何或结构变化会触发布局计算并可能随后绘制，纯颜色等变化通常只需重绘；transform 和 opacity 常可交给合成线程。
+
+**对照结果：** 比较前先固定页面、设备与动画帧，否则缓存和首次层创建会污染结论。
 
 **递进追问：**
 
@@ -347,9 +364,10 @@ box.style.transform = "translateX(100px)"
 
 **代码 / 场景：**
 
-坏例子每轮写宽度后读取 offsetWidth；好例子先读一次基准，再批量写，DevTools 中 Layout 次数会明显减少。
+**示例场景：** 坏例子每轮写宽度后读取 offsetWidth；好例子先读一次基准，再批量写，DevTools 中 Layout 次数会明显减少。
 
 ~~~js
+// 示例重点：坏例子每轮写宽度后读取 offsetWidth；好例子先读一次基准，再批量写，DevTools 中 Layout 次数会明显减少。
 const items = [...document.querySelectorAll(".item")]
 
 // 坏：每次写后读，可能重复强制布局
@@ -365,7 +383,9 @@ items.forEach((item, i) => {
 })
 ~~~
 
-录制 Performance 并比较 Recalculate Style、Layout 总次数和耗时，不能只凭代码外观判断。
+- **观察目标：** 写入样式后立即读取 offsetWidth 等布局属性会迫使浏览器提前完成布局；循环中读写交错会形成 layout thrashing。
+
+**对照结果：** 录制 Performance 并比较 Recalculate Style、Layout 总次数和耗时，不能只凭代码外观判断。
 
 **递进追问：**
 
@@ -404,9 +424,10 @@ Worker 在独立线程执行脚本，不能直接操作 DOM；通过结构化克
 
 **代码 / 场景：**
 
-主线程把 8MB ArrayBuffer 转移给 Worker；发送后 byteLength 变为 0，证明所有权转移而非双份复制。
+**示例场景：** 主线程把 8MB ArrayBuffer 转移给 Worker；发送后 byteLength 变为 0，证明所有权转移而非双份复制。
 
 ~~~js
+// 示例重点：主线程把 8MB ArrayBuffer 转移给 Worker；发送后 byteLength 变为 0，证明所有权转移而非双份复制。
 // main.js
 const worker = new Worker("./sum-worker.js", { type: "module" })
 const buffer = new ArrayBuffer(8 * 1024 * 1024)
@@ -423,7 +444,9 @@ self.onmessage = ({ data }) => {
 }
 ~~~
 
-若每毫秒发送小消息，通信开销可能超过计算收益，应批量传输并用指标比较。
+- **观察目标：** Worker 在独立线程执行脚本，不能直接操作 DOM；通过结构化克隆或 Transferable 消息通信，适合 CPU 密集任务而非所有异步请求。
+
+**对照结果：** 若每毫秒发送小消息，通信开销可能超过计算收益，应批量传输并用指标比较。
 
 **递进追问：**
 
@@ -462,7 +485,7 @@ Cookie 随请求发送且容量小，localStorage 同步且仅字符串，Indexe
 
 **代码 / 场景：**
 
-以下决策表把需求映射到机制；实际配额和清理策略必须在目标浏览器验证。
+**示例场景：** 以下决策表把需求映射到机制；实际配额和清理策略必须在目标浏览器验证。
 
 | 需求 | 推荐起点 | 关键约束 |
 | --- | --- | --- |
@@ -472,6 +495,12 @@ Cookie 随请求发送且容量小，localStorage 同步且仅字符串，Indexe
 | 单标签临时向导状态 | sessionStorage | 标签会话边界 |
 
 验证时应模拟无痕模式、配额失败、清理站点数据与跨标签并发，而不只测正常写入。
+
+**对照结果：**
+
+用这个结果回答“浏览器存储如何选择”：需求 推荐起点 关键约束 --- --- --- 服务端会话凭据 Secure + HttpOnly + SameSite Cookie CSRF、过期、域与路径 主题/字号偏好 localStorage 同步、字符串、小数据 大量离线题目与 outbox IndexedDB 事务、升级、配额、
+
+清理 单标签临时向导状态 sessionStorage 标签会话边界 验证时应模拟无痕模式、配额失败、清理站点数据与跨标签并发，而不只测正常写入。
 
 **递进追问：**
 
@@ -510,9 +539,10 @@ Cookie 随请求发送且容量小，localStorage 同步且仅字符串，Indexe
 
 **代码 / 场景：**
 
-页面隐藏时发送一小批 JSON 遥测，并检查排队结果；失败则保留在本地待下次会话重试。
+**示例场景：** 页面隐藏时发送一小批 JSON 遥测，并检查排队结果；失败则保留在本地待下次会话重试。
 
 ~~~js
+// 示例重点：页面隐藏时发送一小批 JSON 遥测，并检查排队结果；失败则保留在本地待下次会话重试。
 const pending = []
 function flush() {
   if (!pending.length) return
@@ -528,7 +558,9 @@ document.addEventListener("visibilitychange", () => {
 })
 ~~~
 
-queued=true 不是服务器已持久化确认，服务端仍需幂等接收并监控丢失率。
+- **观察目标：** 它让浏览器在卸载阶段异步排队少量 POST 数据，比普通 fetch 更可能完成；仍有大小和方法头部限制，不能替代可靠业务提交。
+
+**对照结果：** queued=true 不是服务器已持久化确认，服务端仍需幂等接收并监控丢失率。
 
 **递进追问：**
 
@@ -569,7 +601,9 @@ Cache-Control max-age 或 immutable 让客户端直接复用；过期后用 ETag
 
 **代码 / 场景：**
 
-版本化 JSON 可短期新鲜并用 ETag 验证；开发者工具中第一次 200，过期后应看到带 If-None-Match 的请求与 304。
+**示例场景：** 版本化 JSON 可短期新鲜并用 ETag 验证；开发者工具中第一次 200，过期后应看到带 If-None-Match 的请求与 304。
+
+> 示例注解：版本化 JSON 可短期新鲜并用 ETag 验证；开发者工具中第一次 200，过期后应看到带 If-None-Match 的请求与 3…
 
 ~~~http
 HTTP/1.1 200 OK
@@ -585,7 +619,7 @@ Cache-Control: public, max-age=60
 ETag: "catalog-v42"
 ~~~
 
-304 没有重新传完整正文，但仍有网络往返；高延迟环境不能把它当作零成本命中。
+**对照结果：** 304 没有重新传完整正文，但仍有网络往返；高延迟环境不能把它当作零成本命中。
 
 **递进追问：**
 
@@ -624,7 +658,9 @@ ETag: "catalog-v42"
 
 **代码 / 场景：**
 
-Vite 构建后入口引用带哈希文件；服务器对 HTML 与资产采用不同缓存策略。
+**示例场景：** Vite 构建后入口引用带哈希文件；服务器对 HTML 与资产采用不同缓存策略。
+
+> 示例注解：Vite 构建后入口引用带哈希文件；服务器对 HTML 与资产采用不同缓存策略。
 
 ~~~http
 GET /index.html
@@ -637,7 +673,7 @@ GET /assets/app.a1b2c3.js
 Cache-Control: public, max-age=31536000, immutable
 ~~~
 
-部署 v2 时先上传新哈希资产，再原子切换 index；回滚只需恢复旧 HTML 指针。
+**对照结果：** 部署 v2 时先上传新哈希资产，再原子切换 index；回滚只需恢复旧 HTML 指针。
 
 **递进追问：**
 
@@ -675,7 +711,9 @@ Cache-Control: public, max-age=31536000, immutable
 
 **代码 / 场景：**
 
-在 DevTools Network 固定相同网络条件，对比协议与连接列；H2 请求应复用连接但丢包时多个流可能一起停顿。
+**示例场景：** 在 DevTools Network 固定相同网络条件，对比协议与连接列；H2 请求应复用连接但丢包时多个流可能一起停顿。
+
+> 示例注解：在 DevTools Network 固定相同网络条件，对比协议与连接列；H2 请求应复用连接但丢包时多个流可能一起停顿。
 
 ~~~text
 验证步骤：
@@ -686,7 +724,7 @@ Cache-Control: public, max-age=31536000, immutable
 5. 提高丢包后观察多个 stream 同时出现等待，证明 TCP HOL 仍存在。
 ~~~
 
-结论必须来自相同证书、压缩与网络条件，不能只比较两个不同站点。
+**对照结果：** 结论必须来自相同证书、压缩与网络条件，不能只比较两个不同站点。
 
 **递进追问：**
 
@@ -725,7 +763,9 @@ QUIC 在 UDP 上实现可靠流、TLS 1.3 和连接迁移，不同流的丢包�
 
 **代码 / 场景：**
 
-用浏览器网络面板与服务端日志同时验证 Alt-Svc、协议和回退；不要只凭 URL 认为使用了 H3。
+**示例场景：** 用浏览器网络面板与服务端日志同时验证 Alt-Svc、协议和回退；不要只凭 URL 认为使用了 H3。
+
+> 示例注解：用浏览器网络面板与服务端日志同时验证 Alt-Svc、协议和回退；不要只凭 URL 认为使用了 H3。
 
 ~~~http
 HTTP/2 200 OK
@@ -737,7 +777,7 @@ Alt-Svc: h3=":443"; ma=86400
 # 指标：H3 协商率、握手时长、请求失败率、回退到 h2 比例
 ~~~
 
-网络切换不断线不是无条件保证，路径验证、NAT、服务器配置与应用超时都会影响结果。
+**对照结果：** 网络切换不断线不是无条件保证，路径验证、NAT、服务器配置与应用超时都会影响结果。
 
 **递进追问：**
 
@@ -776,9 +816,10 @@ dns-prefetch 只解析域名，preconnect 提前建立连接和 TLS，preload �
 
 **代码 / 场景：**
 
-字体来自第三方 CDN：先建立连接，再用匹配的 crossorigin 预加载具体字体；主图同源直接 preload。
+**示例场景：** 字体来自第三方 CDN：先建立连接，再用匹配的 crossorigin 预加载具体字体；主图同源直接 preload。
 
 ~~~html
+<!-- 示例重点：字体来自第三方 CDN：先建立连接，再用匹配的 crossorigin 预加载具体字体；主图同源直接 preload。 -->
 <link rel="dns-prefetch" href="//cdn.example.com">
 <link rel="preconnect" href="https://cdn.example.com" crossorigin>
 <link rel="preload"
@@ -788,7 +829,9 @@ dns-prefetch 只解析域名，preconnect 提前建立连接和 TLS，preload �
       fetchpriority="high">
 ~~~
 
-在 Network 面板确认 Initiator 为 preload 且真正 CSS/图片消费时没有第二次请求。
+- **观察目标：** dns-prefetch 只解析域名，preconnect 提前建立连接和 TLS，preload 以高优先级声明当前页面确定需要的资源。
+
+**对照结果：** 在 Network 面板确认 Initiator 为 preload 且真正 CSS/图片消费时没有第二次请求。
 
 **递进追问：**
 
@@ -826,9 +869,10 @@ LCP 衡量主要内容加载，INP 衡量交互响应，CLS 衡量意外布局�
 
 **代码 / 场景：**
 
-用 web-vitals 库上报带 attribution 的真实样本，再在报表按页面和设备计算 p75，而不是对所有访问求平均。
+**示例场景：** 用 web-vitals 库上报带 attribution 的真实样本，再在报表按页面和设备计算 p75，而不是对所有访问求平均。
 
 ~~~js
+// 示例重点：用 web-vitals 库上报带 attribution 的真实样本，再在报表按页面和设备计算 p75，而不是对所有访问求平均。
 import { onCLS, onINP, onLCP } from "web-vitals/attribution"
 
 function report(metric) {
@@ -845,7 +889,9 @@ onINP(report)
 onCLS(report)
 ~~~
 
-报表需按用户会话去重和版本标记，并对样本不足页面显示置信限制。
+- **观察目标：** LCP 衡量主要内容加载，INP 衡量交互响应，CLS 衡量意外布局偏移；优化应基于真实用户分位数而非只看单次实验室分数。
+
+**对照结果：** 报表需按用户会话去重和版本标记，并对样本不足页面显示置信限制。
 
 **递进追问：**
 
@@ -884,9 +930,10 @@ onCLS(report)
 
 **代码 / 场景：**
 
-观察 LCP 条目并记录元素与资源 URL；主图在 HTML 中直接发现且明确高优先级，不使用 loading=lazy。
+**示例场景：** 观察 LCP 条目并记录元素与资源 URL；主图在 HTML 中直接发现且明确高优先级，不使用 loading=lazy。
 
 ~~~html
+<!-- 示例重点：观察 LCP 条目并记录元素与资源 URL；主图在 HTML 中直接发现且明确高优先级，不使用 loading=lazy。 -->
 <link rel="preload" href="/hero-1280.avif"
       as="image" fetchpriority="high">
 <img id="hero"
@@ -901,7 +948,9 @@ new PerformanceObserver((list) => {
 </script>
 ~~~
 
-若资源很早下载完但 LCP 仍晚，应转查 CSS 可见性、字体或主线程渲染延迟。
+- **观察目标：** 先确认 LCP 元素，缩短 TTFB，避免关键资源发现延迟，压缩并预加载主图或字体，减少阻塞 CSS/JS 和客户端瀑布。
+
+**对照结果：** 若资源很早下载完但 LCP 仍晚，应转查 CSS 可见性、字体或主线程渲染延迟。
 
 **递进追问：**
 
@@ -940,19 +989,22 @@ new PerformanceObserver((list) => {
 
 **代码 / 场景：**
 
-图片提前声明宽高，异步横幅使用固定最小高度；观察器输出没有近期输入的偏移源。
+**示例场景：** 图片提前声明宽高，异步横幅使用固定最小高度；观察器输出没有近期输入的偏移源。
 
 ~~~css
+/* 示例重点：图片提前声明宽高，异步横幅使用固定最小高度；观察器输出没有近期输入的偏移源。 */
 .hero { width: 100%; height: auto; aspect-ratio: 16 / 9; }
 .notice-slot { min-height: 48px; }
 ~~~
 
 ~~~html
+<!-- 示例重点：第 2 段：图片提前声明宽高，异步横幅使用固定最小高度；观察器输出没有近期输入的偏移源。 -->
 <img class="hero" src="hero.avif" width="1600" height="900" alt="">
 <div class="notice-slot" id="notice"></div>
 ~~~
 
 ~~~js
+// 示例重点：第 3 段：图片提前声明宽高，异步横幅使用固定最小高度；观察器输出没有近期输入的偏移源。
 new PerformanceObserver((list) => {
   for (const e of list.getEntries()) {
     if (!e.hadRecentInput) console.log(e.value, e.sources)
@@ -960,7 +1012,9 @@ new PerformanceObserver((list) => {
 }).observe({ type: "layout-shift", buffered: true })
 ~~~
 
-修复后在慢网和字体首次加载场景复测，缓存命中可能掩盖偏移。
+- **观察目标：** 为图片、广告和嵌入预留尺寸，字体使用合理回退和加载策略，避免在已有内容上方动态插入未占位元素。
+
+**对照结果：** 修复后在慢网和字体首次加载场景复测，缓存命中可能掩盖偏移。
 
 **递进追问：**
 
@@ -999,9 +1053,10 @@ new PerformanceObserver((list) => {
 
 **代码 / 场景：**
 
-这个最小池保证 active 从不超过 2；每个工厂函数被调度时才真正发起 fetch。
+**示例场景：** 这个最小池保证 active 从不超过 2；每个工厂函数被调度时才真正发起 fetch。
 
 ~~~js
+// 示例重点：这个最小池保证 active 从不超过 2；每个工厂函数被调度时才真正发起 fetch。
 async function runPool(factories, limit) {
   const results = new Array(factories.length)
   let next = 0
@@ -1020,7 +1075,9 @@ const jobs = urls.map((url) => () => fetch(url).then((r) => r.json()))
 const data = await runPool(jobs, 2)
 ~~~
 
-生产版本还需保存每项错误、接入 AbortSignal，并决定失败是否停止后续任务。
+- **观察目标：** 维护最大并发数和等待队列，任务结束后启动下一个；配合 AbortController、超时、重试和幂等性，而不是无上限 Promise.all。
+
+**对照结果：** 生产版本还需保存每项错误、接入 AbortSignal，并决定失败是否停止后续任务。
 
 **递进追问：**
 
@@ -1060,9 +1117,10 @@ const data = await runPool(jobs, 2)
 
 **代码 / 场景：**
 
-三个上传中一个失败，allSettled 仍返回三项；代码按输入顺序生成可重试列表。
+**示例场景：** 三个上传中一个失败，allSettled 仍返回三项；代码按输入顺序生成可重试列表。
 
 ~~~js
+// 示例重点：三个上传中一个失败，allSettled 仍返回三项；代码按输入顺序生成可重试列表。
 const uploads = [
   Promise.resolve({ file: "a.png", id: 1 }),
   Promise.reject(new Error("quota exceeded")),
@@ -1078,7 +1136,9 @@ console.table(settled.map((item, index) => ({
 // 输出顺序始终对应 a、b、c，不按完成先后排序
 ~~~
 
-失败项是否重试要结合错误类型与幂等性，不能盲目再次执行全部上传。
+- **观察目标：** 批量任务彼此独立且需要收集每项成功失败时使用；它不会短路，也不会自动重试，关键链路仍需明确整体成功条件。
+
+**对照结果：** 失败项是否重试要结合错误类型与幂等性，不能盲目再次执行全部上传。
 
 **递进追问：**
 
@@ -1119,13 +1179,16 @@ console.table(settled.map((item, index) => ({
 
 **代码 / 场景：**
 
-用一个含 30 个路由、但首屏只导入 2 个路由的项目验证：清除浏览器缓存后执行命令，并在 Network 面板观察首次请求。
+**示例场景：** 用一个含 30 个路由、但首屏只导入 2 个路由的项目验证：清除浏览器缓存后执行命令，并在 Network 面板观察首次请求。
 
 ~~~sh
+# 示例重点：用一个含 30 个路由、但首屏只导入 2 个路由的项目验证：清除浏览器缓存后执行命令，并在 Network 面板观察首次请求。
 npm run dev -- --debug
 ~~~
 
-首屏只应请求入口及其可达模块；打开懒加载路由时才出现对应源码请求。再修改一个叶子组件，记录控制台 HMR 时间。若修改 vite.config.ts 或锁文件，依赖缓存会失效；需要人工复验缓存时可执行 vite --force。这样能把“启动快”落实为请求图和更新时间，而不是主观感受。
+- **观察目标：** 它利用浏览器原生 ESM 按需提供源码，依赖预构建减少请求和 CommonJS 兼容成本，不必先打完整 bundle。
+
+**对照结果：** 首屏只应请求入口及其可达模块；打开懒加载路由时才出现对应源码请求。再修改一个叶子组件，记录控制台 HMR 时间。若修改 vite.config.ts 或锁文件，依赖缓存会失效；需要人工复验缓存时可执行 vite --force。这样能把“启动快”落实为请求图和更新时间，而不是主观感受。
 
 **递进追问：**
 
@@ -1164,9 +1227,10 @@ npm run dev -- --debug
 
 **代码 / 场景：**
 
-在 Vite 8 项目中显式生成 manifest 和隐藏 source map，再比较开发请求数与 dist 产物：
+**示例场景：** 在 Vite 8 项目中显式生成 manifest 和隐藏 source map，再比较开发请求数与 dist 产物：
 
 ~~~ts
+// 示例重点：在 Vite 8 项目中显式生成 manifest 和隐藏 source map，再比较开发请求数与 dist 产物：
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -1178,7 +1242,9 @@ export default defineConfig({
 });
 ~~~
 
-执行 vite build 后，检查 dist/.vite/manifest.json 中的入口、动态 imports 和 CSS 映射；再用预览服务器测首屏请求数与压缩后体积。若团队仍在 Vite 7 或更早版本，应使用该版本支持的 rollupOptions，而不是照抄 Vite 8 配置。
+- **观察目标：** 部署需做 tree shaking、代码分割、压缩、兼容转换和内容哈希，减少请求与运行开销，因此 Vite 生产阶段使用打包器。
+
+**对照结果：** 执行 vite build 后，检查 dist/.vite/manifest.json 中的入口、动态 imports 和 CSS 映射；再用预览服务器测首屏请求数与压缩后体积。若团队仍在 Vite 7 或更早版本，应使用该版本支持的 rollupOptions，而不是照抄 Vite 8 配置。
 
 **递进追问：**
 
@@ -1217,9 +1283,10 @@ export default defineConfig({
 
 **代码 / 场景：**
 
-建立一个最小模块并观察构建结果：
+**示例场景：** 建立一个最小模块并观察构建结果：
 
 ~~~ts
+// 示例重点：建立一个最小模块并观察构建结果：
 // math.ts
 export const add = (a: number, b: number) => a + b;
 export const unused = () => 42;
@@ -1230,7 +1297,9 @@ import { add } from "./math";
 document.body.textContent = String(add(1, 2));
 ~~~
 
-生产构建通常可删除 unused，但必须保留顶层 console.info，因为导入模块会执行它。删除该副作用后再次构建，用产物搜索和 gzip 大小确认差异；随后运行页面，确保行为相同。这个实验能区分“删除未引用导出”和“误删模块副作用”。
+- **观察目标：** 依赖静态 ESM 导入导出和可判定副作用；动态访问、CommonJS 或错误 sideEffects 声明会阻碍删除未使用代码。
+
+**对照结果：** 生产构建通常可删除 unused，但必须保留顶层 console.info，因为导入模块会执行它。删除该副作用后再次构建，用产物搜索和 gzip 大小确认差异；随后运行页面，确保行为相同。这个实验能区分“删除未引用导出”和“误删模块副作用”。
 
 **递进追问：**
 
@@ -1269,9 +1338,10 @@ document.body.textContent = String(add(1, 2));
 
 **代码 / 场景：**
 
-先以路由为边界做动态导入，再用真实构建清单核对：
+**示例场景：** 先以路由为边界做动态导入，再用真实构建清单核对：
 
 ~~~ts
+// 示例重点：先以路由为边界做动态导入，再用真实构建清单核对：
 const routes = {
   home: () => import("./pages/home"),
   report: () => import("./pages/report"),
@@ -1280,7 +1350,9 @@ const routes = {
 await routes.report();
 ~~~
 
-比较两次构建：A 将 60 个小组件分别动态导入，B 只按三个路由拆分。通过浏览器 Performance/Network 记录 report 首次打开的请求数、JS 传输体积、脚本解析时间和交互延迟。若 A 少传 15 KB 却新增几十次模块求值和明显瀑布，就应合并边界。
+- **观察目标：** 小 chunk 过多增加请求调度、压缩字典损失和加载瀑布；应以路由、低频重功能和共享依赖为边界并结合分析报告。
+
+**对照结果：** 比较两次构建：A 将 60 个小组件分别动态导入，B 只按三个路由拆分。通过浏览器 Performance/Network 记录 report 首次打开的请求数、JS 传输体积、脚本解析时间和交互延迟。若 A 少传 15 KB 却新增几十次模块求值和明显瀑布，就应合并边界。
 
 **递进追问：**
 
@@ -1319,15 +1391,18 @@ await routes.report();
 
 **代码 / 场景：**
 
-Vite 构建生成隐藏映射，并在发布流水线中先上传、后删除公共副本：
+**示例场景：** Vite 构建生成隐藏映射，并在发布流水线中先上传、后删除公共副本：
 
 ~~~ts
+// 示例重点：Vite 构建生成隐藏映射，并在发布流水线中先上传、后删除公共副本：
 // vite.config.ts
 import { defineConfig } from "vite";
 export default defineConfig({ build: { sourcemap: "hidden" } });
 ~~~
 
-流水线应以 commit SHA 创建 release，上传 dist/**/*.map 后校验平台能把一条测试异常定位到原 TypeScript 行，再从对外发布目录删除 map。最后直接请求预期 .map URL，确认返回 404；仅检查 JS 中没有 sourceMappingURL 并不足够。
+- **观察目标：** 它能还原压缩堆栈，可私有上传到监控平台；公开 map 可能暴露源码和路径，但隐藏 map 仍需妥善访问控制。
+
+**对照结果：** 流水线应以 commit SHA 创建 release，上传 dist/**/*.map 后校验平台能把一条测试异常定位到原 TypeScript 行，再从对外发布目录删除 map。最后直接请求预期 .map URL，确认返回 404；仅检查 JS 中没有 sourceMappingURL 并不足够。
 
 **递进追问：**
 
@@ -1365,16 +1440,19 @@ export default defineConfig({ build: { sourcemap: "hidden" } });
 
 **代码 / 场景：**
 
-下面的写法会把值直接放进产物，任何访问者都能搜索到：
+**示例场景：** 下面的写法会把值直接放进产物，任何访问者都能搜索到：
 
 ~~~ts
+// 示例重点：下面的写法会把值直接放进产物，任何访问者都能搜索到：
 const secret = import.meta.env.VITE_PAYMENT_SECRET;
 await fetch("https://pay.example/charge", {
   headers: { Authorization: "Bearer " + secret }
 });
 ~~~
 
-构建后对 dist 做字符串扫描即可复现泄露。正确方案是浏览器调用自己服务器的 /api/charge，服务器从密钥管理系统读取凭证并校验当前用户和金额。CI 还应对构建产物运行 secret scanner，并在发现泄露后立即撤销旧密钥，而不是只删除 Git 提交。
+- **观察目标：** 进入客户端 bundle 的变量任何用户都可查看；前端只放公开配置，私钥和第三方机密必须由服务端保管并代理调用。
+
+**对照结果：** 构建后对 dist 做字符串扫描即可复现泄露。正确方案是浏览器调用自己服务器的 /api/charge，服务器从密钥管理系统读取凭证并校验当前用户和金额。CI 还应对构建产物运行 secret scanner，并在发现泄露后立即撤销旧密钥，而不是只删除 Git 提交。
 
 **递进追问：**
 
@@ -1412,7 +1490,9 @@ await fetch("https://pay.example/charge", {
 
 **代码 / 场景：**
 
-一次可验证的蓝绿发布可保留两个目录：
+**示例场景：** 一次可验证的蓝绿发布可保留两个目录：
+
+> 示例注解：一次可验证的蓝绿发布可保留两个目录：
 
 ~~~text
 /releases/20260720-a/index.html
@@ -1422,7 +1502,9 @@ await fetch("https://pay.example/charge", {
 /current -> /releases/20260720-b
 ~~~
 
-先让 5% 流量进入 b，观察 10 分钟的 JS 错误率、LCP、接口 5xx 和关键转化；若超过阈值，原子切回 a 并清除 HTML 的 CDN 缓存，但保留两版哈希资源。用一个发布前已打开的旧标签页复测 API，确认兼容窗口真实存在。
+- **观察目标：** 构建不可变制品并记录提交与配置，静态资源使用哈希，入口版本可快速切换；数据库/API 变更需向前兼容才能独立回滚前端。
+
+**对照结果：** 先让 5% 流量进入 b，观察 10 分钟的 JS 错误率、LCP、接口 5xx 和关键转化；若超过阈值，原子切回 a 并清除 HTML 的 CDN 缓存，但保留两版哈希资源。用一个发布前已打开的旧标签页复测 API，确认兼容窗口真实存在。
 
 **递进追问：**
 
@@ -1461,9 +1543,10 @@ await fetch("https://pay.example/charge", {
 
 **代码 / 场景：**
 
-一个最小 PR 流水线可以设置这些可验证条件：
+**示例场景：** 一个最小 PR 流水线可以设置这些可验证条件：
 
 ~~~yaml
+# 示例重点：一个最小 PR 流水线可以设置这些可验证条件：
 gates:
   - "eslint: 0 errors"
   - "tsc --noEmit: success"
@@ -1474,7 +1557,9 @@ gates:
   - "a11y: no critical violations"
 ~~~
 
-将每个结果作为 PR 可见报告，并保留构建产物。性能测试固定设备、网络和样本页面，连续三次取中位数；若失败，报告具体超预算 chunk，而不是只给红灯。
+- **观察目标：** 锁依赖安装、类型检查、lint、单元与 E2E、构建和包体预算，部署后做健康检查与冒烟，再逐步放量。
+
+**对照结果：** 将每个结果作为 PR 可见报告，并保留构建产物。性能测试固定设备、网络和样本页面，连续三次取中位数；若失败，报告具体超预算 chunk，而不是只给红灯。
 
 **递进追问：**
 
@@ -1513,9 +1598,10 @@ Module Federation 允许一个构建在运行时加载另一个独立部署构�
 
 **代码 / 场景：**
 
-假设招聘平台的主壳与报表由不同团队发布，可定义最小远端契约：
+**示例场景：** 假设招聘平台的主壳与报表由不同团队发布，可定义最小远端契约：
 
 ~~~ts
+// 示例重点：假设招聘平台的主壳与报表由不同团队发布，可定义最小远端契约：
 export type ReportRemote = {
   mount(el: HTMLElement, input: { userId: string; traceId: string }): () => void;
 };
@@ -1527,7 +1613,9 @@ async function loadReport(): Promise<ReportRemote> {
 }
 ~~~
 
-测试远端正常、超时、404、版本不兼容四种情况；超时后主壳应显示可重试占位而非白屏。灰度时分别记录 remote 加载成功率、额外 LCP 和共享依赖重复体积。
+- **观察目标：** 多团队需要独立部署前端模块且可接受运行时依赖协调时有价值；会增加版本、共享依赖、故障隔离和本地开发复杂度。
+
+**对照结果：** 测试远端正常、超时、404、版本不兼容四种情况；超时后主壳应显示可重试占位而非白屏。灰度时分别记录 remote 加载成功率、额外 LCP 和共享依赖重复体积。
 
 **递进追问：**
 
@@ -1566,16 +1654,17 @@ async function loadReport(): Promise<ReportRemote> {
 
 **代码 / 场景：**
 
-对同一次生产构建记录一张基线表：入口 JS 420 KiB raw / 132 KiB gzip，首屏未使用 48%，最大依赖 editor 170 KiB raw。把编辑器改为进入编辑页时动态导入后再测：
+**示例场景：** 对同一次生产构建记录一张基线表：入口 JS 420 KiB raw / 132 KiB gzip，首屏未使用 48%，最大依赖 editor 170 KiB raw。把编辑器改为进入编辑页时动态导入后再测：
 
 ~~~ts
+// 示例重点：对同一次生产构建记录一张基线表：入口 JS 420 KiB raw / 132 KiB gzip，首屏未使用 48%，最大依赖 edi…
 document.querySelector("#edit")?.addEventListener("click", async () => {
   const { openEditor } = await import("./editor");
   openEditor();
 });
 ~~~
 
-重新构建并用 bundle visualizer 确认 editor 离开入口；在相同网络/CPU 下记录首页 LCP、Total Blocking Time 与编辑器首次打开延迟。若首页改善但编辑页出现长瀑布，应预取或重新划分边界。
+**对照结果：** 重新构建并用 bundle visualizer 确认 editor 离开入口；在相同网络/CPU 下记录首页 LCP、Total Blocking Time 与编辑器首次打开延迟。若首页改善但编辑页出现长瀑布，应预取或重新划分边界。
 
 **递进追问：**
 
@@ -1615,9 +1704,10 @@ any 关闭大部分检查，unknown 使用前必须收窄，never 表示不可�
 
 **代码 / 场景：**
 
-下面的代码可用 tsc --noEmit 验证三者差异：
+**示例场景：** 下面的代码可用 tsc --noEmit 验证三者差异：
 
 ~~~ts
+// 示例重点：下面的代码可用 tsc --noEmit 验证三者差异：
 const raw: unknown = JSON.parse('{"id": 7}');
 // raw.id; // 编译错误：必须先收窄
 if (typeof raw === "object" && raw !== null && "id" in raw) {
@@ -1634,7 +1724,9 @@ function label(s: Status) {
 }
 ~~~
 
-给 Status 新增 "error" 后，never 赋值会立即报错，证明穷尽检查生效。
+- **观察目标：** any 关闭大部分检查，unknown 使用前必须收窄，never 表示不可能出现的值，常用于穷尽检查和永不返回函数。
+
+**对照结果：** 给 Status 新增 "error" 后，never 赋值会立即报错，证明穷尽检查生效。
 
 **递进追问：**
 
@@ -1672,9 +1764,10 @@ interface 擅长对象契约与声明合并，type 可表达联合、交叉和�
 
 **代码 / 场景：**
 
-同一文件用 tsc 验证声明合并与联合能力：
+**示例场景：** 同一文件用 tsc 验证声明合并与联合能力：
 
 ~~~ts
+// 示例重点：同一文件用 tsc 验证声明合并与联合能力：
 interface User { id: string }
 interface User { name: string }
 const user: User = { id: "u1", name: "Linda" };
@@ -1688,7 +1781,9 @@ function print(result: Result<User>) {
 }
 ~~~
 
-删除 name 后 User 赋值会报错，证明 interface 已合并；Result 则直接表达互斥分支。若把公共接口改为 type，同名重复定义会报错，这正是是否允许开放扩展的设计差异。
+- **观察目标：** interface 擅长对象契约与声明合并，type 可表达联合、交叉和映射；项目应按能力和一致性选择，不必争论绝对优劣。
+
+**对照结果：** 删除 name 后 User 赋值会报错，证明 interface 已合并；Result 则直接表达互斥分支。若把公共接口改为 type，同名重复定义会报错，这正是是否允许开放扩展的设计差异。
 
 **递进追问：**
 
@@ -1727,9 +1822,10 @@ function print(result: Result<User>) {
 
 **代码 / 场景：**
 
-比较两种 first 的调用结果：
+**示例场景：** 比较两种 first 的调用结果：
 
 ~~~ts
+// 示例重点：比较两种 first 的调用结果：
 function firstAny(items: any[]): any { return items[0]; }
 function first<T>(items: readonly T[]): T | undefined { return items[0]; }
 
@@ -1742,7 +1838,9 @@ const value = safe?.toFixed(2);
 console.log(value);
 ~~~
 
-运行 unsafe 行会得到 TypeError；注释它后，safe 被推断为 number | undefined，调用者既保留元素类型，又被迫处理空数组。
+- **观察目标：** 泛型在输入和输出之间保留类型关系，调用方仍得到具体类型；any 会丢失约束和自动补全。
+
+**对照结果：** 运行 unsafe 行会得到 TypeError；注释它后，safe 被推断为 number | undefined，调用者既保留元素类型，又被迫处理空数组。
 
 **递进追问：**
 
@@ -1780,9 +1878,10 @@ console.log(value);
 
 **代码 / 场景：**
 
-一个只需要 length 的算法不必限定为数组：
+**示例场景：** 一个只需要 length 的算法不必限定为数组：
 
 ~~~ts
+// 示例重点：一个只需要 length 的算法不必限定为数组：
 function longest<T extends { length: number }>(a: T, b: T): T {
   return a.length >= b.length ? a : b;
 }
@@ -1793,7 +1892,9 @@ const list = longest([1], [1, 2, 3]);     // 类型仍为 number[]
 console.log(text, list.length);
 ~~~
 
-tsc 会拒绝数字调用；合法调用的返回值仍保留字符串或数组能力，说明约束既给实现提供证据，又没有像直接写 { length: number } 那样丢失具体类型。
+- **观察目标：** 它限制类型参数必须具备某些结构，使函数体可安全访问对应成员，同时保留调用方更具体的类型信息。
+
+**对照结果：** tsc 会拒绝数字调用；合法调用的返回值仍保留字符串或数组能力，说明约束既给实现提供证据，又没有像直接写 { length: number } 那样丢失具体类型。
 
 **递进追问：**
 
@@ -1832,9 +1933,10 @@ keyof 得到对象键联合，T[K] 取得对应属性类型，可构造安全的
 
 **代码 / 场景：**
 
-用 getProperty 验证键和值的关联：
+**示例场景：** 用 getProperty 验证键和值的关联：
 
 ~~~ts
+// 示例重点：用 getProperty 验证键和值的关联：
 type User = { id: number; name: string; active?: boolean };
 
 function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
@@ -1848,7 +1950,9 @@ const active = getProperty(user, "active"); // boolean | undefined
 console.log(id.toFixed(), active ?? false);
 ~~~
 
-把 key 改为普通 string 会无法安全执行 obj[key]；而泛型约束既拒绝 email，又保留了 id 与 number 的精确关系。
+- **观察目标：** keyof 得到对象键联合，T K 取得对应属性类型，可构造安全的 get、表单字段和配置映射 API。
+
+**对照结果：** 把 key 改为普通 string 会无法安全执行 obj[key]；而泛型约束既拒绝 email，又保留了 id 与 number 的精确关系。
 
 **递进追问：**
 
@@ -1887,9 +1991,10 @@ typeof、instanceof、in、判别字段、相等判断和自定义类型谓词�
 
 **代码 / 场景：**
 
-这个函数同时演示 typeof、in 和 Array.isArray：
+**示例场景：** 这个函数同时演示 typeof、in 和 Array.isArray：
 
 ~~~ts
+// 示例重点：这个函数同时演示 typeof、in 和 Array.isArray：
 type Input = string | string[] | { message: string } | null;
 
 function normalize(input: Input): string {
@@ -1904,7 +2009,9 @@ function normalize(input: Input): string {
 console.log(normalize(["a", "b"])); // a,b
 ~~~
 
-逐个删除判断并运行 tsc，可观察剩余分支类型如何变化；最后的 never 还会在新增联合成员但忘记处理时报告错误。
+- **观察目标：** typeof、instanceof、in、判别字段、相等判断和自定义类型谓词；收窄必须有真实运行时检查支撑。
+
+**对照结果：** 逐个删除判断并运行 tsc，可观察剩余分支类型如何变化；最后的 never 还会在新增联合成员但忘记处理时报告错误。
 
 **递进追问：**
 
@@ -1942,9 +2049,10 @@ console.log(normalize(["a", "b"])); // a,b
 
 **代码 / 场景：**
 
-把远程请求状态写成互斥联合：
+**示例场景：** 把远程请求状态写成互斥联合：
 
 ~~~ts
+// 示例重点：把远程请求状态写成互斥联合：
 type State<T> =
   | { status: "idle" }
   | { status: "loading"; startedAt: number }
@@ -1962,7 +2070,9 @@ function render(state: State<string>): string {
 }
 ~~~
 
-尝试构造 { status: "success", error: new Error() } 会失败；新增 cancelled 状态后，default 中的 never 会提醒补 UI。
+- **观察目标：** 每个分支有唯一字面量 tag，switch 后字段被精确收窄，default 可用 never 检查遗漏状态。
+
+**对照结果：** 尝试构造 { status: "success", error: new Error() } 会失败；新增 cancelled 状态后，default 中的 never 会提醒补 UI。
 
 **递进追问：**
 
@@ -2001,9 +2111,10 @@ function render(state: State<string>): string {
 
 **代码 / 场景：**
 
-下例分别把字段变成可编辑状态，并提取 Promise 的结果：
+**示例场景：** 下例分别把字段变成可编辑状态，并提取 Promise 的结果：
 
 ~~~ts
+// 示例重点：下例分别把字段变成可编辑状态，并提取 Promise 的结果：
 type FieldState<T> = {
   [K in keyof T]: { value: T[K]; dirty: boolean };
 };
@@ -2019,7 +2130,9 @@ type Loaded = AwaitedValue<Promise<User>>; // User
 console.log(form.name.value);
 ~~~
 
-把 id.value 改成字符串会编译失败；Loaded 仍保持 User 结构，证明变换没有退化为 any。
+- **观察目标：** 映射类型遍历键变换属性，条件类型按可赋值关系选择类型；组合可实现库级通用工具但应控制可读性。
+
+**对照结果：** 把 id.value 改成字符串会编译失败；Loaded 仍保持 User 结构，证明变换没有退化为 any。
 
 **递进追问：**
 
@@ -2058,9 +2171,10 @@ satisfies 检查一个表达式能否赋给目标类型，但表达式自身仍�
 
 **代码 / 场景：**
 
-用 tsc 查看属性推断和拼写检查：
+**示例场景：** 用 tsc 查看属性推断和拼写检查：
 
 ~~~ts
+// 示例重点：用 tsc 查看属性推断和拼写检查：
 type RouteName = "home" | "admin";
 type Route = { path: string; secure: boolean };
 
@@ -2077,7 +2191,9 @@ const forced = { path: 123 } as unknown as Route;
 console.log(forced.path.toUpperCase()); // 运行时报错
 ~~~
 
-satisfies 会检查缺键、多余拼写和字段类型；强断言示例则编译通过但运行失败。
+- **观察目标：** satisfies 校验表达式符合目标类型同时保留推断的具体字面量，as 直接告诉编译器按目标看待，可能掩盖错误。
+
+**对照结果：** satisfies 会检查缺键、多余拼写和字段类型；强断言示例则编译通过但运行失败。
 
 **递进追问：**
 
@@ -2116,9 +2232,10 @@ TypeScript 类型编译后被擦除，网络、存储和用户输入仍是未知
 
 **代码 / 场景：**
 
-把 API 响应先作为 unknown，再解析为可信值：
+**示例场景：** 把 API 响应先作为 unknown，再解析为可信值：
 
 ~~~ts
+// 示例重点：把 API 响应先作为 unknown，再解析为可信值：
 import { z } from "zod";
 
 const UserSchema = z.object({
@@ -2134,7 +2251,9 @@ async function loadUser(): Promise<User> {
 }
 ~~~
 
-用 { id: "7", age: -1, role: "root" } 做契约测试，应得到包含三个字段路径的失败信息，而不是让无效值进入组件后才崩溃。
+- **观察目标：** TypeScript 类型编译后被擦除，网络、存储和用户输入仍是未知数据；边界处要解析验证后才能进入内部类型系统。
+
+**对照结果：** 用 { id: "7", age: -1, role: "root" } 做契约测试，应得到包含三个字段路径的失败信息，而不是让无效值进入组件后才崩溃。
 
 **递进追问：**
 
@@ -2175,9 +2294,10 @@ async function loadUser(): Promise<User> {
 
 **代码 / 场景：**
 
-把“完成率至少 80% 才解锁模拟面试”写成纯用例，再由组件调用：
+**示例场景：** 把“完成率至少 80% 才解锁模拟面试”写成纯用例，再由组件调用：
 
 ~~~ts
+// 示例重点：把“完成率至少 80% 才解锁模拟面试”写成纯用例，再由组件调用：
 // domain/progress.ts
 export function canUnlock(done: number, total: number): boolean {
   if (!Number.isInteger(done) || total <= 0 || done < 0 || done > total) return false;
@@ -2191,7 +2311,9 @@ export async function getDashboard(repo: ProgressRepo, userId: string) {
 }
 ~~~
 
-用 79/100、80/100、0/0 三个单测验证规则；组件只渲染 unlocked。将 REST repo 换成内存 fake 后用例仍可运行，证明业务层没有绑定网络和框架。
+- **观察目标：** 组件负责交互与展示，领域服务表达规则，数据访问封装协议，状态层协调生命周期；依赖方向应清晰且可替换测试。
+
+**对照结果：** 用 79/100、80/100、0/0 三个单测验证规则；组件只渲染 unlocked。将 REST repo 换成内存 fake 后用例仍可运行，证明业务层没有绑定网络和框架。
 
 **递进追问：**
 
@@ -2230,9 +2352,10 @@ export async function getDashboard(repo: ProgressRepo, userId: string) {
 
 **代码 / 场景：**
 
-业务用例只依赖自己定义的端口：
+**示例场景：** 业务用例只依赖自己定义的端口：
 
 ~~~ts
+// 示例重点：业务用例只依赖自己定义的端口：
 interface Clock { now(): number }
 interface InviteRepo { create(input: { expiresAt: number }): Promise<string> }
 
@@ -2246,7 +2369,9 @@ class CreateInvite {
 const fakeClock: Clock = { now: () => Date.UTC(2026, 6, 20) };
 ~~~
 
-测试注入内存 repo 和固定时钟，断言 3 天邀请的 expiresAt 精确值；生产装配再注入 fetchRepo 与系统时钟。测试无需假 timer 或真实网络。
+- **观察目标：** 业务逻辑依赖接口而非 fetch、localStorage 等具体实现，通过参数或 provider 注入，测试可替换为内存适配器。
+
+**对照结果：** 测试注入内存 repo 和固定时钟，断言 3 天邀请的 expiresAt 精确值；生产装配再注入 fetchRepo 与系统时钟。测试无需假 timer 或真实网络。
 
 **递进追问：**
 
@@ -2285,9 +2410,10 @@ const fakeClock: Clock = { now: () => Date.UTC(2026, 6, 20) };
 
 **代码 / 场景：**
 
-这个最小缓存把进行中的 Promise 立即写入 Map，并在成功或失败后都清理；完成结果若要缓存，应另建带 TTL 的 result cache：
+**示例场景：** 这个最小缓存把进行中的 Promise 立即写入 Map，并在成功或失败后都清理；完成结果若要缓存，应另建带 TTL 的 result cache：
 
 ~~~ts
+// 示例重点：这个最小缓存把进行中的 Promise 立即写入 Map，并在成功或失败后都清理；完成结果若要缓存，应另建带 TTL 的 result…
 const inflight = new Map<string, Promise<unknown>>();
 
 function getOnce<T>(key: string, load: () => Promise<T>): Promise<T> {
@@ -2305,7 +2431,7 @@ const b = getOnce("user:u1", () => Promise.reject(new Error("不应执行")));
 console.log(a === b); // true
 ~~~
 
-在 Network 面板应只看到一次并发请求；这批 Promise 结束后再次调用必须重新请求。若业务要复用成功结果，应写入独立的 result cache，并为其设置 TTL/ETag 与主动失效。
+**对照结果：** 在 Network 面板应只看到一次并发请求；这批 Promise 结束后再次调用必须重新请求。若业务要复用成功结果，应写入独立的 result cache，并为其设置 TTL/ETag 与主动失效。
 
 **递进追问：**
 
@@ -2344,9 +2470,10 @@ console.log(a === b); // true
 
 **代码 / 场景：**
 
-为请求层返回可判别错误，再由界面决定动作：
+**示例场景：** 为请求层返回可判别错误，再由界面决定动作：
 
 ~~~ts
+// 示例重点：为请求层返回可判别错误，再由界面决定动作：
 type AppError =
   | { kind: "validation"; fields: Record<string, string> }
   | { kind: "temporary"; retryAfterMs: number }
@@ -2363,7 +2490,9 @@ function actionFor(error: AppError) {
 }
 ~~~
 
-契约测试分别输入 422、503、401 和畸形 200 JSON，断言界面不会把它们都显示成同一个“未知错误”。
+- **观察目标：** 校验失败、超时可提示重试或修正，权限和版本冲突需专门流程，未知程序错误进入边界并上报，不能统一 toast。
+
+**对照结果：** 契约测试分别输入 422、503、401 和畸形 200 JSON，断言界面不会把它们都显示成同一个“未知错误”。
 
 **递进追问：**
 
@@ -2402,9 +2531,10 @@ function actionFor(error: AppError) {
 
 **代码 / 场景：**
 
-前端为一次保存操作生成操作标识，并读取服务端响应 ID：
+**示例场景：** 前端为一次保存操作生成操作标识，并读取服务端响应 ID：
 
 ~~~ts
+// 示例重点：前端为一次保存操作生成操作标识，并读取服务端响应 ID：
 async function saveDraft(payload: unknown) {
   const operationId = crypto.randomUUID();
   const response = await fetch("/api/drafts", {
@@ -2417,7 +2547,9 @@ async function saveDraft(payload: unknown) {
 }
 ~~~
 
-服务端应记录同一 operationId，并返回 Access-Control-Expose-Headers: X-Request-ID（跨源时）。在日志平台用 requestId 查询，应能跳到对应后端 trace；同时检查 payload 未被输出。
+- **观察目标：** 前端为操作生成或透传 trace/request ID，记录版本、路由和匿名会话，后端日志用同一 ID 串联但避免采集敏感正文。
+
+**对照结果：** 服务端应记录同一 operationId，并返回 Access-Control-Expose-Headers: X-Request-ID（跨源时）。在日志平台用 requestId 查询，应能跳到对应后端 trace；同时检查 payload 未被输出。
 
 **递进追问：**
 
@@ -2456,7 +2588,9 @@ async function saveDraft(payload: unknown) {
 
 **代码 / 场景：**
 
-前端真正依赖的是 GET /users/u1 的最小契约：
+**示例场景：** 前端真正依赖的是 GET /users/u1 的最小契约：
+
+> 示例注解：前端真正依赖的是 GET /users/u1 的最小契约：
 
 ~~~json
 {
@@ -2468,7 +2602,9 @@ async function saveDraft(payload: unknown) {
 }
 ~~~
 
-提供方 CI 用测试数据启动 API 并验证该交互，同时另测 404 的标准错误结构。若后端把 displayName 改成 name 或新增未约定字段，前者应阻断、后者通常允许；匹配规则必须表达消费方真实需要，而不是对整个 JSON 做脆弱精确相等。
+- **观察目标：** 它验证前后端对字段、状态码和兼容规则的共同理解，可由 OpenAPI 生成或在提供方/消费方流水线校验。
+
+**对照结果：** 提供方 CI 用测试数据启动 API 并验证该交互，同时另测 404 的标准错误结构。若后端把 displayName 改成 name 或新增未约定字段，前者应阻断、后者通常允许；匹配规则必须表达消费方真实需要，而不是对整个 JSON 做脆弱精确相等。
 
 **递进追问：**
 
@@ -2507,9 +2643,10 @@ spy 主要观察真实调用发生了什么，例如次数、参数和顺序，�
 
 **代码 / 场景：**
 
-以下 Vitest 测试用 stub 控制 API，用 spy 验证通知，但不检查无关内部函数：
+**示例场景：** 以下 Vitest 测试用 stub 控制 API，用 spy 验证通知，但不检查无关内部函数：
 
 ~~~ts
+// 示例重点：以下 Vitest 测试用 stub 控制 API，用 spy 验证通知，但不检查无关内部函数：
 import { expect, test, vi } from "vitest";
 
 test("保存成功后通知", async () => {
@@ -2521,7 +2658,9 @@ test("保存成功后通知", async () => {
 });
 ~~~
 
-把 api 改为 reject 后应断言保留草稿且不发送成功通知。若重构内部辅助函数而外部行为不变，此测试不应修改。
+- **观察目标：** stub 提供固定行为，spy 记录调用，mock 同时预设交互期望；应优先测试可观察结果，避免过度绑定内部调用。
+
+**对照结果：** 把 api 改为 reject 后应断言保留草稿且不发送成功通知。若重构内部辅助函数而外部行为不变，此测试不应修改。
 
 **递进追问：**
 
@@ -2559,9 +2698,10 @@ test("保存成功后通知", async () => {
 
 **代码 / 场景：**
 
-脆弱测试等待固定 2 秒后点击；稳定版本等待可访问角色和业务响应：
+**示例场景：** 脆弱测试等待固定 2 秒后点击；稳定版本等待可访问角色和业务响应：
 
 ~~~ts
+// 示例重点：脆弱测试等待固定 2 秒后点击；稳定版本等待可访问角色和业务响应：
 import { test, expect } from "@playwright/test";
 
 test("访客查看题目", async ({ page }) => {
@@ -2576,7 +2716,9 @@ test("访客查看题目", async ({ page }) => {
 });
 ~~~
 
-循环运行 30 次并保留 trace；若失败率从 8% 降至 0，再检查是否仍依赖共享账号数据。
+- **观察目标：** 异步等待、共享数据、时间和外部依赖会导致竞态；使用语义定位、确定数据、条件等待和隔离环境，不靠固定 sleep。
+
+**对照结果：** 循环运行 30 次并保留 trace；若失败率从 8% 降至 0，再检查是否仍依赖共享账号数据。
 
 **递进追问：**
 
@@ -2614,9 +2756,10 @@ test("访客查看题目", async ({ page }) => {
 
 **代码 / 场景：**
 
-把旧题库页面迁移到新实现时，先建立同一接口和开关：
+**示例场景：** 把旧题库页面迁移到新实现时，先建立同一接口和开关：
 
 ~~~ts
+// 示例重点：把旧题库页面迁移到新实现时，先建立同一接口和开关：
 type QuestionPage = { mount(el: HTMLElement, bankId: string): () => void };
 
 export function selectPage(flags: { newQuestionPage: boolean }): QuestionPage {
@@ -2624,7 +2767,9 @@ export function selectPage(flags: { newQuestionPage: boolean }): QuestionPage {
 }
 ~~~
 
-阶段 1 对两实现运行同一契约测试；阶段 2 内部账号 100%、访客 5% 灰度，比较错误率、LCP、答案打开率；阶段 3 扩到 100% 后保留一版回滚窗口；阶段 4 删除旧代码与开关。每个阶段有独立 commit 和回滚条件。
+- **观察目标：** 先用测试或监控建立行为基线，抽边界和适配层，按垂直业务切片迁移，每一步可发布回滚。
+
+**对照结果：** 阶段 1 对两实现运行同一契约测试；阶段 2 内部账号 100%、访客 5% 灰度，比较错误率、LCP、答案打开率；阶段 3 扩到 100% 后保留一版回滚窗口；阶段 4 删除旧代码与开关。每个阶段有独立 commit 和回滚条件。
 
 **递进追问：**
 
@@ -2663,7 +2808,9 @@ export function selectPage(flags: { newQuestionPage: boolean }): QuestionPage {
 
 **代码 / 场景：**
 
-一个“开放游客读题”方案至少应包含以下可验证条目：
+**示例场景：** 一个“开放游客读题”方案至少应包含以下可验证条目：
+
+> 示例注解：一个“开放游客读题”方案至少应包含以下可验证条目：
 
 ~~~text
 问题：未登录用户现在被路由守卫阻断。
@@ -2675,7 +2822,9 @@ export function selectPage(flags: { newQuestionPage: boolean }): QuestionPage {
 发布：5% 灰度，监控 4xx/5xx、LCP、登录转化；开关可回滚。
 ~~~
 
-评审时逐项要求证据，并把决策和负责人写入 ADR；上线后用指标核对假设，而非只标记“开发完成”。
+- **观察目标：** 明确问题、约束、候选方案、数据流、失败模式、安全、迁移回滚和验证指标，让决策可追溯而非只列技术栈。
+
+**对照结果：** 评审时逐项要求证据，并把决策和负责人写入 ADR；上线后用指标核对假设，而非只标记“开发完成”。
 
 **递进追问：**
 
@@ -2715,9 +2864,10 @@ export function selectPage(flags: { newQuestionPage: boolean }): QuestionPage {
 
 **代码 / 场景：**
 
-搜索页不能把 q 直接拼进 innerHTML：
+**示例场景：** 搜索页不能把 q 直接拼进 innerHTML：
 
 ~~~ts
+// 示例重点：搜索页不能把 q 直接拼进 innerHTML：
 const params = new URLSearchParams(location.search);
 const q = params.get("q") ?? "";
 const result = document.querySelector("#result");
@@ -2727,7 +2877,9 @@ if (!(result instanceof HTMLElement)) throw new Error("missing result");
 result.textContent = "搜索：" + q;
 ~~~
 
-用 ?q=%3Cimg%20src=x%20onerror=alert(1)%3E 验证页面只显示文本。若业务必须渲染富文本，应先用受维护 sanitizer 清洗，再配 CSP 报告与 Trusted Types；测试还要覆盖属性、URL 和 CSS 上下文，因为不同上下文编码规则不同。
+- **观察目标：** 存储型、反射型和 DOM 型都来自不可信数据进入可执行上下文；按上下文转义、避免危险 sink、消毒富文本并配置 CSP。
+
+**对照结果：** 用 ?q=%3Cimg%20src=x%20onerror=alert(1)%3E 验证页面只显示文本。若业务必须渲染富文本，应先用受维护 sanitizer 清洗，再配 CSP 报告与 Trusted Types；测试还要覆盖属性、URL 和 CSS 上下文，因为不同上下文编码规则不同。
 
 **递进追问：**
 
@@ -2766,7 +2918,9 @@ result.textContent = "搜索：" + q;
 
 **代码 / 场景：**
 
-服务端设置会话 Cookie，并要求写请求同时携带 token：
+**示例场景：** 服务端设置会话 Cookie，并要求写请求同时携带 token：
+
+> 示例注解：服务端设置会话 Cookie，并要求写请求同时携带 token：
 
 ~~~http
 Set-Cookie: session=...; Path=/; Secure; HttpOnly; SameSite=Lax
@@ -2777,7 +2931,9 @@ X-CSRF-Token: 7b2f...（与当前会话绑定）
 Origin: https://interview.example
 ~~~
 
-安全测试从 evil.example 提交普通 form，请求即便可能携带某些 Cookie，也应因 Origin/token 缺失返回 403；同站表单带正确 token 应成功。若业务必须 SameSite=None，则 Secure、token 与来源校验更重要。
+- **观察目标：** 浏览器仍会自动携带 Cookie，攻击页不需读取它；应使用 SameSite、Origin/CSRF token 并保证 GET 无副作用。
+
+**对照结果：** 安全测试从 evil.example 提交普通 form，请求即便可能携带某些 Cookie，也应因 Origin/token 缺失返回 403；同站表单带正确 token 应成功。若业务必须 SameSite=None，则 Secure、token 与来源校验更重要。
 
 **递进追问：**
 
@@ -2816,7 +2972,9 @@ Origin: https://interview.example
 
 **代码 / 场景：**
 
-只允许管理前端带 Cookie 读取 API，可返回：
+**示例场景：** 只允许管理前端带 Cookie 读取 API，可返回：
+
+> 示例注解：只允许管理前端带 Cookie 读取 API，可返回：
 
 ~~~http
 Access-Control-Allow-Origin: https://admin.example
@@ -2826,7 +2984,9 @@ Access-Control-Allow-Headers: Content-Type, X-CSRF-Token
 Vary: Origin
 ~~~
 
-分别从 admin.example 与 evil.example 用 fetch(..., { credentials: "include" }) 测试：前者通过，后者的响应不可读且服务端仍应拒绝未授权写入。检查 CDN 缓存含 Vary: Origin，避免把一个来源的许可头错误复用给另一个来源。
+- **观察目标：** 它是浏览器限制脚本读取跨源响应的机制，不阻止服务器、curl 或表单发送请求，也不能替代鉴权。
+
+**对照结果：** 分别从 admin.example 与 evil.example 用 fetch(..., { credentials: "include" }) 测试：前者通过，后者的响应不可读且服务端仍应拒绝未授权写入。检查 CDN 缓存含 Vary: Origin，避免把一个来源的许可头错误复用给另一个来源。
 
 **递进追问：**
 
@@ -2865,14 +3025,18 @@ Vary: Origin
 
 **代码 / 场景：**
 
-默认禁止所有页面嵌入管理端：
+**示例场景：** 默认禁止所有页面嵌入管理端：
+
+> 示例注解：默认禁止所有页面嵌入管理端：
 
 ~~~http
 Content-Security-Policy: frame-ancestors 'none'
 X-Frame-Options: DENY
 ~~~
 
-建立 evil.example 测试页：<iframe src="https://admin.example/account"></iframe>，浏览器应阻止加载并在控制台报告 frame-ancestors。
+- **观察目标：** 使用 CSP frame-ancestors 或 X-Frame-Options 限制被第三方 iframe 嵌入，并对敏感操作提供明确确认。
+
+**对照结果：** 建立 evil.example 测试页：<iframe src="https://admin.example/account"></iframe>，浏览器应阻止加载并在控制台报告 frame-ancestors。
 
 若某公开组件允许 partner.example 嵌入，应改为 frame-ancestors https://partner.example，并单独测试其他子域仍被拒绝；不要用宽泛 *.example 自动信任所有子域。
 
@@ -2913,14 +3077,16 @@ X-Frame-Options: DENY
 
 **代码 / 场景：**
 
-一个 BFF 模式响应可以只把会话放 Cookie，前端不接触刷新 token：
+**示例场景：** 一个 BFF 模式响应可以只把会话放 Cookie，前端不接触刷新 token：
+
+> 示例注解：一个 BFF 模式响应可以只把会话放 Cookie，前端不接触刷新 token：
 
 ~~~http
 Set-Cookie: __Host-session=opaque-value; Path=/; Secure; HttpOnly; SameSite=Lax
 Cache-Control: no-store
 ~~~
 
-前端调用 /api/me 使用 credentials: "same-origin"，遇到 401 进入登录，不把 Cookie、JWT 或完整响应写日志。
+**对照结果：** 前端调用 /api/me 使用 credentials: "same-origin"，遇到 401 进入登录，不把 Cookie、JWT 或完整响应写日志。
 
 安全测试应确认 document.cookie 读不到会话、跨站 POST 被 CSRF 防线拒绝、服务端对过期/错误 aud 的 token 返回 401，且登出后旧刷新凭证无法再次使用。
 
@@ -2961,9 +3127,10 @@ Cache-Control: no-store
 
 **代码 / 场景：**
 
-父页面只向指定 iframe 发送，并验证回包来源、窗口和结构：
+**示例场景：** 父页面只向指定 iframe 发送，并验证回包来源、窗口和结构：
 
 ~~~ts
+// 示例重点：父页面只向指定 iframe 发送，并验证回包来源、窗口和结构：
 const frame = document.querySelector<HTMLIFrameElement>("#payment");
 const paymentOrigin = "https://pay.example";
 
@@ -2978,7 +3145,9 @@ window.addEventListener("message", event => {
 });
 ~~~
 
-从 evil.example 发同结构消息应被拒绝；再把 iframe 导航到其他 origin，精确 targetOrigin 会阻止敏感发送。
+- **观察目标：** 发送时指定精确 targetOrigin，接收时校验 event.origin、source 和消息结构，不使用通配符处理敏感数据。
+
+**对照结果：** 从 evil.example 发同结构消息应被拒绝；再把 iframe 导航到其他 origin，精确 targetOrigin 会阻止敏感发送。
 
 **递进追问：**
 
@@ -3017,9 +3186,10 @@ window.addEventListener("message", event => {
 
 **代码 / 场景：**
 
-只缓存构建期公开资源，并显式拒绝 API：
+**示例场景：** 只缓存构建期公开资源，并显式拒绝 API：
 
 ~~~js
+// 示例重点：只缓存构建期公开资源，并显式拒绝 API：
 const CACHE = "app-static-v3";
 self.addEventListener("fetch", event => {
   const url = new URL(event.request.url);
@@ -3036,7 +3206,9 @@ self.addEventListener("fetch", event => {
 });
 ~~~
 
-注销用户后断网重开，个人 API 不应从缓存出现；发布 v4 后检查旧 v3 被清理且已打开页面不会产生 HTML/JS 版本错配。
+- **观察目标：** 它可长期控制同源请求，错误缓存会让旧版本滞留；更新需版本化缓存、清理旧项并设计激活与刷新提示。
+
+**对照结果：** 注销用户后断网重开，个人 API 不应从缓存出现；发布 v4 后检查旧 v3 被清理且已打开页面不会产生 HTML/JS 版本错配。
 
 **递进追问：**
 
@@ -3075,9 +3247,10 @@ self.addEventListener("fetch", event => {
 
 **代码 / 场景：**
 
-一条批注操作可使用如下信封，服务端以 operationId 幂等处理：
+**示例场景：** 一条批注操作可使用如下信封，服务端以 operationId 幂等处理：
 
 ~~~ts
+// 示例重点：一条批注操作可使用如下信封，服务端以 operationId 幂等处理：
 type PendingAnnotation = {
   operationId: string;
   userId: string;
@@ -3094,7 +3267,9 @@ const op: PendingAnnotation = {
 };
 ~~~
 
-测试断网保存、浏览器重启、同一操作发送两次和服务端已到 version 5 四种情况：重复请求只创建一次；版本冲突进入可见合并界面，而不是静默覆盖。
+- **观察目标：** 先写本地 outbox，网络恢复按幂等键重放，服务器确认后删除；冲突需版本或合并策略，不能把缓存当权威数据库。
+
+**对照结果：** 测试断网保存、浏览器重启、同一操作发送两次和服务端已到 version 5 四种情况：重复请求只创建一次；版本冲突进入可见合并界面，而不是静默覆盖。
 
 **递进追问：**
 
@@ -3133,9 +3308,10 @@ const op: PendingAnnotation = {
 
 **代码 / 场景：**
 
-同样选择节点，H5 可以直接调用标准 DOM，小程序则使用宿主选择器 API/模板数据驱动（接口名称因平台而异）：
+**示例场景：** 同样选择节点，H5 可以直接调用标准 DOM，小程序则使用宿主选择器 API/模板数据驱动（接口名称因平台而异）：
 
 ~~~js
+// 示例重点：同样选择节点，H5 可以直接调用标准 DOM，小程序则使用宿主选择器 API/模板数据驱动（接口名称因平台而异）：
 // H5
 const title = document.querySelector("#title");
 title.textContent = "题库";
@@ -3147,7 +3323,9 @@ Page({
 });
 ~~~
 
-验证方案要分别测首包大小、逻辑到渲染通信成本、后台 5 分钟后恢复、网络域名白名单和平台登录，而不能只在桌面 Chrome 中跑一次响应式页面。
+- **观察目标：** 小程序有宿主提供的逻辑层/渲染层、页面栈和权限 API，H5 依赖浏览器 DOM 与 Web API；跨端需通过适配层和条件编译隔离。
+
+**对照结果：** 验证方案要分别测首包大小、逻辑到渲染通信成本、后台 5 分钟后恢复、网络域名白名单和平台登录，而不能只在桌面 Chrome 中跑一次响应式页面。
 
 **递进追问：**
 
@@ -3186,9 +3364,10 @@ Page({
 
 **代码 / 场景：**
 
-对候选包先做只读检查，再在临时分支安装：
+**示例场景：** 对候选包先做只读检查，再在临时分支安装：
 
 ~~~sh
+# 示例重点：对候选包先做只读检查，再在临时分支安装：
 npm view candidate-package version dist.unpackedSize license maintainers scripts dependencies
 npm view candidate-package time --json
 npm pack candidate-package --dry-run
@@ -3196,7 +3375,9 @@ npm audit --omit=dev
 npm ls candidate-package
 ~~~
 
-记录精确版本、压缩后增量、是否执行 preinstall/postinstall、传递依赖数和许可证。安装后检查 lockfile 差异与产物，运行核心兼容/性能测试；若包仅为 10 行工具函数却新增 40 个依赖或请求广泛权限，应拒绝或自行实现。
+- **观察目标：** 检查维护活跃度、许可证、依赖树、包体和安全公告，锁定版本并最小权限；小功能不应无评估引入高风险依赖。
+
+**对照结果：** 记录精确版本、压缩后增量、是否执行 preinstall/postinstall、传递依赖数和许可证。安装后检查 lockfile 差异与产物，运行核心兼容/性能测试；若包仅为 10 行工具函数却新增 40 个依赖或请求广泛权限，应拒绝或自行实现。
 
 **递进追问：**
 

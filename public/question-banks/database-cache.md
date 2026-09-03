@@ -16,9 +16,12 @@
 
 **代码 / 场景：**
 
-先建立与真实查询匹配的联合索引，再比较计划和实际扫描，而不是只观察 SQL 是否“能跑”。
+**示例场景：** 先建立与真实查询匹配的联合索引，再比较计划和实际扫描，而不是只观察 SQL 是否“能跑”。
+
+**观察目标：** 围绕“数据库索引的本质是什么？”，重点验证：索引是把一个或多个列的键值按可搜索结构组织，并保存到数据行的定位信息，以额外空间、写放大和维护成本换取更少的数据页读取。
 
 ~~~sql
+-- 示例重点：先建立与真实查询匹配的联合索引，再比较计划和实际扫描，而不是只观察 SQL 是否“能跑”。
 CREATE INDEX idx_orders_user_created ON orders(user_id, created_at);
 EXPLAIN ANALYZE
 SELECT id, created_at FROM orders
@@ -27,7 +30,7 @@ ORDER BY created_at LIMIT 20;
 SHOW INDEX FROM orders;
 ~~~
 
-计划若显示沿 `idx_orders_user_created` 范围读取约 20 行且无需额外排序，索引解决了访问路径；若实际仍扫描数十万行，应核对统计、条件选择性和隐式类型转换。
+**对照结果：** 计划若显示沿 `idx_orders_user_created` 范围读取约 20 行且无需额外排序，索引解决了访问路径；若实际仍扫描数十万行，应核对统计、条件选择性和隐式类型转换。
 
 **递进追问：**
 
@@ -67,9 +70,12 @@ SHOW INDEX FROM orders;
 
 **代码 / 场景：**
 
-用同一联合索引演示“先定位起点，再顺序扫描叶子”，并检查实际读取行数。
+**示例场景：** 用同一联合索引演示“先定位起点，再顺序扫描叶子”，并检查实际读取行数。
+
+**观察目标：** 围绕“B+Tree 为什么适合范围查询？”，重点验证：B+Tree 适合范围查询，直接原因是所有数据都按索引键排在叶子页上，而且相邻叶子页彼此链接：先用树高很低的索引定位区间起点，之后只要顺着叶子页向后读到终点，不必为区间内每个值重新从根查找。
 
 ~~~sql
+-- 示例重点：用同一联合索引演示“先定位起点，再顺序扫描叶子”，并检查实际读取行数。
 CREATE INDEX idx_events_tenant_time ON events(tenant_id, happened_at, id);
 EXPLAIN ANALYZE
 SELECT id, happened_at FROM events
@@ -77,7 +83,7 @@ WHERE tenant_id = 7 AND happened_at BETWEEN '2026-07-01' AND '2026-07-02'
 ORDER BY happened_at, id;
 ~~~
 
-预期计划出现 index range scan，读取行数接近该租户一天的真实记录数。若去掉 `tenant_id = 7`，不能直接跳到第二列的连续区间，扫描范围可能扩大。
+**对照结果：** 预期计划出现 index range scan，读取行数接近该租户一天的真实记录数。若去掉 `tenant_id = 7`，不能直接跳到第二列的连续区间，扫描范围可能扩大。
 
 **递进追问：**
 
@@ -114,9 +120,12 @@ InnoDB 聚簇索引叶子保存整行，二级索引叶子保存索引列和主�
 
 **代码 / 场景：**
 
-下面两条查询都走相同二级索引，但只有第一条可直接从索引叶子返回。
+**示例场景：** 下面两条查询都走相同二级索引，但只有第一条可直接从索引叶子返回。
+
+**观察目标：** 围绕“聚簇索引和二级索引有什么区别？”，重点验证：InnoDB 的聚簇索引叶子就是整行数据，一张表只能按一套聚簇键组织；通常选择主键，没有显式主键时会找首个非空唯一键，仍没有则生成隐藏行 ID。
 
 ~~~sql
+-- 示例重点：下面两条查询都走相同二级索引，但只有第一条可直接从索引叶子返回。
 CREATE TABLE users (
   id BIGINT PRIMARY KEY, email VARCHAR(255) NOT NULL, nickname VARCHAR(80),
   UNIQUE KEY uk_users_email (email)
@@ -125,7 +134,7 @@ EXPLAIN SELECT id, email FROM users WHERE email = 'linda@example.com';
 EXPLAIN SELECT id, email, nickname FROM users WHERE email = 'linda@example.com';
 ~~~
 
-第一条所需的 email 与隐含主键 id 均在二级索引中；第二条还需 nickname，计划会通过主键回到聚簇索引读取整行。
+**对照结果：** 第一条所需的 email 与隐含主键 id 均在二级索引中；第二条还需 nickname，计划会通过主键回到聚簇索引读取整行。
 
 **递进追问：**
 
@@ -163,9 +172,12 @@ EXPLAIN SELECT id, email, nickname FROM users WHERE email = 'linda@example.com';
 
 **代码 / 场景：**
 
-建立 `(tenant_id, status, created_at)` 后，对三种条件分别检查访问行数和 Extra。
+**示例场景：** 建立 `(tenant_id, status, created_at)` 后，对三种条件分别检查访问行数和 Extra。
+
+**观察目标：** 围绕“联合索引的最左前缀是什么？”，重点验证：联合索引 (a,b,c) 按 a、再 b、再 c 的字典序排列。
 
 ~~~sql
+-- 示例重点：建立 (tenantid, status, createdat) 后，对三种条件分别检查访问行数和 Extra。
 CREATE INDEX idx_jobs_tenant_status_time ON jobs(tenant_id, status, created_at);
 EXPLAIN SELECT id FROM jobs WHERE tenant_id=9 AND status='ready'
   AND created_at >= '2026-07-01' ORDER BY created_at LIMIT 50;
@@ -173,7 +185,7 @@ EXPLAIN SELECT id FROM jobs WHERE status='ready';
 EXPLAIN SELECT id FROM jobs WHERE tenant_id=9 AND created_at >= '2026-07-01';
 ~~~
 
-第一条能连续定位完整前缀；第二条缺少 tenant_id，通常扫描更广；第三条虽跳过 status，仍可能使用 tenant 前缀过滤，但 created_at 不能形成同样紧凑的连续区间。
+**对照结果：** 第一条能连续定位完整前缀；第二条缺少 tenant_id，通常扫描更广；第三条虽跳过 status，仍可能使用 tenant 前缀过滤，但 created_at 不能形成同样紧凑的连续区间。
 
 **递进追问：**
 
@@ -211,9 +223,12 @@ EXPLAIN SELECT id FROM jobs WHERE tenant_id=9 AND created_at >= '2026-07-01';
 
 **代码 / 场景：**
 
-订单列表按用户和状态过滤、按时间倒序分页，可先评估下面的访问路径。
+**示例场景：** 订单列表按用户和状态过滤、按时间倒序分页，可先评估下面的访问路径。
+
+**观察目标：** 围绕“联合索引列顺序如何确定？”，重点验证：列顺序要围绕一组高频且高成本的查询共同设计。
 
 ~~~sql
+-- 示例重点：订单列表按用户和状态过滤、按时间倒序分页，可先评估下面的访问路径。
 CREATE INDEX idx_orders_user_status_created_id
   ON orders(user_id, status, created_at DESC, id DESC);
 EXPLAIN ANALYZE
@@ -222,7 +237,7 @@ WHERE user_id=42 AND status='paid'
 ORDER BY created_at DESC, id DESC LIMIT 30;
 ~~~
 
-user_id 与 status 均为等值，后续键序直接提供稳定排序。若另一个主查询只按 status 跨用户统计，应为它单独评估索引，而不是强迫一棵索引兼顾所有场景。
+**对照结果：** user_id 与 status 均为等值，后续键序直接提供稳定排序。若另一个主查询只按 status 跨用户统计，应为它单独评估索引，而不是强迫一棵索引兼顾所有场景。
 
 **递进追问：**
 
@@ -259,15 +274,18 @@ user_id 与 status 均为等值，后续键序直接提供稳定排序。若另�
 
 **代码 / 场景：**
 
-相同过滤条件下，比较覆盖查询与需要读取大文本列的查询。
+**示例场景：** 相同过滤条件下，比较覆盖查询与需要读取大文本列的查询。
+
+**观察目标：** 围绕“什么是覆盖索引？”，重点验证：覆盖索引不是特殊索引类型，而是某条查询需要的过滤、连接、排序和返回列都能从选定索引获得，因此无需按主键回到聚簇索引读取整行。
 
 ~~~sql
+-- 示例重点：相同过滤条件下，比较覆盖查询与需要读取大文本列的查询。
 CREATE INDEX idx_questions_bank_status_id ON questions(bank_id, status, id);
 EXPLAIN SELECT id, status FROM questions WHERE bank_id=8 AND status='published';
 EXPLAIN SELECT id, status, body FROM questions WHERE bank_id=8 AND status='published';
 ~~~
 
-第一条通常显示 `Using index`，叶子已有 bank_id、status 和隐含/显式 id；第二条需要 body，会按每个匹配 id 回表。若匹配十万行，两者随机读差异会非常明显。
+**对照结果：** 第一条通常显示 `Using index`，叶子已有 bank_id、status 和隐含/显式 id；第二条需要 body，会按每个匹配 id 回表。若匹配十万行，两者随机读差异会非常明显。
 
 **递进追问：**
 
@@ -306,9 +324,12 @@ EXPLAIN SELECT id, status, body FROM questions WHERE bank_id=8 AND status='publi
 
 **代码 / 场景：**
 
-把按日期过滤从逐行函数计算改为半开区间，并比较 EXPLAIN ANALYZE。
+**示例场景：** 把按日期过滤从逐行函数计算改为半开区间，并比较 EXPLAIN ANALYZE。
+
+**观察目标：** 围绕“为什么对索引列使用函数可能失效？”，重点验证：因为普通 B+Tree 索引只按原始列值排序，WHERE 先对每行做函数计算后，优化器通常无法把计算结果反推出原索引上的连续起止范围，只能逐行计算和筛选。
 
 ~~~sql
+-- 示例重点：把按日期过滤从逐行函数计算改为半开区间，并比较 EXPLAIN ANALYZE。
 CREATE INDEX idx_orders_created ON orders(created_at);
 EXPLAIN ANALYZE SELECT id FROM orders WHERE DATE(created_at)='2026-07-20';
 EXPLAIN ANALYZE SELECT id FROM orders
@@ -316,7 +337,7 @@ WHERE created_at >= '2026-07-20 00:00:00'
   AND created_at <  '2026-07-21 00:00:00';
 ~~~
 
-第二条应形成 created_at 的 range scan；使用小于次日起点而非 `23:59:59`，可避免 DATETIME 微秒精度造成当天尾部记录遗漏。
+**对照结果：** 第二条应形成 created_at 的 range scan；使用小于次日起点而非 `23:59:59`，可避免 DATETIME 微秒精度造成当天尾部记录遗漏。
 
 **递进追问：**
 
@@ -354,16 +375,19 @@ WHERE created_at >= '2026-07-20 00:00:00'
 
 **代码 / 场景：**
 
-给标题建立索引后，对固定前缀与前导通配符分别执行实际计划。
+**示例场景：** 给标题建立索引后，对固定前缀与前导通配符分别执行实际计划。
+
+**观察目标：** 围绕“LIKE 什么时候能使用索引？”，重点验证：对普通 B+Tree 字符串索引，模式具有固定前缀时，如 name LIKE 'abc%'，优化器可把前缀转换为由排序规则决定的键范围，再过滤剩余模式；前导通配符 '%abc' 或 'abc' 没有已知起点，通常必须扫描大量条目。
 
 ~~~sql
+-- 示例重点：给标题建立索引后，对固定前缀与前导通配符分别执行实际计划。
 CREATE INDEX idx_questions_title ON questions(title);
 EXPLAIN ANALYZE SELECT id FROM questions WHERE title LIKE 'TCP%';
 EXPLAIN ANALYZE SELECT id FROM questions WHERE title LIKE '%TCP%';
 SELECT '100% coverage' LIKE '100\% %' ESCAPE '\\';
 ~~~
 
-第一条通常是 range scan，第二条只能遍历；第三条提醒用户输入中的 `%` 和 `_` 必须按既定 ESCAPE 规则处理，否则它们会意外变成通配符并扩大结果。
+**对照结果：** 第一条通常是 range scan，第二条只能遍历；第三条提醒用户输入中的 `%` 和 `_` 必须按既定 ESCAPE 规则处理，否则它们会意外变成通配符并扩大结果。
 
 **递进追问：**
 
@@ -400,9 +424,12 @@ SELECT '100% coverage' LIKE '100\% %' ESCAPE '\\';
 
 **代码 / 场景：**
 
-给“租户内已发布题目按更新时间翻页”的查询设计一条既过滤又稳定排序的索引。
+**示例场景：** 给“租户内已发布题目按更新时间翻页”的查询设计一条既过滤又稳定排序的索引。
+
+**观察目标：** 围绕“如何为给定 SQL 设计索引？”，重点验证：先还原完整访问模式，而不是只看 WHERE：列出等值、范围、JOIN 键、ORDER BY、LIMIT、返回列、查询频率、典型参数分布和写入量。
 
 ~~~sql
+-- 示例重点：给“租户内已发布题目按更新时间翻页”的查询设计一条既过滤又稳定排序的索引。
 CREATE INDEX idx_questions_tenant_status_updated_id
   ON questions(tenant_id, status, updated_at DESC, id DESC);
 EXPLAIN ANALYZE
@@ -412,7 +439,7 @@ WHERE tenant_id=12 AND status='published'
 ORDER BY updated_at DESC, id DESC LIMIT 30;
 ~~~
 
-预期扫描接近 30 行且无 filesort；若 title 导致回表但只取 30 行，未必值得把宽标题塞进索引，应以实际 I/O 和写成本取舍。
+**对照结果：** 预期扫描接近 30 行且无 filesort；若 title 导致回表但只取 30 行，未必值得把宽标题塞进索引，应以实际 I/O 和写成本取舍。
 
 **递进追问：**
 
@@ -449,9 +476,12 @@ INSERT、UPDATE、DELETE 需维护每棵相关索引，可能发生页分裂、�
 
 **代码 / 场景：**
 
-先找出重复或低使用索引，把候选设为不可见验证读路径，再安排可回滚的删除与写入压测。
+**示例场景：** 先找出重复或低使用索引，把候选设为不可见验证读路径，再安排可回滚的删除与写入压测。
+
+**观察目标：** 围绕“索引为什么会拖慢写入？”，重点验证：每次 INSERT 都要把新键写入聚簇索引及所有相关二级索引；DELETE 要标记并最终清理条目；更新索引列常等价于删除旧键再插入新键。
 
 ~~~sql
+-- 示例重点：先找出重复或低使用索引，把候选设为不可见验证读路径，再安排可回滚的删除与写入压测。
 SHOW INDEX FROM events;
 ALTER TABLE events ALTER INDEX idx_events_status INVISIBLE;
 EXPLAIN SELECT id FROM events WHERE status = 1;
@@ -459,7 +489,7 @@ EXPLAIN SELECT id FROM events WHERE status = 1;
 ALTER TABLE events DROP INDEX idx_events_status;
 ~~~
 
-对比删除前后的批量 INSERT TPS、redo bytes、buffer pool 脏页和关键读查询 P95；仅看单条 INSERT 毫秒数很容易被缓存和后台刷盘掩盖。
+**对照结果：** 对比删除前后的批量 INSERT TPS、redo bytes、buffer pool 脏页和关键读查询 P95；仅看单条 INSERT 毫秒数很容易被缓存和后台刷盘掩盖。
 
 **递进追问：**
 
@@ -499,9 +529,12 @@ ALTER TABLE events DROP INDEX idx_events_status;
 
 **代码 / 场景：**
 
-比较优化器估算与真实执行，重点读取 `actual rows` 和 `loops` 的乘积。
+**示例场景：** 比较优化器估算与真实执行，重点读取 `actual rows` 和 `loops` 的乘积。
+
+**观察目标：** 围绕“EXPLAIN 主要看哪些信息？”，重点验证：EXPLAIN 要按执行树理解，而不是只寻找某个“好看”的 type。
 
 ~~~sql
+-- 示例重点：比较优化器估算与真实执行，重点读取 actual rows 和 loops 的乘积。
 EXPLAIN FORMAT=TREE
 SELECT o.id, u.email FROM orders o JOIN users u ON u.id=o.user_id
 WHERE o.status='pending' ORDER BY o.created_at LIMIT 50;
@@ -510,7 +543,7 @@ SELECT o.id, u.email FROM orders o JOIN users u ON u.id=o.user_id
 WHERE o.status='pending' ORDER BY o.created_at LIMIT 50;
 ~~~
 
-若估算 pending 为 100 行、实际为 500000 行，后面的主键查找 loops 也会被放大；先更新统计或改索引，而不是只因看到 `eq_ref` 就认为 JOIN 已最优。
+**对照结果：** 若估算 pending 为 100 行、实际为 500000 行，后面的主键查找 loops 也会被放大；先更新统计或改索引，而不是只因看到 `eq_ref` 就认为 JOIN 已最优。
 
 **递进追问：**
 
@@ -548,16 +581,19 @@ WHERE o.status='pending' ORDER BY o.created_at LIMIT 50;
 
 **代码 / 场景：**
 
-对题目列表只取卡片需要的列，避免每行读取正文和解析答案大字段。
+**示例场景：** 对题目列表只取卡片需要的列，避免每行读取正文和解析答案大字段。
+
+**观察目标：** 围绕“为什么 SELECT * 可能有问题？”，重点验证：SELECT 让数据库、驱动和网络读取业务并不需要的列，宽 JSON/BLOB/TEXT 会放大页访问、内存复制和响应字节；原本可由二级索引覆盖的查询也会因为多取一列而回表。
 
 ~~~sql
+-- 示例重点：对题目列表只取卡片需要的列，避免每行读取正文和解析答案大字段。
 CREATE INDEX idx_question_list ON questions(bank_id, status, updated_at, id);
 EXPLAIN ANALYZE SELECT * FROM questions WHERE bank_id=8 AND status='published' LIMIT 50;
 EXPLAIN ANALYZE SELECT id, status, updated_at FROM questions
 WHERE bank_id=8 AND status='published' LIMIT 50;
 ~~~
 
-第二条可由列表索引覆盖，第一条还读取 body、answer 等整行。除耗时外，应记录 `Rows_examined` 与响应字节，确认优化不是仅在空缓存下偶然出现。
+**对照结果：** 第二条可由列表索引覆盖，第一条还读取 body、answer 等整行。除耗时外，应记录 `Rows_examined` 与响应字节，确认优化不是仅在空缓存下偶然出现。
 
 **递进追问：**
 
@@ -595,9 +631,12 @@ LIMIT offset 仍需扫描并丢弃前面大量记录；可使用基于稳定排�
 
 **代码 / 场景：**
 
-按 `created_at DESC, id DESC` 分页时，游标必须同时携带时间和 id。
+**示例场景：** 按 `created_at DESC, id DESC` 分页时，游标必须同时携带时间和 id。
+
+**观察目标：** 围绕“深分页为什么慢？”，重点验证：LIMIT 100000,20 不会直接跳到第十万行。
 
 ~~~sql
+-- 示例重点：按 createdat DESC, id DESC 分页时，游标必须同时携带时间和 id。
 CREATE INDEX idx_orders_created_id ON orders(created_at DESC, id DESC);
 EXPLAIN ANALYZE SELECT id, created_at FROM orders
 ORDER BY created_at DESC, id DESC LIMIT 100000, 20;
@@ -606,7 +645,7 @@ WHERE (created_at, id) < ('2026-07-19 12:00:00', 88321)
 ORDER BY created_at DESC, id DESC LIMIT 20;
 ~~~
 
-第二条从游标位置继续，扫描应接近 20 行；在两页之间插入更新记录，再验证已浏览区域不会因 offset 位移而重复。
+**对照结果：** 第二条从游标位置继续，扫描应接近 20 行；在两页之间插入更新记录，再验证已浏览区域不会因 offset 位移而重复。
 
 **递进追问：**
 
@@ -644,16 +683,19 @@ ORDER BY created_at DESC, id DESC LIMIT 20;
 
 **代码 / 场景：**
 
-订单表很大，但先过滤“最近一天未支付订单”后可能只剩少量行，适合作为外层。
+**示例场景：** 订单表很大，但先过滤“最近一天未支付订单”后可能只剩少量行，适合作为外层。
+
+**观察目标：** 围绕“JOIN 的驱动表如何选择？”，重点验证：在常见嵌套循环连接中，外层输入每产生一行，内层就按连接键查找一次，因此理想计划应尽早通过高选择性条件缩小外层，并让内层连接键可高效索引访问。
 
 ~~~sql
+-- 示例重点：订单表很大，但先过滤“最近一天未支付订单”后可能只剩少量行，适合作为外层。
 CREATE INDEX idx_orders_status_created_user ON orders(status, created_at, user_id);
 EXPLAIN ANALYZE SELECT o.id, u.email FROM orders o
 JOIN users u ON u.id = o.user_id
 WHERE o.status='pending' AND o.created_at >= NOW() - INTERVAL 1 DAY;
 ~~~
 
-若外层实际 500 行，users 主键查找 loops 约 500 合理；若统计估 500、实际 500000，应更新统计并重新设计过滤索引，而非只调整 JOIN 文本顺序。
+**对照结果：** 若外层实际 500 行，users 主键查找 loops 约 500 合理；若统计估 500、实际 500000，应更新统计并重新设计过滤索引，而非只调整 JOIN 文本顺序。
 
 **递进追问：**
 
@@ -691,9 +733,12 @@ WHERE o.status='pending' AND o.created_at >= NOW() - INTERVAL 1 DAY;
 
 **代码 / 场景：**
 
-题库列表需要每个题库的题目数时，用一次聚合替代循环中的 COUNT。
+**示例场景：** 题库列表需要每个题库的题目数时，用一次聚合替代循环中的 COUNT。
+
+**观察目标：** 围绕“N+1 查询如何发现和修复？”，重点验证：N+1 是先执行一次列表查询得到 N 行，再在循环中为每行执行一条关联查询，数据库往返、解析和连接池等待随 N 线性增长。
 
 ~~~sql
+-- 示例重点：题库列表需要每个题库的题目数时，用一次聚合替代循环中的 COUNT。
 SELECT b.id, b.name, COUNT(q.id) AS question_count
 FROM question_banks b
 LEFT JOIN questions q ON q.bank_id=b.id AND q.deleted_at IS NULL
@@ -702,7 +747,7 @@ GROUP BY b.id, b.name
 ORDER BY b.id LIMIT 50;
 ~~~
 
-在集成测试中断言该接口 SQL 数量保持固定，例如不超过 3；把 page size 从 5 改为 50 后，查询次数不应从 6 增到 51。
+**对照结果：** 在集成测试中断言该接口 SQL 数量保持固定，例如不超过 3；把 page size 从 5 改为 50 后，查询次数不应从 6 增到 51。
 
 **递进追问：**
 
@@ -740,9 +785,12 @@ ORDER BY b.id LIMIT 50;
 
 **代码 / 场景：**
 
-订单保留下单时价格快照，同时用可重算汇总字段服务读请求，并建立对账修复。
+**示例场景：** 订单保留下单时价格快照，同时用可重算汇总字段服务读请求，并建立对账修复。
+
+**观察目标：** 围绕“规范化和反规范化如何权衡？”，重点验证：规范化把独立事实拆入关系并用键连接，减少同一信息多处复制，避免插入、更新和删除异常；数据库约束可在单点维护不变量。
 
 ~~~sql
+-- 示例重点：订单保留下单时价格快照，同时用可重算汇总字段服务读请求，并建立对账修复。
 START TRANSACTION;
 INSERT INTO order_items(order_id, product_id, product_name_snapshot, unit_price_snapshot)
 SELECT 9001, id, name, price FROM products WHERE id=77 FOR SHARE;
@@ -752,7 +800,7 @@ SELECT o.id FROM orders o JOIN order_items i ON i.order_id=o.id
 GROUP BY o.id HAVING o.item_total <> COUNT(*);
 ~~~
 
-快照字段表达历史事实，不随商品改名更新；item_total 是冗余加速字段，出现漂移时能由 order_items 重建。
+**对照结果：** 快照字段表达历史事实，不随商品改名更新；item_total 是冗余加速字段，出现漂移时能由 order_items 重建。
 
 **递进追问：**
 
@@ -790,9 +838,12 @@ GROUP BY o.id HAVING o.item_total <> COUNT(*);
 
 **代码 / 场景：**
 
-生成列只对活跃账号参与唯一约束，同时为常用列表建立组合访问路径。
+**示例场景：** 生成列只对活跃账号参与唯一约束，同时为常用列表建立组合访问路径。
+
+**观察目标：** 围绕“软删除字段如何影响索引？”，重点验证：软删除让绝大多数查询都隐含 deletedat IS NULL，索引必须与租户、业务过滤和排序一起设计；单独给 deletedat 建索引通常选择性很低。
 
 ~~~sql
+-- 示例重点：生成列只对活跃账号参与唯一约束，同时为常用列表建立组合访问路径。
 ALTER TABLE users
   ADD COLUMN active_email VARCHAR(255)
     GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN email ELSE NULL END) STORED,
@@ -802,7 +853,7 @@ UPDATE users SET deleted_at=NOW() WHERE id=7;
 INSERT INTO users(tenant_id,email) VALUES(1,'same@example.com');
 ~~~
 
-插入应在旧行软删除后成功，但两条活跃同邮箱仍失败；迁移前先扫描现有重复值，否则添加唯一索引会中止。
+**对照结果：** 插入应在旧行软删除后成功，但两条活跃同邮箱仍失败；迁移前先扫描现有重复值，否则添加唯一索引会中止。
 
 **递进追问：**
 
@@ -839,9 +890,12 @@ INSERT INTO users(tenant_id,email) VALUES(1,'same@example.com');
 
 **代码 / 场景：**
 
-状态值高度倾斜时，先记录计划，再创建直方图并比较估算是否接近实际。
+**示例场景：** 状态值高度倾斜时，先记录计划，再创建直方图并比较估算是否接近实际。
+
+**观察目标：** 围绕“数据库为什么需要统计信息？”，重点验证：成本优化器需要预测每个谓词能留下多少行、索引范围要读多少页、不同 JOIN 顺序会循环多少次；这些预测来自表行数、索引基数、值分布与直方图等统计。
 
 ~~~sql
+-- 示例重点：状态值高度倾斜时，先记录计划，再创建直方图并比较估算是否接近实际。
 EXPLAIN ANALYZE SELECT * FROM jobs WHERE status = 9;
 ANALYZE TABLE jobs UPDATE HISTOGRAM ON status WITH 32 BUCKETS;
 EXPLAIN ANALYZE SELECT * FROM jobs WHERE status = 9;
@@ -849,7 +903,7 @@ SELECT * FROM information_schema.column_statistics
 WHERE schema_name=DATABASE() AND table_name='jobs';
 ~~~
 
-若 status=9 只占万分之一，更新后 estimated rows 应更接近 actual rows；还要测试 status=1 这个热门值，不能只优化一个参数。
+**对照结果：** 若 status=9 只占万分之一，更新后 estimated rows 应更接近 actual rows；还要测试 status=1 这个热门值，不能只优化一个参数。
 
 **递进追问：**
 
@@ -887,16 +941,19 @@ ORDER BY 末尾加入唯一键作为决定项，游标同时携带排序列和�
 
 **代码 / 场景：**
 
-排行榜按分数降序，同分再按 id 降序，下一页从上一页末尾 `(980,5012)` 继续。
+**示例场景：** 排行榜按分数降序，同分再按 id 降序，下一页从上一页末尾 `(980,5012)` 继续。
+
+**观察目标：** 围绕“排序与分页如何建立稳定顺序？”，重点验证：SQL 结果在没有 ORDER BY 时没有保证顺序；即使按 score DESC 排序，多个相同 score 的行之间仍没有确定次序，执行计划、并发写入或页分裂都可能改变返回顺序。
 
 ~~~sql
+-- 示例重点：排行榜按分数降序，同分再按 id 降序，下一页从上一页末尾 (980,5012) 继续。
 CREATE INDEX idx_scores_board_score_id ON scores(board_id, score DESC, id DESC);
 SELECT id, score FROM scores
 WHERE board_id=3 AND (score, id) < (980, 5012)
 ORDER BY score DESC, id DESC LIMIT 50;
 ~~~
 
-测试数据要包含大量相同 score，并连续翻完后断言 id 无重复、无遗漏。若分数可实时变化，接口应说明弱一致语义或在游标中固定榜单版本。
+**对照结果：** 测试数据要包含大量相同 score，并连续翻完后断言 id 无重复、无遗漏。若分数可实时变化，接口应说明弱一致语义或在游标中固定榜单版本。
 
 **递进追问：**
 
@@ -934,9 +991,12 @@ ORDER BY score DESC, id DESC LIMIT 50;
 
 **代码 / 场景：**
 
-把需要过滤的 `difficulty` 提升为生成列并加约束，展示 JSON 适用边界。
+**示例场景：** 把需要过滤的 `difficulty` 提升为生成列并加约束，展示 JSON 适用边界。
+
+**观察目标：** 围绕“JSON 字段何时不该使用？”，重点验证：JSON 适合结构变化快、并非每条记录都有的附加属性，或需要原样保存外部载荷；它不适合核心关系、频繁 JOIN/过滤/排序、需要外键、唯一性、精确类型和列级权限的字段。
 
 ~~~sql
+-- 示例重点：把需要过滤的 difficulty 提升为生成列并加约束，展示 JSON 适用边界。
 CREATE TABLE question_meta (
   question_id BIGINT PRIMARY KEY, attrs JSON NOT NULL,
   difficulty VARCHAR(16) GENERATED ALWAYS AS
@@ -947,7 +1007,7 @@ CREATE TABLE question_meta (
 EXPLAIN SELECT question_id FROM question_meta WHERE difficulty='advanced';
 ~~~
 
-如果随后十几个 JSON 路径都需要过滤、唯一约束和 JOIN，应迁移为结构化列或子表，而不是继续叠加生成列。
+**对照结果：** 如果随后十几个 JSON 路径都需要过滤、唯一约束和 JOIN，应迁移为结构化列或子表，而不是继续叠加生成列。
 
 **递进追问：**
 
@@ -987,9 +1047,12 @@ EXPLAIN SELECT question_id FROM question_meta WHERE difficulty='advanced';
 
 **代码 / 场景：**
 
-订单头与明细必须同时写入，并由外键和金额约束共同保护一致性。
+**示例场景：** 订单头与明细必须同时写入，并由外键和金额约束共同保护一致性。
+
+**观察目标：** 围绕“ACID 分别表示什么？”，重点验证：原子性表示事务中的操作全成或全败，InnoDB 通过 undo 和事务状态支持回滚；一致性表示提交前后数据库满足主键、外键、CHECK 以及业务不变量，它不是引擎自动理解所有业务；隔离性定义并发事务彼此可见的程度，由 MVCC、锁和隔…
 
 ~~~sql
+-- 示例重点：订单头与明细必须同时写入，并由外键和金额约束共同保护一致性。
 START TRANSACTION;
 INSERT INTO orders(id,user_id,status,total) VALUES(9001,42,'pending',199.00);
 INSERT INTO order_items(order_id,product_id,quantity,unit_price)
@@ -997,7 +1060,7 @@ VALUES(9001,77,1,199.00);
 COMMIT;
 ~~~
 
-第二条若违反外键或 CHECK，应用必须 ROLLBACK，订单头不能单独残留。测试还应在提交前断开连接与提交后杀进程，分别验证未提交回滚和已提交恢复。
+**对照结果：** 第二条若违反外键或 CHECK，应用必须 ROLLBACK，订单头不能单独残留。测试还应在提交前断开连接与提交后杀进程，分别验证未提交回滚和已提交恢复。
 
 **递进追问：**
 
@@ -1035,9 +1098,12 @@ COMMIT;
 
 **代码 / 场景：**
 
-两个会话可复现 READ COMMITTED 下的不可重复读，执行顺序必须严格交错。
+**示例场景：** 两个会话可复现 READ COMMITTED 下的不可重复读，执行顺序必须严格交错。
+
+**观察目标：** 围绕“脏读、不可重复读和幻读是什么？”，重点验证：脏读是事务读到另一事务尚未提交的数据，对方回滚后该值从未成立；不可重复读是同一事务两次读取同一行得到不同已提交版本；幻读是两次执行同一谓词查询时，满足条件的行集合因并发插入、删除而变化。
 
 ~~~sql
+-- 示例重点：两个会话可复现 READ COMMITTED 下的不可重复读，执行顺序必须严格交错。
 -- 会话 A
 SET TRANSACTION ISOLATION LEVEL READ COMMITTED; START TRANSACTION;
 SELECT balance FROM accounts WHERE id=1; -- 100
@@ -1048,7 +1114,7 @@ SELECT balance FROM accounts WHERE id=1; -- 80，不可重复读
 COMMIT;
 ~~~
 
-改为 REPEATABLE READ 后，A 的普通 SELECT 通常仍看到 100；若改用 `FOR UPDATE`，它是当前读，行为和快照读不同。
+**对照结果：** 改为 REPEATABLE READ 后，A 的普通 SELECT 通常仍看到 100；若改用 `FOR UPDATE`，它是当前读，行为和快照读不同。
 
 **递进追问：**
 
@@ -1086,9 +1152,12 @@ COMMIT;
 
 **代码 / 场景：**
 
-在两个会话中让写事务保持未提交，观察普通快照读与锁定读的差异。
+**示例场景：** 在两个会话中让写事务保持未提交，观察普通快照读与锁定读的差异。
+
+**观察目标：** 围绕“MVCC 如何减少读写阻塞？”，重点验证：InnoDB 为记录维护事务相关隐藏信息，并通过 undo 日志链接旧版本。
 
 ~~~sql
+-- 示例重点：在两个会话中让写事务保持未提交，观察普通快照读与锁定读的差异。
 -- 会话 A
 START TRANSACTION; UPDATE accounts SET balance=80 WHERE id=1;
 -- 会话 B
@@ -1098,7 +1167,7 @@ SELECT balance FROM accounts WHERE id=1 FOR UPDATE;           -- 等待 A 的行
 COMMIT;
 ~~~
 
-同时查看 `information_schema.innodb_trx` 与 `SHOW ENGINE INNODB STATUS`；若长期事务持续数小时，应先定位业务持有点，避免 undo 版本堆积。
+**对照结果：** 同时查看 `information_schema.innodb_trx` 与 `SHOW ENGINE INNODB STATUS`；若长期事务持续数小时，应先定位业务持有点，避免 undo 版本堆积。
 
 **递进追问：**
 
@@ -1136,9 +1205,12 @@ COMMIT;
 
 **代码 / 场景：**
 
-按顺序执行可看到同一事务中的快照值与当前值不同。
+**示例场景：** 按顺序执行可看到同一事务中的快照值与当前值不同。
+
+**观察目标：** 围绕“MySQL 可重复读下快照读和当前读有何区别？”，重点验证：在 InnoDB REPEATABLE READ 下，普通 SELECT 通常是一致性快照读：第一次此类读取建立 Read View，之后读取该快照可见的版本，不给目标行加记录锁。
 
 ~~~sql
+-- 示例重点：按顺序执行可看到同一事务中的快照值与当前值不同。
 -- A: SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 START TRANSACTION; SELECT stock FROM products WHERE id=7; -- 10，建立快照
 -- B: UPDATE products SET stock=9 WHERE id=7; COMMIT;
@@ -1148,7 +1220,7 @@ SELECT stock FROM products WHERE id=7 FOR UPDATE; -- 当前读为 9，并加锁
 COMMIT;
 ~~~
 
-业务若随后按 10 计算扣减就是错误混用；库存应使用条件 UPDATE 或先锁定读最新值，再在同一短事务完成写入。
+**对照结果：** 业务若随后按 10 计算扣减就是错误混用；库存应使用条件 UPDATE 或先锁定读最新值，再在同一短事务完成写入。
 
 **递进追问：**
 
@@ -1186,9 +1258,12 @@ COMMIT;
 
 **代码 / 场景：**
 
-两个会话以相反顺序更新账户即可复现，然后读取死锁报告。
+**示例场景：** 两个会话以相反顺序更新账户即可复现，然后读取死锁报告。
+
+**观察目标：** 围绕“死锁是如何形成的？”，重点验证：死锁形成于等待图出现环：事务 A 已持有资源 X 并等待 Y，事务 B 持有 Y 又等待 X，双方都无法自行前进。
 
 ~~~sql
+-- 示例重点：两个会话以相反顺序更新账户即可复现，然后读取死锁报告。
 -- A: START TRANSACTION; UPDATE accounts SET balance=balance-10 WHERE id=1;
 -- B: START TRANSACTION; UPDATE accounts SET balance=balance-20 WHERE id=2;
 -- A: UPDATE accounts SET balance=balance+10 WHERE id=2; -- 等待
@@ -1197,7 +1272,7 @@ SHOW ENGINE INNODB STATUS;
 SELECT * FROM performance_schema.data_lock_waits;
 ~~~
 
-修复为所有转账都先锁较小 id、再锁较大 id；应用捕获 1213 后回滚整笔事务，随机退避并有限重试。
+**对照结果：** 修复为所有转账都先锁较小 id、再锁较大 id；应用捕获 1213 后回滚整笔事务，随机退避并有限重试。
 
 **递进追问：**
 
@@ -1235,9 +1310,12 @@ SELECT * FROM performance_schema.data_lock_waits;
 
 **代码 / 场景：**
 
-编辑题目使用版本号避免管理员互相覆盖，affected rows 必须进入业务分支。
+**示例场景：** 编辑题目使用版本号避免管理员互相覆盖，affected rows 必须进入业务分支。
+
+**观察目标：** 围绕“乐观锁和悲观锁如何选择？”，重点验证：乐观锁不预先阻塞其他事务，读取时带出 version，更新时用 WHERE id=?
 
 ~~~sql
+-- 示例重点：编辑题目使用版本号避免管理员互相覆盖，affected rows 必须进入业务分支。
 SELECT id, body, version FROM questions WHERE id=88; -- version=5
 UPDATE questions
 SET body='new body', version=version+1, updated_at=NOW()
@@ -1245,7 +1323,7 @@ WHERE id=88 AND version=5;
 SELECT ROW_COUNT(); -- 1=成功，0=已有并发修改
 ~~~
 
-返回 0 时不要把页面显示成保存成功，应取回 version=6 的新内容，让用户合并或明确覆盖；盲目自动重试会再次用旧意图覆盖新值。
+**对照结果：** 返回 0 时不要把页面显示成保存成功，应取回 version=6 的新内容，让用户合并或明确覆盖；盲目自动重试会再次用旧意图覆盖新值。
 
 **递进追问：**
 
@@ -1283,9 +1361,12 @@ SELECT ROW_COUNT(); -- 1=成功，0=已有并发修改
 
 **代码 / 场景：**
 
-单 SKU 扣 2 件由一条语句决定成功与否，两个并发请求不会都基于旧值判断。
+**示例场景：** 单 SKU 扣 2 件由一条语句决定成功与否，两个并发请求不会都基于旧值判断。
+
+**观察目标：** 围绕“库存扣减如何防止超卖？”，重点验证：核心是不把“先 SELECT 看库存，再 UPDATE”拆成无保护的两步，而把不变量写进数据库原子条件：UPDATE ... SET available=available-n WHERE id=?
 
 ~~~sql
+-- 示例重点：单 SKU 扣 2 件由一条语句决定成功与否，两个并发请求不会都基于旧值判断。
 START TRANSACTION;
 INSERT INTO inventory_deductions(order_id, sku_id, quantity)
 VALUES(9001,77,2); -- order_id+sku_id 唯一，防重复
@@ -1295,7 +1376,7 @@ SELECT ROW_COUNT(); -- 必须为 1，否则 ROLLBACK 并返回售罄
 COMMIT;
 ~~~
 
-测试初始库存 3，并发发起两笔各扣 2 的订单，最终只能一笔提交、库存为 1，另一笔明确失败且不能留下扣减记录。
+**对照结果：** 测试初始库存 3，并发发起两笔各扣 2 的订单，最终只能一笔提交、库存为 1，另一笔明确失败且不能留下扣减记录。
 
 **递进追问：**
 
@@ -1333,9 +1414,12 @@ COMMIT;
 
 **代码 / 场景：**
 
-下单事务只落订单和待支付事件，提交后 worker 再调用支付接口。
+**示例场景：** 下单事务只落订单和待支付事件，提交后 worker 再调用支付接口。
+
+**观察目标：** 围绕“事务为什么不应包含远程 HTTP 调用？”，重点验证：数据库事务持有连接、行锁、版本和 undo，远程 HTTP 的尾延迟、重试和不可控失败会把这些资源占用从毫秒拉到秒甚至更久，放大锁等待与连接池耗尽。
 
 ~~~sql
+-- 示例重点：下单事务只落订单和待支付事件，提交后 worker 再调用支付接口。
 START TRANSACTION;
 INSERT INTO orders(id,status,total) VALUES(9001,'payment_pending',199.00);
 INSERT INTO outbox(id,topic,event_key,payload,status)
@@ -1343,7 +1427,7 @@ VALUES(UUID(),'payment.requested','order:9001',JSON_OBJECT('orderId',9001),'pend
 COMMIT;
 ~~~
 
-worker 以 `order:9001` 作为支付幂等键；HTTP 超时后先查询支付状态再重试。成功事件再驱动订单变为 paid，永久失败则进入 failed/compensating。
+**对照结果：** worker 以 `order:9001` 作为支付幂等键；HTTP 超时后先查询支付状态再重试。成功事件再驱动订单变为 paid，永久失败则进入 failed/compensating。
 
 **递进追问：**
 
@@ -1382,9 +1466,12 @@ worker 以 `order:9001` 作为支付幂等键；HTTP 超时后先查询支付状
 
 **代码 / 场景：**
 
-业务事务写事件，relay 用短事务领取，网络发送必须在领取事务外执行。
+**示例场景：** 业务事务写事件，relay 用短事务领取，网络发送必须在领取事务外执行。
+
+**观察目标：** 围绕“什么是 outbox pattern？”，重点验证：Transactional Outbox 在同一个数据库事务中同时写业务行和一条待发布事件，从而消除“业务已提交但消息未写入”的窗口。
 
 ~~~sql
+-- 示例重点：业务事务写事件，relay 用短事务领取，网络发送必须在领取事务外执行。
 START TRANSACTION;
 UPDATE orders SET status='paid' WHERE id=9001 AND status='payment_pending';
 INSERT INTO outbox(event_id,aggregate_id,event_type,payload,status)
@@ -1395,7 +1482,7 @@ SELECT * FROM outbox WHERE status='pending' ORDER BY created_at LIMIT 100
 FOR UPDATE SKIP LOCKED;
 ~~~
 
-relay 发布后按 event_id 标记完成；消费者表对 event_id 建唯一约束，收到重复事件时返回已处理，而不是重复发货。
+**对照结果：** relay 发布后按 event_id 标记完成；消费者表对 event_id 建唯一约束，收到重复事件时返回已处理，而不是重复发货。
 
 **递进追问：**
 
@@ -1433,9 +1520,12 @@ relay 发布后按 event_id 标记完成；消费者表对 event_id 建唯一约
 
 **代码 / 场景：**
 
-预约座位不必把所有请求升到 SERIALIZABLE，可让唯一约束作为最终并发裁决。
+**示例场景：** 预约座位不必把所有请求升到 SERIALIZABLE，可让唯一约束作为最终并发裁决。
+
+**观察目标：** 围绕“隔离级别越高越好吗？”，重点验证：更高隔离减少可观察并发现象，但会付出更多锁等待、冲突回滚、序列化失败或更低并发；并非所有业务都需要串行化整个读写集合。
 
 ~~~sql
+-- 示例重点：预约座位不必把所有请求升到 SERIALIZABLE，可让唯一约束作为最终并发裁决。
 CREATE TABLE reservations (
   id BIGINT PRIMARY KEY, show_id BIGINT NOT NULL, seat_no VARCHAR(10) NOT NULL,
   user_id BIGINT NOT NULL, UNIQUE KEY uk_show_seat(show_id, seat_no)
@@ -1445,7 +1535,7 @@ INSERT INTO reservations VALUES(1001,7,'A-12',42);
 COMMIT;
 ~~~
 
-两事务并发插入同一 show/seat，只有一个能提交；应用把 duplicate key 映射为“座位已被占用”，无需用全局串行事务锁住整个场次。
+**对照结果：** 两事务并发插入同一 show/seat，只有一个能提交；应用把 duplicate key 映射为“座位已被占用”，无需用全局串行事务锁住整个场次。
 
 **递进追问：**
 
@@ -1485,9 +1575,12 @@ COMMIT;
 
 **代码 / 场景：**
 
-用同一连接比较逐条往返与 pipeline，并同时观察慢命令和延迟诊断。
+**示例场景：** 用同一连接比较逐条往返与 pipeline，并同时观察慢命令和延迟诊断。
+
+**观察目标：** 围绕“Redis 为什么快？”，重点验证：Redis 的常用数据主要驻留内存，避免每次命令等待随机磁盘 I/O；命令路径短，数据结构针对计数、哈希、集合和排序做专门实现。
 
 ~~~bash
+# 示例重点：用同一连接比较逐条往返与 pipeline，并同时观察慢命令和延迟诊断。
 redis-benchmark -h 127.0.0.1 -p 6379 -t set,get -n 100000 -P 1
 redis-benchmark -h 127.0.0.1 -p 6379 -t set,get -n 100000 -P 32
 redis-cli SLOWLOG GET 10
@@ -1495,7 +1588,7 @@ redis-cli LATENCY DOCTOR
 redis-cli INFO commandstats
 ~~~
 
-pipeline 吞吐上升主要来自减少网络往返，不代表单条命令计算变快。若 P99 仍尖峰，应按时间对齐 fork、swap、大 key 和 slowlog，而不是继续增加并发。
+**对照结果：** pipeline 吞吐上升主要来自减少网络往返，不代表单条命令计算变快。若 P99 仍尖峰，应按时间对齐 fork、swap、大 key 和 slowlog，而不是继续增加并发。
 
 **递进追问：**
 
@@ -1533,9 +1626,12 @@ pipeline 吞吐上升主要来自减少网络往返，不代表单条命令计�
 
 **代码 / 场景：**
 
-同一面试系统中，不同访问语义对应不同命令，而不是全部存 JSON 字符串。
+**示例场景：** 同一面试系统中，不同访问语义对应不同命令，而不是全部存 JSON 字符串。
+
+**观察目标：** 围绕“String、Hash、List、Set、ZSet 如何选？”，重点验证：应按访问操作而不是按对象名称选择。
 
 ~~~bash
+# 示例重点：同一面试系统中，不同访问语义对应不同命令，而不是全部存 JSON 字符串。
 redis-cli HSET user:42 name Linda role learner
 redis-cli SADD question:88:tags mysql redis transaction
 redis-cli ZADD leaderboard:weekly 980 user:42 870 user:77
@@ -1544,7 +1640,7 @@ redis-cli INCR question:88:view-count
 redis-cli MEMORY USAGE leaderboard:weekly
 ~~~
 
-需要可靠消费、确认和重放时，把 List 队列改为 Stream consumer group；需要按对象字段更新时，Hash 可避免每次传输整段大 JSON。
+**对照结果：** 需要可靠消费、确认和重放时，把 List 队列改为 Stream consumer group；需要按对象字段更新时，Hash 可避免每次传输整段大 JSON。
 
 **递进追问：**
 
@@ -1582,9 +1678,12 @@ redis-cli MEMORY USAGE leaderboard:weekly
 
 **代码 / 场景：**
 
-为热点详情设置分散 TTL，并检查实例的过期与驱逐计数。
+**示例场景：** 为热点详情设置分散 TTL，并检查实例的过期与驱逐计数。
+
+**观察目标：** 围绕“Redis 过期键如何删除？”，重点验证：Redis 不保证 TTL 到零瞬间就物理删除。
 
 ~~~bash
+# 示例重点：为热点详情设置分散 TTL，并检查实例的过期与驱逐计数。
 redis-cli SET question:88 "{...}" EX 3673   # 基础 3600 秒 + 随机 0~300 秒
 redis-cli TTL question:88
 redis-cli INFO stats | grep -E "expired_keys|evicted_keys|keyspace_hits|keyspace_misses"
@@ -1592,7 +1691,7 @@ redis-cli CONFIG GET maxmemory-policy
 redis-cli MEMORY STATS
 ~~~
 
-若 evicted_keys 持续增加而 TTL 尚长，是容量/策略驱逐，不是过期清理慢；若整点 misses 与数据库 QPS 同时尖峰，应分散 TTL 并限流回源。
+**对照结果：** 若 evicted_keys 持续增加而 TTL 尚长，是容量/策略驱逐，不是过期清理慢；若整点 misses 与数据库 QPS 同时尖峰，应分散 TTL 并限流回源。
 
 **递进追问：**
 
@@ -1630,9 +1729,12 @@ RDB 是紧凑时间点快照、恢复快但可能丢最近数据；AOF 记录写
 
 **代码 / 场景：**
 
-先明确“一秒 RPO、分钟级 RTO”，再验证配置、生成文件和离线检查。
+**示例场景：** 先明确“一秒 RPO、分钟级 RTO”，再验证配置、生成文件和离线检查。
+
+**观察目标：** 围绕“RDB 和 AOF 的权衡是什么？”，重点验证：RDB 在某个时间点生成紧凑快照，文件便于备份、传输和快速全量恢复；通常通过 fork 子进程写出，故障时会丢失最近一次快照后的写入，高写负载下 copy-on-write 还会产生内存峰值。
 
 ~~~bash
+# 示例重点：先明确“一秒 RPO、分钟级 RTO”，再验证配置、生成文件和离线检查。
 redis-cli CONFIG GET appendonly appendfsync save dir dbfilename appendfilename
 redis-cli BGSAVE
 redis-cli BGREWRITEAOF
@@ -1641,7 +1743,7 @@ redis-check-rdb /var/lib/redis/dump.rdb
 redis-check-aof /var/lib/redis/appendonlydir/appendonly.aof.*
 ~~~
 
-在隔离恢复机加载备份，核对关键键数量和业务抽样，再测量启动耗时；只看到 `rdb_last_bgsave_status:ok` 不能证明文件可满足恢复目标。
+**对照结果：** 在隔离恢复机加载备份，核对关键键数量和业务抽样，再测量启动耗时；只看到 `rdb_last_bgsave_status:ok` 不能证明文件可满足恢复目标。
 
 **递进追问：**
 
@@ -1679,9 +1781,12 @@ MULTI/EXEC 保证队列命令连续执行，但运行时错误不会像关系数
 
 **代码 / 场景：**
 
-下面故意制造运行时类型错误，证明第一条写入不会被自动回滚。
+**示例场景：** 下面故意制造运行时类型错误，证明第一条写入不会被自动回滚。
+
+**观察目标：** 围绕“Redis 事务能回滚吗？”，重点验证：Redis 的 MULTI/EXEC 把后续命令排队，EXEC 时按顺序连续执行，期间不会插入其他客户端命令；它不提供关系数据库式运行时回滚。
 
 ~~~bash
+# 示例重点：下面故意制造运行时类型错误，证明第一条写入不会被自动回滚。
 redis-cli DEL counter mylist
 redis-cli <<EOF
 MULTI
@@ -1693,7 +1798,7 @@ EOF
 redis-cli MGET counter after
 ~~~
 
-LPUSH 对 String 返回 WRONGTYPE，但 counter 仍为 1，after 仍为 ok。业务不能依赖异常让前序命令撤销，应预先校验类型或改用原子 Lua。
+**对照结果：** LPUSH 对 String 返回 WRONGTYPE，但 counter 仍为 1，after 仍为 ok。业务不能依赖异常让前序命令撤销，应预先校验类型或改用原子 Lua。
 
 **递进追问：**
 
@@ -1731,14 +1836,18 @@ LPUSH 对 String 返回 WRONGTYPE，但 counter 仍为 1，after 仍为 ok。业
 
 **代码 / 场景：**
 
-库存预扣把检查与递减合并为一段短脚本，返回明确业务码。
+**示例场景：** 库存预扣把检查与递减合并为一段短脚本，返回明确业务码。
+
+**观察目标：** 围绕“Lua 脚本为什么能实现原子操作？”，重点验证：Redis 在执行一段 Lua 脚本期间不会穿插处理其他客户端命令，因此脚本内“读取—判断—写入”对其他客户端表现为一个原子步骤，避免客户端多轮请求之间的竞态。
 
 ~~~bash
+# 示例重点：库存预扣把检查与递减合并为一段短脚本，返回明确业务码。
 redis-cli SET stock:{sku77} 3
 redis-cli --eval deduct.lua stock:{sku77} , 2
 ~~~
 
 ~~~lua
+-- 示例重点：第 2 段：库存预扣把检查与递减合并为一段短脚本，返回明确业务码。
 local current = tonumber(redis.call("GET", KEYS[1]) or "0")
 local wanted = tonumber(ARGV[1])
 if current < wanted then return {0, current} end
@@ -1746,7 +1855,7 @@ local left = redis.call("DECRBY", KEYS[1], wanted)
 return {1, left}
 ~~~
 
-两个并发请求各扣 2、初始为 3 时，只能一个返回 `{1,1}`，另一个返回 `{0,1}`；数据库最终落账仍需幂等消息与补偿。
+**对照结果：** 两个并发请求各扣 2、初始为 3 时，只能一个返回 `{1,1}`，另一个返回 `{0,1}`；数据库最终落账仍需幂等消息与补偿。
 
 **递进追问：**
 
@@ -1784,7 +1893,11 @@ return {1, left}
 
 **代码 / 场景：**
 
-用版本化缓存值避免慢旧查询覆盖新值，删除动作只在数据库提交后发生。
+**示例场景：** 用版本化缓存值避免慢旧查询覆盖新值，删除动作只在数据库提交后发生。
+
+**观察目标：** 围绕“缓存旁路模式如何更新数据？”，重点验证：Cache-Aside 读流程是先 GET，miss 后查数据库并写入带 TTL 的缓存；写流程通常先提交数据库，再删除缓存，让下次读取回源重建。
+
+> **示例注解：** 用版本化缓存值避免慢旧查询覆盖新值，删除动作只在数据库提交后发生。
 
 ~~~text
 读：GET question:88 -> miss；SELECT body,version FROM questions WHERE id=88
@@ -1794,7 +1907,7 @@ return {1, left}
 不存在：SET question:404 "__NOT_FOUND__" EX 30
 ~~~
 
-并发测试应暂停一次旧 SELECT，让写事务提交并删除缓存，再恢复旧读；若版本保护正确，version 6 不能覆盖已经写入的 version 7。
+**对照结果：** 并发测试应暂停一次旧 SELECT，让写事务提交并删除缓存，再恢复旧读；若版本保护正确，version 6 不能覆盖已经写入的 version 7。
 
 **递进追问：**
 
@@ -1833,9 +1946,12 @@ return {1, left}
 
 **代码 / 场景：**
 
-获取锁使用唯一 token，释放通过 Lua 比较所有权；未获得者优先返回尚可接受的旧值。
+**示例场景：** 获取锁使用唯一 token，释放通过 Lua 比较所有权；未获得者优先返回尚可接受的旧值。
+
+**观察目标：** 围绕“缓存击穿时互斥锁有哪些风险？”，重点验证：缓存击穿是单个热点 key 到期或被驱逐后，大量并发同时回源。
 
 ~~~bash
+# 示例重点：获取锁使用唯一 token，释放通过 Lua 比较所有权；未获得者优先返回尚可接受的旧值。
 token=$(openssl rand -hex 16)
 redis-cli SET lock:question:88 "$token" NX PX 3000
 # 获得 OK 的请求查库并 SET question:88 ... EX 3600
@@ -1843,13 +1959,14 @@ redis-cli --eval unlock.lua lock:question:88 , "$token"
 ~~~
 
 ~~~lua
+-- 示例重点：第 2 段：获取锁使用唯一 token，释放通过 Lua 比较所有权；未获得者优先返回尚可接受的旧值。
 if redis.call("GET", KEYS[1]) == ARGV[1] then
   return redis.call("DEL", KEYS[1])
 end
 return 0
 ~~~
 
-压测让首个回源睡眠超过 3 秒，确认系统不会让旧持有者覆盖较新的版本，并观察数据库 QPS 是否始终受限。
+**对照结果：** 压测让首个回源睡眠超过 3 秒，确认系统不会让旧持有者覆盖较新的版本，并观察数据库 QPS 是否始终受限。
 
 **递进追问：**
 
@@ -1887,9 +2004,12 @@ return 0
 
 **代码 / 场景：**
 
-先用低风险工具定位，再针对具体类型采取渐进操作。
+**示例场景：** 先用低风险工具定位，再针对具体类型采取渐进操作。
+
+**观察目标：** 围绕“什么是大 key 和热 key？”，重点验证：大 key 指单个键占用大量内存或包含大量元素，它会造成网络传输、序列化、持久化 COW、集群迁移和删除阻塞；热 key 指访问量集中在一个键/分片，可能容量不大却打满单节点 CPU 或带宽。
 
 ~~~bash
+# 示例重点：先用低风险工具定位，再针对具体类型采取渐进操作。
 redis-cli --bigkeys -i 0.1
 redis-cli --memkeys -i 0.1
 redis-cli MEMORY USAGE tenant:7:questions SAMPLES 20
@@ -1898,7 +2018,7 @@ redis-cli INFO commandstats
 redis-cli UNLINK obsolete:huge-key
 ~~~
 
-若一个 Hash 有 200 万字段，先用 HSCAN 分批迁移到按月份/业务分片的键，双读校验后再 UNLINK；不要在线直接 HGETALL 或 DEL。
+**对照结果：** 若一个 Hash 有 200 万字段，先用 HSCAN 分批迁移到按月份/业务分片的键，双读校验后再 UNLINK；不要在线直接 HGETALL 或 DEL。
 
 **递进追问：**
 
@@ -1936,16 +2056,19 @@ redis-cli UNLINK obsolete:huge-key
 
 **代码 / 场景：**
 
-获取和释放使用同一随机 token，并把单调 fencing 版本传给最终资源。
+**示例场景：** 获取和释放使用同一随机 token，并把单调 fencing 版本传给最终资源。
+
+**观察目标：** 围绕“Redis 分布式锁至少要满足什么？”，重点验证：最低要求是用单条 SET resource random-token NX PX ttl 原子获取，token 对每次持有唯一，释放用 Lua 比较 token 后 DEL，确保只能删除自己的锁；必须有有限租期，避免持有者崩溃后永久占…
 
 ~~~bash
+# 示例重点：获取和释放使用同一随机 token，并把单调 fencing 版本传给最终资源。
 token=$(openssl rand -hex 16)
 redis-cli SET lock:report:7 "$token" NX PX 10000
 # 获取成功后从强一致序列取得 fence=481，并在写数据库时提交该值
 redis-cli --eval unlock.lua lock:report:7 , "$token"
 ~~~
 
-资源表执行 `UPDATE reports SET body=?, last_fence=481 WHERE id=7 AND last_fence<481`；即使 fence=480 的旧持有者暂停后恢复，它的写也影响 0 行。
+**对照结果：** 资源表执行 `UPDATE reports SET body=?, last_fence=481 WHERE id=7 AND last_fence<481`；即使 fence=480 的旧持有者暂停后恢复，它的写也影响 0 行。
 
 **递进追问：**
 

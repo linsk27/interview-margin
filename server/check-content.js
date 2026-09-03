@@ -4,6 +4,13 @@ import {
   isConclusionOnlyDecisionAnswer,
 } from './content/answer-quality.js'
 import { denseProseBlocks } from './content/readability.js'
+import {
+  auditQuestionExample,
+  extractExampleParts,
+  extractFencedCodeBlocks,
+  findDuplicateExampleTemplates,
+  findRepeatedTeachingNotes,
+} from './content/example-quality.js'
 
 function normalizeTitle(value) {
   return value.toLowerCase()
@@ -173,6 +180,30 @@ try {
     ...question,
     sections: auditSections(question.body_md),
   }))
+  const exampleQualityProblems = activeQuestions.flatMap((question) => auditQuestionExample({
+    id: question.id,
+    bankId: question.bank_id,
+    title: question.title,
+    body: question.body_md,
+  }))
+  const exampleProblemCounts = {}
+  for (const problem of exampleQualityProblems) {
+    exampleProblemCounts[problem.code] = (exampleProblemCounts[problem.code] ?? 0) + 1
+  }
+  const exampleQuestionsNeedingRepair = new Set(exampleQualityProblems.map((problem) => problem.id)).size
+  const duplicateExampleTemplates = findDuplicateExampleTemplates(activeQuestions.map((question) => ({
+    id: question.id,
+    bankId: question.bank_id,
+    title: question.title,
+    body: question.body_md,
+  })))
+  const repeatedTeachingNotes = findRepeatedTeachingNotes(activeQuestions.map((question) => ({
+    id: question.id,
+    bankId: question.bank_id,
+    title: question.title,
+    body: question.body_md,
+  })))
+  const fencedCodeBlocks = activeQuestions.flatMap((question) => extractFencedCodeBlocks(question.body_md))
   const structuredAnswerCount = auditedQuestions.filter((question) => (
     /\*\*结论[：:]\*\*/.test(question.sections.answer ?? '')
       && /\*\*为什么[：:]\*\*/.test(question.sections.answer ?? '')
@@ -306,6 +337,17 @@ try {
     questionsWithDiagrams: activeQuestions.filter((question) => question.body_md.includes('/content/diagrams/')).length,
     longTitlesOver40: activeQuestions.filter((question) => question.title.length > 40).length,
     conclusionOnlyFollowupAnswers: conclusionOnlyFollowups.length,
+    questionsWithExampleScenario: activeQuestions.filter((question) => (
+      extractExampleParts(question.body_md).scenario
+    )).length,
+    questionsWithExampleResult: activeQuestions.filter((question) => (
+      extractExampleParts(question.body_md).result
+    )).length,
+    fencedCodeBlocks: fencedCodeBlocks.length,
+    exampleQuestionsNeedingRepair,
+    exampleProblemCounts,
+    duplicateExampleTemplates: duplicateExampleTemplates.length,
+    repeatedTeachingNotes: repeatedTeachingNotes.length,
   }
 
   const titles = db.prepare('SELECT id, bank_id, title FROM questions ORDER BY bank_id, sort_order').all()
@@ -353,6 +395,14 @@ try {
     knownGlossaryCollisions,
     firstScreenReasonProblems,
     conclusionOnlyFollowups,
+    exampleQuality: {
+      questionsNeedingRepair: exampleQuestionsNeedingRepair,
+      problemCounts: exampleProblemCounts,
+      duplicateTemplates: duplicateExampleTemplates,
+      repeatedTeachingNotes,
+      problems: exampleQualityProblems.slice(0, 120),
+      problemsTruncated: Math.max(0, exampleQualityProblems.length - 120),
+    },
     exactDuplicateTitles: exactDuplicates,
     similarTitleReport: similar.slice(0, 30),
     qualityAudit,
@@ -375,7 +425,10 @@ try {
     || (fencedCodeByBank['java-foundations'] ?? 0) < 10
     || (fencedCodeByBank['java-backend-interviews'] ?? 0) < 8
     || (fencedCodeByBank['java-ai-applications'] ?? 0) < 6
-    || conclusionOnlyFollowups.length) {
+    || conclusionOnlyFollowups.length
+    || exampleQualityProblems.length
+    || duplicateExampleTemplates.length
+    || repeatedTeachingNotes.length) {
     process.exitCode = 1
   }
 } finally {

@@ -1,4 +1,6 @@
-export default [
+import { strengthenFrontendExamples } from './frontend-example-quality.js'
+
+export default strengthenFrontendExamples([
   {
     number: 1,
     title: 'typeof null 的结果是什么？',
@@ -1998,4 +2000,4 @@ export default [
       { label: 'MDN：Nullish coalescing operator', url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing' }
     ]
   }
-]
+], { bankId: 'javascript' })

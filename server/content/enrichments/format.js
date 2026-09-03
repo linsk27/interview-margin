@@ -1,5 +1,6 @@
 import { isConclusionOnlyDecisionAnswer } from '../answer-quality.js'
 import { normalizeReadableQuestionBody } from '../readability.js'
+import { formatTeachingExample } from '../teaching-examples.js'
 
 const DEFAULT_VERIFIED_AT = '2026-07-20'
 
@@ -88,6 +89,7 @@ function renderSources(sources, verifiedAt) {
 }
 
 export function formatEnrichedBody({
+  title,
   summary,
   mechanism,
   example,
@@ -100,6 +102,7 @@ export function formatEnrichedBody({
   const visualMarkdown = visual
     ? `![${visual.alt}](${visual.src} "${visual.caption}")\n\n`
     : ''
+  const teachingExample = formatTeachingExample(example, { summary, title })
   const body = `**短回答：**
 
 ${summary.trim()}
@@ -110,7 +113,7 @@ ${visualMarkdown}${mechanism.trim()}
 
 **代码 / 场景：**
 
-${example.trim()}
+${teachingExample}
 
 **递进追问：**
 

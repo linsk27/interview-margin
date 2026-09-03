@@ -3,6 +3,7 @@ import { JAVA_FOUNDATION_V2_COLLECTIONS } from './java-foundations/v2/collection
 import { JAVA_FOUNDATION_V2_CONCURRENCY } from './java-foundations/v2/concurrency.js'
 import { JAVA_FOUNDATION_V2_JVM } from './java-foundations/v2/jvm.js'
 import { JAVA_FOUNDATION_V2_MODERN } from './java-foundations/v2/modern.js'
+import { enhanceJavaBankExamples } from './java-example-enrichment.js'
 
 const sections = [
   JAVA_FOUNDATION_V2_LANGUAGE,
@@ -12,7 +13,7 @@ const sections = [
   JAVA_FOUNDATION_V2_MODERN,
 ]
 
-export const javaFoundationBank = {
+export const javaFoundationBank = enhanceJavaBankExamples({
   id: 'java-foundations',
   idPrefix: 'java-foundations-v2',
   title: 'Java 基础高频 60 题',
@@ -26,4 +27,4 @@ export const javaFoundationBank = {
   verifiedAt: '2026-08-06',
   source: 'public/question-banks/java-foundations.md',
   sections,
-}
+})

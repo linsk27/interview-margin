@@ -1,4 +1,6 @@
 import { legacySupplementFor, renderLegacySources } from './legacy-supplements.js'
+import { legacyExampleSupplementFor } from './legacy-example-supplements.js'
+import { annotateTeachingCode, formatTeachingExample } from './teaching-examples.js'
 import { toString } from 'mdast-util-to-string'
 import remarkParse from 'remark-parse'
 import { unified } from 'unified'
@@ -1012,8 +1014,9 @@ function markdownText(value) {
     .replace(/(```|~~~)[\s\S]*?\1/g, ' ')
     .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
     .replace(/(?:^|\n)(?:\s*\|[^\n]*\|\s*(?:\n|$)){2,}/g, '\n')
+    .replace(/(?:^|\n)\s*(?:>\s*)?\*\*(?:示例注解|观察目标)[：:]\*\*[^\n]*/gu, '\n')
   return toString(markdownParser.parse(withoutLargeBlocks))
-    .replace(/(?:先背答案|短回答|题解|关键词翻译|原理(?:\s*\/?\s*流程)?|机制拆解|技术原理|先解释为什么要这样做|为什么这样回答|代码\s*\/\s*场景|排查\s*\/\s*场景|项目\s*\/\s*场景|项目场景|项目落点|场景拆解|排查顺序|量化(?:定位|判据|验证)|验证(?:步骤|方法|清单))[：:]\s*/g, '')
+    .replace(/(?:先背答案|短回答|题解|关键词翻译|原理(?:\s*\/?\s*流程)?|机制拆解|技术原理|先解释为什么要这样做|为什么这样回答|代码\s*\/\s*场景|排查\s*\/\s*场景|项目\s*\/\s*场景|项目场景|项目落点|场景拆解|示例场景|对照结果|排查顺序|量化(?:定位|判据|验证)|验证(?:步骤|方法|清单))[：:]\s*/g, '')
     .replace(/(?:^|\s)答[：:]\s*/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
@@ -1261,7 +1264,22 @@ function reasonSentence(value, fallbackValue, conclusion, title) {
   return expandedReason(selected, primary, fallback, conclusion)
 }
 
+function explicitPracticeCue(value) {
+  const source = String(value ?? '')
+  const marker = source.match(/\*\*示例场景[：:]\*\*/u)
+  if (!marker || marker.index === undefined) return undefined
+  const tail = source.slice(marker.index + marker[0].length)
+  const region = tail.split(/\n\s*\*\*(?:对照结果|递进追问|继续追问|易错点|参考来源)[：:]?\*\*/u)[0]
+  const premise = region.match(/(?:^|\n)\s*[-*+]?\s*\*\*前提[：:]\*\*\s*([^\n]+)/u)?.[1]
+  const inline = tail.split('\n', 1)[0].trim()
+  return (premise || inline)?.trim()
+}
+
 function practiceSentence(value, fallbackValue, excluded) {
+  const explicitCue = explicitPracticeCue(value)
+  if (explicitCue && !isHighlySimilar(explicitCue, excluded)) {
+    return takeSentences(explicitCue, { maximum: 120, count: 1 })
+  }
   const primary = splitSentences(value)
   const fallback = splitSentences(fallbackValue)
   const practicalPatterns = [
@@ -1368,6 +1386,9 @@ export function enhanceQuestionClarity(markdown, { title = '', bankId = '' } = {
 
   const answer = lines.slice(answerSection.start, answerSection.end).join('\n').trim()
   const legacySupplement = bankId === 'interview' ? legacySupplementFor(title) : undefined
+  const legacyExampleSupplement = bankId === 'interview'
+    ? legacyExampleSupplementFor(title)
+    : undefined
   const mechanismSection = sections.find((item) => item.kind === 'mechanism')
   const practiceSection = sections.find((item) => item.kind === 'practice')
   const followupSection = sections.find((item) => item.kind === 'followups')
@@ -1377,6 +1398,7 @@ export function enhanceQuestionClarity(markdown, { title = '', bankId = '' } = {
   const practice = practiceSection
     ? lines.slice(practiceSection.start, practiceSection.end).join('\n').trim()
     : legacySupplement?.practice
+      ?? legacyExampleSupplement
       ?? (followupSection ? lines.slice(followupSection.start, followupSection.end).join('\n').trim() : mechanism)
   let authoredAnswerToRelocate
 
@@ -1489,19 +1511,42 @@ export function enhanceQuestionClarity(markdown, { title = '', bankId = '' } = {
     }
   }
 
+  if (legacyExampleSupplement) {
+    const currentPractice = locateSections(lines).find((item) => item.kind === 'practice')
+    if (currentPractice) {
+      lines = [
+        ...lines.slice(0, currentPractice.end),
+        '', legacyExampleSupplement,
+        ...lines.slice(currentPractice.end),
+      ]
+    } else {
+      const anchor = locateSections(lines).some((item) => item.kind === 'mechanism') ? 'mechanism' : 'answer'
+      lines = insertAfterSection(lines, anchor, [
+        '**代码 / 场景：**', '', legacyExampleSupplement,
+      ])
+    }
+  }
+
   if (!/^(?:```|~~~)/m.test(lines.join('\n'))) {
     const rule = matchingCodeRule(bankId, title)
     if (rule && locateSections(lines).some((item) => item.kind === 'practice')) {
       const section = locateSections(lines).find((item) => item.kind === 'practice')
+      const resultMarker = lines.findIndex((line, index) => (
+        index >= section.start
+        && index < section.end
+        && /^\*\*对照结果[：:]\*\*\s*$/u.test(line.trim())
+      ))
+      const insertionPoint = resultMarker >= 0 ? resultMarker : section.end
       lines = [
-        ...lines.slice(0, section.end),
+        ...lines.slice(0, insertionPoint),
         '',
         rule.intro,
         '',
         `\`\`\`${rule.language}`,
         rule.code,
         '```',
-        ...lines.slice(section.end),
+        '',
+        ...lines.slice(insertionPoint),
       ]
     }
   }
@@ -1520,8 +1565,17 @@ export function enhanceQuestionClarity(markdown, { title = '', bankId = '' } = {
     }
   }
 
+  const finalPractice = locateSections(lines).find((item) => item.kind === 'practice')
+  if (finalPractice) {
+    const formattedPractice = formatTeachingExample(
+      lines.slice(finalPractice.start, finalPractice.end).join('\n').trim(),
+      { summary: answer, title },
+    )
+    lines = replaceSection(lines, 'practice', formattedPractice.split('\n'))
+  }
+
   const result = collapseBlankLinesOutsideFences(lines).join('\n').trim()
-  return `${result}\n\n${CLARITY_MARKER}`
+  return `${annotateTeachingCode(result, { title })}\n\n${CLARITY_MARKER}`
 }
 
 export function clarityRuleCounts() {

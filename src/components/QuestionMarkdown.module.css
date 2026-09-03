@@ -22,6 +22,57 @@
   font-weight: 560;
 }
 
+:global(.markdown-body) .exampleNote {
+  position: relative;
+  max-inline-size: 100%;
+  margin-block: 0.8rem;
+  padding: 0.9rem 1rem 0.95rem 1.15rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: color-mix(in oklch, var(--color-paper-2) 82%, var(--color-paper));
+  box-shadow: 0 0.45rem 1.4rem color-mix(in oklch, var(--color-shadow) 28%, transparent);
+  color: var(--color-neutral);
+  line-height: 1.72;
+}
+
+:global(.markdown-body) .exampleNote::before {
+  position: absolute;
+  inset-block-start: 1.18rem;
+  inset-inline-start: 0.55rem;
+  width: 0.32rem;
+  height: 0.32rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  content: '';
+}
+
+:global(.markdown-body) .exampleNote > strong:first-child {
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-weight: 720;
+}
+
+:global(.markdown-body) .exampleNote[data-example-kind='scenario'] {
+  background: color-mix(in oklch, var(--color-accent-soft) 30%, var(--color-paper));
+}
+
+:global(.markdown-body) .exampleNote[data-example-kind='annotation'] {
+  background: color-mix(in oklch, var(--color-paper-2) 88%, var(--color-paper));
+  color: var(--color-muted);
+}
+
+:global(.markdown-body) .exampleNote[data-example-kind='annotation']::before {
+  background: var(--color-muted);
+}
+
+:global(.markdown-body) .exampleNote[data-example-kind='result'] {
+  background: color-mix(in oklch, var(--color-warm-soft) 30%, var(--color-paper));
+}
+
+:global(.markdown-body) .exampleNote[data-example-kind='result']::before {
+  background: var(--color-warm);
+}
+
 :global(.markdown-body) li > .paragraph,
 :global(.markdown-body) .blockquoteContent > .paragraph,
 :global(.markdown-body) :global(.learning-section--answer) > .paragraph {
@@ -311,6 +362,32 @@
   height: clamp(0.35rem, 1.2cqi, 0.8rem);
   margin: 0;
   border: 0;
+}
+
+@container reader (min-width: 52rem) {
+  :global(.markdown-body) :global(.learning-section--practice):has(> .codeBlock) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(14rem, 0.85fr);
+    align-items: start;
+    gap: 0.9rem 1rem;
+  }
+
+  :global(.markdown-body) :global(.learning-section--practice):has(> .codeBlock) > * {
+    min-width: 0;
+    grid-column: 1 / -1;
+  }
+
+  :global(.markdown-body) :global(.learning-section--practice) > .codeBlock:has(+ .exampleNote[data-example-kind='result']) {
+    grid-column: 1;
+    align-self: stretch;
+    margin-block: 0;
+  }
+
+  :global(.markdown-body) :global(.learning-section--practice) > .codeBlock + .exampleNote[data-example-kind='result'] {
+    grid-column: 2;
+    align-self: stretch;
+    margin-block: 0;
+  }
 }
 
 @media (max-width: 48rem) {

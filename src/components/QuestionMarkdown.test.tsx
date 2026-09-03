@@ -121,6 +121,29 @@ describe('QuestionMarkdown learning sections', () => {
     expect(content).toHaveTextContent('第二段补充证据。')
     expect(content).toHaveTextContent('第三段说明边界。')
   })
+
+  it('marks scenario, annotation and result paragraphs for the teaching-example layout', () => {
+    const { container } = render(
+      <QuestionMarkdown>{[
+        '**代码 / 场景：**',
+        '',
+        '**示例场景：** 用户停止一条仍在流式返回的回答。',
+        '',
+        '**示例注解：** 代码里的 signal 同时交给 fetch 和读取循环。',
+        '',
+        '```ts',
+        '// 示例重点：停止信号贯穿整条链路',
+        'controller.abort()',
+        '```',
+        '',
+        '**对照结果：** 已展示内容保留，后续分片不再写入。',
+      ].join('\n')}</QuestionMarkdown>,
+    )
+
+    expect(container.querySelector('[data-example-kind="scenario"]')).toHaveTextContent('用户停止')
+    expect(container.querySelector('[data-example-kind="annotation"]')).toHaveTextContent('signal')
+    expect(container.querySelector('[data-example-kind="result"]')).toHaveTextContent('已展示内容保留')
+  })
 })
 
 describe('QuestionMarkdown code blocks', () => {

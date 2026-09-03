@@ -16,9 +16,10 @@
 
 **代码 / 场景：**
 
-Bad 每次 render 修改模块变量 visits，StrictMode 或被放弃的 render 会让计数失真；Good 只根据 prop 返回 JSX，浏览量由明确事件或服务端记录。
+**示例场景：** Bad 每次 render 修改模块变量 visits，StrictMode 或被放弃的 render 会让计数失真；Good 只根据 prop 返回 JSX，浏览量由明确事件或服务端记录。
 
 ~~~jsx
+// 示例重点：Bad 每次 render 修改模块变量 visits，StrictMode 或被放弃的 render 会让计数失真；Good 只根据…
 let visits = 0
 function BadProfile({ name }) {
   visits += 1 // 渲染副作用：一次提交不一定只调用一次
@@ -29,6 +30,10 @@ function Profile({ name, visits }) {
   return <p>{name} visited {visits}</p>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“React 组件为什么应当是纯函数”：示例场景： Bad 每次 render 修改模块变量 visits，StrictMode 或被放弃的 render 会让计数失真；Good 只根据 prop 返回 JSX，浏览量由明确事件或服务端记录。
 
 **递进追问：**
 
@@ -67,9 +72,10 @@ JSX 经编译变为创建 React element 的调用，element 是描述类型、pr
 
 **代码 / 场景：**
 
-下面 JSX 与概念化 jsx 调用表达同一 UI；button 在 render 阶段只是 element 描述，直到 commit 阶段 React 才创建或更新真实按钮。
+**示例场景：** 下面 JSX 与概念化 jsx 调用表达同一 UI；button 在 render 阶段只是 element 描述，直到 commit 阶段 React 才创建或更新真实按钮。
 
 ~~~jsx
+// 示例重点：下面 JSX 与概念化 jsx 调用表达同一 UI；button 在 render 阶段只是 element 描述，直到 commit…
 const element = <Button kind="primary">保存</Button>
 
 // 新 JSX transform 的概念结果
@@ -77,6 +83,10 @@ const element2 = jsx(Button, { kind: 'primary', children: '保存' })
 console.log(element.type === Button) // true
 console.log(element.props.kind)      // primary
 ~~~
+
+**对照结果：**
+
+用这个结果回答“JSX 最终是什么”：示例场景： 下面 JSX 与概念化 jsx 调用表达同一 UI；button 在 render 阶段只是 element 描述，直到 commit 阶段 React 才创建或更新真实按钮。
 
 **递进追问：**
 
@@ -114,9 +124,10 @@ console.log(element.props.kind)      // primary
 
 **代码 / 场景：**
 
-点击时页面显示 0，setCount(1) 后当前处理器中的 count 仍为 0；React 下一次 render 才显示 1。定时器也输出触发点击时的 0。
+**示例场景：** 点击时页面显示 0，setCount(1) 后当前处理器中的 count 仍为 0；React 下一次 render 才显示 1。定时器也输出触发点击时的 0。
 
 ~~~jsx
+// 示例重点：点击时页面显示 0，setCount(1) 后当前处理器中的 count 仍为 0；React 下一次 render 才显示 1。定时…
 function Counter() {
   const [count, setCount] = useState(0)
   function handleClick() {
@@ -127,6 +138,10 @@ function Counter() {
   return <button onClick={handleClick}>{count}</button>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“state 为什么像一次渲染的快照”：示例场景： 点击时页面显示 0，setCount 1 后当前处理器中的 count 仍为 0；React 下一次 render 才显示 1。
 
 **递进追问：**
 
@@ -164,9 +179,10 @@ function Counter() {
 
 **代码 / 场景：**
 
-一次点击同时更新 count 和 loading，React 通常只 render/commit 一次最终组合。三次 setCount(count+1) 都基于快照 0，结果是 1；三次 updater 才是 3。
+**示例场景：** 一次点击同时更新 count 和 loading，React 通常只 render/commit 一次最终组合。三次 setCount(count+1) 都基于快照 0，结果是 1；三次 updater 才是 3。
 
 ~~~jsx
+// 示例重点：一次点击同时更新 count 和 loading，React 通常只 render/commit 一次最终组合。三次 setCount…
 function addThreeWrong() {
   setCount(count + 1)
   setCount(count + 1)
@@ -178,6 +194,10 @@ function addThree() {
   setCount(n => n + 1) // updater 队列结果是 3
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“React 为什么批处理状态更新”：三次 setCount count+1 都基于快照 0，结果是 1；三次 updater 才是 3。
 
 **递进追问：**
 
@@ -216,9 +236,10 @@ function addThree() {
 
 **代码 / 场景：**
 
-三次 updater 依次接收 0、1、2，最终得到 3；若写三次 setScore(score+1)，它们都用当前快照 0，最终替换值通常都是 1。
+**示例场景：** 三次 updater 依次接收 0、1、2，最终得到 3；若写三次 setScore(score+1)，它们都用当前快照 0，最终替换值通常都是 1。
 
 ~~~jsx
+// 示例重点：三次 updater 依次接收 0、1、2，最终得到 3；若写三次 setScore(score+1)，它们都用当前快照 0，最终替换…
 const [score, setScore] = useState(0)
 function handleClick() {
   setScore(s => s + 1)
@@ -227,6 +248,10 @@ function handleClick() {
 }
 // 点击一次后下一次 render 显示 3
 ~~~
+
+**对照结果：**
+
+用这个结果回答“函数式 setState 何时必须使用”：示例场景： 三次 updater 依次接收 0、1、2，最终得到 3；若写三次 setScore score+1 ，它们都用当前快照 0，最终替换值通常都是 1。
 
 **递进追问：**
 
@@ -264,9 +289,10 @@ React 用父级位置、元素类型和 key 判断身份；key 改变会卸载�
 
 **代码 / 场景：**
 
-切换 recipient.id 后 key 改变，ChatForm 的 draft state 被重置，避免把给 A 的草稿发给 B；若没有 key，相同位置的 ChatForm 会保留旧 draft。
+**示例场景：** 切换 recipient.id 后 key 改变，ChatForm 的 draft state 被重置，避免把给 A 的草稿发给 B；若没有 key，相同位置的 ChatForm 会保留旧 draft。
 
 ~~~jsx
+// 示例重点：切换 recipient.id 后 key 改变，ChatForm 的 draft state 被重置，避免把给 A 的草稿发给 B…
 function Messenger({ recipient }) {
   return <ChatForm key={recipient.id} recipient={recipient} />
 }
@@ -276,6 +302,10 @@ function ChatForm({ recipient }) {
   return <textarea value={draft} onChange={e => setDraft(e.target.value)} />
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“key 如何影响组件状态”：示例场景： 切换 recipient.id 后 key 改变，ChatForm 的 draft state 被重置，避免把给 A 的草稿发给 B；若没有 key，相同位置的 ChatForm 会保留旧 draft。
 
 **递进追问：**
 
@@ -313,9 +343,10 @@ function ChatForm({ recipient }) {
 
 **代码 / 场景：**
 
-Bad 每次 render 都 setCount，立即循环；Mutation 原地 push 后 setItems(items) 引用未变且污染旧快照。Good 在点击事件中用新数组更新。
+**示例场景：** Bad 每次 render 都 setCount，立即循环；Mutation 原地 push 后 setItems(items) 引用未变且污染旧快照。Good 在点击事件中用新数组更新。
 
 ~~~jsx
+// 示例重点：Bad 每次 render 都 setCount，立即循环；Mutation 原地 push 后 setItems(items) 引用…
 function List() {
   const [items, setItems] = useState([])
   // setItems([...items]) // render 中调用会循环
@@ -325,6 +356,10 @@ function List() {
   return <button onClick={() => addItem({ id: crypto.randomUUID() })}>新增</button>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“为什么不能在 render 中直接修改 state”：示例场景： Bad 每次 render 都 setCount，立即循环；Mutation 原地 push 后 setItems items 引用未变且污染旧快照。
 
 **递进追问：**
 
@@ -363,9 +398,10 @@ function List() {
 
 **代码 / 场景：**
 
-email 受控，可即时显示错误；avatar 文件由 DOM 保存，提交时从 files 读取。value 使用空字符串初始化，避免从非受控切到受控。
+**示例场景：** email 受控，可即时显示错误；avatar 文件由 DOM 保存，提交时从 files 读取。value 使用空字符串初始化，避免从非受控切到受控。
 
 ~~~jsx
+// 示例重点：email 受控，可即时显示错误；avatar 文件由 DOM 保存，提交时从 files 读取。value 使用空字符串初始化，避免…
 function ProfileForm() {
   const [email, setEmail] = useState('')
   const fileRef = useRef(null)
@@ -380,6 +416,10 @@ function ProfileForm() {
   </form>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“受控组件和非受控组件如何选择”：value 使用空字符串初始化，避免从非受控切到受控。
 
 **递进追问：**
 
@@ -418,9 +458,10 @@ function ProfileForm() {
 
 **代码 / 场景：**
 
-ThemeProvider 用 useMemo 稳定对象，读取主题的后代会随 mode 更新；不需要主题的中间组件无需接 prop。若 value 每次包含新函数字面量，所有消费者都会无效更新。
+**示例场景：** ThemeProvider 用 useMemo 稳定对象，读取主题的后代会随 mode 更新；不需要主题的中间组件无需接 prop。若 value 每次包含新函数字面量，所有消费者都会无效更新。
 
 ~~~jsx
+// 示例重点：ThemeProvider 用 useMemo 稳定对象，读取主题的后代会随 mode 更新；不需要主题的中间组件无需接 prop。若…
 const ThemeContext = createContext(null)
 function ThemeProvider({ children }) {
   const [mode, setMode] = useState('light')
@@ -433,6 +474,10 @@ function Button() {
   return <button data-theme={theme.mode}>保存</button>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Context 的适用边界是什么”：若 value 每次包含新函数字面量，所有消费者都会无效更新。
 
 **递进追问：**
 
@@ -471,9 +516,10 @@ Portal 只改变 DOM 放置位置，组件父子关系仍在 React 树中，因�
 
 **代码 / 场景：**
 
-Modal DOM 位于 #modal-root，但点击关闭按钮会先执行按钮处理，再沿 React 树到 App 的 onClick；DOM 上 #app 并不是它的祖先。
+**示例场景：** Modal DOM 位于 #modal-root，但点击关闭按钮会先执行按钮处理，再沿 React 树到 App 的 onClick；DOM 上 #app 并不是它的祖先。
 
 ~~~jsx
+// 示例重点：Modal DOM 位于 modal-root，但点击关闭按钮会先执行按钮处理，再沿 React 树到 App 的 onClick；D…
 function App() {
   return <div onClick={() => console.log('React parent')}>
     <Modal />
@@ -487,6 +533,10 @@ function Modal() {
 }
 // 点击输出 button，然后 React parent
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Portal 为什么仍能按 React 树冒泡事件”：示例场景： Modal DOM 位于 modal-root，但点击关闭按钮会先执行按钮处理，再沿 React 树到 App 的 onClick；DOM 上 app 并不是它的祖先。
 
 **递进追问：**
 
@@ -527,9 +577,10 @@ React 依赖每次渲染相同的 Hook 调用顺序把状态槽与调用对应�
 
 **代码 / 场景：**
 
-第一次 enabled 为 false 时跳过第一个 state，第二个 state 占据槽位一；下一次 enabled 为 true 后，name 会读到原来 count 的值。正确写法让两个 state 始终执行，只在展示或副作用内部判断条件。
+**示例场景：** 第一次 enabled 为 false 时跳过第一个 state，第二个 state 占据槽位一；下一次 enabled 为 true 后，name 会读到原来 count 的值。正确写法让两个 state 始终执行，只在展示或副作用内部判断条件。
 
 ~~~jsx
+// 示例重点：第一次 enabled 为 false 时跳过第一个 state，第二个 state 占据槽位一；下一次 enabled 为 true…
 function Bad({ enabled }) {
   if (enabled) useState('name')
   const [count] = useState(0)
@@ -541,6 +592,10 @@ function Good({ enabled }) {
   return enabled ? <span>{name}: {count}</span> : <span>{count}</span>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Hooks 为什么不能写在条件语句里”：正确写法让两个 state 始终执行，只在展示或副作用内部判断条件。
 
 **递进追问：**
 
@@ -579,9 +634,10 @@ function Good({ enabled }) {
 
 **代码 / 场景：**
 
-聊天室组件提交后才连接指定 room；切换 room 时先断开旧连接再连接新房间，卸载时断开。消息发送属于点击事件，不应通过设置 send 标记再让 effect 观察。
+**示例场景：** 聊天室组件提交后才连接指定 room；切换 room 时先断开旧连接再连接新房间，卸载时断开。消息发送属于点击事件，不应通过设置 send 标记再让 effect 观察。
 
 ~~~jsx
+// 示例重点：聊天室组件提交后才连接指定 room；切换 room 时先断开旧连接再连接新房间，卸载时断开。消息发送属于点击事件，不应通过设置 se…
 function Chat({ roomId }) {
   useEffect(() => {
     const connection = createConnection(roomId)
@@ -591,6 +647,10 @@ function Chat({ roomId }) {
   return <button onClick={() => sendMessage(roomId, 'hello')}>发送</button>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“useEffect 的职责是什么”：消息发送属于点击事件，不应通过设置 send 标记再让 effect 观察。
 
 **递进追问：**
 
@@ -628,9 +688,10 @@ effect 读取的所有响应式值都应列为依赖；由组件外常量或稳�
 
 **代码 / 场景：**
 
-连接选项若在渲染中创建，每次都是新对象，effect 会重复连接。把对象创建移进 effect 后只依赖 serverUrl 与 roomId；二者任一变化，React 先清旧连接再建新连接。
+**示例场景：** 连接选项若在渲染中创建，每次都是新对象，effect 会重复连接。把对象创建移进 effect 后只依赖 serverUrl 与 roomId；二者任一变化，React 先清旧连接再建新连接。
 
 ~~~jsx
+// 示例重点：连接选项若在渲染中创建，每次都是新对象，effect 会重复连接。把对象创建移进 effect 后只依赖 serverUrl 与 ro…
 function Chat({ roomId }) {
   const serverUrl = 'https://chat.example.com'
   useEffect(() => {
@@ -641,6 +702,10 @@ function Chat({ roomId }) {
   return <h1>{roomId}</h1>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“依赖数组如何判断”：把对象创建移进 effect 后只依赖 serverUrl 与 roomId；二者任一变化，React 先清旧连接再建新连接。
 
 **递进追问：**
 
@@ -679,9 +744,10 @@ function Chat({ roomId }) {
 
 **代码 / 场景：**
 
-query 从 vue 变为 react 时，旧请求先收到 abort；只有当前请求能写入结果。卸载也会取消最后一个请求。若接口不支持取消，还应在 cleanup 把 ignore 设为 true，回调返回时检查。
+**示例场景：** query 从 vue 变为 react 时，旧请求先收到 abort；只有当前请求能写入结果。卸载也会取消最后一个请求。若接口不支持取消，还应在 cleanup 把 ignore 设为 true，回调返回时检查。
 
 ~~~jsx
+// 示例重点：query 从 vue 变为 react 时，旧请求先收到 abort；只有当前请求能写入结果。卸载也会取消最后一个请求。若接口不支持…
 function Search({ query }) {
   const [items, setItems] = useState([])
   useEffect(() => {
@@ -694,6 +760,10 @@ function Search({ query }) {
   return <Results items={items} />
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“effect cleanup 在何时执行”：若接口不支持取消，还应在 cleanup 把 ignore 设为 true，回调返回时检查。
 
 **递进追问：**
 
@@ -731,9 +801,10 @@ layout effect 在 DOM 提交后、浏览器绘制前同步执行，适合测量�
 
 **代码 / 场景：**
 
-tooltip 第一次以未知高度渲染，layout effect 在首帧绘制前读取 getBoundingClientRect，再同步把 top 改到目标上方，所以用户只看到校正后的帧。换成普通 effect 可能先闪在下方再跳动。
+**示例场景：** tooltip 第一次以未知高度渲染，layout effect 在首帧绘制前读取 getBoundingClientRect，再同步把 top 改到目标上方，所以用户只看到校正后的帧。换成普通 effect 可能先闪在下方再跳动。
 
 ~~~jsx
+// 示例重点：tooltip 第一次以未知高度渲染，layout effect 在首帧绘制前读取 getBoundingClientRect，再同步…
 function Tooltip({ targetRect }) {
   const ref = useRef(null)
   const [height, setHeight] = useState(0)
@@ -744,6 +815,10 @@ function Tooltip({ targetRect }) {
   return <div ref={ref} style={{ position: 'fixed', top }}>说明</div>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“useLayoutEffect 和 useEffect 有何区别”：示例场景： tooltip 第一次以未知高度渲染，layout effect 在首帧绘制前读取 getBoundingClientRect，再同步把 top 改到目标上方，所以用户只看到校正后的帧。
 
 **递进追问：**
 
@@ -781,9 +856,10 @@ function Tooltip({ targetRect }) {
 
 **代码 / 场景：**
 
-filterTodos 只有在 todos 或 tab 改变时才需重算，visibleTodos 的稳定引用还能让 memo 包装的 List 跳过 theme 单独变化造成的渲染。若 options 每次新建再作为依赖，缓存会次次失效。
+**示例场景：** filterTodos 只有在 todos 或 tab 改变时才需重算，visibleTodos 的稳定引用还能让 memo 包装的 List 跳过 theme 单独变化造成的渲染。若 options 每次新建再作为依赖，缓存会次次失效。
 
 ~~~jsx
+// 示例重点：filterTodos 只有在 todos 或 tab 改变时才需重算，visibleTodos 的稳定引用还能让 memo 包装的…
 function TodoPage({ todos, tab, theme }) {
   const visibleTodos = useMemo(() => filterTodos(todos, tab), [todos, tab])
   const select = useCallback(id => markSelected(id), [])
@@ -793,6 +869,10 @@ const List = memo(function List({ items, onSelect }) {
   return items.map(item => <button key={item.id} onClick={() => onSelect(item.id)}>{item.text}</button>)
 })
 ~~~
+
+**对照结果：**
+
+用这个结果回答“useMemo 和 useCallback 是语义保证吗”：若 options 每次新建再作为依赖，缓存会次次失效。
 
 **递进追问：**
 
@@ -831,9 +911,10 @@ ref 是跨渲染保持身份的可变容器，React 不跟踪 current 变化；�
 
 **代码 / 场景：**
 
-点击开始把 interval ID 存入 ref，赋值本身不渲染；每秒真正更新 state 才刷新数字。点击停止用同一 ref 清理计时器。若把 count 也只放 ref，页面将一直显示初始值。
+**示例场景：** 点击开始把 interval ID 存入 ref，赋值本身不渲染；每秒真正更新 state 才刷新数字。点击停止用同一 ref 清理计时器。若把 count 也只放 ref，页面将一直显示初始值。
 
 ~~~jsx
+// 示例重点：点击开始把 interval ID 存入 ref，赋值本身不渲染；每秒真正更新 state 才刷新数字。点击停止用同一 ref 清理计…
 function Timer() {
   const timerRef = useRef(null)
   const [seconds, setSeconds] = useState(0)
@@ -848,6 +929,10 @@ function Timer() {
   return <><span>{seconds}</span><button onClick={start}>开始</button><button onClick={stop}>停止</button></>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“useRef 为什么修改后不触发渲染”：若把 count 也只放 ref，页面将一直显示初始值。
 
 **递进追问：**
 
@@ -886,9 +971,10 @@ function Timer() {
 
 **代码 / 场景：**
 
-连续点击后定时器里的 count 是点击发生时的快照。若目标是三秒后在当时最新计数上加一，函数式更新不会读取闭包中的 count；多个回调也会按更新队列依次累加。
+**示例场景：** 连续点击后定时器里的 count 是点击发生时的快照。若目标是三秒后在当时最新计数上加一，函数式更新不会读取闭包中的 count；多个回调也会按更新队列依次累加。
 
 ~~~jsx
+// 示例重点：连续点击后定时器里的 count 是点击发生时的快照。若目标是三秒后在当时最新计数上加一，函数式更新不会读取闭包中的 count；多个…
 function Counter() {
   const [count, setCount] = useState(0)
   function scheduleIncrement() {
@@ -897,6 +983,10 @@ function Counter() {
   return <button onClick={scheduleIncrement}>{count}</button>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“闭包导致 stale state 如何处理”：若目标是三秒后在当时最新计数上加一，函数式更新不会读取闭包中的 count；多个回调也会按更新队列依次累加。
 
 **递进追问：**
 
@@ -935,9 +1025,10 @@ function Counter() {
 
 **代码 / 场景：**
 
-两个 StatusBadge 分别调用 useOnlineStatus 时会各自建立并清理订阅；若应用只需一份全局订阅，可由外部 store 配合 useSyncExternalStore 去重。组件不必知道 online/offline 事件细节。
+**示例场景：** 两个 StatusBadge 分别调用 useOnlineStatus 时会各自建立并清理订阅；若应用只需一份全局订阅，可由外部 store 配合 useSyncExternalStore 去重。组件不必知道 online/offline 事件细节。
 
 ~~~jsx
+// 示例重点：两个 StatusBadge 分别调用 useOnlineStatus 时会各自建立并清理订阅；若应用只需一份全局订阅，可由外部 st…
 function useOnlineStatus() {
   const [online, setOnline] = useState(navigator.onLine)
   useEffect(() => {
@@ -951,6 +1042,10 @@ function useOnlineStatus() {
 }
 function StatusBadge() { return <span>{useOnlineStatus() ? '在线' : '离线'}</span> }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“自定义 Hook 的价值是什么”：组件不必知道 online/offline 事件细节。
 
 **递进追问：**
 
@@ -989,9 +1084,10 @@ function StatusBadge() { return <span>{useOnlineStatus() ? '在线' : '离线'}<
 
 **代码 / 场景：**
 
-浏览器网络状态是外部可变源。subscribe 对 online/offline 注册同一通知，getSnapshot 返回布尔值；事件发生后 React 重新取快照，仅当值变化才提交。SSR 用 true 作为确定的服务端快照并在 hydration 后校正。
+**示例场景：** 浏览器网络状态是外部可变源。subscribe 对 online/offline 注册同一通知，getSnapshot 返回布尔值；事件发生后 React 重新取快照，仅当值变化才提交。SSR 用 true 作为确定的服务端快照并在 hydration 后校正。
 
 ~~~jsx
+// 示例重点：浏览器网络状态是外部可变源。subscribe 对 online/offline 注册同一通知，getSnapshot 返回布尔值；事…
 function subscribe(callback) {
   window.addEventListener('online', callback)
   window.addEventListener('offline', callback)
@@ -1007,6 +1103,10 @@ function Status() {
   return <span>{online ? '在线' : '离线'}</span>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“useSyncExternalStore 解决什么问题”：SSR 用 true 作为确定的服务端快照并在 hydration 后校正。
 
 **递进追问：**
 
@@ -1046,9 +1146,10 @@ function Status() {
 
 **代码 / 场景：**
 
-两个温度输入要保持摄氏与华氏一致，不能各存一份互相 effect 同步；公共父组件只保存最后编辑的单位和值，两个输入都由该源派生。切换页面后不需保留的焦点状态仍留在输入内部。
+**示例场景：** 两个温度输入要保持摄氏与华氏一致，不能各存一份互相 effect 同步；公共父组件只保存最后编辑的单位和值，两个输入都由该源派生。切换页面后不需保留的焦点状态仍留在输入内部。
 
 ~~~jsx
+// 示例重点：两个温度输入要保持摄氏与华氏一致，不能各存一份互相 effect 同步；公共父组件只保存最后编辑的单位和值，两个输入都由该源派生。切换…
 function Calculator() {
   const [temperature, setTemperature] = useState('')
   const [scale, setScale] = useState('c')
@@ -1060,6 +1161,10 @@ function Calculator() {
   </>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“如何判断状态应该放在哪里”：示例场景： 两个温度输入要保持摄氏与华氏一致，不能各存一份互相 effect 同步；公共父组件只保存最后编辑的单位和值，两个输入都由该源派生。
 
 **递进追问：**
 
@@ -1097,9 +1202,10 @@ function Calculator() {
 
 **代码 / 场景：**
 
-firstName 或 lastName 改变时，fullName 在同一次 render 直接得到正确字符串，没有先显示旧姓名再由 effect 补写的闪烁。过滤列表同理，只有实际分析证明计算昂贵时再 memo。
+**示例场景：** firstName 或 lastName 改变时，fullName 在同一次 render 直接得到正确字符串，没有先显示旧姓名再由 effect 补写的闪烁。过滤列表同理，只有实际分析证明计算昂贵时再 memo。
 
 ~~~jsx
+// 示例重点：firstName 或 lastName 改变时，fullName 在同一次 render 直接得到正确字符串，没有先显示旧姓名再由…
 function Profile({ products, query }) {
   const [firstName, setFirstName] = useState('Ada')
   const [lastName, setLastName] = useState('Lovelace')
@@ -1111,6 +1217,10 @@ function Profile({ products, query }) {
   return <><h1>{fullName}</h1><ProductList items={visible} /></>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“为什么不应把可推导值存进 state”：过滤列表同理，只有实际分析证明计算昂贵时再 memo。
 
 **递进追问：**
 
@@ -1148,9 +1258,10 @@ function Profile({ products, query }) {
 
 **代码 / 场景：**
 
-订单编辑用 added、quantityChanged、removed 表达事件；连续 dispatch 会按队列依次应用，每个分支返回新 items。reducer 单测可输入旧订单与 action，直接断言最终数量，不依赖 DOM。
+**示例场景：** 订单编辑用 added、quantityChanged、removed 表达事件；连续 dispatch 会按队列依次应用，每个分支返回新 items。reducer 单测可输入旧订单与 action，直接断言最终数量，不依赖 DOM。
 
 ~~~jsx
+// 示例重点：订单编辑用 added、quantityChanged、removed 表达事件；连续 dispatch 会按队列依次应用，每个分支返…
 function cartReducer(state, action) {
   switch (action.type) {
     case 'quantityChanged':
@@ -1168,6 +1279,10 @@ function Cart({ initialCart }) {
   return <CartView cart={cart} dispatch={dispatch} />
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“useReducer 适合什么场景”：reducer 单测可输入旧订单与 action，直接断言最终数量，不依赖 DOM。
 
 **递进追问：**
 
@@ -1206,9 +1321,10 @@ function Cart({ initialCart }) {
 
 **代码 / 场景：**
 
-任务编辑器把 tasks 和 dispatch 分成两个 Context。只调用 dispatch 的 AddButton 不会因 tasks 改变而更新；TaskList 会更新。若每行只需自己的任务但整个数组高频变化，仍可能全部 render，此时选择器型 store 更合适。
+**示例场景：** 任务编辑器把 tasks 和 dispatch 分成两个 Context。只调用 dispatch 的 AddButton 不会因 tasks 改变而更新；TaskList 会更新。若每行只需自己的任务但整个数组高频变化，仍可能全部 render，此时选择器型 store 更合适。
 
 ~~~jsx
+// 示例重点：任务编辑器把 tasks 和 dispatch 分成两个 Context。只调用 dispatch 的 AddButton 不会因 t…
 const TasksContext = createContext(null)
 const DispatchContext = createContext(null)
 function TasksProvider({ children }) {
@@ -1222,6 +1338,10 @@ function AddButton() {
   return <button onClick={() => dispatch({ type: 'added', title: '复习' })}>新增</button>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Context 加 reducer 能替代所有状态库吗”：若每行只需自己的任务但整个数组高频变化，仍可能全部 render，此时选择器型 store 更合适。
 
 **递进追问：**
 
@@ -1260,9 +1380,10 @@ function AddButton() {
 
 **代码 / 场景：**
 
-先请求 alice，10ms 后切换 bob；cleanup 把 alice 的 ignore 设为 true。即使 alice 在 bob 之后返回，也不会覆盖 Bob。每次 person 改变先清空结果并显示 loading，最终 UI 与当前 person 一致。
+**示例场景：** 先请求 alice，10ms 后切换 bob；cleanup 把 alice 的 ignore 设为 true。即使 alice 在 bob 之后返回，也不会覆盖 Bob。每次 person 改变先清空结果并显示 loading，最终 UI 与当前 person 一致。
 
 ~~~jsx
+// 示例重点：先请求 alice，10ms 后切换 bob；cleanup 把 alice 的 ignore 设为 true。即使 alice 在…
 function Profile({ person }) {
   const [bio, setBio] = useState(null)
   useEffect(() => {
@@ -1276,6 +1397,10 @@ function Profile({ person }) {
   return <p>{bio ?? '加载中…'}</p>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“客户端请求为什么要处理竞态”：每次 person 改变先清空结果并显示 loading，最终 UI 与当前 person 一致。
 
 **递进追问：**
 
@@ -1313,9 +1438,10 @@ function Profile({ person }) {
 
 **代码 / 场景：**
 
-products 是服务器资源，用 queryKey 中的 category 区分缓存并在过期后重新验证；isFilterOpen 是当前页面临时状态，直接 useState。关闭筛选框不应让产品请求失效，后台刷新产品也不应重置弹窗。
+**示例场景：** products 是服务器资源，用 queryKey 中的 category 区分缓存并在过期后重新验证；isFilterOpen 是当前页面临时状态，直接 useState。关闭筛选框不应让产品请求失效，后台刷新产品也不应重置弹窗。
 
 ~~~jsx
+// 示例重点：products 是服务器资源，用 queryKey 中的 category 区分缓存并在过期后重新验证；isFilterOpen 是…
 function ProductsPage({ category }) {
   const [isFilterOpen, setFilterOpen] = useState(false)
   const products = useProductsQuery({ category })
@@ -1328,6 +1454,10 @@ function ProductsPage({ category }) {
   </>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“服务端状态和客户端状态有什么区别”：关闭筛选框不应让产品请求失效，后台刷新产品也不应重置弹窗。
 
 **递进追问：**
 
@@ -1365,9 +1495,10 @@ function ProductsPage({ category }) {
 
 **代码 / 场景：**
 
-新增评论先用 client-7 临时 ID显示“发送中”。服务器成功后替换为真实评论；若失败，仅删除 client-7 并保留同时成功的其他评论。示例用 useOptimistic 表达暂态列表，action 捕获错误并让表单显示失败。
+**示例场景：** 新增评论先用 client-7 临时 ID显示“发送中”。服务器成功后替换为真实评论；若失败，仅删除 client-7 并保留同时成功的其他评论。示例用 useOptimistic 表达暂态列表，action 捕获错误并让表单显示失败。
 
 ~~~jsx
+// 示例重点：新增评论先用 client-7 临时 ID显示“发送中”。服务器成功后替换为真实评论；若失败，仅删除 client-7 并保留同时成功…
 function Comments({ comments, createComment }) {
   const [optimistic, addOptimistic] = useOptimistic(
     comments,
@@ -1381,6 +1512,10 @@ function Comments({ comments, createComment }) {
   return <><CommentList items={optimistic} /><form action={submit}><input name="text" /><button>发送</button></form></>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“乐观更新如何保证失败可恢复”：示例用 useOptimistic 表达暂态列表，action 捕获错误并让表单显示失败。
 
 **递进追问：**
 
@@ -1419,9 +1554,10 @@ function Comments({ comments, createComment }) {
 
 **代码 / 场景：**
 
-SearchInput 自己保存即时 text，键入时只有小组件更新；父页面只在提交时改变 query，昂贵 Results 不随每个字符重渲染。若产品要求即时结果，可把 query 直接上提并让 Results 使用 useDeferredValue。
+**示例场景：** SearchInput 自己保存即时 text，键入时只有小组件更新；父页面只在提交时改变 query，昂贵 Results 不随每个字符重渲染。若产品要求即时结果，可把 query 直接上提并让 Results 使用 useDeferredValue。
 
 ~~~jsx
+// 示例重点：SearchInput 自己保存即时 text，键入时只有小组件更新；父页面只在提交时改变 query，昂贵 Results 不随每个…
 function SearchPage() {
   const [query, setQuery] = useState('')
   return <><SearchForm onSearch={setQuery} /><ExpensiveResults query={query} /></>
@@ -1434,6 +1570,10 @@ function SearchForm({ onSearch }) {
   </form>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“表单状态如何避免每次输入重渲染整页”：若产品要求即时结果，可把 query 直接上提并让 Results 使用 useDeferredValue。
 
 **递进追问：**
 
@@ -1472,9 +1612,10 @@ function SearchForm({ onSearch }) {
 
 **代码 / 场景：**
 
-category 与 page 直接从 searchParams 读取；点击下一页只导航到新 URL，不再 setState 复制。用户复制链接或刷新仍看到同一筛选，浏览器后退恢复上一页。解析 page 时需限制为正整数。
+**示例场景：** category 与 page 直接从 searchParams 读取；点击下一页只导航到新 URL，不再 setState 复制。用户复制链接或刷新仍看到同一筛选，浏览器后退恢复上一页。解析 page 时需限制为正整数。
 
 ~~~jsx
+// 示例重点：category 与 page 直接从 searchParams 读取；点击下一页只导航到新 URL，不再 setState 复制。用…
 function Catalog() {
   const [params, setParams] = useSearchParams()
   const category = params.get('category') ?? 'all'
@@ -1488,6 +1629,10 @@ function Catalog() {
   return <><Products category={category} page={page} /><button onClick={next}>下一页</button></>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“URL 为什么也可以是状态”：用户复制链接或刷新仍看到同一筛选，浏览器后退恢复上一页。
 
 **递进追问：**
 
@@ -1526,9 +1671,10 @@ function Catalog() {
 
 **代码 / 场景：**
 
-登录只保存 status 与 error。SUBMIT 从 idle/error 进入 submitting，RESOLVE 进入 success，REJECT 进入 error；提交中再次 SUBMIT 可明确忽略。UI 不可能同时渲染成功页和错误提示。
+**示例场景：** 登录只保存 status 与 error。SUBMIT 从 idle/error 进入 submitting，RESOLVE 进入 success，REJECT 进入 error；提交中再次 SUBMIT 可明确忽略。UI 不可能同时渲染成功页和错误提示。
 
 ~~~jsx
+// 示例重点：登录只保存 status 与 error。SUBMIT 从 idle/error 进入 submitting，RESOLVE 进入 s…
 const initial = { status: 'idle', error: null }
 function reducer(state, event) {
   switch (state.status) {
@@ -1545,6 +1691,10 @@ function reducer(state, event) {
   }
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“状态机比多个 boolean 好在哪里”：SUBMIT 从 idle/error 进入 submitting，RESOLVE 进入 success，REJECT 进入 error；提交中再次 SUBMIT 可明确忽略。
 
 **递进追问：**
 
@@ -1585,9 +1735,10 @@ function reducer(state, event) {
 
 **代码 / 场景：**
 
-用户正在输入，同时切换包含五千行的筛选结果。输入 state 作为紧急更新立即计算并提交；列表更新放 transition 后，React 可在 Fiber 单元之间让出、丢弃过期候选树并按最新关键字重算。提交前 DOM 仍是完整旧列表，不会出现只更新前一半的画面。
+**示例场景：** 用户正在输入，同时切换包含五千行的筛选结果。输入 state 作为紧急更新立即计算并提交；列表更新放 transition 后，React 可在 Fiber 单元之间让出、丢弃过期候选树并按最新关键字重算。提交前 DOM 仍是完整旧列表，不会出现只更新前一半的画面。
 
 ~~~jsx
+// 示例重点：用户正在输入，同时切换包含五千行的筛选结果。输入 state 作为紧急更新立即计算并提交；列表更新放 transition 后，Rea…
 function Search() {
   const [text, setText] = useState('')
   const [query, setQuery] = useState('')
@@ -1599,6 +1750,10 @@ function Search() {
   return <><input value={text} onChange={change} /><LargeResultList query={query} /></>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Fiber 架构解决什么问题”：提交前 DOM 仍是完整旧列表，不会出现只更新前一半的画面。
 
 **递进追问：**
 
@@ -1639,9 +1794,10 @@ render 计算下一棵树，可被中断或重做；commit 把变更应用到 DO
 
 **代码 / 场景：**
 
-点击按钮先把更新加入队列；React 可多次调用 Counter 计算 JSX，但只有成功候选进入 commit 后 span.textContent 才变为 1、ref 才指向新节点。layout effect 在绘制前读到新 DOM，普通 effect 用于提交后的标题同步。
+**示例场景：** 点击按钮先把更新加入队列；React 可多次调用 Counter 计算 JSX，但只有成功候选进入 commit 后 span.textContent 才变为 1、ref 才指向新节点。layout effect 在绘制前读到新 DOM，普通 effect 用于提交后的标题同步。
 
 ~~~jsx
+// 示例重点：点击按钮先把更新加入队列；React 可多次调用 Counter 计算 JSX，但只有成功候选进入 commit 后 span.tex…
 function Counter() {
   const [count, setCount] = useState(0)
   const ref = useRef(null)
@@ -1652,6 +1808,10 @@ function Counter() {
   return <button ref={ref} onClick={() => setCount(c => c + 1)}>{count}</button>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“render phase 和 commit phase 有何区别”：layout effect 在绘制前读到新 DOM，普通 effect 用于提交后的标题同步。
 
 **递进追问：**
 
@@ -1690,9 +1850,10 @@ function Counter() {
 
 **代码 / 场景：**
 
-键入时 text 同步更新，输入框每个字符立即可见；query 在 transition 中更新，SlowResults 可以继续显示旧结果，若用户继续键入，过期的后台渲染被打断，只提交最新 query。pending 用于显示低干扰提示。
+**示例场景：** 键入时 text 同步更新，输入框每个字符立即可见；query 在 transition 中更新，SlowResults 可以继续显示旧结果，若用户继续键入，过期的后台渲染被打断，只提交最新 query。pending 用于显示低干扰提示。
 
 ~~~jsx
+// 示例重点：键入时 text 同步更新，输入框每个字符立即可见；query 在 transition 中更新，SlowResults 可以继续显示…
 function Search() {
   const [text, setText] = useState('')
   const [query, setQuery] = useState('')
@@ -1705,6 +1866,10 @@ function Search() {
   return <><input value={text} onChange={onChange} /><small>{isPending ? '更新中' : ''}</small><SlowResults query={query} /></>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“startTransition 适合什么更新”：示例场景： 键入时 text 同步更新，输入框每个字符立即可见；query 在 transition 中更新，SlowResults 可以继续显示旧结果，若用户继续键入，过期的后台渲染被打断，只提交最新 query。
 
 **递进追问：**
 
@@ -1743,9 +1908,10 @@ deferred 保留旧值并让新渲染低优先级推进，不固定等待时间�
 
 **代码 / 场景：**
 
-input 由 query 直接控制，始终同步；SlowList 接收 deferredQuery，输入快速变化时列表暂时显示旧词结果并降低透明度，后台只提交能完成的最新渲染。若还要避免每个词都请求，应另对请求参数防抖。
+**示例场景：** input 由 query 直接控制，始终同步；SlowList 接收 deferredQuery，输入快速变化时列表暂时显示旧词结果并降低透明度，后台只提交能完成的最新渲染。若还要避免每个词都请求，应另对请求参数防抖。
 
 ~~~jsx
+// 示例重点：input 由 query 直接控制，始终同步；SlowList 接收 deferredQuery，输入快速变化时列表暂时显示旧词结果…
 function SearchPage() {
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
@@ -1758,6 +1924,10 @@ function SearchPage() {
   </>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“useDeferredValue 与防抖有何区别”：示例场景： input 由 query 直接控制，始终同步；SlowList 接收 deferredQuery，输入快速变化时列表暂时显示旧词结果并降低透明度，后台只提交能完成的最新渲染。
 
 **递进追问：**
 
@@ -1796,9 +1966,10 @@ function SearchPage() {
 
 **代码 / 场景：**
 
-List 已 memo，但 visible 每次 filter 都是新数组，所以 theme 改变时仍渲染。useMemo 让 todos 与 tab 未变时复用数组，List 才能跳过；若 List 自己的选中 state 更新，它仍正常渲染。
+**示例场景：** List 已 memo，但 visible 每次 filter 都是新数组，所以 theme 改变时仍渲染。useMemo 让 todos 与 tab 未变时复用数组，List 才能跳过；若 List 自己的选中 state 更新，它仍正常渲染。
 
 ~~~jsx
+// 示例重点：List 已 memo，但 visible 每次 filter 都是新数组，所以 theme 改变时仍渲染。useMemo 让 tod…
 const List = memo(function List({ items }) {
   return items.map(item => <div key={item.id}>{item.text}</div>)
 })
@@ -1807,6 +1978,10 @@ function TodoPage({ todos, tab, theme }) {
   return <main className={theme}><List items={visible} /></main>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“React.memo 为什么可能无效”：useMemo 让 todos 与 tab 未变时复用数组，List 才能跳过；若 List 自己的选中 state 更新，它仍正常渲染。
 
 **递进追问：**
 
@@ -1845,9 +2020,10 @@ function TodoPage({ todos, tab, theme }) {
 
 **代码 / 场景：**
 
-录制在搜索框键入“react”的过程，发现每次键击 ProductTable 都提交且占 28ms，原因是筛选 state 位于页面根部。把输入草稿下沉后再次录制，表格只在提交搜索时渲染；actualDuration 从每键 28ms 降为输入子树 1ms。
+**示例场景：** 录制在搜索框键入“react”的过程，发现每次键击 ProductTable 都提交且占 28ms，原因是筛选 state 位于页面根部。把输入草稿下沉后再次录制，表格只在提交搜索时渲染；actualDuration 从每键 28ms 降为输入子树 1ms。
 
 ~~~jsx
+// 示例重点：录制在搜索框键入“react”的过程，发现每次键击 ProductTable 都提交且占 28ms，原因是筛选 state 位于页面根…
 <Profiler id="ProductTable" onRender={(id, phase, actualDuration, baseDuration) => {
   performance.measure(id + ':' + phase, {
     start: performance.now() - actualDuration,
@@ -1858,6 +2034,10 @@ function TodoPage({ todos, tab, theme }) {
   <ProductTable rows={rows} />
 </Profiler>
 ~~~
+
+**对照结果：**
+
+用这个结果回答“如何用 Profiler 定位 React 性能问题”：把输入草稿下沉后再次录制，表格只在提交搜索时渲染；actualDuration 从每键 28ms 降为输入子树 1ms。
 
 **递进追问：**
 
@@ -1896,9 +2076,10 @@ function TodoPage({ todos, tab, theme }) {
 
 **代码 / 场景：**
 
-一万条记录只渲染滚动窗口约 30 行，容器用总高度占位，每行按 index 计算 translateY；itemKey 使用 rows[index].id。编辑 id=42 时结构共享只替换该对象，memo Row 的其他行 props 不变而跳过。
+**示例场景：** 一万条记录只渲染滚动窗口约 30 行，容器用总高度占位，每行按 index 计算 translateY；itemKey 使用 rows[index].id。编辑 id=42 时结构共享只替换该对象，memo Row 的其他行 props 不变而跳过。
 
 ~~~jsx
+// 示例重点：一万条记录只渲染滚动窗口约 30 行，容器用总高度占位，每行按 index 计算 translateY；itemKey 使用 rows…
 const Row = memo(function Row({ item, style, onOpen }) {
   return <button style={style} onClick={() => onOpen(item.id)}>{item.name}</button>
 })
@@ -1913,6 +2094,10 @@ function Results({ rows, onOpen }) {
   >{VirtualRow}</FixedSizeList>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“大型列表如何优化”：编辑 id=42 时结构共享只替换该对象，memo Row 的其他行 props 不变而跳过。
 
 **递进追问：**
 
@@ -1951,9 +2136,10 @@ Suspense 协调“等待中的渲染”与 fallback，数据源仍需框架或�
 
 **代码 / 场景：**
 
-SettingsPanel 用 lazy 在首次需要时加载模块，模块 Promise pending 时最近边界显示骨架，加载成功后 React 重试并提交面板；模块加载 reject 时由外层 ErrorBoundary 显示重试。普通 effect 请求不会自动进入该 fallback。
+**示例场景：** SettingsPanel 用 lazy 在首次需要时加载模块，模块 Promise pending 时最近边界显示骨架，加载成功后 React 重试并提交面板；模块加载 reject 时由外层 ErrorBoundary 显示重试。普通 effect 请求不会自动进入该 fallback。
 
 ~~~jsx
+// 示例重点：SettingsPanel 用 lazy 在首次需要时加载模块，模块 Promise pending 时最近边界显示骨架，加载成功后…
 const SettingsPanel = lazy(() => import('./SettingsPanel.js'))
 function SettingsRoute() {
   return <ErrorBoundary fallback={<p>模块加载失败</p>}>
@@ -1963,6 +2149,10 @@ function SettingsRoute() {
   </ErrorBoundary>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Suspense 是否等于通用数据请求方案”：普通 effect 请求不会自动进入该 fallback。
 
 **递进追问：**
 
@@ -2001,9 +2191,10 @@ function SettingsRoute() {
 
 **代码 / 场景：**
 
-ProfileCard render 访问损坏数据时抛错，最近的 ProfileBoundary 提交 fallback 并上报 componentStack，页面导航仍可用。按钮 onClick 内的请求 reject 不会被它自动捕获，事件逻辑必须 catch 后显示错误。
+**示例场景：** ProfileCard render 访问损坏数据时抛错，最近的 ProfileBoundary 提交 fallback 并上报 componentStack，页面导航仍可用。按钮 onClick 内的请求 reject 不会被它自动捕获，事件逻辑必须 catch 后显示错误。
 
 ~~~jsx
+// 示例重点：ProfileCard render 访问损坏数据时抛错，最近的 ProfileBoundary 提交 fallback 并上报 co…
 class ErrorBoundary extends React.Component {
   state = { error: null }
   static getDerivedStateFromError(error) { return { error } }
@@ -2017,6 +2208,10 @@ function Page() {
   return <ErrorBoundary onReset={() => location.reload()}><ProfileCard /></ErrorBoundary>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“错误边界能捕获哪些错误”：按钮 onClick 内的请求 reject 不会被它自动捕获，事件逻辑必须 catch 后显示错误。
 
 **递进追问：**
 
@@ -2055,9 +2250,10 @@ function Page() {
 
 **代码 / 场景：**
 
-缺少 cleanup 时开发首次挂载连接两次；补上 disconnect 后日志是 connect、disconnect、connect，最终只有一个活动连接。生产首次挂载只有一次 connect，但真实路由卸载再进入仍会验证 cleanup。
+**示例场景：** 缺少 cleanup 时开发首次挂载连接两次；补上 disconnect 后日志是 connect、disconnect、connect，最终只有一个活动连接。生产首次挂载只有一次 connect，但真实路由卸载再进入仍会验证 cleanup。
 
 ~~~jsx
+// 示例重点：缺少 cleanup 时开发首次挂载连接两次；补上 disconnect 后日志是 connect、disconnect、connec…
 function Chat({ roomId }) {
   useEffect(() => {
     const connection = createConnection(roomId)
@@ -2068,6 +2264,10 @@ function Chat({ roomId }) {
 }
 root.render(<StrictMode><Chat roomId="general" /></StrictMode>)
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Strict Mode 为什么会让 effect 开发环境执行两次”：生产首次挂载只有一次 connect，但真实路由卸载再进入仍会验证 cleanup。
 
 **递进追问：**
 
@@ -2107,9 +2307,10 @@ root.render(<StrictMode><Chat roomId="general" /></StrictMode>)
 
 **代码 / 场景：**
 
-登录表单测试不读取 isSubmitting，也不寻找 LoginForm 内部实例；它按标签填写账号、按角色点击“登录”，等待欢迎语出现。把实现从两个 useState 改成 useReducer 后，用户契约不变，测试无需修改。
+**示例场景：** 登录表单测试不读取 isSubmitting，也不寻找 LoginForm 内部实例；它按标签填写账号、按角色点击“登录”，等待欢迎语出现。把实现从两个 useState 改成 useReducer 后，用户契约不变，测试无需修改。
 
 ~~~jsx
+// 示例重点：登录表单测试不读取 isSubmitting，也不寻找 LoginForm 内部实例；它按标签填写账号、按角色点击“登录”，等待欢迎语…
 test('有效账号登录后显示用户名称', async () => {
   const user = userEvent.setup()
   render(<LoginPage api={fakeApi} />)
@@ -2119,6 +2320,10 @@ test('有效账号登录后显示用户名称', async () => {
   expect(await screen.findByRole('heading', { name: '欢迎 Linda' })).toBeVisible()
 })
 ~~~
+
+**对照结果：**
+
+用这个结果回答“React 测试为什么更关注用户行为”：把实现从两个 useState 改成 useReducer 后，用户契约不变，测试无需修改。
 
 **递进追问：**
 
@@ -2157,9 +2362,10 @@ test('有效账号登录后显示用户名称', async () => {
 
 **代码 / 场景：**
 
-优惠金额的舍入规则用表驱动单测；CheckoutPage 集成测试用测试服务器模拟库存 409，断言错误和重试按钮；E2E 只保留“注册→下单→订单页可见”旅程，真实验证 Cookie、API 与路由。
+**示例场景：** 优惠金额的舍入规则用表驱动单测；CheckoutPage 集成测试用测试服务器模拟库存 409，断言错误和重试按钮；E2E 只保留“注册→下单→订单页可见”旅程，真实验证 Cookie、API 与路由。
 
 ~~~js
+// 示例重点：优惠金额的舍入规则用表驱动单测；CheckoutPage 集成测试用测试服务器模拟库存 409，断言错误和重试按钮；E2E 只保留“注…
 it('库存冲突后保留购物车并允许重试', async () => {
   server.use(http.post('/api/orders', () => HttpResponse.json({}, { status: 409 })))
   render(<TestApp initialEntry="/checkout" />)
@@ -2168,6 +2374,10 @@ it('库存冲突后保留购物车并允许重试', async () => {
   expect(screen.getByRole('list', { name: '购物车' })).toBeVisible()
 })
 ~~~
+
+**对照结果：**
+
+用这个结果回答“单元、集成和 E2E 测试如何分工”：示例场景： 优惠金额的舍入规则用表驱动单测；CheckoutPage 集成测试用测试服务器模拟库存 409，断言错误和重试按钮；E2E 只保留“注册→下单→订单页可见”旅程，真实验证 Cookie、API 与路由。
 
 **递进追问：**
 
@@ -2207,9 +2417,10 @@ it('库存冲突后保留购物车并允许重试', async () => {
 
 **代码 / 场景：**
 
-服务器在 UTC 输出 08:00，客户端按上海时区直接输出 16:00 会 mismatch。先让两端都渲染 ISO 文本，hydration 后 effect 再格式化为本地时间；首个客户端结果与 HTML 一致，随后是正常更新。
+**示例场景：** 服务器在 UTC 输出 08:00，客户端按上海时区直接输出 16:00 会 mismatch。先让两端都渲染 ISO 文本，hydration 后 effect 再格式化为本地时间；首个客户端结果与 HTML 一致，随后是正常更新。
 
 ~~~jsx
+// 示例重点：服务器在 UTC 输出 08:00，客户端按上海时区直接输出 16:00 会 mismatch。先让两端都渲染 ISO 文本，hydr…
 function LocalTime({ iso }) {
   const [label, setLabel] = useState(iso)
   useEffect(() => {
@@ -2221,6 +2432,10 @@ hydrateRoot(document.getElementById('root'), <App bootstrap={window.__BOOTSTRAP_
   onRecoverableError: error => reportHydration(error),
 })
 ~~~
+
+**对照结果：**
+
+用这个结果回答“SSR hydration mismatch 如何排查”：先让两端都渲染 ISO 文本，hydration 后 effect 再格式化为本地时间；首个客户端结果与 HTML 一致，随后是正常更新。
 
 **递进追问：**
 
@@ -2259,9 +2474,10 @@ hydrateRoot(document.getElementById('root'), <App bootstrap={window.__BOOTSTRAP_
 
 **代码 / 场景：**
 
-评论 API 返回允许少量格式的 HTML，先由维护良好的 sanitizer 按白名单清洗，再交给唯一的 SafeHtml 组件；普通昵称继续作为文本渲染。外链先用 URL 解析，只允许 https/http。
+**示例场景：** 评论 API 返回允许少量格式的 HTML，先由维护良好的 sanitizer 按白名单清洗，再交给唯一的 SafeHtml 组件；普通昵称继续作为文本渲染。外链先用 URL 解析，只允许 https/http。
 
 ~~~jsx
+// 示例重点：评论 API 返回允许少量格式的 HTML，先由维护良好的 sanitizer 按白名单清洗，再交给唯一的 SafeHtml 组件；普…
 import DOMPurify from 'dompurify'
 function SafeHtml({ html }) {
   const clean = DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
@@ -2273,6 +2489,10 @@ function SafeLink({ href, children }) {
   return <a href={url.href} rel="noreferrer">{children}</a>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“React 中如何防 XSS”：外链先用 URL 解析，只允许 https/http。
 
 **递进追问：**
 
@@ -2312,9 +2532,10 @@ function SafeLink({ href, children }) {
 
 **代码 / 场景：**
 
-题库页首屏不下载 400KB Markdown 编辑器；用户点击“编辑”后才加载，面板区域显示固定尺寸骨架，失败由局部边界重试，导航栏不受影响。可在按钮 focus/hover 时提前触发同一 import 降低等待。
+**示例场景：** 题库页首屏不下载 400KB Markdown 编辑器；用户点击“编辑”后才加载，面板区域显示固定尺寸骨架，失败由局部边界重试，导航栏不受影响。可在按钮 focus/hover 时提前触发同一 import 降低等待。
 
 ~~~jsx
+// 示例重点：题库页首屏不下载 400KB Markdown 编辑器；用户点击“编辑”后才加载，面板区域显示固定尺寸骨架，失败由局部边界重试，导航栏…
 const loadEditor = () => import('./MarkdownEditor.js')
 const MarkdownEditor = lazy(loadEditor)
 function QuestionPage({ editing }) {
@@ -2327,6 +2548,10 @@ function QuestionPage({ editing }) {
   </ArticleLayout>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“代码分割应该以什么边界实施”：可在按钮 focus/hover 时提前触发同一 import 降低等待。
 
 **递进追问：**
 
@@ -2365,9 +2590,10 @@ function QuestionPage({ editing }) {
 
 **代码 / 场景：**
 
-右箭头从第二个 tab 移到第三个并聚焦，激活后 aria-selected 与 tabpanel 同步；隐藏面板不进入 tab 顺序。简化代码展示关联字段，完整实现还需方向键、禁用项和焦点管理测试。
+**示例场景：** 右箭头从第二个 tab 移到第三个并聚焦，激活后 aria-selected 与 tabpanel 同步；隐藏面板不进入 tab 顺序。简化代码展示关联字段，完整实现还需方向键、禁用项和焦点管理测试。
 
 ~~~jsx
+// 示例重点：右箭头从第二个 tab 移到第三个并聚焦，激活后 aria-selected 与 tabpanel 同步；隐藏面板不进入 tab 顺序…
 function Tab({ id, panelId, selected, onSelect, children }) {
   return <button
     id={id}
@@ -2382,6 +2608,10 @@ function Panel({ id, tabId, active, children }) {
   return <section id={id} role="tabpanel" aria-labelledby={tabId} hidden={!active}>{children}</section>
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“如何设计可访问的复合组件”：简化代码展示关联字段，完整实现还需方向键、禁用项和焦点管理测试。
 
 **递进追问：**
 
@@ -2420,9 +2650,10 @@ function Panel({ id, tabId, active, children }) {
 
 **代码 / 场景：**
 
-AccordionItem 的逻辑只公开 data-state="open/closed" 与 aria-expanded；默认主题、品牌主题都按同一属性选择样式。受控页面传 open/onOpenChange，普通页面用 defaultOpen，二者共享同一焦点与键盘实现。
+**示例场景：** AccordionItem 的逻辑只公开 data-state="open/closed" 与 aria-expanded；默认主题、品牌主题都按同一属性选择样式。受控页面传 open/onOpenChange，普通页面用 defaultOpen，二者共享同一焦点与键盘实现。
 
 ~~~jsx
+// 示例重点：AccordionItem 的逻辑只公开 data-state="open/closed" 与 aria-expanded；默认主题…
 function AccordionItem({ open, onOpenChange, title, children }) {
   const panelId = useId()
   return <div data-state={open ? 'open' : 'closed'}>
@@ -2434,6 +2665,10 @@ function AccordionItem({ open, onOpenChange, title, children }) {
 }
 // 主题只依赖公开状态：.accordion[data-state="open"] { --chevron-angle: 90deg; }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“React 组件库如何避免样式和状态耦合”：受控页面传 open/onOpenChange，普通页面用 defaultOpen，二者共享同一焦点与键盘实现。
 
 **递进追问：**
 
@@ -2474,9 +2709,10 @@ function AccordionItem({ open, onOpenChange, title, children }) {
 
 **代码 / 场景：**
 
-根入口把未捕获和 hydration 可恢复错误送到同一 reporter，边界再补 componentStack。事件携带 release=2026.07.20、route=/questions/:id 与 traceId，而不是上传输入框全文；同一错误指纹一分钟内聚合计数。
+**示例场景：** 根入口把未捕获和 hydration 可恢复错误送到同一 reporter，边界再补 componentStack。事件携带 release=2026.07.20、route=/questions/:id 与 traceId，而不是上传输入框全文；同一错误指纹一分钟内聚合计数。
 
 ~~~jsx
+// 示例重点：根入口把未捕获和 hydration 可恢复错误送到同一 reporter，边界再补 componentStack。事件携带 rele…
 const root = createRoot(document.getElementById('root'), {
   onUncaughtError(error, info) {
     report(error, { kind: 'uncaught', componentStack: info.componentStack, release: BUILD_ID })
@@ -2490,6 +2726,10 @@ const root = createRoot(document.getElementById('root'), {
 })
 root.render(<App />)
 ~~~
+
+**对照结果：**
+
+用这个结果回答“前端错误监控应记录哪些 React 上下文”：事件携带 release=2026.07.20、route=/questions/:id 与 traceId，而不是上传输入框全文；同一错误指纹一分钟内聚合计数。
 
 **递进追问：**
 
@@ -2528,9 +2768,10 @@ root.render(<App />)
 
 **代码 / 场景：**
 
-先把一个旧入口从 ReactDOM.render 改为 createRoot，保留 LegacyDashboard class 与 Redux，不同时重写 Hook。测试通过后，在边缘页面逐个把 class 改函数组件；SSR 入口单独改 hydrateRoot 并验证 mismatch。
+**示例场景：** 先把一个旧入口从 ReactDOM.render 改为 createRoot，保留 LegacyDashboard class 与 Redux，不同时重写 Hook。测试通过后，在边缘页面逐个把 class 改函数组件；SSR 入口单独改 hydrateRoot 并验证 mismatch。
 
 ~~~jsx
+// 示例重点：先把一个旧入口从 ReactDOM.render 改为 createRoot，保留 LegacyDashboard class 与 R…
 import { createRoot } from 'react-dom/client'
 const container = document.getElementById('dashboard-root')
 const root = createRoot(container)
@@ -2541,6 +2782,10 @@ root.render(
 )
 // 卸载旧微前端时调用 root.unmount()，不再使用 ReactDOM.unmountComponentAtNode
 ~~~
+
+**对照结果：**
+
+用这个结果回答“如何渐进迁移旧 React 项目”：测试通过后，在边缘页面逐个把 class 改函数组件；SSR 入口单独改 hydrateRoot 并验证 mismatch。
 
 **递进追问：**
 
@@ -2580,9 +2825,12 @@ root.render(
 
 **代码 / 场景：**
 
-同一个 double count：React 点击后 setCount 调度新 render，函数再次执行并从本次快照计算 count * 2；Vue ref 的 value 写入触发已追踪该 ref 的渲染 effect，computed 按响应式依赖失效。最终两者都显示 count=1、double=2，但更新依赖的发现方式不同。
+**示例场景：** 同一个 double count：React 点击后 setCount 调度新 render，函数再次执行并从本次快照计算 count * 2；Vue ref 的 value 写入触发已追踪该 ref 的渲染 effect，computed 按响应式依赖失效。
+
+最终两者都显示 count=1、double=2，但更新依赖的发现方式不同。
 
 ~~~jsx
+// 示例重点：同一个 double count：React 点击后 setCount 调度新 render，函数再次执行并从本次快照计算 count…
 function ReactCounter() {
   const [count, setCount] = useState(0)
   const doubled = count * 2
@@ -2591,6 +2839,7 @@ function ReactCounter() {
 ~~~
 
 ~~~vue
+<!-- 示例重点：第 2 段：同一个 double count：React 点击后 setCount 调度新 render，函数再次执行并从本次快照计算 count… -->
 <script setup>
 import { ref, computed } from 'vue'
 const count = ref(0)
@@ -2598,6 +2847,10 @@ const doubled = computed(() => count.value * 2)
 </script>
 <template><button @click="count++">{{ count }} / {{ doubled }}</button></template>
 ~~~
+
+**对照结果：**
+
+用这个结果回答“面试时如何解释 Vue 与 React 的差异”：最终两者都显示 count=1、double=2，但更新依赖的发现方式不同。
 
 **递进追问：**
 

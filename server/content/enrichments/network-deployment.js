@@ -1,3 +1,5 @@
+import { strengthenPlatformExamples } from './platform-example-quality.js'
+
 const entries = [
   {
     number: 1,
@@ -931,4 +933,4 @@ const entries = [
   }
 ]
 
-export default entries
+export default strengthenPlatformExamples(entries, { bankId: 'network-deployment' })

@@ -6,6 +6,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createDatabase } from './database.js'
 import { COMMUNITY_INTERVIEW_BANKS } from './content/community-banks/index.js'
 import { denseProseBlocks } from './content/readability.js'
+import {
+  auditQuestionExample,
+  findDuplicateExampleTemplates,
+  findRepeatedTeachingNotes,
+} from './content/example-quality.js'
 
 const COMMUNITY_BANK_COUNTS = {
   'frontend-ai-interviews': 40,
@@ -266,5 +271,36 @@ describe('question catalog seed quality', () => {
     const dense = questions.flatMap((question) => denseProseBlocks(question.body_md)
       .map((paragraph) => ({ id: question.id, length: paragraph.length })))
     expect(dense).toEqual([])
+  })
+
+  it('gives all 762 questions a concrete, relevant and explained teaching example', () => {
+    const questions = db.prepare(`
+      SELECT id, bank_id, title, body_md
+      FROM questions
+      WHERE archived_at IS NULL
+      ORDER BY bank_id, sort_order
+    `).all().map((question) => ({
+      id: question.id,
+      bankId: question.bank_id,
+      title: question.title,
+      body: question.body_md,
+    }))
+    const problems = questions.flatMap(auditQuestionExample)
+    const duplicates = findDuplicateExampleTemplates(questions)
+    const repeatedNotes = findRepeatedTeachingNotes(questions)
+
+    expect({
+      failingQuestions: new Set(problems.map((problem) => problem.id)).size,
+      problemCount: problems.length,
+      duplicateTemplates: duplicates.length,
+      repeatedTeachingNotes: repeatedNotes.length,
+      sample: problems.slice(0, 20),
+    }).toEqual({
+      failingQuestions: 0,
+      problemCount: 0,
+      duplicateTemplates: 0,
+      repeatedTeachingNotes: 0,
+      sample: [],
+    })
   })
 })

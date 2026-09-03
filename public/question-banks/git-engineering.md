@@ -19,9 +19,10 @@
 
 **代码 / 场景：**
 
-下面用短状态码观察同一文件依次经过“未跟踪、已暂存、已提交后又修改”三种状态。
+**示例场景：** 下面用短状态码观察同一文件依次经过“未跟踪、已暂存、已提交后又修改”三种状态。
 
 ~~~bash
+# 示例重点：下面用短状态码观察同一文件依次经过“未跟踪、已暂存、已提交后又修改”三种状态。
 git init demo && cd demo
 printf "v1\n" > app.txt
 git status --short        # ?? app.txt：只在工作区
@@ -32,7 +33,9 @@ printf "v2\n" >> app.txt
 git status --short        #  M app.txt：仓库/index 仍是 v1，工作区已变
 ~~~
 
-状态码左列描述 index 相对 HEAD，右列描述工作区相对 index，因此能定位变化所在层。
+- **观察目标：** 工作区是实际文件，暂存区保存下一次提交的快照，仓库以对象和引用保存历史；git add 更新索引，git commit 由索引生成提交。
+
+**对照结果：** 状态码左列描述 index 相对 HEAD，右列描述工作区相对 index，因此能定位变化所在层。
 
 **递进追问：**
 
@@ -71,9 +74,10 @@ git status --short        #  M app.txt：仓库/index 仍是 v1，工作区已�
 
 **代码 / 场景：**
 
-两个提交只改 b.txt；ls-tree 会显示 a.txt 的 blob 对象名复用，而根 tree 和 b.txt 对象发生变化。
+**示例场景：** 两个提交只改 b.txt；ls-tree 会显示 a.txt 的 blob 对象名复用，而根 tree 和 b.txt 对象发生变化。
 
 ~~~bash
+# 示例重点：两个提交只改 b.txt；ls-tree 会显示 a.txt 的 blob 对象名复用，而根 tree 和 b.txt 对象发生变化。
 printf "A\n" > a.txt; printf "B1\n" > b.txt
 git add . && git commit -m "first"
 git ls-tree HEAD              # 记录 a、b 的 blob OID
@@ -83,7 +87,9 @@ git ls-tree HEAD              # a.txt OID 不变，b.txt OID 改变
 git diff HEAD^ HEAD           # 补丁是比较两个快照后计算出来
 ~~~
 
-对象复用让快照模型兼具空间效率，不能据 pack 的 delta 就反推逻辑上是差异链。
+- **观察目标：** 每次提交记录一棵完整目录树，并通过内容寻址复用未变化的 blob；展示 diff 是比较两个快照的结果。
+
+**对照结果：** 对象复用让快照模型兼具空间效率，不能据 pack 的 delta 就反推逻辑上是差异链。
 
 **递进追问：**
 
@@ -122,9 +128,10 @@ blob 保存文件内容，tree 保存目录项，commit 指向根 tree 和父提
 
 **代码 / 场景：**
 
-cat-file 逐层查看 HEAD，可从 commit 的 tree 走到目录条目，再检查文件 blob；附注标签多一层 tag 对象。
+**示例场景：** cat-file 逐层查看 HEAD，可从 commit 的 tree 走到目录条目，再检查文件 blob；附注标签多一层 tag 对象。
 
 ~~~bash
+# 示例重点：cat-file 逐层查看 HEAD，可从 commit 的 tree 走到目录条目，再检查文件 blob；附注标签多一层 tag 对…
 git cat-file -p HEAD                 # 第一行形如 tree <oid>
 git ls-tree HEAD                     # 模式、类型、OID、路径
 git cat-file -p HEAD:README.md        # 直接输出 README 的 blob 内容
@@ -133,7 +140,9 @@ git cat-file -p v1.0.0                # 输出 tagger、message 与 object <oid>
 git cat-file -t v1.0.0^{}             # 解引用后通常是 commit
 ~~~
 
-文件名属于 tree 条目，同一 blob 可被不同路径或不同提交共同引用。
+- **观察目标：** blob 保存文件内容，tree 保存目录项，commit 指向根 tree 和父提交，附注 tag 再指向目标对象并保存签名等元数据。
+
+**对照结果：** 文件名属于 tree 条目，同一 blob 可被不同路径或不同提交共同引用。
 
 **递进追问：**
 
@@ -172,9 +181,10 @@ HEAD 表示当前检出的提交或分支，branch 是可移动的提交引用�
 
 **代码 / 场景：**
 
-以下命令同时查看 HEAD 的符号目标、分支与标签解析结果，并演示 detached HEAD 的变化。
+**示例场景：** 以下命令同时查看 HEAD 的符号目标、分支与标签解析结果，并演示 detached HEAD 的变化。
 
 ~~~bash
+# 示例重点：以下命令同时查看 HEAD 的符号目标、分支与标签解析结果，并演示 detached HEAD 的变化。
 git symbolic-ref --short HEAD       # main
 git rev-parse HEAD                  # 当前 commit OID
 git branch experiment               # 新建可移动引用，不切换
@@ -184,7 +194,9 @@ git symbolic-ref --short HEAD       # 失败：HEAD 已直接指向 commit
 git switch main                     # 再次让 HEAD 指向 refs/heads/main
 ~~~
 
-提交时移动的是 HEAD 所指分支；稳定发布 tag 不应被日常提交自动推进。
+- **观察目标：** HEAD 表示当前检出的提交或分支，branch 是可移动的提交引用，tag 通常是指向固定版本的发布标记。
+
+**对照结果：** 提交时移动的是 HEAD 所指分支；稳定发布 tag 不应被日常提交自动推进。
 
 **递进追问：**
 
@@ -223,9 +235,10 @@ git switch main                     # 再次让 HEAD 指向 refs/heads/main
 
 **代码 / 场景：**
 
-先暂存 v1，再把工作区改成 v2；index 仍指向 v1 blob，证明 add 捕获的是调用时快照。
+**示例场景：** 先暂存 v1，再把工作区改成 v2；index 仍指向 v1 blob，证明 add 捕获的是调用时快照。
 
 ~~~bash
+# 示例重点：先暂存 v1，再把工作区改成 v2；index 仍指向 v1 blob，证明 add 捕获的是调用时快照。
 printf "v1\n" > note.txt
 git add note.txt
 git ls-files --stage note.txt       # 显示 v1 blob OID 与 stage 0
@@ -236,7 +249,9 @@ git add note.txt
 git diff -- note.txt                # 为空，index 已更新到 v2
 ~~~
 
-对象可能在 commit 前就写入仓库，但只有后续 tree、commit 与引用让它长期可达。
+- **观察目标：** 它把指定文件内容写成对象并更新 index 中路径对应的 blob、模式和阶段信息，不是简单把文件“放进缓存”。
+
+**对照结果：** 对象可能在 commit 前就写入仓库，但只有后续 tree、commit 与引用让它长期可达。
 
 **递进追问：**
 
@@ -275,9 +290,10 @@ Git 比较 HEAD 树、index 与工作区三份状态：HEAD 对 index 得到待�
 
 **代码 / 场景：**
 
-同一文件先暂存再修改，会同时出现在两组比较中；短格式左、右两列都显示 M。
+**示例场景：** 同一文件先暂存再修改，会同时出现在两组比较中；短格式左、右两列都显示 M。
 
 ~~~bash
+# 示例重点：同一文件先暂存再修改，会同时出现在两组比较中；短格式左、右两列都显示 M。
 printf "base\n" > app.txt
 git add app.txt && git commit -m "base"
 printf "staged\n" >> app.txt
@@ -288,7 +304,9 @@ git diff --cached -- app.txt    # HEAD 与 index：包含 staged
 git diff -- app.txt             # index 与工作区：只包含 working
 ~~~
 
-status 只汇总状态；要审查具体内容必须继续查看两类 diff。
+- **观察目标：** Git 比较 HEAD 树、index 与工作区三份状态：HEAD 对 index 得到待提交变化，index 对工作区得到未暂存变化。
+
+**对照结果：** status 只汇总状态；要审查具体内容必须继续查看两类 diff。
 
 **递进追问：**
 
@@ -327,9 +345,10 @@ status 只汇总状态；要审查具体内容必须继续查看两类 diff。
 
 **代码 / 场景：**
 
-先暂存第一行再追加第二行，三个命令各自看到不同边界，提交后 show 展示最终 commit。
+**示例场景：** 先暂存第一行再追加第二行，三个命令各自看到不同边界，提交后 show 展示最终 commit。
 
 ~~~bash
+# 示例重点：先暂存第一行再追加第二行，三个命令各自看到不同边界，提交后 show 展示最终 commit。
 printf "one\n" > demo.txt
 git add demo.txt
 printf "two\n" >> demo.txt
@@ -340,7 +359,9 @@ git add demo.txt && git commit -m "add demo"
 git show --stat --oneline HEAD   # 提交元数据及其改动摘要
 ~~~
 
-明确左右两端对象，比死记“看代码差异”更能避免漏审。
+- **观察目标：** 前者比较工作区与 index，--cached 比较 index 与 HEAD，git show 默认展示指定对象及提交引入的变化。
+
+**对照结果：** 明确左右两端对象，比死记“看代码差异”更能避免漏审。
 
 **递进追问：**
 
@@ -379,9 +400,10 @@ HEAD 直接指向提交而非分支引用；此时提交可创建但没有分支
 
 **代码 / 场景：**
 
-从旧提交进入 detached 状态并创建提交，再立即建立分支，保证新提交获得稳定引用。
+**示例场景：** 从旧提交进入 detached 状态并创建提交，再立即建立分支，保证新提交获得稳定引用。
 
 ~~~bash
+# 示例重点：从旧提交进入 detached 状态并创建提交，再立即建立分支，保证新提交获得稳定引用。
 git switch --detach HEAD~1
 git status --short --branch       # ## HEAD (no branch)
 printf "experiment\n" > trial.txt
@@ -391,7 +413,9 @@ git switch -c save-experiment     # 新分支指向该 OID
 git symbolic-ref --short HEAD     # save-experiment
 ~~~
 
-detached 不阻止提交，风险只在没有持久引用保护新提交可达性。
+- **观察目标：** HEAD 直接指向提交而非分支引用；此时提交可创建但没有分支名称保护，应及时创建分支避免后续不可达。
+
+**对照结果：** detached 不阻止提交，风险只在没有持久引用保护新提交可达性。
 
 **递进追问：**
 
@@ -430,9 +454,10 @@ detached 不阻止提交，风险只在没有持久引用保护新提交可达�
 
 **代码 / 场景：**
 
-以下过程先提交配置，再加入忽略规则；只有 rm --cached 并提交后，它才从跟踪集合移除。
+**示例场景：** 以下过程先提交配置，再加入忽略规则；只有 rm --cached 并提交后，它才从跟踪集合移除。
 
 ~~~bash
+# 示例重点：以下过程先提交配置，再加入忽略规则；只有 rm --cached 并提交后，它才从跟踪集合移除。
 printf "local=true\n" > app.env
 git add app.env && git commit -m "track env"
 printf "app.env\n" >> .gitignore
@@ -444,7 +469,9 @@ git commit -m "stop tracking local env"
 git check-ignore -v app.env     # 显示命中的忽略规则
 ~~~
 
-敏感信息若已提交，仅停止跟踪不能抹掉历史，还必须先轮换凭据。
+- **观察目标：** 忽略规则只影响未跟踪路径的发现；已进入 index 的路径仍受版本控制，需要先 git rm --cached 再提交。
+
+**对照结果：** 敏感信息若已提交，仅停止跟踪不能抹掉历史，还必须先轮换凭据。
 
 **递进追问：**
 
@@ -483,9 +510,10 @@ git check-ignore -v app.env     # 显示命中的忽略规则
 
 **代码 / 场景：**
 
-hash-object 可在不写入时预测 OID；加 -w 后同一内容返回同一对象名，并能用 cat-file 校验。
+**示例场景：** hash-object 可在不写入时预测 OID；加 -w 后同一内容返回同一对象名，并能用 cat-file 校验。
 
 ~~~bash
+# 示例重点：hash-object 可在不写入时预测 OID；加 -w 后同一内容返回同一对象名，并能用 cat-file 校验。
 printf "hello\n" > one.txt
 cp one.txt two.txt
 git hash-object one.txt           # 记为 <oid>
@@ -497,7 +525,9 @@ printf "changed\n" >> two.txt
 git hash-object two.txt           # 得到不同 OID
 ~~~
 
-文件名不参与 blob 哈希，因此不同路径的相同内容可以共享对象。
+- **观察目标：** 对象名由类型、长度和内容计算，可用于去重与完整性校验；哈希相同表示 Git 按对象模型识别为同一内容。
+
+**对照结果：** 文件名不参与 blob 哈希，因此不同路径的相同内容可以共享对象。
 
 **递进追问：**
 
@@ -538,7 +568,9 @@ merge 保留分叉并产生合并提交，rebase 复制提交到新基线并重�
 
 **代码 / 场景：**
 
-假设 main 与 feature 已分叉：merge 保留 C、D 并新增 M；rebase 会把 D 复制为 D-prime 后直接接到 C。
+**示例场景：** 假设 main 与 feature 已分叉：merge 保留 C、D 并新增 M；rebase 会把 D 复制为 D-prime 后直接接到 C。
+
+> 示例注解：假设 main 与 feature 已分叉：merge 保留 C、D 并新增 M；rebase 会把 D 复制为 D-prime 后直…
 
 ~~~text
 初始： A---B---C  main
@@ -552,7 +584,7 @@ merge：  A---B---C---M
 rebase： A---B---C---D-prime
 ~~~
 
-命令分别是 git switch main && git merge feature，或在 feature 上执行 git rebase main；后者的 D 与 D-prime OID 不同。
+**对照结果：** 命令分别是 git switch main && git merge feature，或在 feature 上执行 git rebase main；后者的 D 与 D-prime OID 不同。
 
 **递进追问：**
 
@@ -591,9 +623,10 @@ rebase： A---B---C---D-prime
 
 **代码 / 场景：**
 
-main 停在 B、feature 已到 D 且 B 是 D 的祖先，ff-only 只把 refs/heads/main 从 B 更新到 D。
+**示例场景：** main 停在 B、feature 已到 D 且 B 是 D 的祖先，ff-only 只把 refs/heads/main 从 B 更新到 D。
 
 ~~~bash
+# 示例重点：main 停在 B、feature 已到 D 且 B 是 D 的祖先，ff-only 只把 refs/heads/main 从 B 更…
 git switch main
 git merge-base --is-ancestor main feature
 echo $?                         # 0：main 是 feature 祖先
@@ -603,7 +636,7 @@ git rev-parse main              # <D>，与 feature 相同
 git log --graph --oneline -5    # 没有额外 merge commit
 ~~~
 
-若检查返回非零，ff-only 会拒绝，必须先决定真正 merge、rebase 还是停止。
+**对照结果：** 若检查返回非零，ff-only 会拒绝，必须先决定真正 merge、rebase 还是停止。
 
 **递进追问：**
 
@@ -645,9 +678,10 @@ git log --graph --oneline -5    # 没有额外 merge commit
 
 **代码 / 场景：**
 
-冲突时 index 的 stage 1、2、3 正好保存 base、ours、theirs，可分别查看而不是只读冲突标记。
+**示例场景：** 冲突时 index 的 stage 1、2、3 正好保存 base、ours、theirs，可分别查看而不是只读冲突标记。
 
 ~~~bash
+# 示例重点：冲突时 index 的 stage 1、2、3 正好保存 base、ours、theirs，可分别查看而不是只读冲突标记。
 git merge feature                 # 假设 README.md 冲突
 git ls-files -u README.md         # stage 1/2/3 与各自 blob OID
 git show :1:README.md             # merge base 版本
@@ -656,7 +690,9 @@ git show :3:README.md             # theirs：被合并分支版本
 git merge-base HEAD MERGE_HEAD    # 显示共同祖先 OID
 ~~~
 
-把三份输入并排审查，才能判断是选择一侧、组合两侧还是重新设计。
+- **观察目标：** 因为只看两个分支的最终文件，Git 无法判断哪一边是新增、删除还是保持不变；共同祖先给了它一份“分叉前的原稿”。Git 分别计算 base→ours 和 base→theirs 的变化，只有修改/修改、修改/删除、目录/文件冲突等变化无法自动协调成唯一结果时才报冲突。
+
+**对照结果：** 把三份输入并排审查，才能判断是选择一侧、组合两侧还是重新设计。
 
 **递进追问：**
 
@@ -696,9 +732,10 @@ git merge-base HEAD MERGE_HEAD    # 显示共同祖先 OID
 
 **代码 / 场景：**
 
-以下序列保留诊断证据、验证最终差异，并在确认后才标记解决与继续。
+**示例场景：** 以下序列保留诊断证据、验证最终差异，并在确认后才标记解决与继续。
 
 ~~~bash
+# 示例重点：以下序列保留诊断证据、验证最终差异，并在确认后才标记解决与继续。
 git status
 git diff --name-only --diff-filter=U
 git show :1:src/config.js > base.js
@@ -712,7 +749,9 @@ git diff --cached -- src/config.js
 git merge --continue
 ~~~
 
-若最终 staged diff 不符合预期，应在 continue 前继续修改，而不是先完成再补救。
+- **观察目标：** 先读取冲突阶段和业务语义，编辑出最终内容，运行测试后 git add 标记已解决，再继续 merge 或 rebase；不要只删除标记。
+
+**对照结果：** 若最终 staged diff 不符合预期，应在 continue 前继续修改，而不是先完成再补救。
 
 **递进追问：**
 
@@ -752,7 +791,9 @@ git merge --continue
 
 **代码 / 场景：**
 
-topic 错从 featureA 分出；命令只选 D、E，复制到 main 的 C 之后，A 分支的 X 不会进入新历史。
+**示例场景：** topic 错从 featureA 分出；命令只选 D、E，复制到 main 的 C 之后，A 分支的 X 不会进入新历史。
+
+> 示例注解：topic 错从 featureA 分出；命令只选 D、E，复制到 main 的 C 之后，A 分支的 X 不会进入新历史。
 
 ~~~text
 原图： A---B---C  main
@@ -766,7 +807,7 @@ topic 错从 featureA 分出；命令只选 D、E，复制到 main 的 C 之后�
 结果：A---B---C---D-prime---E-prime  topic
 ~~~
 
-若检查集合不对，先停止并重新选择 upstream；不要靠 rebase 完成后再猜哪些提交被复制。
+**对照结果：** 若检查集合不对，先停止并重新选择 upstream；不要靠 rebase 完成后再猜哪些提交被复制。
 
 **递进追问：**
 
@@ -804,9 +845,10 @@ topic 错从 featureA 分出；命令只选 D、E，复制到 main 的 C 之后�
 
 **代码 / 场景：**
 
-在 release 分支选择主线修复，并用 -x 在消息中记录来源；冲突时可中止而不留下半成品提交。
+**示例场景：** 在 release 分支选择主线修复，并用 -x 在消息中记录来源；冲突时可中止而不留下半成品提交。
 
 ~~~bash
+# 示例重点：在 release 分支选择主线修复，并用 -x 在消息中记录来源；冲突时可中止而不留下半成品提交。
 git switch release/1.x
 git log --oneline main -- src/security.js
 git cherry-pick -x <fix-commit>
@@ -817,7 +859,9 @@ git cherry-pick --abort
 git log -1 --format=fuller          # 新 OID，并含来源说明
 ~~~
 
--x 只增加追踪信息，不会自动保证补丁依赖完整或避免未来重复合并。
+- **观察目标：** 它把指定提交的补丁应用为新提交；会生成新身份，重复挑选或与后续合并叠加可能产生冲突与重复变更。
+
+**对照结果：** -x 只增加追踪信息，不会自动保证补丁依赖完整或避免未来重复合并。
 
 **递进追问：**
 
@@ -856,9 +900,10 @@ revert 新建反向提交，适合共享分支；reset 移动当前分支并可�
 
 **代码 / 场景：**
 
-共享 main 用 revert 产生新节点；本地草稿分支则先建备份再 reset，体现两种不同历史策略。
+**示例场景：** 共享 main 用 revert 产生新节点；本地草稿分支则先建备份再 reset，体现两种不同历史策略。
 
 ~~~bash
+# 示例重点：共享 main 用 revert 产生新节点；本地草稿分支则先建备份再 reset，体现两种不同历史策略。
 # 已发布错误提交：保留历史并新增撤销提交
 git switch main
 git revert <bad-commit>
@@ -871,7 +916,9 @@ git reset --mixed HEAD~1
 git status --short               # 原提交改动变成未暂存修改
 ~~~
 
-选择依据不是“哪个命令更强”，而是历史是否已共享以及要保留哪些层。
+- **观察目标：** revert 新建反向提交，适合共享分支；reset 移动当前分支并可改变 index/工作区，更适合尚未共享的本地历史。
+
+**对照结果：** 选择依据不是“哪个命令更强”，而是历史是否已共享以及要保留哪些层。
 
 **递进追问：**
 
@@ -910,9 +957,10 @@ soft 只移动 HEAD，mixed 还重置 index，hard 进一步覆盖工作区；ha
 
 **代码 / 场景：**
 
-在临时分支分别观察同一个最近提交被 soft、mixed 后的短状态；hard 只在已备份且确认后执行。
+**示例场景：** 在临时分支分别观察同一个最近提交被 soft、mixed 后的短状态；hard 只在已备份且确认后执行。
 
 ~~~bash
+# 示例重点：在临时分支分别观察同一个最近提交被 soft、mixed 后的短状态；hard 只在已备份且确认后执行。
 git branch backup/before-reset HEAD
 git reset --soft HEAD~1
 git status --short            # 原提交变化位于左列：已暂存
@@ -925,7 +973,9 @@ git reset --hard backup/before-reset
 git status --short            # 受跟踪三层与备份提交一致
 ~~~
 
-示例用分支备份目标 OID，避免只依赖记忆中的 HEAD~n。
+- **观察目标：** soft 只移动 HEAD，mixed 还重置 index，hard 进一步覆盖工作区；hard 会丢弃未保存修改，使用前必须确认范围。
+
+**对照结果：** 示例用分支备份目标 OID，避免只依赖记忆中的 HEAD~n。
 
 **递进追问：**
 
@@ -964,9 +1014,10 @@ git status --short            # 受跟踪三层与备份提交一致
 
 **代码 / 场景：**
 
-误 reset 后先只读定位旧 tip，再建立 recover 分支，整个过程不覆盖当前工作区。
+**示例场景：** 误 reset 后先只读定位旧 tip，再建立 recover 分支，整个过程不覆盖当前工作区。
 
 ~~~bash
+# 示例重点：误 reset 后先只读定位旧 tip，再建立 recover 分支，整个过程不覆盖当前工作区。
 git reset --hard HEAD~3          # 假设这是误操作
 git reflog --date=iso --oneline
 # 找到 reset 前记录，例如 HEAD@{1} -> <old-tip>
@@ -976,7 +1027,9 @@ git log --graph --oneline --all -8
 # 确认 recover/reset 包含丢失提交后再决定 merge、cherry-pick 或切换
 ~~~
 
-先建引用可阻止目标提交继续处于不可达状态，也保留多种后续恢复方案。
+- **观察目标：** 它记录本地引用的移动，可找回误 reset、误 rebase 或删除分支前指向的提交；但有过期清理且不随 push 共享。
+
+**对照结果：** 先建引用可阻止目标提交继续处于不可达状态，也保留多种后续恢复方案。
 
 **递进追问：**
 
@@ -1015,7 +1068,9 @@ squash 把多个提交整理为较少提交；需要保留独立回滚点、审�
 
 **代码 / 场景：**
 
-交互式 rebase 把两个 fixup 合入功能提交；执行前先确认这三步确实构成一个原子变更。
+**示例场景：** 交互式 rebase 把两个 fixup 合入功能提交；执行前先确认这三步确实构成一个原子变更。
+
+> 示例注解：交互式 rebase 把两个 fixup 合入功能提交；执行前先确认这三步确实构成一个原子变更。
 
 ~~~text
 git rebase -i HEAD~3
@@ -1029,7 +1084,7 @@ git log --oneline -3
 git show --stat HEAD
 ~~~
 
-若 parser、迁移和清理可独立回滚，应拆成语义完整提交而不是只追求数量少。
+**对照结果：** 若 parser、迁移和清理可独立回滚，应拆成语义完整提交而不是只追求数量少。
 
 **递进追问：**
 
@@ -1070,9 +1125,10 @@ fetch 更新远程跟踪引用但不整合，pull 等于 fetch 后 merge 或 reb
 
 **代码 / 场景：**
 
-先 fetch 再显式审查和 ff-only 合并，把网络同步与本地历史决策拆开。
+**示例场景：** 先 fetch 再显式审查和 ff-only 合并，把网络同步与本地历史决策拆开。
 
 ~~~bash
+# 示例重点：先 fetch 再显式审查和 ff-only 合并，把网络同步与本地历史决策拆开。
 git fetch origin
 git log --oneline --left-right main...origin/main
 git diff main..origin/main
@@ -1082,7 +1138,9 @@ git merge --ff-only origin/main
 git push origin main
 ~~~
 
-若 left-right 显示双方都有独立提交，ff-only 会停止，团队再决定 merge 或 rebase。
+- **观察目标：** fetch 更新远程跟踪引用但不整合，pull 等于 fetch 后 merge 或 rebase，push 请求更新远端引用并发送缺失对象。
+
+**对照结果：** 若 left-right 显示双方都有独立提交，ff-only 会停止，团队再决定 merge 或 rebase。
 
 **递进追问：**
 
@@ -1122,9 +1180,10 @@ git push origin main
 
 **代码 / 场景：**
 
-以下命令查看 remote 配置、远程跟踪引用的完整名字和本地 main 的 upstream 关系。
+**示例场景：** 以下命令查看 remote 配置、远程跟踪引用的完整名字和本地 main 的 upstream 关系。
 
 ~~~bash
+# 示例重点：以下命令查看 remote 配置、远程跟踪引用的完整名字和本地 main 的 upstream 关系。
 git remote -v
 git config --get-all remote.origin.fetch
 git rev-parse refs/remotes/origin/main
@@ -1134,7 +1193,9 @@ git fetch origin --prune
 git log --left-right main...origin/main --oneline
 ~~~
 
-fetch 前后记录 OID，才能准确说明本地对远端状态的观察何时更新。
+- **观察目标：** 它是本地保存的远程跟踪引用，表示最近一次 fetch 后远端 main 的位置，不会在离线时自动变化。
+
+**对照结果：** fetch 前后记录 OID，才能准确说明本地对远端状态的观察何时更新。
 
 **递进追问：**
 
@@ -1173,9 +1234,10 @@ fetch 前后记录 OID，才能准确说明本地对远端状态的观察何时�
 
 **代码 / 场景：**
 
-先画出双方独有提交，再把远端 main 合入本地；新 tip 包含远端旧 tip 后，push 才成为快进。
+**示例场景：** 先画出双方独有提交，再把远端 main 合入本地；新 tip 包含远端旧 tip 后，push 才成为快进。
 
 ~~~bash
+# 示例重点：先画出双方独有提交，再把远端 main 合入本地；新 tip 包含远端旧 tip 后，push 才成为快进。
 git push origin main                 # rejected non-fast-forward
 git fetch origin
 git log --graph --oneline --left-right main...origin/main
@@ -1187,7 +1249,9 @@ git merge-base --is-ancestor origin/main main
 git push origin main                 # 现在远端旧 tip 可达
 ~~~
 
-不要用 force 把“尚未理解的分叉”快速消掉。
+- **观察目标：** 远端引用若不能只前移到本地提交，普通 push 会覆盖别人可达的历史，因此服务器默认拒绝。
+
+**对照结果：** 第一次 push 会因远端旧 tip 不是本地新 tip 的祖先而被拒绝；完成 fetch、审查并合入双方提交后，`merge-base --is-ancestor` 返回成功，第二次 push 才安全通过。不要用 force 把“尚未理解的分叉”快速消掉。
 
 **递进追问：**
 
@@ -1226,9 +1290,10 @@ git push origin main                 # 现在远端旧 tip 可达
 
 **代码 / 场景：**
 
-先 fetch 并记录已审查的远端 OID，rebase 后用显式 lease；若他人期间推送，服务器因 OID 不匹配而拒绝。
+**示例场景：** 先 fetch 并记录已审查的远端 OID，rebase 后用显式 lease；若他人期间推送，服务器因 OID 不匹配而拒绝。
 
 ~~~bash
+# 示例重点：先 fetch 并记录已审查的远端 OID，rebase 后用显式 lease；若他人期间推送，服务器因 OID 不匹配而拒绝。
 git fetch origin
 expected=$(git rev-parse origin/topic)
 git log --oneline origin/topic..topic
@@ -1240,7 +1305,9 @@ git push origin \
 # 若远端 topic 已变化：stale info，push 被拒绝
 ~~~
 
-失败后重新 fetch 与审查，不应立即改用 --force 绕过租约。
+- **观察目标：** 它只在远端引用仍等于本地预期值时强推，能避免无意覆盖他人在最近一次 fetch 后新增的提交。
+
+**对照结果：** 失败后重新 fetch 与审查，不应立即改用 --force 绕过租约。
 
 **递进追问：**
 
@@ -1279,9 +1346,10 @@ git push origin \
 
 **代码 / 场景：**
 
-一个小功能从最新 main 开始，经提交、同步、测试和 PR 合并；分支删除不影响已合入历史。
+**示例场景：** 一个小功能从最新 main 开始，经提交、同步、测试和 PR 合并；分支删除不影响已合入历史。
 
 ~~~bash
+# 示例重点：一个小功能从最新 main 开始，经提交、同步、测试和 PR 合并；分支删除不影响已合入历史。
 git fetch origin
 git switch -c feature/search origin/main
 # 小步实现并让每个提交可测试
@@ -1294,7 +1362,9 @@ git push -u origin feature/search
 # PR 检查通过后由平台按统一策略合并并删除远端分支
 ~~~
 
-若已有人基于该 feature 分支开发，应改用协商后的 merge，避免无通知重写。
+- **观察目标：** 分支应短生命周期、频繁同步主干、通过 PR 和自动检查合并；功能开关用于把部署与功能发布解耦。
+
+**对照结果：** 若已有人基于该 feature 分支开发，应改用协商后的 merge，避免无通知重写。
 
 **递进追问：**
 
@@ -1333,7 +1403,7 @@ git push -u origin feature/search
 
 **代码 / 场景：**
 
-可用约束表做决策，而不是只问“哪个更流行”。
+**示例场景：** 可用约束表做决策，而不是只问“哪个更流行”。
 
 | 约束 | 更可能的选择 | 必备能力 |
 | --- | --- | --- |
@@ -1342,6 +1412,12 @@ git push -u origin feature/search
 | 严格人工发布审批 | 受保护发布分支/标签 | 审计、签名、制品晋级 |
 
 无论选择哪种，都应让主干提交可构建，并用度量观察 PR 周期、失败率和回滚时间。
+
+**对照结果：**
+
+用这个结果回答“Git Flow、GitHub Flow 和 trunk-based 如何选择”：约束 更可能的选择 必备能力 --- --- --- 每日多次部署、单一线上版本 GitHub Flow / trunk-based 快速 CI、功能开关、自动回滚 同时维护 2.x、
+
+3.x 且定期发版 release 分支或简化 Git Flow 修复回灌、版本矩阵测试 严格人工发布审批 受保护发布分支/标签 审计、签名、制品晋级 无论选择哪种，都应让主干提交可构建，并用度量观察 PR 周期、失败率和回滚时间。
 
 **递进追问：**
 
@@ -1380,9 +1456,10 @@ git push -u origin feature/search
 
 **代码 / 场景：**
 
-从生产 tag 而非 main 建分支，发布新补丁 tag 后再将同一修复带回 main。
+**示例场景：** 从生产 tag 而非 main 建分支，发布新补丁 tag 后再将同一修复带回 main。
 
 ~~~bash
+# 示例重点：从生产 tag 而非 main 建分支，发布新补丁 tag 后再将同一修复带回 main。
 git fetch origin --tags
 git switch -c hotfix/auth-timeout v2.4.3
 # 修改并新增回归测试
@@ -1396,7 +1473,9 @@ git switch main && git pull --ff-only
 git cherry-pick -x <hotfix-commit>
 ~~~
 
-若 main 已包含不同认证重构，应重新审查补丁语义，而不是只要求 cherry-pick 无冲突。
+- **观察目标：** 从线上实际版本创建修复分支，最小改动并回归，发布后把修复合并或挑选回所有仍维护的分支，避免分叉遗漏。
+
+**对照结果：** 若 main 已包含不同认证重构，应重新审查补丁语义，而不是只要求 cherry-pick 无冲突。
 
 **递进追问：**
 
@@ -1435,9 +1514,10 @@ git cherry-pick -x <hotfix-commit>
 
 **代码 / 场景：**
 
-在已验证 commit 上创建签名附注 tag，校验后推送；流水线同时记录 tag 与精确 OID。
+**示例场景：** 在已验证 commit 上创建签名附注 tag，校验后推送；流水线同时记录 tag 与精确 OID。
 
 ~~~bash
+# 示例重点：在已验证 commit 上创建签名附注 tag，校验后推送；流水线同时记录 tag 与精确 OID。
 git switch main
 git pull --ff-only
 npm test
@@ -1448,7 +1528,9 @@ git push origin v2.3.1
 # CI 从 refs/tags/v2.3.1 构建，并保存制品 SHA-256 与来源 OID
 ~~~
 
-若发布内容错误，应修复后创建 v2.3.2，不要悄悄把 v2.3.1 移到新提交。
+- **观察目标：** 通过受保护 tag 标记已构建的不可变提交，流水线从 tag 产出制品；版本号表达不兼容、功能和修复级别。
+
+**对照结果：** 若发布内容错误，应修复后创建 v2.3.2，不要悄悄把 v2.3.1 移到新提交。
 
 **递进追问：**
 
@@ -1488,9 +1570,10 @@ submodule 保持仓库与版本边界但协作复杂；monorepo 统一变更和�
 
 **代码 / 场景：**
 
-submodule 更新在父仓库中表现为 gitlink OID 变化；协作者必须显式取得对应子仓库对象。
+**示例场景：** submodule 更新在父仓库中表现为 gitlink OID 变化；协作者必须显式取得对应子仓库对象。
 
 ~~~bash
+# 示例重点：submodule 更新在父仓库中表现为 gitlink OID 变化；协作者必须显式取得对应子仓库对象。
 git submodule add https://example.com/lib.git libs/lib
 git commit -m "build: pin lib submodule"
 git ls-tree HEAD libs/lib          # 160000 commit <child-oid>
@@ -1504,7 +1587,9 @@ git commit -m "build: update lib pin"
 # 新克隆需：git submodule update --init --recursive
 ~~~
 
-父仓库只固定 OID，不保证子仓库 URL 权限和该 OID 永久可获取。
+- **观察目标：** submodule 保持仓库与版本边界但协作复杂；monorepo 统一变更和工具链但需要权限、构建缓存与依赖边界治理。
+
+**对照结果：** 父仓库只固定 OID，不保证子仓库 URL 权限和该 OID 永久可获取。
 
 **递进追问：**
 
@@ -1543,9 +1628,10 @@ git commit -m "build: update lib pin"
 
 **代码 / 场景：**
 
-从生产 tag 建 hotfix 工作树，同时保留当前 feature 工作区完全不动。
+**示例场景：** 从生产 tag 建 hotfix 工作树，同时保留当前 feature 工作区完全不动。
 
 ~~~bash
+# 示例重点：从生产 tag 建 hotfix 工作树，同时保留当前 feature 工作区完全不动。
 git worktree list
 git worktree add -b hotfix/2.4 ../project-hotfix v2.4.3
 cd ../project-hotfix
@@ -1557,7 +1643,9 @@ git worktree remove ../project-hotfix
 git worktree prune
 ~~~
 
-不要直接复制现有工作区目录，worktree 会正确登记共享仓库关系和独立管理状态。
+- **观察目标：** 同一仓库可同时拥有多个工作树，各有 HEAD 和 index，适合并行热修复或评审分支而无需反复 stash 和切换。
+
+**对照结果：** 不要直接复制现有工作区目录，worktree 会正确登记共享仓库关系和独立管理状态。
 
 **递进追问：**
 
@@ -1598,9 +1686,10 @@ git worktree prune
 
 **代码 / 场景：**
 
-从当前失败版本与已知正常 tag 开始，自动运行单个回归测试，结束后 reset 回原分支。
+**示例场景：** 从当前失败版本与已知正常 tag 开始，自动运行单个回归测试，结束后 reset 回原分支。
 
 ~~~bash
+# 示例重点：从当前失败版本与已知正常 tag 开始，自动运行单个回归测试，结束后 reset 回原分支。
 git bisect start
 git bisect bad HEAD
 git bisect good v2.3.0
@@ -1611,7 +1700,9 @@ git bisect log                  # 保存每轮判定供复核
 git bisect reset                # 回到开始前检出位置
 ~~~
 
-自动测试必须在旧提交也能安装和运行，否则应对不可测版本返回 125。
+- **观察目标：** 给定一个 good 与 bad，Git 二分检出中间提交；每轮运行测试并标记，最终把搜索缩小到首个坏提交。
+
+**对照结果：** 自动测试必须在旧提交也能安装和运行，否则应对不可测版本返回 125。
 
 **递进追问：**
 
@@ -1650,9 +1741,10 @@ git bisect reset                # 回到开始前检出位置
 
 **代码 / 场景：**
 
-只调查函数范围，并忽略空白改动；拿到 OID 后继续阅读完整补丁和前后历史。
+**示例场景：** 只调查函数范围，并忽略空白改动；拿到 OID 后继续阅读完整补丁和前后历史。
 
 ~~~bash
+# 示例重点：只调查函数范围，并忽略空白改动；拿到 OID 后继续阅读完整补丁和前后历史。
 git blame -w -L 40,85 -- src/cache.js
 # 假设目标行显示 <oid>
 git show --find-renames --find-copies <oid> -- src/cache.js
@@ -1661,7 +1753,9 @@ git log --follow -- src/cache.js
 # 再打开关联 PR/issue，核对约束与后续修复
 ~~~
 
-若一次格式化提交占满结果，应通过 ignore-revs 或追溯父提交，而不是把格式化作者当设计者。
+- **观察目标：** 它用于找到某行最近一次修改，辅助理解上下文；应结合 log、PR 和业务历史，不应当作责任追究工具。
+
+**对照结果：** 若一次格式化提交占满结果，应通过 ignore-revs 或追溯父提交，而不是把格式化作者当设计者。
 
 **递进追问：**
 
@@ -1701,9 +1795,10 @@ git log --follow -- src/cache.js
 
 **代码 / 场景：**
 
-错误 commit 改坏 config.yml；从它的父提交取回该文件，只写工作区，确认后再暂存为新修复。
+**示例场景：** 错误 commit 改坏 config.yml；从它的父提交取回该文件，只写工作区，确认后再暂存为新修复。
 
 ~~~bash
+# 示例重点：错误 commit 改坏 config.yml；从它的父提交取回该文件，只写工作区，确认后再暂存为新修复。
 bad=$(git rev-parse <bad-commit>)
 git show --stat $bad
 git diff $bad^ $bad -- config.yml
@@ -1715,7 +1810,9 @@ git diff --cached -- config.yml
 git commit -m "fix(config): restore pre-regression settings"
 ~~~
 
-若想保留错误提交中其他文件，不能直接 revert 整个提交而不审查反向补丁范围。
+- **观察目标：** 先用 git restore --source=<commit -- path 把目标版本写入工作区或 index，检查 diff 后作为新修复提交保存。
+
+**对照结果：** 若想保留错误提交中其他文件，不能直接 revert 整个提交而不审查反向补丁范围。
 
 **递进追问：**
 
@@ -1754,9 +1851,10 @@ git commit -m "fix(config): restore pre-regression settings"
 
 **代码 / 场景：**
 
-新项目先声明 LFS 规则再提交文件；已有历史迁移必须单独协调，因为会重写相关提交 OID。
+**示例场景：** 新项目先声明 LFS 规则再提交文件；已有历史迁移必须单独协调，因为会重写相关提交 OID。
 
 ~~~bash
+# 示例重点：新项目先声明 LFS 规则再提交文件；已有历史迁移必须单独协调，因为会重写相关提交 OID。
 git lfs install
 git lfs track "*.psd"
 git add .gitattributes
@@ -1769,7 +1867,9 @@ git show HEAD:design/home.psd      # 显示 LFS pointer，而非二进制主体
 # 真正 migrate import 会改写历史，需备份、停写和全员重新同步
 ~~~
 
-LFS 减少 Git 对象体积，但大文件下载、存储和保留策略仍要治理。
+- **观察目标：** 每个历史版本都进入对象库，克隆和对象遍历成本持续累积；应使用 Git LFS、制品仓库或对象存储管理二进制资产。
+
+**对照结果：** LFS 减少 Git 对象体积，但大文件下载、存储和保留策略仍要治理。
 
 **递进追问：**
 
@@ -1809,9 +1909,10 @@ shallow clone 截断提交历史，partial clone 延迟获取部分对象；能�
 
 **代码 / 场景：**
 
-两个克隆分别观察提交边界与按需 blob；实际服务器必须支持 partial clone 过滤协议。
+**示例场景：** 两个克隆分别观察提交边界与按需 blob；实际服务器必须支持 partial clone 过滤协议。
 
 ~~~bash
+# 示例重点：两个克隆分别观察提交边界与按需 blob；实际服务器必须支持 partial clone 过滤协议。
 git clone --depth=20 https://example.com/repo.git shallow-repo
 cd shallow-repo
 git rev-parse --is-shallow-repository   # true
@@ -1825,7 +1926,9 @@ git config --get remote.origin.promisor # true
 git checkout main                       # 需要的 blob 可按需获取
 ~~~
 
-离线任务若稍后需要缺失 blob，partial clone 会失败；应提前预取所需对象。
+- **观察目标：** shallow clone 截断提交历史，partial clone 延迟获取部分对象；能降低 CI 初始成本，但某些历史分析命令受限。
+
+**对照结果：** 离线任务若稍后需要缺失 blob，partial clone 会失败；应提前预取所需对象。
 
 **递进追问：**
 
@@ -1865,9 +1968,10 @@ hook 可在提交或接收阶段执行校验；本地 hook 容易被跳过且分
 
 **代码 / 场景：**
 
-把轻量检查脚本版本化并配置 hooksPath，同时在 CI 再运行同一命令作为权威门禁。
+**示例场景：** 把轻量检查脚本版本化并配置 hooksPath，同时在 CI 再运行同一命令作为权威门禁。
 
 ~~~bash
+# 示例重点：把轻量检查脚本版本化并配置 hooksPath，同时在 CI 再运行同一命令作为权威门禁。
 mkdir -p .githooks
 cat > .githooks/pre-commit <<SCRIPT
 #!/bin/sh
@@ -1881,7 +1985,9 @@ git commit -m "build: version local hook checks"
 # CI 配置仍必须执行 npm run lint && npm test
 ~~~
 
-本地 hook 给秒级反馈；CI 以干净环境、固定版本和受保护分支提供一致裁决。
+- **观察目标：** hook 可在提交或接收阶段执行校验；本地 hook 容易被跳过且分发不一致，关键规则还应在 CI 或服务端执行。
+
+**对照结果：** 本地 hook 给秒级反馈；CI 以干净环境、固定版本和受保护分支提供一致裁决。
 
 **递进追问：**
 
@@ -1919,9 +2025,10 @@ git commit -m "build: version local hook checks"
 
 **代码 / 场景：**
 
-流水线验证干净提交、使用锁文件安装，构建后保存来源 OID 与制品摘要；第二次独立构建可比较哈希。
+**示例场景：** 流水线验证干净提交、使用锁文件安装，构建后保存来源 OID 与制品摘要；第二次独立构建可比较哈希。
 
 ~~~bash
+# 示例重点：流水线验证干净提交、使用锁文件安装，构建后保存来源 OID 与制品摘要；第二次独立构建可比较哈希。
 set -eu
 test -z "$(git status --porcelain)"
 SOURCE_COMMIT=$(git rev-parse HEAD)
@@ -1934,7 +2041,9 @@ printf "%s\n" "$SOURCE_COMMIT" > dist/source-commit.txt
 # 在固定镜像 digest 的独立 job 重建并比较 SHA-256
 ~~~
 
-若哈希不同，应定位时间戳、文件顺序或工具版本，而不是接受“功能看起来一样”。
+- **观察目标：** 固定依赖锁、运行时与构建参数，从明确提交构建并保存校验和；不要让流水线隐式依赖开发机或浮动版本。
+
+**对照结果：** 若哈希不同，应定位时间戳、文件顺序或工具版本，而不是接受“功能看起来一样”。
 
 **递进追问：**
 
@@ -1973,9 +2082,10 @@ printf "%s\n" "$SOURCE_COMMIT" > dist/source-commit.txt
 
 **代码 / 场景：**
 
-示例先描述事故处置顺序，再给出不包含真实秘密的历史清理骨架；执行前必须备份并停写。
+**示例场景：** 示例先描述事故处置顺序，再给出不包含真实秘密的历史清理骨架；执行前必须备份并停写。
 
 ~~~bash
+# 示例重点：示例先描述事故处置顺序，再给出不包含真实秘密的历史清理骨架；执行前必须备份并停写。
 # 1. 在凭据系统立即吊销并轮换；审计访问日志
 # 2. 镜像备份仓库并暂停 push
 git clone --mirror <repo-url> sanitized.git
@@ -1987,7 +2097,9 @@ git fsck --full
 # 4. 通知所有协作者删除旧克隆并重新克隆
 ~~~
 
-filter-repo 改写提交 OID，任何基于旧历史的分支都可能把秘密重新推回来。
+- **观察目标：** 提交前用密钥扫描和环境变量；一旦泄露先吊销轮换，再用历史重写清理，并通知协作者重新同步。
+
+**对照结果：** filter-repo 改写提交 OID，任何基于旧历史的分支都可能把秘密重新推回来。
 
 **递进追问：**
 
@@ -2026,9 +2138,10 @@ filter-repo 改写提交 OID，任何基于旧历史的分支都可能把秘密�
 
 **代码 / 场景：**
 
-用明确基线生成统计与目录 diff，再按风险路径运行测试；命令输出应与 PR 页面 head/base OID 一致。
+**示例场景：** 用明确基线生成统计与目录 diff，再按风险路径运行测试；命令输出应与 PR 页面 head/base OID 一致。
 
 ~~~bash
+# 示例重点：用明确基线生成统计与目录 diff，再按风险路径运行测试；命令输出应与 PR 页面 head/base OID 一致。
 git fetch origin pull/123/head:review/pr-123
 git rev-parse review/pr-123 origin/main
 git diff --stat origin/main...review/pr-123
@@ -2040,7 +2153,9 @@ npm ci && npm test
 git diff --check origin/main...review/pr-123
 ~~~
 
-三点 diff 使用 merge base，能聚焦该分支相对分叉点引入的变化。
+- **观察目标：** 先核对目标和架构边界，再按提交或模块审查，运行测试并关注失败路径；大型改动应提前拆成可独立验证的小批次。
+
+**对照结果：** 三点 diff 使用 merge base，能聚焦该分支相对分叉点引入的变化。
 
 **递进追问：**
 
@@ -2079,7 +2194,9 @@ git diff --check origin/main...review/pr-123
 
 **代码 / 场景：**
 
-下面的消息既能生成结构化日志，也说明原因、行为变化与不兼容迁移。
+**示例场景：** 下面的消息既能生成结构化日志，也说明原因、行为变化与不兼容迁移。
+
+> 示例注解：下面的消息既能生成结构化日志，也说明原因、行为变化与不兼容迁移。
 
 ~~~text
 feat(auth): rotate refresh token after successful use
@@ -2094,7 +2211,9 @@ the replacement token returned by the server.
 Refs: SEC-142
 ~~~
 
-标题描述结果，正文补足 diff 无法表达的并发不变量和客户端迁移要求。
+- **观察目标：** 标题说明可观察的变更，正文解释原因、边界和迁移；关联任务与破坏性变更，便于生成日志、回滚和追踪决策。
+
+**对照结果：** 标题描述结果，正文补足 diff 无法表达的并发不变量和客户端迁移要求。
 
 **递进追问：**
 

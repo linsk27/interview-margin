@@ -1,4 +1,6 @@
-export default [
+import { strengthenFrontendExamples } from './frontend-example-quality.js'
+
+export default strengthenFrontendExamples([
   {
     number: 1,
     title: 'Git 的工作区、暂存区和仓库分别是什么？',
@@ -900,7 +902,7 @@ export default [
       'git push origin main                 # 现在远端旧 tip 可达',
       '~~~',
       '',
-      '不要用 force 把“尚未理解的分叉”快速消掉。'
+      '第一次 push 会因远端旧 tip 不是本地新 tip 的祖先而被拒绝；完成 fetch、审查并合入双方提交后，`merge-base --is-ancestor` 返回成功，第二次 push 才安全通过。不要用 force 把“尚未理解的分叉”快速消掉。'
     ].join('\n'),
     followUps: [
       {
@@ -1620,4 +1622,4 @@ export default [
       { label: 'Semantic Versioning 2.0.0', url: 'https://semver.org/' }
     ]
   }
-]
+], { bankId: 'git-engineering' })

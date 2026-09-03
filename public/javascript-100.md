@@ -21,9 +21,10 @@
 
 **代码 / 场景：**
 
-三个检查展示 typeof 的历史结果、null 的真实分类，以及稳妥的非空对象守卫。
+**示例场景：** 三个检查展示 typeof 的历史结果、null 的真实分类，以及稳妥的非空对象守卫。
 
 ~~~js
+// 示例重点：三个检查展示 typeof 的历史结果、null 的真实分类，以及稳妥的非空对象守卫。
 const value = null
 console.log(typeof value) // 'object'
 console.log(value === null) // true
@@ -33,7 +34,9 @@ try { Object.keys(value) } catch (error) {
 }
 ~~~
 
-因此不能只用 typeof value === 'object' 就断言 value 可安全当作对象使用。
+- **观察目标：** 结果是字符串 'object' 。这是 JavaScript 早期实现遗留行为； null 本身仍是原始空值，判断它应直接使用 value === null 。
+
+**对照结果：** 因此不能只用 typeof value === 'object' 就断言 value 可安全当作对象使用。
 
 **递进追问：**
 
@@ -78,9 +81,10 @@ NaN 与任何值都不相等，包括它自己。判断 NaN 优先使用 Number.
 
 **代码 / 场景：**
 
-下面同时比较三种检测方式，输出揭示严格相等与 SameValue 的差异。
+**示例场景：** 下面同时比较三种检测方式，输出揭示严格相等与 SameValue 的差异。
 
 ~~~js
+// 示例重点：下面同时比较三种检测方式，输出揭示严格相等与 SameValue 的差异。
 const result = 0 / 0
 console.log(result === NaN)          // false
 console.log(Number.isNaN(result))    // true
@@ -88,7 +92,9 @@ console.log(Object.is(result, NaN))  // true
 console.log(Number.isNaN('hello'))  // false
 ~~~
 
-最后一项为 false，因为 Number.isNaN 不会先把字符串强制转换成数字。
+- **观察目标：** NaN 与任何值都不相等，包括它自己。判断 NaN 优先使用 Number.isNaN value 。
+
+**对照结果：** 最后一项为 false，因为 Number.isNaN 不会先把字符串强制转换成数字。
 
 **递进追问：**
 
@@ -133,9 +139,10 @@ Number.isNaN 不进行隐式类型转换，字符串不是数值 NaN，所以返
 
 **代码 / 场景：**
 
-先检测原值，再显式转换，可清楚分离“输入类型不对”和“转换得到无效数值”两个阶段。
+**示例场景：** 先检测原值，再显式转换，可清楚分离“输入类型不对”和“转换得到无效数值”两个阶段。
 
 ~~~js
+// 示例重点：先检测原值，再显式转换，可清楚分离“输入类型不对”和“转换得到无效数值”两个阶段。
 const input = 'hello'
 console.log(Number.isNaN(input))         // false
 const parsed = Number(input)
@@ -144,7 +151,9 @@ console.log(Number.isNaN(parsed))        // true
 console.log(Number.isNaN(Number('')))   // false，因为 Number('') 是 0
 ~~~
 
-因此校验文本字段时不能只看最后一行 API，还要先定义允许的文本语法。
+- **观察目标：** Number.isNaN 不进行隐式类型转换，字符串不是数值 NaN，所以返回 false。
+
+**对照结果：** 因此校验文本字段时不能只看最后一行 API，还要先定义允许的文本语法。
 
 **递进追问：**
 
@@ -189,9 +198,10 @@ console.log(Number.isNaN(Number('')))   // false，因为 Number('') 是 0
 
 **代码 / 场景：**
 
-第一个表达式安全返回字符串；第二个直接读取同名标识符会抛异常，二者不能互换。
+**示例场景：** 第一个表达式安全返回字符串；第二个直接读取同名标识符会抛异常，二者不能互换。
 
 ~~~js
+// 示例重点：第一个表达式安全返回字符串；第二个直接读取同名标识符会抛异常，二者不能互换。
 console.log(typeof neverDeclared) // 'undefined'
 try {
   console.log(neverDeclared)
@@ -207,7 +217,9 @@ try {
 let temporal = 1
 ~~~
 
-temporal 已有词法绑定但尚未初始化，因此不享受未解析引用的特殊分支。
+- **观察目标：** typeof 对未声明标识符会安全返回字符串 'undefined' ；直接读取该变量才会抛出 ReferenceError 。
+
+**对照结果：** temporal 已有词法绑定但尚未初始化，因此不享受未解析引用的特殊分支。
 
 **递进追问：**
 
@@ -252,9 +264,10 @@ temporal 已有词法绑定但尚未初始化，因此不享受未解析引用�
 
 **代码 / 场景：**
 
-普通 Symbol 每次创建新身份，而 Symbol.for 会对同一注册表键复用身份。
+**示例场景：** 普通 Symbol 每次创建新身份，而 Symbol.for 会对同一注册表键复用身份。
 
 ~~~js
+// 示例重点：普通 Symbol 每次创建新身份，而 Symbol.for 会对同一注册表键复用身份。
 const a = Symbol('id')
 const b = Symbol('id')
 console.log(a === b) // false
@@ -266,7 +279,9 @@ console.log(Symbol.keyFor(a)) // undefined
 console.log(Symbol.keyFor(sharedA)) // 'id'
 ~~~
 
-description 相同只影响展示；是否进入注册表才决定能否按名称取回同一值。
+- **观察目标：** 每次调用 Symbol 都会创建唯一值，描述文字相同不代表同一个 Symbol。
+
+**对照结果：** description 相同只影响展示；是否进入注册表才决定能否按名称取回同一值。
 
 **递进追问：**
 
@@ -311,9 +326,10 @@ BigInt 与 Number 不能直接参与算术运算，需要先把两边转换成�
 
 **代码 / 场景：**
 
-混合运算失败后，两个显式方案都能运行，但转成 Number 的方案需要考虑精度边界。
+**示例场景：** 混合运算失败后，两个显式方案都能运行，但转成 Number 的方案需要考虑精度边界。
 
 ~~~js
+// 示例重点：混合运算失败后，两个显式方案都能运行，但转成 Number 的方案需要考虑精度边界。
 try {
   console.log(1n + 1)
 } catch (error) {
@@ -326,7 +342,9 @@ const huge = 9007199254740993n
 console.log(Number(huge)) // 9007199254740992，已经丢失精度
 ~~~
 
-显式转换让精度风险出现在代码审查点，而不是由运算符悄悄决定。
+- **观察目标：** BigInt 与 Number 不能直接参与算术运算，需要先把两边转换成同一种数值类型。
+
+**对照结果：** 显式转换让精度风险出现在代码审查点，而不是由运算符悄悄决定。
 
 **递进追问：**
 
@@ -371,9 +389,10 @@ console.log(Number(huge)) // 9007199254740992，已经丢失精度
 
 **代码 / 场景：**
 
-属性访问、默认参数和 JSON 输出共同展示两个空值在实际接口中的不同传播方式。
+**示例场景：** 属性访问、默认参数和 JSON 输出共同展示两个空值在实际接口中的不同传播方式。
 
 ~~~js
+// 示例重点：属性访问、默认参数和 JSON 输出共同展示两个空值在实际接口中的不同传播方式。
 const record = { explicit: null, missingValue: undefined }
 console.log(record.absent) // undefined
 console.log(null === undefined) // false
@@ -385,7 +404,9 @@ console.log(read(null)) // null
 console.log(JSON.stringify(record)) // '{"explicit":null}'
 ~~~
 
-是否允许 null 应由接口契约明确规定，不能只凭二者都表示“没有”就混用。
+- **观察目标：** 二者都表示“没有值”，但语义不同。null 往往由开发者明确赋值，undefined 多见于缺少参数、属性或初始化值。
+
+**对照结果：** 是否允许 null 应由接口契约明确规定，不能只凭二者都表示“没有”就混用。
 
 **递进追问：**
 
@@ -430,9 +451,10 @@ JavaScript Number 使用 IEEE 754 双精度浮点数，部分十进制小数无�
 
 **代码 / 场景：**
 
-打印实际结果与误差，并用尺度相关容差完成更稳妥的近似比较。
+**示例场景：** 打印实际结果与误差，并用尺度相关容差完成更稳妥的近似比较。
 
 ~~~js
+// 示例重点：打印实际结果与误差，并用尺度相关容差完成更稳妥的近似比较。
 const actual = 0.1 + 0.2
 const expected = 0.3
 console.log(actual) // 0.30000000000000004
@@ -442,7 +464,9 @@ const tolerance = Number.EPSILON * Math.max(1, Math.abs(actual), Math.abs(expect
 console.log(Math.abs(actual - expected) <= tolerance) // true
 ~~~
 
-Number.EPSILON 是 1 附近的间隔，数值很大时应按尺度放大容差。
+- **观察目标：** JavaScript Number 使用 IEEE 754 双精度浮点数，部分十进制小数无法被二进制精确表示。比较时可使用误差范围。
+
+**对照结果：** Number.EPSILON 是 1 附近的间隔，数值很大时应按尺度放大容差。
 
 **递进追问：**
 
@@ -488,9 +512,10 @@ Object.is 使用 SameValue 语义，能认为两个 NaN 相同。
 
 **代码 / 场景：**
 
-四个输出完整展示 SameValue 与严格相等的两个差异点，而非只背一个 NaN 结论。
+**示例场景：** 四个输出完整展示 SameValue 与严格相等的两个差异点，而非只背一个 NaN 结论。
 
 ~~~js
+// 示例重点：四个输出完整展示 SameValue 与严格相等的两个差异点，而非只背一个 NaN 结论。
 console.log(Object.is(NaN, NaN)) // true
 console.log(NaN === NaN) // false
 console.log(Object.is(+0, -0)) // false
@@ -498,7 +523,9 @@ console.log(+0 === -0) // true
 console.log(Object.is(1, '1')) // false
 ~~~
 
-Object.is 不会把字符串 1 转成数字，因此它不是另一种宽松相等。
+- **观察目标：** Object.is 使用 SameValue 语义，能认为两个 NaN 相同。
+
+**对照结果：** Object.is 不会把字符串 1 转成数字，因此它不是另一种宽松相等。
 
 **递进追问：**
 
@@ -542,9 +569,10 @@ Object.is 能区分正零和负零，而 +0 === -0 的结果是 true。
 
 **代码 / 场景：**
 
-除法结果证明两个零的符号可观察；三种比较方式随后给出不同答案。
+**示例场景：** 除法结果证明两个零的符号可观察；三种比较方式随后给出不同答案。
 
 ~~~js
+// 示例重点：除法结果证明两个零的符号可观察；三种比较方式随后给出不同答案。
 const positive = +0
 const negative = -0
 console.log(1 / positive) // Infinity
@@ -554,7 +582,9 @@ console.log(positive === negative) // true
 console.log([positive].includes(negative)) // true，includes 使用 SameValueZero
 ~~~
 
-是否区分零的符号，应根据调用场景选择对应比较语义。
+- **观察目标：** Object.is 能区分正零和负零，而 +0 === -0 的结果是 true。
+
+**对照结果：** 是否区分零的符号，应根据调用场景选择对应比较语义。
 
 **递进追问：**
 
@@ -602,9 +632,10 @@ console.log([positive].includes(negative)) // true，includes 使用 SameValueZe
 
 **代码 / 场景：**
 
-下面把字符串内容与长度分开观察，并展示文本配置应采用显式解析。
+**示例场景：** 下面把字符串内容与长度分开观察，并展示文本配置应采用显式解析。
 
 ~~~js
+// 示例重点：下面把字符串内容与长度分开观察，并展示文本配置应采用显式解析。
 console.log(Boolean('false')) // true
 console.log(Boolean('0')) // true
 console.log(Boolean(' ')) // true
@@ -618,7 +649,9 @@ function parseBoolean(text) {
 console.log(parseBoolean('false')) // false
 ~~~
 
-显式解析还能拒绝拼写错误，而 Boolean 会把任何非空错误文本都视为 true。
+- **观察目标：** 非空字符串都是真值，字符串内容是不是 false 不影响转换结果。
+
+**对照结果：** 显式解析还能拒绝拼写错误，而 Boolean 会把任何非空错误文本都视为 true。
 
 **递进追问：**
 
@@ -665,9 +698,10 @@ console.log(parseBoolean('false')) // false
 
 **代码 / 场景：**
 
-把规范步骤逐项写出，可验证宽松相等与条件真假使用了不同抽象操作。
+**示例场景：** 把规范步骤逐项写出，可验证宽松相等与条件真假使用了不同抽象操作。
 
 ~~~js
+// 示例重点：把规范步骤逐项写出，可验证宽松相等与条件真假使用了不同抽象操作。
 console.log([] == false) // true
 console.log(Boolean([])) // true
 
@@ -677,7 +711,9 @@ console.log(Number(false)) // 0
 console.log(0 === 0) // true
 ~~~
 
-第一个 true 不能推导出数组是假值；第二行直接证明空数组对象仍为真值。
+- **观察目标：** 宽松相等会发生类型转换：空数组先转为空字符串，再转为数值 0；false 也转为 0。
+
+**对照结果：** 第一个 true 不能推导出数组是假值；第二行直接证明空数组对象仍为真值。
 
 **递进追问：**
 
@@ -722,9 +758,10 @@ console.log(0 === 0) // true
 
 **代码 / 场景：**
 
-用 JSON.stringify 包裹输出能让不可见的空字符串显式显示为两个引号。
+**示例场景：** 用 JSON.stringify 包裹输出能让不可见的空字符串显式显示为两个引号。
 
 ~~~js
+// 示例重点：用 JSON.stringify 包裹输出能让不可见的空字符串显式显示为两个引号。
 const left = []
 const right = []
 const result = left + right
@@ -734,7 +771,9 @@ console.log([1, 2] + [3, 4]) // '1,23,4'
 console.log([1, 2].concat([3, 4])) // [1, 2, 3, 4]
 ~~~
 
-第三个结果是两段数组字符串拼接，不是四个数字组成的新数组。
+- **观察目标：** 加号两侧的空数组都会转成空字符串，因此结果也是空字符串。
+
+**对照结果：** 第三个结果是两段数组字符串拼接，不是四个数字组成的新数组。
 
 **递进追问：**
 
@@ -780,9 +819,10 @@ console.log([1, 2].concat([3, 4])) // [1, 2, 3, 4]
 
 **代码 / 场景：**
 
-括号强制两侧都按表达式解析，随后分解每一步的原始值转换。
+**示例场景：** 括号强制两侧都按表达式解析，随后分解每一步的原始值转换。
 
 ~~~js
+// 示例重点：括号强制两侧都按表达式解析，随后分解每一步的原始值转换。
 const result = ([] + {})
 console.log(result) // '[object Object]'
 console.log([].toString()) // ''
@@ -792,7 +832,9 @@ console.log(({}).toString()) // '[object Object]'
 console.log(({} + [])) // '[object Object]'，括号消除块语句歧义
 ~~~
 
-实际工程不要使用这种隐式序列化；对象文本应通过明确格式化或 JSON 规则生成。
+- **观察目标：** 空数组转为空字符串，普通对象转为字符串 object Object ，随后进行字符串拼接。
+
+**对照结果：** 实际工程不要使用这种隐式序列化；对象文本应通过明确格式化或 JSON 规则生成。
 
 **递进追问：**
 
@@ -838,9 +880,10 @@ Number 会先处理空白，空字符串转换为数值 0。
 
 **代码 / 场景：**
 
-空文本与带尾随字符文本分别揭示 Number 的整体转换规则，以及必填校验为何要先检查空白。
+**示例场景：** 空文本与带尾随字符文本分别揭示 Number 的整体转换规则，以及必填校验为何要先检查空白。
 
 ~~~js
+// 示例重点：空文本与带尾随字符文本分别揭示 Number 的整体转换规则，以及必填校验为何要先检查空白。
 console.log(Number('')) // 0
 console.log(Number('   ')) // 0
 console.log(Number('12px')) // NaN
@@ -855,7 +898,9 @@ function requiredNumber(text) {
 console.log(requiredNumber(' 12 ')) // 12
 ~~~
 
-先处理必填语义，再执行数值转换，才能区分空值和真正的数字零。
+- **观察目标：** Number 会先处理空白，空字符串转换为数值 0。
+
+**对照结果：** 先处理必填语义，再执行数值转换，才能区分空值和真正的数字零。
 
 **递进追问：**
 
@@ -901,9 +946,10 @@ parseInt 从左向右解析整数，遇到无法解析的字符时停止。
 
 **代码 / 场景：**
 
-四个输入展示“合法前缀”“起始非法”“小数截断”和不同进制，便于建立完整解析模型。
+**示例场景：** 四个输入展示“合法前缀”“起始非法”“小数截断”和不同进制，便于建立完整解析模型。
 
 ~~~js
+// 示例重点：四个输入展示“合法前缀”“起始非法”“小数截断”和不同进制，便于建立完整解析模型。
 console.log(parseInt('12px', 10)) // 12
 console.log(parseInt('px12', 10)) // NaN
 console.log(parseInt('12.9', 10)) // 12
@@ -916,7 +962,9 @@ function parseWholeInteger(text) {
 console.log(parseWholeInteger('-42')) // -42
 ~~~
 
-严格函数先验证整个字符串，因此不会把单位或小数部分静默丢弃。
+- **观察目标：** parseInt 从左向右解析整数，遇到无法解析的字符时停止。
+
+**对照结果：** 严格函数先验证整个字符串，因此不会把单位或小数部分静默丢弃。
 
 **递进追问：**
 
@@ -961,9 +1009,10 @@ console.log(parseWholeInteger('-42')) // -42
 
 **代码 / 场景：**
 
-同一组输入同时交给全局 isNaN 与 Number.isNaN，可以看到隐式转换造成的差异。
+**示例场景：** 同一组输入同时交给全局 isNaN 与 Number.isNaN，可以看到隐式转换造成的差异。
 
 ~~~js
+// 示例重点：同一组输入同时交给全局 isNaN 与 Number.isNaN，可以看到隐式转换造成的差异。
 console.log(isNaN('hello')) // true
 console.log(Number.isNaN('hello')) // false
 console.log(isNaN('')) // false，因为 Number('') 是 0
@@ -973,7 +1022,9 @@ const converted = Number('hello')
 console.log(Number.isNaN(converted)) // true
 ~~~
 
-显式转换版本把转换边界写在代码中，更便于审查空值和格式规则。
+- **观察目标：** 全局 isNaN 会先把参数转成 Number，'hello' 转换后是 NaN。它与不转换类型的 Number.isNaN 不同。
+
+**对照结果：** 显式转换版本把转换边界写在代码中，更便于审查空值和格式规则。
 
 **递进追问：**
 
@@ -1019,9 +1070,10 @@ console.log(Number.isNaN(converted)) // true
 
 **代码 / 场景：**
 
-输出覆盖正常文本数字、非法文本、空文本和 BigInt 混用，展示 ToNumeric 的主要边界。
+**示例场景：** 输出覆盖正常文本数字、非法文本、空文本和 BigInt 混用，展示 ToNumeric 的主要边界。
 
 ~~~js
+// 示例重点：输出覆盖正常文本数字、非法文本、空文本和 BigInt 混用，展示 ToNumeric 的主要边界。
 const value = '5' - 2
 console.log(value, typeof value) // 3 number
 console.log('5px' - 2) // NaN
@@ -1033,7 +1085,9 @@ try {
 }
 ~~~
 
-文本输入能参与减法不代表它已通过业务格式验证，转换应尽量显式。
+- **观察目标：** 减号只执行数值运算，会把字符串 '5' 转为数字 5。
+
+**对照结果：** 文本输入能参与减法不代表它已通过业务格式验证，转换应尽量显式。
 
 **递进追问：**
 
@@ -1079,9 +1133,10 @@ try {
 
 **代码 / 场景：**
 
-除基本结果外，两个分组示例说明转换发生在每一次加号，而不是整条表达式最后统一决定。
+**示例场景：** 除基本结果外，两个分组示例说明转换发生在每一次加号，而不是整条表达式最后统一决定。
 
 ~~~js
+// 示例重点：除基本结果外，两个分组示例说明转换发生在每一次加号，而不是整条表达式最后统一决定。
 const result = '5' + 2
 console.log(result, typeof result) // '52' string
 console.log(1 + 2 + '3') // '33'
@@ -1089,7 +1144,9 @@ console.log(1 + (2 + '3')) // '123'
 console.log(Number('5') + 2) // 7
 ~~~
 
-若业务语义是数值相加，应在边界显式转换并验证，而不是依赖运算符猜测。
+- **观察目标：** 加号遇到字符串会执行字符串拼接，因此数字 2 被转成字符串。
+
+**对照结果：** 若业务语义是数值相加，应在边界显式转换并验证，而不是依赖运算符猜测。
 
 **递进追问：**
 
@@ -1134,9 +1191,10 @@ console.log(Number('5') + 2) // 7
 
 **代码 / 场景：**
 
-额外比较 0 可证明 null 与 undefined 的宽松相等不是把两者统一转成数字零。
+**示例场景：** 额外比较 0 可证明 null 与 undefined 的宽松相等不是把两者统一转成数字零。
 
 ~~~js
+// 示例重点：额外比较 0 可证明 null 与 undefined 的宽松相等不是把两者统一转成数字零。
 console.log(null == undefined) // true
 console.log(null === undefined) // false
 console.log(null == 0) // false
@@ -1149,7 +1207,9 @@ console.log(isNullish(null), isNullish(undefined), isNullish(0))
 // true true false
 ~~~
 
-若采用该惯用法，应把函数命名和 lint 例外限制在“空值合并”这个明确意图中。
+- **观察目标：** 宽松相等规则中特别规定 null 与 undefined 相等；严格相等还会比较类型，因此为 false。
+
+**对照结果：** 若采用该惯用法，应把函数命名和 lint 例外限制在“空值合并”这个明确意图中。
 
 **递进追问：**
 
@@ -1197,9 +1257,10 @@ var 不受普通代码块限制，但会受到函数边界限制；let 和 const
 
 **代码 / 场景：**
 
-if 块没有限制 local 的可见性，但函数边界阻止它泄漏到外部。
+**示例场景：** if 块没有限制 local 的可见性，但函数边界阻止它泄漏到外部。
 
 ~~~js
+// 示例重点：if 块没有限制 local 的可见性，但函数边界阻止它泄漏到外部。
 function inspect(flag) {
   console.log(local) // undefined，绑定已经建立
   if (flag) {
@@ -1213,7 +1274,9 @@ try { console.log(local) } catch (error) {
 }
 ~~~
 
-声明提升解释第一行 undefined，函数作用域解释最后一行在函数外不可见。
+- **观察目标：** var 不受普通代码块限制，但会受到函数边界限制；let 和 const 才具有块级作用域。
+
+**对照结果：** 声明提升解释第一行 undefined，函数作用域解释最后一行在函数外不可见。
 
 **递进追问：**
 
@@ -1258,9 +1321,10 @@ try { console.log(local) } catch (error) {
 
 **代码 / 场景：**
 
-外层 value 不会被读取；内层 let 从块开始已经遮蔽它，并在声明前处于暂时性死区。
+**示例场景：** 外层 value 不会被读取；内层 let 从块开始已经遮蔽它，并在声明前处于暂时性死区。
 
 ~~~js
+// 示例重点：外层 value 不会被读取；内层 let 从块开始已经遮蔽它，并在声明前处于暂时性死区。
 const value = 'outer'
 {
   try {
@@ -1273,7 +1337,9 @@ const value = 'outer'
 }
 ~~~
 
-错误不是因为变量不存在，而是当前块绑定尚未完成初始化。
+- **观察目标：** 从作用域开始到声明语句执行前属于暂时性死区，变量存在但不能访问。
+
+**对照结果：** 错误不是因为变量不存在，而是当前块绑定尚未完成初始化。
 
 **递进追问：**
 
@@ -1318,9 +1384,10 @@ const value = 'outer'
 
 **代码 / 场景：**
 
-increment 与 read 共享同一个 count 绑定；外层 createCounter 返回后，状态仍持续存在。
+**示例场景：** increment 与 read 共享同一个 count 绑定；外层 createCounter 返回后，状态仍持续存在。
 
 ~~~js
+// 示例重点：increment 与 read 共享同一个 count 绑定；外层 createCounter 返回后，状态仍持续存在。
 function createCounter() {
   let count = 0
   return {
@@ -1335,7 +1402,9 @@ console.log(counter.increment()) // 2
 console.log(counter.read()) // 2
 ~~~
 
-外部不能直接访问 count，却能通过两个闭包维护的受控接口观察同一状态。
+- **观察目标：** 内部函数即使离开外部函数执行环境，仍可访问定义时捕获的外层变量，这种能力来自闭包。
+
+**对照结果：** 外部不能直接访问 count，却能通过两个闭包维护的受控接口观察同一状态。
 
 **递进追问：**
 
@@ -1380,9 +1449,10 @@ for 循环中的 let 会为每次迭代创建新的块级绑定，定时器分�
 
 **代码 / 场景：**
 
-同步日志先出现，随后三个回调读取各自的迭代绑定，而不是共享循环结束后的变量。
+**示例场景：** 同步日志先出现，随后三个回调读取各自的迭代绑定，而不是共享循环结束后的变量。
 
 ~~~js
+// 示例重点：同步日志先出现，随后三个回调读取各自的迭代绑定，而不是共享循环结束后的变量。
 for (let i = 0; i < 3; i += 1) {
   setTimeout(() => console.log(i), 0)
 }
@@ -1390,7 +1460,9 @@ console.log('scheduled')
 // 先输出 scheduled，随后通常输出 0、1、2
 ~~~
 
-零毫秒不是立即执行；它只是让任务在当前调用栈结束后尽早进入可执行阶段。
+- **观察目标：** for 循环中的 let 会为每次迭代创建新的块级绑定，定时器分别捕获对应值。
+
+**对照结果：** 零毫秒不是立即执行；它只是让任务在当前调用栈结束后尽早进入可执行阶段。
 
 **递进追问：**
 
@@ -1436,9 +1508,10 @@ var 只有一个函数级绑定，定时器执行时循环已经结束，变量�
 
 **代码 / 场景：**
 
-第一段共享一个 var 绑定；第二段通过函数参数为每轮创建独立绑定，输出形成对照。
+**示例场景：** 第一段共享一个 var 绑定；第二段通过函数参数为每轮创建独立绑定，输出形成对照。
 
 ~~~js
+// 示例重点：第一段共享一个 var 绑定；第二段通过函数参数为每轮创建独立绑定，输出形成对照。
 for (var i = 0; i < 3; i += 1) {
   setTimeout(() => console.log(i), 0)
 }
@@ -1452,7 +1525,9 @@ for (var j = 0; j < 3; j += 1) {
 // 随后通常输出 0、1、2
 ~~~
 
-立即调用函数的参数 captured 每次都是新绑定，因此不再共享 j。
+- **观察目标：** var 只有一个函数级绑定，定时器执行时循环已经结束，变量值为 3。
+
+**对照结果：** 立即调用函数的参数 captured 每次都是新绑定，因此不再共享 j。
 
 **递进追问：**
 
@@ -1498,9 +1573,10 @@ for (var j = 0; j < 3; j += 1) {
 
 **代码 / 场景：**
 
-下面的 readName 虽在 run 内执行，却仍读取定义位置外层的 name；输出可直接证明查找依据不是调用栈。
+**示例场景：** 下面的 readName 虽在 run 内执行，却仍读取定义位置外层的 name；输出可直接证明查找依据不是调用栈。
 
 ~~~js
+// 示例重点：下面的 readName 虽在 run 内执行，却仍读取定义位置外层的 name；输出可直接证明查找依据不是调用栈。
 const name = 'outer'
 function readName() { return name }
 function run() {
@@ -1510,7 +1586,9 @@ function run() {
 console.log(run()) // 'outer'
 ~~~
 
-readName 创建时保存全局词法环境，run 的局部环境不在它的外层环境链上，因此 caller 不会被返回。
+- **观察目标：** 变量能访问哪里由代码定义位置决定，而不是由函数在哪里被调用决定。
+
+**对照结果：** readName 创建时保存全局词法环境，run 的局部环境不在它的外层环境链上，因此 caller 不会被返回。
 
 **递进追问：**
 
@@ -1555,9 +1633,10 @@ let 声明属于其所在的词法块作用域。进入花括号块时，引擎�
 
 **代码 / 场景：**
 
-同一个变量名在块内有效，块结束后已经不在当前作用域链中；捕获异常可观察精确类型。
+**示例场景：** 同一个变量名在块内有效，块结束后已经不在当前作用域链中；捕获异常可观察精确类型。
 
 ~~~js
+// 示例重点：同一个变量名在块内有效，块结束后已经不在当前作用域链中；捕获异常可观察精确类型。
 {
   let token = 'inside'
   console.log(token) // 'inside'
@@ -1569,7 +1648,9 @@ try {
 }
 ~~~
 
-这里不是 token 的值变成 undefined，而是外层环境根本解析不到这个绑定。
+- **观察目标：** let 具有块级作用域，离开花括号对应的作用域后不可访问。
+
+**对照结果：** 这里不是 token 的值变成 undefined，而是外层环境根本解析不到这个绑定。
 
 **递进追问：**
 
@@ -1614,9 +1695,10 @@ const 限制的是变量绑定不能重新赋值，并不会自动冻结对象�
 
 **代码 / 场景：**
 
-下面先修改对象内部状态，再尝试替换 const 绑定；两个操作分别由属性语义和绑定语义处理。
+**示例场景：** 下面先修改对象内部状态，再尝试替换 const 绑定；两个操作分别由属性语义和绑定语义处理。
 
 ~~~js
+// 示例重点：下面先修改对象内部状态，再尝试替换 const 绑定；两个操作分别由属性语义和绑定语义处理。
 const user = { name: 'Lin', profile: { score: 1 } }
 user.name = 'Linda'
 user.profile.score += 1
@@ -1626,7 +1708,9 @@ try { user = {} } catch (error) {
 }
 ~~~
 
-属性更新成功不意味着 const 可以重绑；两者发生在不同层级。
+- **观察目标：** const 限制的是变量绑定不能重新赋值，并不会自动冻结对象内部属性。
+
+**对照结果：** 属性更新成功不意味着 const 可以重绑；两者发生在不同层级。
 
 **递进追问：**
 
@@ -1671,9 +1755,10 @@ try { user = {} } catch (error) {
 
 **代码 / 场景：**
 
-三个输出展示遮蔽只改变当前区域的名称解析，不会修改外层绑定。
+**示例场景：** 三个输出展示遮蔽只改变当前区域的名称解析，不会修改外层绑定。
 
 ~~~js
+// 示例重点：三个输出展示遮蔽只改变当前区域的名称解析，不会修改外层绑定。
 const status = 'outer'
 function inspect() {
   const status = 'inner'
@@ -1683,7 +1768,9 @@ inspect()
 console.log(status) // 'outer'
 ~~~
 
-inspect 内第一次查询就在函数环境中命中 status；函数返回后，全局 status 仍保持 outer。
+- **观察目标：** 内层同名变量会遮蔽外层变量，内层代码优先读取自己的绑定。
+
+**对照结果：** inspect 内第一次查询就在函数环境中命中 status；函数返回后，全局 status 仍保持 outer。
 
 **递进追问：**
 
@@ -1728,9 +1815,10 @@ inspect 内第一次查询就在函数环境中命中 status；函数返回后�
 
 **代码 / 场景：**
 
-请在浏览器经典 script 中运行；模块脚本的输出不同，不能混为一谈。
+**示例场景：** 请在浏览器经典 script 中运行；模块脚本的输出不同，不能混为一谈。
 
 ~~~html
+<!-- 示例重点：请在浏览器经典 script 中运行；模块脚本的输出不同，不能混为一谈。 -->
 <script>
   var legacy = 'v'
   let lexical = 'l'
@@ -1740,7 +1828,9 @@ inspect 内第一次查询就在函数环境中命中 status；函数返回后�
 </script>
 ~~~
 
-window.lexical 为 undefined 只说明没有对应对象属性，不代表词法绑定不存在。
+- **观察目标：** 经典脚本中顶层 var 会绑定到全局对象属性，顶层 let 会进入全局词法环境而不是 window 属性。
+
+**对照结果：** window.lexical 为 undefined 只说明没有对应对象属性，不代表词法绑定不存在。
 
 **递进追问：**
 
@@ -1788,9 +1878,10 @@ window.lexical 为 undefined 只说明没有对应对象属性，不代表词法
 
 **代码 / 场景：**
 
-调用发生在声明文本之前，但初始化阶段已经把完整函数对象放入当前作用域绑定。
+**示例场景：** 调用发生在声明文本之前，但初始化阶段已经把完整函数对象放入当前作用域绑定。
 
 ~~~js
+// 示例重点：调用发生在声明文本之前，但初始化阶段已经把完整函数对象放入当前作用域绑定。
 console.log(area(3, 4)) // 12
 
 function area(width, height) {
@@ -1798,7 +1889,9 @@ function area(width, height) {
 }
 ~~~
 
-若改为 var area = function (...) {}，声明实例化阶段只有 undefined，提前调用将得到 TypeError。
+- **观察目标：** 函数声明会连同函数体一起提升，因此同一作用域中通常可以先调用后声明。
+
+**对照结果：** 若改为 var area = function (...) {}，声明实例化阶段只有 undefined，提前调用将得到 TypeError。
 
 **递进追问：**
 
@@ -1843,9 +1936,10 @@ var 声明会提升，但函数值不会提升。赋值前 fn 的值是 undefine
 
 **代码 / 场景：**
 
-捕获错误后继续执行赋值，可以清楚地区分“绑定已存在”与“值尚不可调用”。
+**示例场景：** 捕获错误后继续执行赋值，可以清楚地区分“绑定已存在”与“值尚不可调用”。
 
 ~~~js
+// 示例重点：捕获错误后继续执行赋值，可以清楚地区分“绑定已存在”与“值尚不可调用”。
 try {
   fn()
 } catch (error) {
@@ -1856,7 +1950,9 @@ var fn = function () { return 'ready' }
 console.log(fn()) // 'ready'
 ~~~
 
-第一次失败不是函数体执行失败，而是在进入函数调用前检查可调用性时失败。
+- **观察目标：** var 声明会提升，但函数值不会提升。赋值前 fn 的值是 undefined。
+
+**对照结果：** 第一次失败不是函数体执行失败，而是在进入函数调用前检查可调用性时失败。
 
 **递进追问：**
 
@@ -1900,9 +1996,10 @@ console.log(fn()) // 'ready'
 
 **代码 / 场景：**
 
-输出同时覆盖缺省、undefined、null 与惰性求值，能避免把默认参数误解为“所有假值兜底”。
+**示例场景：** 输出同时覆盖缺省、undefined、null 与惰性求值，能避免把默认参数误解为“所有假值兜底”。
 
 ~~~js
+// 示例重点：输出同时覆盖缺省、undefined、null 与惰性求值，能避免把默认参数误解为“所有假值兜底”。
 let calls = 0
 function label(value = (++calls, 'fallback')) { return value }
 console.log(label())          // 'fallback'
@@ -1912,7 +2009,9 @@ console.log(label(''))        // ''
 console.log(calls)            // 2
 ~~~
 
-只有前两次真正执行了默认表达式，所以副作用计数是 2。
+- **观察目标：** 默认参数只在实参为 undefined 时使用，null、false、0 和空字符串都会保留原值。
+
+**对照结果：** 只有前两次真正执行了默认表达式，所以副作用计数是 2。
 
 **递进追问：**
 
@@ -1957,9 +2056,10 @@ console.log(calls)            // 2
 
 **代码 / 场景：**
 
-具名参数 first 被单独绑定，其余三个值组成普通数组，可直接调用 reduce。
+**示例场景：** 具名参数 first 被单独绑定，其余三个值组成普通数组，可直接调用 reduce。
 
 ~~~js
+// 示例重点：具名参数 first 被单独绑定，其余三个值组成普通数组，可直接调用 reduce。
 function total(first, ...rest) {
   console.log(Array.isArray(rest), rest)
   return first + rest.reduce((sum, value) => sum + value, 0)
@@ -1968,7 +2068,9 @@ console.log(total(1, 2, 3, 4))
 // 先输出 true [2, 3, 4]，再输出 10
 ~~~
 
-rest 不含已经匹配 first 的第一个实参，这一点与 arguments 的内容不同。
+- **观察目标：** 剩余参数会收集未匹配的实参并生成数组，可以直接使用 map、filter 等数组方法。
+
+**对照结果：** rest 不含已经匹配 first 的第一个实参，这一点与 arguments 的内容不同。
 
 **递进追问：**
 
@@ -2013,9 +2115,10 @@ rest 不含已经匹配 first 的第一个实参，这一点与 arguments 的内
 
 **代码 / 场景：**
 
-数组元素按位置成为三个独立形参；随后修改对象元素也证明展开没有深拷贝对象。
+**示例场景：** 数组元素按位置成为三个独立形参；随后修改对象元素也证明展开没有深拷贝对象。
 
 ~~~js
+// 示例重点：数组元素按位置成为三个独立形参；随后修改对象元素也证明展开没有深拷贝对象。
 function describe(a, b, c) { return [a, b.value, c] }
 const args = [1, { value: 2 }, 3]
 console.log(describe(...args)) // [1, 2, 3]
@@ -2023,7 +2126,9 @@ args[1].value = 9
 console.log(describe(...args)) // [1, 9, 3]
 ~~~
 
-第二次输出变化来自共享的对象引用，不是展开语法重新读取了某个深拷贝。
+- **观察目标：** 展开语法会把可迭代对象中的元素依次作为函数参数传入。
+
+**对照结果：** 第二次输出变化来自共享的对象引用，不是展开语法重新读取了某个深拷贝。
 
 **递进追问：**
 
@@ -2068,9 +2173,10 @@ fn.call(obj, a, b) 会让函数执行时的 this 指向 obj，并立即传入 a�
 
 **代码 / 场景：**
 
-方法被取出后失去隐式接收者，call 在单次调用中显式恢复 this 并逐个传入参数。
+**示例场景：** 方法被取出后失去隐式接收者，call 在单次调用中显式恢复 this 并逐个传入参数。
 
 ~~~js
+// 示例重点：方法被取出后失去隐式接收者，call 在单次调用中显式恢复 this 并逐个传入参数。
 function describe(prefix, suffix) {
   return prefix + this.name + suffix
 }
@@ -2081,7 +2187,9 @@ const arrow = () => this
 console.log(arrow.call(user) === user) // false
 ~~~
 
-第二个结果说明 call 的 thisArgument 只对拥有动态 this 的普通函数生效。
+- **观察目标：** fn.call obj, a, b 会让函数执行时的 this 指向 obj，并立即传入 a、b。
+
+**对照结果：** 第二个结果说明 call 的 thisArgument 只对拥有动态 this 的普通函数生效。
 
 **递进追问：**
 
@@ -2126,9 +2234,10 @@ apply 与 call 都立即调用函数；call 逐个传参，apply 使用数组或
 
 **代码 / 场景：**
 
-同一函数通过 call 和 apply 得到相同结果；类数组示例说明 apply 依据 length 与索引取值。
+**示例场景：** 同一函数通过 call 和 apply 得到相同结果；类数组示例说明 apply 依据 length 与索引取值。
 
 ~~~js
+// 示例重点：同一函数通过 call 和 apply 得到相同结果；类数组示例说明 apply 依据 length 与索引取值。
 function sum(a, b, c) { return a + b + c }
 console.log(sum.call(null, 1, 2, 3)) // 6
 console.log(sum.apply(null, [1, 2, 3])) // 6
@@ -2138,7 +2247,9 @@ function join(a, b) { return a + b }
 console.log(join.apply(null, arrayLike)) // 'AB'
 ~~~
 
-若数据本来是 iterable，通常直接写 fn(...iterable) 更清楚。
+- **观察目标：** apply 与 call 都立即调用函数；call 逐个传参，apply 使用数组或类数组传参。
+
+**对照结果：** 若数据本来是 iterable，通常直接写 fn(...iterable) 更清楚。
 
 **递进追问：**
 
@@ -2184,9 +2295,10 @@ bind 不会立即执行，而是返回新函数，常用于事件回调、定时
 
 **代码 / 场景：**
 
-先绑定接收者和第一个参数，返回的新函数稍后再接收第二个参数并执行。
+**示例场景：** 先绑定接收者和第一个参数，返回的新函数稍后再接收第二个参数并执行。
 
 ~~~js
+// 示例重点：先绑定接收者和第一个参数，返回的新函数稍后再接收第二个参数并执行。
 function format(prefix, value) {
   return prefix + this.unit + value
 }
@@ -2197,7 +2309,9 @@ const other = { unit: 'm:' }
 console.log(formatKg.call(other, 5)) // 'mass=kg:5'
 ~~~
 
-第二次 call 没有覆盖第一次 bind 保存的 this，只改变了尚未预置的实参。
+- **观察目标：** bind 不会立即执行，而是返回新函数，常用于事件回调、定时器或参数预设。
+
+**对照结果：** 第二次 call 没有覆盖第一次 bind 保存的 this，只改变了尚未预置的实参。
 
 **递进追问：**
 
@@ -2242,9 +2356,10 @@ console.log(formatKg.call(other, 5)) // 'mass=kg:5'
 
 **代码 / 场景：**
 
-普通方法建立实例 this，内部箭头捕获它；把回调交给数组方法后仍能读取同一 prefix。
+**示例场景：** 普通方法建立实例 this，内部箭头捕获它；把回调交给数组方法后仍能读取同一 prefix。
 
 ~~~js
+// 示例重点：普通方法建立实例 this，内部箭头捕获它；把回调交给数组方法后仍能读取同一 prefix。
 const formatter = {
   prefix: 'ID-',
   format(values) {
@@ -2257,7 +2372,9 @@ const bad = { value: 1, read: () => this?.value }
 console.log(bad.read()) // 通常不是 1
 ~~~
 
-bad.read 的箭头在对象字面量外层创建，没有把 bad 设为词法 this。
+- **观察目标：** 箭头函数没有自己的 this，会沿词法作用域向外查找，因此 call、apply、bind 不能改变它的 this。
+
+**对照结果：** bad.read 的箭头在对象字面量外层创建，没有把 bad 设为词法 this。
 
 **递进追问：**
 
@@ -2303,9 +2420,10 @@ new 的构造绑定优先级高于 bind 的 this 绑定，但 bind 预设的参�
 
 **代码 / 场景：**
 
-fake 没有被写入，预置姓名仍生效，新对象继承 Person.prototype 并通过两种 instanceof。
+**示例场景：** fake 没有被写入，预置姓名仍生效，新对象继承 Person.prototype 并通过两种 instanceof。
 
 ~~~js
+// 示例重点：fake 没有被写入，预置姓名仍生效，新对象继承 Person.prototype 并通过两种 instanceof。
 function Person(name, age) {
   this.name = name
   this.age = age
@@ -2320,7 +2438,9 @@ console.log(person instanceof Person) // true
 console.log(person instanceof BoundPerson) // true
 ~~~
 
-new 的构造绑定决定 this，bind 只保留预置参数和目标构造器关系。
+- **观察目标：** new 的构造绑定优先级高于 bind 的 this 绑定，但 bind 预设的参数仍然有效。
+
+**对照结果：** new 的构造绑定决定 this，bind 只保留预置参数和目标构造器关系。
 
 **递进追问：**
 
@@ -2367,9 +2487,10 @@ Object.assign 只复制源对象自身可枚举属性的当前值，嵌套对象
 
 **代码 / 场景：**
 
-顶层 name 被复制为独立字符串，嵌套 profile 则共享同一个对象引用。
+**示例场景：** 顶层 name 被复制为独立字符串，嵌套 profile 则共享同一个对象引用。
 
 ~~~js
+// 示例重点：顶层 name 被复制为独立字符串，嵌套 profile 则共享同一个对象引用。
 const source = { name: 'Lin', profile: { score: 1 } }
 const clone = Object.assign({}, source)
 clone.name = 'Linda'
@@ -2380,7 +2501,9 @@ console.log(source.profile.score) // 9
 console.log(clone.profile === source.profile) // true
 ~~~
 
-只有第一层属性槽位被复制；槽位里若存引用，目标和源仍指向同一嵌套对象。
+- **观察目标：** Object.assign 只复制源对象自身可枚举属性的当前值，嵌套对象仍与源对象共享引用。
+
+**对照结果：** 只有第一层属性槽位被复制；槽位里若存引用，目标和源仍指向同一嵌套对象。
 
 **递进追问：**
 
@@ -2425,9 +2548,10 @@ console.log(clone.profile === source.profile) // true
 
 **代码 / 场景：**
 
-getter 在展开时执行一次并变成数据属性；nested 仍共享引用，说明只有第一层被复制。
+**示例场景：** getter 在展开时执行一次并变成数据属性；nested 仍共享引用，说明只有第一层被复制。
 
 ~~~js
+// 示例重点：getter 在展开时执行一次并变成数据属性；nested 仍共享引用，说明只有第一层被复制。
 let reads = 0
 const source = {
   nested: { count: 1 },
@@ -2441,7 +2565,9 @@ console.log(clone.nested.count) // 2
 console.log(Object.getOwnPropertyDescriptor(clone, 'label').get) // undefined
 ~~~
 
-clone.label 已是普通数据值，原 getter 描述符没有被复制。
+- **观察目标：** 对象展开和 Object.assign 类似，只复制第一层属性。
+
+**对照结果：** clone.label 已是普通数据值，原 getter 描述符没有被复制。
 
 **递进追问：**
 
@@ -2487,9 +2613,10 @@ Object.keys 不包含继承属性、不可枚举属性和 Symbol 键。
 
 **代码 / 场景：**
 
-示例同时加入继承键、不可枚举键、Symbol 键与整数索引，输出能验证四项过滤规则。
+**示例场景：** 示例同时加入继承键、不可枚举键、Symbol 键与整数索引，输出能验证四项过滤规则。
 
 ~~~js
+// 示例重点：示例同时加入继承键、不可枚举键、Symbol 键与整数索引，输出能验证四项过滤规则。
 const proto = { inherited: 'p' }
 const obj = Object.create(proto)
 obj.name = 'Lin'
@@ -2503,7 +2630,9 @@ console.log(Object.keys(obj)) // ['1', '2', 'name']
 console.log(Reflect.ownKeys(obj)) // ['1', '2', 'name', 'hidden', Symbol(secret)]
 ~~~
 
-inherited 不在任何自有键结果中；Reflect.ownKeys 才包含隐藏字符串键和 Symbol。
+- **观察目标：** Object.keys 不包含继承属性、不可枚举属性和 Symbol 键。
+
+**对照结果：** inherited 不在任何自有键结果中；Reflect.ownKeys 才包含隐藏字符串键和 Symbol。
 
 **递进追问：**
 
@@ -2549,9 +2678,10 @@ in 操作符会检查对象自身以及原型链，普通对象可从 Object.pro
 
 **代码 / 场景：**
 
-普通对象、空原型对象和“存在但值为 undefined”的属性构成三个明确对照。
+**示例场景：** 普通对象、空原型对象和“存在但值为 undefined”的属性构成三个明确对照。
 
 ~~~js
+// 示例重点：普通对象、空原型对象和“存在但值为 undefined”的属性构成三个明确对照。
 console.log('toString' in {}) // true
 console.log(Object.hasOwn({}, 'toString')) // false
 
@@ -2563,7 +2693,9 @@ console.log('value' in record) // true
 console.log(record.value === undefined) // true
 ~~~
 
-最后两行说明读取到 undefined 不能区分“缺少属性”和“属性值恰为 undefined”。
+- **观察目标：** in 操作符会检查对象自身以及原型链，普通对象可从 Object.prototype 继承 toString。
+
+**对照结果：** 最后两行说明读取到 undefined 不能区分“缺少属性”和“属性值恰为 undefined”。
 
 **递进追问：**
 
@@ -2609,9 +2741,10 @@ Object.hasOwn 只检查对象自身属性，比直接调用 obj.hasOwnProperty �
 
 **代码 / 场景：**
 
-无原型对象没有 hasOwnProperty 方法，但 Object.hasOwn 仍能安全识别值为 undefined 的自有字段。
+**示例场景：** 无原型对象没有 hasOwnProperty 方法，但 Object.hasOwn 仍能安全识别值为 undefined 的自有字段。
 
 ~~~js
+// 示例重点：无原型对象没有 hasOwnProperty 方法，但 Object.hasOwn 仍能安全识别值为 undefined 的自有字段。
 const dict = Object.create(null)
 dict.enabled = undefined
 
@@ -2624,7 +2757,9 @@ console.log(Object.hasOwn(child, 'inherited')) // false
 console.log('inherited' in child) // true
 ~~~
 
-最后两行把自有属性检查与原型链可见性明确区分开。
+- **观察目标：** Object.hasOwn 只检查对象自身属性，比直接调用 obj.hasOwnProperty 更安全。
+
+**对照结果：** 最后两行把自有属性检查与原型链可见性明确区分开。
 
 **递进追问：**
 
@@ -2669,9 +2804,10 @@ delete 删除属性本身，而不是简单赋值 undefined；不可配置属性
 
 **代码 / 场景：**
 
-删除自有属性后，读取结果从 own 切换到原型 inherited；数组示例展示 delete 不会收缩长度。
+**示例场景：** 删除自有属性后，读取结果从 own 切换到原型 inherited；数组示例展示 delete 不会收缩长度。
 
 ~~~js
+// 示例重点：删除自有属性后，读取结果从 own 切换到原型 inherited；数组示例展示 delete 不会收缩长度。
 const proto = { role: 'inherited' }
 const user = Object.create(proto)
 user.role = 'own'
@@ -2686,7 +2822,9 @@ console.log(values.length) // 3
 console.log(1 in values) // false
 ~~~
 
-属性不存在与属性值 undefined 是不同状态，可用 hasOwn 或 in 精确验证。
+- **观察目标：** delete 删除属性本身，而不是简单赋值 undefined；不可配置属性无法被成功删除。
+
+**对照结果：** 属性不存在与属性值 undefined 是不同状态，可用 hasOwn 或 in 精确验证。
 
 **递进追问：**
 
@@ -2731,9 +2869,10 @@ Object.freeze 是浅冻结。若要深冻结，需要自行递归处理嵌套对
 
 **代码 / 场景：**
 
-顶层 name 无法改变，嵌套 profile.score 却仍能修改；严格模式让失败以异常显式出现。
+**示例场景：** 顶层 name 无法改变，嵌套 profile.score 却仍能修改；严格模式让失败以异常显式出现。
 
 ~~~js
+// 示例重点：顶层 name 无法改变，嵌套 profile.score 却仍能修改；严格模式让失败以异常显式出现。
 'use strict'
 const user = Object.freeze({ name: 'Lin', profile: { score: 1 } })
 
@@ -2748,7 +2887,9 @@ console.log(user.profile.score) // 2
 console.log(Object.isFrozen(user.profile)) // false
 ~~~
 
-freeze 只改变 user 自身描述符，没有递归访问 profile。
+- **观察目标：** Object.freeze 是浅冻结。若要深冻结，需要自行递归处理嵌套对象。
+
+**对照结果：** freeze 只改变 user 自身描述符，没有递归访问 profile。
 
 **递进追问：**
 
@@ -2796,9 +2937,10 @@ freeze 只改变 user 自身描述符，没有递归访问 profile。
 
 **代码 / 场景：**
 
-dog 自身只有 name，speak 来自 animal 原型；null 原型字典则没有任何默认继承方法。
+**示例场景：** dog 自身只有 name，speak 来自 animal 原型；null 原型字典则没有任何默认继承方法。
 
 ~~~js
+// 示例重点：dog 自身只有 name，speak 来自 animal 原型；null 原型字典则没有任何默认继承方法。
 const animal = {
   speak() { return this.name + ' speaks' }
 }
@@ -2813,7 +2955,9 @@ dict.key = 'value'
 console.log('toString' in dict) // false
 ~~~
 
-继承是运行时委托，不是把 speak 方法复制进 dog。
+- **观察目标：** 新对象会通过原型链继承 proto 上的属性和方法，但不会复制这些属性。
+
+**对照结果：** 继承是运行时委托，不是把 speak 方法复制进 dog。
 
 **递进追问：**
 
@@ -2859,9 +3003,10 @@ console.log('toString' in dict) // false
 
 **代码 / 场景：**
 
-同一对象中放入可枚举字符串键、不可枚举字符串键与 Symbol 键，可直接看到三个 API 的范围差异。
+**示例场景：** 同一对象中放入可枚举字符串键、不可枚举字符串键与 Symbol 键，可直接看到三个 API 的范围差异。
 
 ~~~js
+// 示例重点：同一对象中放入可枚举字符串键、不可枚举字符串键与 Symbol 键，可直接看到三个 API 的范围差异。
 const obj = { visible: 1 }
 Object.defineProperty(obj, 'hidden', {
   value: 2,
@@ -2875,7 +3020,9 @@ console.log(Object.getOwnPropertyNames(obj)) // ['visible', 'hidden']
 console.log(Reflect.ownKeys(obj)) // ['visible', 'hidden', Symbol(token)]
 ~~~
 
-Reflect.ownKeys 覆盖最全，但仍只返回自有键，不包含原型链属性。
+- **观察目标：** 三者都只查自有属性。Object.keys 只取可枚举字符串键；Object.getOwnPropertyNames 取全部字符串键；Reflect.ownKeys 还会纳入 Symbol 键。
+
+**对照结果：** Reflect.ownKeys 覆盖最全，但仍只返回自有键，不包含原型链属性。
 
 **递进追问：**
 
@@ -2922,9 +3069,10 @@ Reflect.ownKeys 覆盖最全，但仍只返回自有键，不包含原型链属�
 
 **代码 / 场景：**
 
-缺失与 undefined 触发默认值，null 保留；空值合并则能有意覆盖两种空值而保留 0。
+**示例场景：** 缺失与 undefined 触发默认值，null 保留；空值合并则能有意覆盖两种空值而保留 0。
 
 ~~~js
+// 示例重点：缺失与 undefined 触发默认值，null 保留；空值合并则能有意覆盖两种空值而保留 0。
 const a = { value: null }
 const b = { value: undefined }
 const c = {}
@@ -2938,7 +3086,9 @@ console.log(av ?? 'fallback') // 'fallback'
 console.log(0 ?? 'fallback') // 0
 ~~~
 
-是否把 null 当作缺失必须由业务契约决定，不能依赖解构默认语法猜测。
+- **观察目标：** 解构默认值只在属性值严格等于 undefined 时生效，null 会被保留。
+
+**对照结果：** 是否把 null 当作缺失必须由业务契约决定，不能依赖解构默认语法猜测。
 
 **递进追问：**
 
@@ -2986,14 +3136,19 @@ map 会创建并返回一个新数组，新数组的长度在调用开始时就�
 
 **代码 / 场景：**
 
-下面的回调明确返回计算结果，所以输出是新数组 [2, 4, 6]，原数组仍为 [1, 2, 3]；若漏写 return，三个位置都会得到 undefined。
+**示例场景：** 下面的回调明确返回计算结果，所以输出是新数组 [2, 4, 6]，原数组仍为 [1, 2, 3]；若漏写 return，三个位置都会得到 undefined。
 
 ~~~js
+// 示例重点：下面的回调明确返回计算结果，所以输出是新数组 [2, 4, 6]，原数组仍为 [1, 2, 3]；若漏写 return，三个位置都会得…
 const source = [1, 2, 3]
 const doubled = source.map((value, index) => value * 2)
 console.log(doubled) // [2, 4, 6]
 console.log(source)  // [1, 2, 3]
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Array.prototype.map 的返回值是什么”：示例场景： 下面的回调明确返回计算结果，所以输出是新数组 2, 4, 6 ，原数组仍为 1, 2, 3 ；若漏写 return，三个位置都会得到 undefined。
 
 **递进追问：**
 
@@ -3038,9 +3193,10 @@ forEach 本身是同步算法，不会等待回调返回的 Promise，因此把 
 
 **代码 / 场景：**
 
-回调虽然返回 value * 2，forEach 仍返回 undefined；副作用只体现在 total 被更新。若需要得到映射数组，应改用 map，而不是误以为 forEach 会收集返回值。
+**示例场景：** 回调虽然返回 value * 2，forEach 仍返回 undefined；副作用只体现在 total 被更新。若需要得到映射数组，应改用 map，而不是误以为 forEach 会收集返回值。
 
 ~~~js
+// 示例重点：回调虽然返回 value 2，forEach 仍返回 undefined；副作用只体现在 total 被更新。若需要得到映射数组，应改…
 let total = 0
 const result = [1, 2, 3].forEach((value) => {
   total += value
@@ -3049,6 +3205,10 @@ const result = [1, 2, 3].forEach((value) => {
 console.log(result) // undefined
 console.log(total)  // 6
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Array.prototype.forEach 的返回值是什么”：若需要得到映射数组，应改用 map，而不是误以为 forEach 会收集返回值。
 
 **递进追问：**
 
@@ -3093,15 +3253,20 @@ filter 用于按谓词筛选元素，并返回一个新的浅拷贝数组。算�
 
 **代码 / 场景：**
 
-示例同时说明筛选条件和浅拷贝边界：结果只保留 active 为 true 的对象，但对象引用仍共享，因此随后修改 activeUsers[0].name 也会改变 users[0].name。
+**示例场景：** 示例同时说明筛选条件和浅拷贝边界：结果只保留 active 为 true 的对象，但对象引用仍共享，因此随后修改 activeUsers[0].name 也会改变 users[0].name。
 
 ~~~js
+// 示例重点：示例同时说明筛选条件和浅拷贝边界：结果只保留 active 为 true 的对象，但对象引用仍共享，因此随后修改 activeUser…
 const users = [{ name: 'A', active: true }, { name: 'B', active: false }]
 const activeUsers = users.filter((user) => user.active)
 activeUsers[0].name = 'Ada'
 console.log(activeUsers.length) // 1
 console.log(users[0].name)      // 'Ada'
 ~~~
+
+**对照结果：**
+
+用这个结果回答“filter 的作用是什么”：示例场景： 示例同时说明筛选条件和浅拷贝边界：结果只保留 active 为 true 的对象，但对象引用仍共享，因此随后修改 activeUsers 0 .name 也会改变 users 0 .name。
 
 **递进追问：**
 
@@ -3146,9 +3311,10 @@ reduce 让累计值依次处理每个元素，可用于求和、分组、构建�
 
 **代码 / 场景：**
 
-这里用对象作为明确初值，把订单金额按类别汇总。每轮都返回 accumulator；最终输出 { book: 50, food: 20 }，输入订单数组没有被修改。
+**示例场景：** 这里用对象作为明确初值，把订单金额按类别汇总。每轮都返回 accumulator；最终输出 { book: 50, food: 20 }，输入订单数组没有被修改。
 
 ~~~js
+// 示例重点：这里用对象作为明确初值，把订单金额按类别汇总。每轮都返回 accumulator；最终输出 { book: 50, food: 20…
 const orders = [
   { kind: 'book', amount: 30 },
   { kind: 'food', amount: 20 },
@@ -3160,6 +3326,10 @@ const totals = orders.reduce((acc, order) => {
 }, {})
 console.log(totals) // { book: 50, food: 20 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“reduce 最核心的用途是什么”：每轮都返回 accumulator；最终输出 book: 50, food: 20 ，输入订单数组没有被修改。
 
 **递进追问：**
 
@@ -3204,13 +3374,18 @@ find 会按索引升序调用谓词，并在第一次得到真值时立即返回
 
 **代码 / 场景：**
 
-第一次年龄不小于 18 的对象会被直接返回，后面的元素不再测试；第二次没有匹配项，因此输出 undefined。对象是原数组中的同一个引用，并非副本。
+**示例场景：** 第一次年龄不小于 18 的对象会被直接返回，后面的元素不再测试；第二次没有匹配项，因此输出 undefined。对象是原数组中的同一个引用，并非副本。
 
 ~~~js
+// 示例重点：第一次年龄不小于 18 的对象会被直接返回，后面的元素不再测试；第二次没有匹配项，因此输出 undefined。对象是原数组中的同一个…
 const users = [{ name: 'A', age: 16 }, { name: 'B', age: 20 }, { name: 'C', age: 30 }]
 console.log(users.find((user) => user.age >= 18)) // { name: 'B', age: 20 }
 console.log(users.find((user) => user.age > 40))  // undefined
 ~~~
+
+**对照结果：**
+
+用这个结果回答“find 没找到匹配元素时返回什么”：示例场景： 第一次年龄不小于 18 的对象会被直接返回，后面的元素不再测试；第二次没有匹配项，因此输出 undefined。
 
 **递进追问：**
 
@@ -3255,9 +3430,10 @@ some 用来回答“是否至少有一个元素满足条件”。它按升序检
 
 **代码 / 场景：**
 
-第三个数满足大于 10，some 随即停止，所以 visited 是 3 而不是 4；这说明它不仅返回布尔值，还具备短路特性。
+**示例场景：** 第三个数满足大于 10，some 随即停止，所以 visited 是 3 而不是 4；这说明它不仅返回布尔值，还具备短路特性。
 
 ~~~js
+// 示例重点：第三个数满足大于 10，some 随即停止，所以 visited 是 3 而不是 4；这说明它不仅返回布尔值，还具备短路特性。
 let visited = 0
 const matched = [2, 4, 12, 100].some((value) => {
   visited += 1
@@ -3266,6 +3442,12 @@ const matched = [2, 4, 12, 100].some((value) => {
 console.log(matched) // true
 console.log(visited) // 3
 ~~~
+
+- **观察目标：** some 遇到第一个真值就短路返回 true，适合判断“是否存在”。
+
+**对照结果：**
+
+用这个结果回答“some 在什么时候返回 true”：- 观察目标： some 遇到第一个真值就短路返回 true，适合判断“是否存在”。
 
 **递进追问：**
 
@@ -3310,15 +3492,20 @@ Boolean 作为谓词会对元素做真值转换，并不是检查值的类型是
 
 **代码 / 场景：**
 
-第一个结果是 true，因为空数组不存在假值；第二个结果是 false，因为数字 0 经 Boolean 转换后为 false。计数还能证明空数组时回调没有运行。
+**示例场景：** 第一个结果是 true，因为空数组不存在假值；第二个结果是 false，因为数字 0 经 Boolean 转换后为 false。计数还能证明空数组时回调没有运行。
 
 ~~~js
+// 示例重点：第一个结果是 true，因为空数组不存在假值；第二个结果是 false，因为数字 0 经 Boolean 转换后为 false。计数还…
 let calls = 0
 const emptyResult = [].every((value) => { calls += 1; return Boolean(value) })
 const valuesResult = [1, 2, 0].every(Boolean)
 console.log(emptyResult, calls) // true 0
 console.log(valuesResult)      // false
 ~~~
+
+**对照结果：**
+
+用这个结果回答“[].every(Boolean) 的结果是什么”：示例场景： 第一个结果是 true，因为空数组不存在假值；第二个结果是 false，因为数字 0 经 Boolean 转换后为 false。
 
 **递进追问：**
 
@@ -3363,15 +3550,22 @@ sort 默认按字符串的 UTF-16 顺序比较。数值升序应传入比较函�
 
 **代码 / 场景：**
 
-第一次输出体现默认字符串排序并证明原数组已被修改；第二次复制数组后传数值比较器，得到真正的数值升序 [1, 2, 10]。
+**示例场景：** 第一次输出体现默认字符串排序并证明原数组已被修改；第二次复制数组后传数值比较器，得到真正的数值升序 [1, 2, 10]。
 
 ~~~js
+// 示例重点：第一次输出体现默认字符串排序并证明原数组已被修改；第二次复制数组后传数值比较器，得到真正的数值升序 [1, 2, 10]。
 const values = [10, 2, 1]
 const returned = values.sort()
 console.log(values)             // [1, 10, 2]
 console.log(returned === values) // true
 console.log([10, 2, 1].sort((a, b) => a - b)) // [1, 2, 10]
 ~~~
+
+- **观察目标：** sort 默认按字符串的 UTF-16 顺序比较。数值升序应传入比较函数 a, b = a - b。
+
+**对照结果：**
+
+用这个结果回答“[10, 2, 1].sort() 的默认结果是什么”：数值升序应传入比较函数 a, b = a - b。
 
 **递进追问：**
 
@@ -3416,9 +3610,10 @@ splice 是原地编辑方法，可从 start 开始删除 deleteCount 个元素�
 
 **代码 / 场景：**
 
-splice 从索引 1 删除两个元素并插入 X，原数组被改成 ['a','X','d']，返回 ['b','c']；随后 slice 只读取前两项，不再改变原数组。
+**示例场景：** splice 从索引 1 删除两个元素并插入 X，原数组被改成 ['a','X','d']，返回 ['b','c']；随后 slice 只读取前两项，不再改变原数组。
 
 ~~~js
+// 示例重点：splice 从索引 1 删除两个元素并插入 X，原数组被改成 ['a','X','d']，返回 ['b','c']；随后 slice…
 const items = ['a', 'b', 'c', 'd']
 const removed = items.splice(1, 2, 'X')
 console.log(items)   // ['a', 'X', 'd']
@@ -3427,6 +3622,10 @@ const copy = items.slice(0, 2)
 console.log(copy)    // ['a', 'X']
 console.log(items)   // ['a', 'X', 'd']
 ~~~
+
+**对照结果：**
+
+用这个结果回答“splice 与 slice 的关键区别是什么”：示例场景： splice 从索引 1 删除两个元素并插入 X，原数组被改成 'a','X','d' ，返回 'b','c' ；随后 slice 只读取前两项，不再改变原数组。
 
 **递进追问：**
 
@@ -3471,14 +3670,19 @@ includes 使用 SameValueZero 比较，可以识别 NaN；indexOf(NaN) 则找不
 
 **代码 / 场景：**
 
-严格相等无法识别 NaN，但 includes 可以；indexOf 仍使用严格相等式语义而返回 -1。第三行还展示 SameValueZero 不区分正零和负零。
+**示例场景：** 严格相等无法识别 NaN，但 includes 可以；indexOf 仍使用严格相等式语义而返回 -1。第三行还展示 SameValueZero 不区分正零和负零。
 
 ~~~js
+// 示例重点：严格相等无法识别 NaN，但 includes 可以；indexOf 仍使用严格相等式语义而返回 -1。第三行还展示 SameValu…
 console.log(NaN === NaN)          // false
 console.log([NaN].includes(NaN))  // true
 console.log([NaN].indexOf(NaN))   // -1
 console.log([-0].includes(+0))    // true
 ~~~
+
+**对照结果：**
+
+用这个结果回答“[NaN].includes(NaN) 的结果是什么”：第三行还展示 SameValueZero 不区分正零和负零。
 
 **递进追问：**
 
@@ -3525,9 +3729,10 @@ Promise 构造函数的执行器同步执行，但 then、catch、finally 注册
 
 **代码 / 场景：**
 
-构造器里的日志先于 end，说明 executor 同步执行；then 回调被排入微任务，最后输出。完整顺序是 executor、end、then:ok。
+**示例场景：** 构造器里的日志先于 end，说明 executor 同步执行；then 回调被排入微任务，最后输出。完整顺序是 executor、end、then:ok。
 
 ~~~js
+// 示例重点：构造器里的日志先于 end，说明 executor 同步执行；then 回调被排入微任务，最后输出。完整顺序是 executor、en…
 const promise = new Promise((resolve) => {
   console.log('executor')
   resolve('ok')
@@ -3538,6 +3743,10 @@ console.log('end')
 // end
 // then:ok
 ~~~
+
+**对照结果：**
+
+用这个结果回答“new Promise(executor) 中 executor 何时执行”：完整顺序是 executor、end、then:ok。
 
 **递进追问：**
 
@@ -3581,9 +3790,10 @@ console.log('end')
 
 **代码 / 场景：**
 
-Promise 已用 resolve 兑现，回调仍不会插入同步代码中间。输出先是 A、C，再是 B；then 返回的新 Promise 会采用 value + 1 的结果。
+**示例场景：** Promise 已用 resolve 兑现，回调仍不会插入同步代码中间。输出先是 A、C，再是 B；then 返回的新 Promise 会采用 value + 1 的结果。
 
 ~~~js
+// 示例重点：Promise 已用 resolve 兑现，回调仍不会插入同步代码中间。输出先是 A、C，再是 B；then 返回的新 Promise…
 console.log('A')
 const next = Promise.resolve(1).then((value) => {
   console.log('B')
@@ -3593,6 +3803,10 @@ console.log('C')
 next.then((value) => console.log(value))
 // A, C, B, 2
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Promise.then 的回调属于哪类任务”：输出先是 A、C，再是 B；then 返回的新 Promise 会采用 value + 1 的结果。
 
 **递进追问：**
 
@@ -3637,9 +3851,10 @@ next.then((value) => console.log(value))
 
 **代码 / 场景：**
 
-即使延迟写 0，定时器也不能打断当前脚本；Promise 微任务会在当前任务结束后先清空。因此输出顺序是 sync、microtask、timer，而不是按源码登记顺序直接执行。
+**示例场景：** 即使延迟写 0，定时器也不能打断当前脚本；Promise 微任务会在当前任务结束后先清空。因此输出顺序是 sync、microtask、timer，而不是按源码登记顺序直接执行。
 
 ~~~js
+// 示例重点：即使延迟写 0，定时器也不能打断当前脚本；Promise 微任务会在当前任务结束后先清空。因此输出顺序是 sync、microtask…
 setTimeout(() => console.log('timer'), 0)
 Promise.resolve().then(() => console.log('microtask'))
 console.log('sync')
@@ -3647,6 +3862,10 @@ console.log('sync')
 // microtask
 // timer
 ~~~
+
+**对照结果：**
+
+用这个结果回答“setTimeout 回调通常属于哪类任务”：因此输出顺序是 sync、microtask、timer，而不是按源码登记顺序直接执行。
 
 **递进追问：**
 
@@ -3692,9 +3911,10 @@ console.log('sync')
 
 **代码 / 场景：**
 
-源码登记顺序不是最终运行顺序。当前脚本先输出 1 与 4，随后微任务输出 3，最后定时器任务输出 2，所以完整结果是 1、4、3、2。
+**示例场景：** 源码登记顺序不是最终运行顺序。当前脚本先输出 1 与 4，随后微任务输出 3，最后定时器任务输出 2，所以完整结果是 1、4、3、2。
 
 ~~~js
+// 示例重点：源码登记顺序不是最终运行顺序。当前脚本先输出 1 与 4，随后微任务输出 3，最后定时器任务输出 2，所以完整结果是 1、4、3、2。
 console.log(1)
 setTimeout(() => console.log(2), 0)
 Promise.resolve().then(() => console.log(3))
@@ -3704,6 +3924,12 @@ console.log(4)
 // 3
 // 2
 ~~~
+
+- **观察目标：** 先执行当前调用栈的同步代码，再清空微任务，最后进入后续宏任务。
+
+**对照结果：**
+
+用这个结果回答“同步日志、Promise.then、setTimeout(0) 的典型执行顺序是什么”：- 观察目标： 先执行当前调用栈的同步代码，再清空微任务，最后进入后续宏任务。
 
 **递进追问：**
 
@@ -3748,15 +3974,20 @@ console.log(4)
 
 **代码 / 场景：**
 
-三个函数调用都立刻得到 Promise。普通返回值成为兑现值，抛错成为拒绝原因；日志依次得到 42 与 boom，调用方必须通过 await 或 Promise 链观察。
+**示例场景：** 三个函数调用都立刻得到 Promise。普通返回值成为兑现值，抛错成为拒绝原因；日志依次得到 42 与 boom，调用方必须通过 await 或 Promise 链观察。
 
 ~~~js
+// 示例重点：三个函数调用都立刻得到 Promise。普通返回值成为兑现值，抛错成为拒绝原因；日志依次得到 42 与 boom，调用方必须通过 aw…
 async function value() { return 42 }
 async function failure() { throw new Error('boom') }
 console.log(value() instanceof Promise) // true
 value().then(console.log)               // 42
 failure().catch((error) => console.log(error.message)) // boom
 ~~~
+
+**对照结果：**
+
+用这个结果回答“async 函数一定返回什么”：普通返回值成为兑现值，抛错成为拒绝原因；日志依次得到 42 与 boom，调用方必须通过 await 或 Promise 链观察。
 
 **递进追问：**
 
@@ -3800,9 +4031,10 @@ await 会暂停当前 async 函数，把后续部分安排到微任务中执行�
 
 **代码 / 场景：**
 
-Promise.resolve 已兑现，但函数仍先输出 before 并暂停，外层同步日志 sync 随后出现，最后才输出 after 1。结果是 before、sync、after 1。
+**示例场景：** Promise.resolve 已兑现，但函数仍先输出 before 并暂停，外层同步日志 sync 随后出现，最后才输出 after 1。结果是 before、sync、after 1。
 
 ~~~js
+// 示例重点：Promise.resolve 已兑现，但函数仍先输出 before 并暂停，外层同步日志 sync 随后出现，最后才输出 after…
 async function run() {
   console.log('before')
   const value = await Promise.resolve(1)
@@ -3814,6 +4046,10 @@ console.log('sync')
 // sync
 // after 1
 ~~~
+
+**对照结果：**
+
+用这个结果回答“await 一个已兑现 Promise 后，后续代码何时继续”：结果是 before、sync、after 1。
 
 **递进追问：**
 
@@ -3858,9 +4094,10 @@ Promise.all 返回的新 Promise 会在任一输入首先拒绝时立即以该�
 
 **代码 / 场景：**
 
-fast 在 10 毫秒后拒绝，all 进入 catch 并输出 fail；slow 定时器仍继续运行并输出 slow finished，证明 Promise.all 不会自动取消其他任务。
+**示例场景：** fast 在 10 毫秒后拒绝，all 进入 catch 并输出 fail；slow 定时器仍继续运行并输出 slow finished，证明 Promise.all 不会自动取消其他任务。
 
 ~~~js
+// 示例重点：fast 在 10 毫秒后拒绝，all 进入 catch 并输出 fail；slow 定时器仍继续运行并输出 slow finishe…
 const slow = new Promise((resolve) => setTimeout(() => {
   console.log('slow finished')
   resolve('slow')
@@ -3872,6 +4109,10 @@ Promise.all([slow, fast]).catch((error) => console.log(error.message))
 // 10 ms 左右：fail
 // 50 ms 左右：slow finished
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Promise.all 中一个 Promise 拒绝会怎样”：示例场景： fast 在 10 毫秒后拒绝，all 进入 catch 并输出 fail；slow 定时器仍继续运行并输出 slow finished，证明 Promise.all 不会自动取消其他任务。
 
 **递进追问：**
 
@@ -3916,9 +4157,10 @@ allSettled 会等待所有输入结束，并返回带 status 的结果数组。
 
 **代码 / 场景：**
 
-两个任务分别成功和失败，allSettled 仍正常兑现并给出两条结构化记录；输出顺序保持与输入一致，而不是取决于谁先结束。
+**示例场景：** 两个任务分别成功和失败，allSettled 仍正常兑现并给出两条结构化记录；输出顺序保持与输入一致，而不是取决于谁先结束。
 
 ~~~js
+// 示例重点：两个任务分别成功和失败，allSettled 仍正常兑现并给出两条结构化记录；输出顺序保持与输入一致，而不是取决于谁先结束。
 const results = await Promise.allSettled([
   Promise.resolve('saved'),
   Promise.reject(new Error('offline')),
@@ -3926,6 +4168,12 @@ const results = await Promise.allSettled([
 console.log(results[0]) // { status: 'fulfilled', value: 'saved' }
 console.log(results[1].status, results[1].reason.message) // rejected offline
 ~~~
+
+- **观察目标：** allSettled 会等待所有输入结束，并返回带 status 的结果数组。
+
+**对照结果：**
+
+用这个结果回答“想获得每个 Promise 的成功或失败结果，应使用什么”：- 观察目标： allSettled 会等待所有输入结束，并返回带 status 的结果数组。
 
 **递进追问：**
 
@@ -3970,9 +4218,10 @@ console.log(results[1].status, results[1].reason.message) // rejected offline
 
 **代码 / 场景：**
 
-十毫秒后的 timeout 先拒绝，因此 race 进入 catch；五十毫秒后的 slow 仍会运行。若 slow 是 fetch，应配合 AbortController，而不能只丢弃晚到结果。
+**示例场景：** 十毫秒后的 timeout 先拒绝，因此 race 进入 catch；五十毫秒后的 slow 仍会运行。若 slow 是 fetch，应配合 AbortController，而不能只丢弃晚到结果。
 
 ~~~js
+// 示例重点：十毫秒后的 timeout 先拒绝，因此 race 进入 catch；五十毫秒后的 slow 仍会运行。若 slow 是 fetch…
 const slow = new Promise((resolve) => setTimeout(() => resolve('data'), 50))
 const timeout = new Promise((_, reject) =>
   setTimeout(() => reject(new Error('timeout')), 10)
@@ -3983,6 +4232,10 @@ try {
   console.log(error.message) // timeout
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Promise.race 的结果由什么决定”：若 slow 是 fetch，应配合 AbortController，而不能只丢弃晚到结果。
 
 **递进追问：**
 
@@ -4027,9 +4280,10 @@ finally 回调的返回普通值不会像 then 那样替换原兑现值。它适
 
 **代码 / 场景：**
 
-回调参数为 undefined，普通 return 999 不会覆盖原值，最终 then 仍输出 42；若把 return 改成 Promise.reject，后续会转入 catch。
+**示例场景：** 回调参数为 undefined，普通 return 999 不会覆盖原值，最终 then 仍输出 42；若把 return 改成 Promise.reject，后续会转入 catch。
 
 ~~~js
+// 示例重点：回调参数为 undefined，普通 return 999 不会覆盖原值，最终 then 仍输出 42；若把 return 改成 Pr…
 Promise.resolve(42)
   .finally((value) => {
     console.log(value) // undefined
@@ -4037,6 +4291,10 @@ Promise.resolve(42)
   })
   .then((value) => console.log(value)) // 42
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Promise.finally 的回调通常会得到原结果参数吗”：示例场景： 回调参数为 undefined，普通 return 999 不会覆盖原值，最终 then 仍输出 42；若把 return 改成 Promise.reject，后续会转入 catch。
 
 **递进追问：**
 
@@ -4083,9 +4341,10 @@ Promise.resolve(42)
 
 **代码 / 场景：**
 
-点击 button 时，按钮监听器先输出 button，随后父容器监听器输出 parent；父监听器里的 target 仍是 BUTTON，而 currentTarget 是父 DIV，体现冒泡由内向外。
+**示例场景：** 点击 button 时，按钮监听器先输出 button，随后父容器监听器输出 parent；父监听器里的 target 仍是 BUTTON，而 currentTarget 是父 DIV，体现冒泡由内向外。
 
 ~~~html
+<!-- 示例重点：点击 button 时，按钮监听器先输出 button，随后父容器监听器输出 parent；父监听器里的 target 仍是 BUTT… -->
 <div id="parent"><button id="child">保存</button></div>
 <script>
 child.addEventListener('click', () => console.log('button'))
@@ -4095,6 +4354,10 @@ parent.addEventListener('click', (event) => {
 // 点击按钮：button，然后 parent BUTTON parent
 </script>
 ~~~
+
+**对照结果：**
+
+用这个结果回答“DOM 事件冒泡的方向是什么”：示例场景： 点击 button 时，按钮监听器先输出 button，随后父容器监听器输出 parent；父监听器里的 target 仍是 BUTTON，而 currentTarget 是父 DIV，体现冒泡由内向外。
 
 **递进追问：**
 
@@ -4139,13 +4402,18 @@ capture 只改变监听器所处阶段，不会让原本不可穿过 Shadow DOM 
 
 **代码 / 场景：**
 
-点击按钮时，document 的捕获监听器先于按钮自身监听器运行，最后才是 div 的冒泡监听器；典型输出为 document capture、button target、div bubble。
+**示例场景：** 点击按钮时，document 的捕获监听器先于按钮自身监听器运行，最后才是 div 的冒泡监听器；典型输出为 document capture、button target、div bubble。
 
 ~~~js
+// 示例重点：点击按钮时，document 的捕获监听器先于按钮自身监听器运行，最后才是 div 的冒泡监听器；典型输出为 document cap…
 document.addEventListener('click', () => console.log('document capture'), { capture: true })
 div.addEventListener('click', () => console.log('div bubble'))
 button.addEventListener('click', () => console.log('button target'))
 ~~~
+
+**对照结果：**
+
+用这个结果回答“addEventListener 的 capture 选项为 true 表示什么”：示例场景： 点击按钮时，document 的捕获监听器先于按钮自身监听器运行，最后才是 div 的冒泡监听器；典型输出为 document capture、button target、div bubble。
 
 **递进追问：**
 
@@ -4189,15 +4457,20 @@ button.addEventListener('click', () => console.log('button target'))
 
 **代码 / 场景：**
 
-监听器阻止链接导航，但事件仍会冒泡到 document；控制台先输出 canceled true，随后输出 document click，页面地址保持不变。
+**示例场景：** 监听器阻止链接导航，但事件仍会冒泡到 document；控制台先输出 canceled true，随后输出 document click，页面地址保持不变。
 
 ~~~js
+// 示例重点：监听器阻止链接导航，但事件仍会冒泡到 document；控制台先输出 canceled true，随后输出 document clic…
 link.addEventListener('click', (event) => {
   event.preventDefault()
   console.log('canceled', event.defaultPrevented) // true
 })
 document.addEventListener('click', () => console.log('document click'))
 ~~~
+
+**对照结果：**
+
+用这个结果回答“event.preventDefault() 的作用是什么”：示例场景： 监听器阻止链接导航，但事件仍会冒泡到 document；控制台先输出 canceled true，随后输出 document click，页面地址保持不变。
 
 **递进追问：**
 
@@ -4242,9 +4515,10 @@ stopPropagation 会设置停止传播标志，使事件不再沿传播路径前�
 
 **代码 / 场景：**
 
-按钮上两个监听器都会运行，但父容器不会收到该点击，说明 stopPropagation 只截断后续节点而不截断同节点监听器。链接若有默认导航，导航也不会因此自动取消。
+**示例场景：** 按钮上两个监听器都会运行，但父容器不会收到该点击，说明 stopPropagation 只截断后续节点而不截断同节点监听器。链接若有默认导航，导航也不会因此自动取消。
 
 ~~~js
+// 示例重点：按钮上两个监听器都会运行，但父容器不会收到该点击，说明 stopPropagation 只截断后续节点而不截断同节点监听器。链接若有默…
 button.addEventListener('click', (event) => {
   console.log('first')
   event.stopPropagation()
@@ -4253,6 +4527,10 @@ button.addEventListener('click', () => console.log('second'))
 parent.addEventListener('click', () => console.log('parent'))
 // 点击后输出 first、second；不输出 parent
 ~~~
+
+**对照结果：**
+
+用这个结果回答“event.stopPropagation() 的作用是什么”：示例场景： 按钮上两个监听器都会运行，但父容器不会收到该点击，说明 stopPropagation 只截断后续节点而不截断同节点监听器。
 
 **递进追问：**
 
@@ -4297,9 +4575,10 @@ parent.addEventListener('click', () => console.log('parent'))
 
 **代码 / 场景：**
 
-列表只绑定一次 click。无论点击按钮文字还是以后动态加入的新按钮，closest 都能找到 data-id；contains 检查防止匹配到容器外节点，最后输出对应编号。
+**示例场景：** 列表只绑定一次 click。无论点击按钮文字还是以后动态加入的新按钮，closest 都能找到 data-id；contains 检查防止匹配到容器外节点，最后输出对应编号。
 
 ~~~js
+// 示例重点：列表只绑定一次 click。无论点击按钮文字还是以后动态加入的新按钮，closest 都能找到 data-id；contains 检查…
 list.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-id]')
   if (!button || !list.contains(button)) return
@@ -4307,6 +4586,10 @@ list.addEventListener('click', (event) => {
 })
 list.insertAdjacentHTML('beforeend', '<button data-id="42"><span>删除</span></button>')
 ~~~
+
+**对照结果：**
+
+用这个结果回答“事件委托的核心是什么”：无论点击按钮文字还是以后动态加入的新按钮，closest 都能找到 data-id；contains 检查防止匹配到容器外节点，最后输出对应编号。
 
 **递进追问：**
 
@@ -4350,15 +4633,22 @@ list.insertAdjacentHTML('beforeend', '<button data-id="42"><span>删除</span></
 
 **代码 / 场景：**
 
-直接保存对象会丢失结构，正确方案是序列化。读取不存在的键返回 null，因此解析前要判断；示例最终还原出对象并输出 Linda。
+**示例场景：** 直接保存对象会丢失结构，正确方案是序列化。读取不存在的键返回 null，因此解析前要判断；示例最终还原出对象并输出 Linda。
 
 ~~~js
+// 示例重点：直接保存对象会丢失结构，正确方案是序列化。读取不存在的键返回 null，因此解析前要判断；示例最终还原出对象并输出 Linda。
 const profile = { name: 'Linda', level: 2 }
 localStorage.setItem('profile', JSON.stringify(profile))
 const raw = localStorage.getItem('profile')
 const restored = raw === null ? null : JSON.parse(raw)
 console.log(restored.name) // Linda
 ~~~
+
+- **观察目标：** 对象需要先 JSON.stringify，读取后再 JSON.parse。localStorage 通常在同源页面间持久保存。
+
+**对照结果：**
+
+用这个结果回答“localStorage 存储的值是什么类型”：localStorage 通常在同源页面间持久保存。
 
 **递进追问：**
 
@@ -4403,13 +4693,20 @@ sessionStorage 与标签页会话关联，关闭标签页后通常清除，不�
 
 **代码 / 场景：**
 
-计数值在同一标签页刷新后继续增加，但新开一个独立标签页会从自己的存储区开始。关闭原标签页后重新打开普通页面，不能依赖旧值仍存在。
+**示例场景：** 计数值在同一标签页刷新后继续增加，但新开一个独立标签页会从自己的存储区开始。关闭原标签页后重新打开普通页面，不能依赖旧值仍存在。
 
 ~~~js
+// 示例重点：计数值在同一标签页刷新后继续增加，但新开一个独立标签页会从自己的存储区开始。关闭原标签页后重新打开普通页面，不能依赖旧值仍存在。
 const visits = Number(sessionStorage.getItem('visits') ?? 0) + 1
 sessionStorage.setItem('visits', String(visits))
 console.log(visits) // 同一标签页刷新：1、2、3……
 ~~~
+
+- **观察目标：** sessionStorage 与标签页会话关联，关闭标签页后通常清除，不同标签页的数据彼此独立。
+
+**对照结果：**
+
+用这个结果回答“sessionStorage 的生命周期通常是什么”：- 观察目标： sessionStorage 与标签页会话关联，关闭标签页后通常清除，不同标签页的数据彼此独立。
 
 **递进追问：**
 
@@ -4454,16 +4751,23 @@ Cookie 可用于会话，但应正确设置 HttpOnly、Secure、SameSite 等属�
 
 **代码 / 场景：**
 
-服务端设置 HttpOnly 会话 Cookie 后，浏览器在匹配请求中自动携带它，但 document.cookie 看不到该值；localStorage 里的偏好只在脚本主动读取时出现，不会发送给服务器。
+**示例场景：** 服务端设置 HttpOnly 会话 Cookie 后，浏览器在匹配请求中自动携带它，但 document.cookie 看不到该值；localStorage 里的偏好只在脚本主动读取时出现，不会发送给服务器。
+
+> 示例注解：服务端设置 HttpOnly 会话 Cookie 后，浏览器在匹配请求中自动携带它，但 document.cookie 看不到该值；l…
 
 ~~~http
 Set-Cookie: session=abc; Path=/; Secure; HttpOnly; SameSite=Lax
 ~~~
 
 ~~~js
+// 示例重点：第 2 段：服务端设置 HttpOnly 会话 Cookie 后，浏览器在匹配请求中自动携带它，但 document.cookie 看不到该值；l…
 localStorage.setItem('theme', 'dark')
 console.log(localStorage.getItem('theme')) // dark
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Cookie 与 localStorage 的重要区别是什么”：示例注解：服务端设置 HttpOnly 会话 Cookie 后，浏览器在匹配请求中自动携带它，但 document.cookie 看不到该值；l…
 
 **递进追问：**
 
@@ -4507,7 +4811,9 @@ console.log(localStorage.getItem('theme')) // dark
 
 **代码 / 场景：**
 
-基准是 https://app.example.com:443。第一个 URL 同源，因为默认 HTTPS 端口就是 443；后面三个分别在协议、主机和端口上不同，因此都跨源。
+**示例场景：** 基准是 https://app.example.com:443。第一个 URL 同源，因为默认 HTTPS 端口就是 443；后面三个分别在协议、主机和端口上不同，因此都跨源。
+
+> 示例注解：基准是 https://app.example.com:443。第一个 URL 同源，因为默认 HTTPS 端口就是 443；后面三个…
 
 ~~~text
 https://app.example.com/profile       同源
@@ -4515,6 +4821,10 @@ http://app.example.com/profile        不同源：协议
 https://api.example.com/profile       不同源：主机
 https://app.example.com:8443/profile  不同源：端口
 ~~~
+
+**对照结果：**
+
+用这个结果回答“同源策略中的“源”由什么组成”：第一个 URL 同源，因为默认 HTTPS 端口就是 443；后面三个…
 
 **递进追问：**
 
@@ -4558,7 +4868,9 @@ https://app.example.com:8443/profile  不同源：端口
 
 **代码 / 场景：**
 
-API 根据可信白名单返回具体来源，并让缓存区分 Origin。若前端只在 fetch 请求头里伪造同名响应头，浏览器仍会拦截，因为许可必须出现在服务器响应中。
+**示例场景：** API 根据可信白名单返回具体来源，并让缓存区分 Origin。若前端只在 fetch 请求头里伪造同名响应头，浏览器仍会拦截，因为许可必须出现在服务器响应中。
+
+> 示例注解：API 根据可信白名单返回具体来源，并让缓存区分 Origin。若前端只在 fetch 请求头里伪造同名响应头，浏览器仍会拦截，因为许…
 
 ~~~http
 HTTP/1.1 200 OK
@@ -4567,6 +4879,10 @@ Access-Control-Allow-Credentials: true
 Vary: Origin
 Content-Type: application/json
 ~~~
+
+**对照结果：**
+
+用这个结果回答“CORS 响应头通常由谁配置”：若前端只在 fetch 请求头里伪造同名响应头，浏览器仍会拦截，因为许…
 
 **递进追问：**
 
@@ -4613,9 +4929,10 @@ let 和 const 不允许在同一词法作用域重复声明同名绑定。
 
 **代码 / 场景：**
 
-第一段会在解析阶段抛 SyntaxError，任何日志都不会运行；第二段合法，内层 x 只遮蔽外层 x，依次输出 inner 与 outer。
+**示例场景：** 第一段会在解析阶段抛 SyntaxError，任何日志都不会运行；第二段合法，内层 x 只遮蔽外层 x，依次输出 inner 与 outer。
 
 ~~~js
+// 示例重点：第一段会在解析阶段抛 SyntaxError，任何日志都不会运行；第二段合法，内层 x 只遮蔽外层 x，依次输出 inner 与 ou…
 // let x = 1
 // let x = 2 // SyntaxError: Identifier 'x' has already been declared
 
@@ -4626,6 +4943,12 @@ let x = 'outer'
 }
 console.log(x)   // outer
 ~~~
+
+- **观察目标：** let 和 const 不允许在同一词法作用域重复声明同名绑定。
+
+**对照结果：**
+
+用这个结果回答“同一作用域能否重复声明同名 let 变量”：- 观察目标： let 和 const 不允许在同一词法作用域重复声明同名绑定。
 
 **递进追问：**
 
@@ -4670,9 +4993,10 @@ console.log(x)   // outer
 
 **代码 / 场景：**
 
-counter.js 提供命名导出，main.js 用花括号导入。inc 修改导出模块中的绑定后，导入的 count 会实时反映为 1，但 main.js 不能执行 count = 5。
+**示例场景：** counter.js 提供命名导出，main.js 用花括号导入。inc 修改导出模块中的绑定后，导入的 count 会实时反映为 1，但 main.js 不能执行 count = 5。
 
 ~~~js
+// 示例重点：counter.js 提供命名导出，main.js 用花括号导入。inc 修改导出模块中的绑定后，导入的 count 会实时反映为 1…
 // counter.js
 export let count = 0
 export const inc = () => { count += 1 }
@@ -4682,6 +5006,10 @@ import { count, inc } from './counter.js'
 inc()
 console.log(count) // 1
 ~~~
+
+**对照结果：**
+
+用这个结果回答“导入命名导出 foo 的正确形式是什么”：inc 修改导出模块中的绑定后，导入的 count 会实时反映为 1，但 main.js 不能执行 count = 5。
 
 **递进追问：**
 
@@ -4726,9 +5054,10 @@ console.log(count) // 1
 
 **代码 / 场景：**
 
-math.js 默认导出函数，导入方可把它命名为 add，无需与源文件中的函数名一致；命名导出 version 则仍需花括号。输出依次是 5 和 1。
+**示例场景：** math.js 默认导出函数，导入方可把它命名为 add，无需与源文件中的函数名一致；命名导出 version 则仍需花括号。输出依次是 5 和 1。
 
 ~~~js
+// 示例重点：math.js 默认导出函数，导入方可把它命名为 add，无需与源文件中的函数名一致；命名导出 version 则仍需花括号。输出依次…
 // math.js
 export default function sum(a, b) { return a + b }
 export const version = 1
@@ -4738,6 +5067,10 @@ import add, { version } from './math.js'
 console.log(add(2, 3)) // 5
 console.log(version)   // 1
 ~~~
+
+**对照结果：**
+
+用这个结果回答“导入默认导出的正确形式是什么”：示例场景： math.js 默认导出函数，导入方可把它命名为 add，无需与源文件中的函数名一致；命名导出 version 则仍需花括号。
 
 **递进追问：**
 
@@ -4781,9 +5114,10 @@ console.log(version)   // 1
 
 **代码 / 场景：**
 
-第一行静态导入在模块求值前完成链接；条件分支中要使用动态 import()。将静态 import 直接写进 if 会产生语法错误，而动态导入可按需得到模块命名空间。
+**示例场景：** 第一行静态导入在模块求值前完成链接；条件分支中要使用动态 import()。将静态 import 直接写进 if 会产生语法错误，而动态导入可按需得到模块命名空间。
 
 ~~~js
+// 示例重点：第一行静态导入在模块求值前完成链接；条件分支中要使用动态 import()。将静态 import 直接写进 if 会产生语法错误，而动…
 import { render } from './view.js'
 render()
 
@@ -4792,6 +5126,10 @@ if (location.hash === '#admin') {
   admin.mount()
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“静态 import 声明有什么特点”：将静态 import 直接写进 if 会产生语法错误，而动态导入可按需得到模块命名空间。
 
 **递进追问：**
 
@@ -4836,9 +5174,10 @@ class 提供更严格、更清晰的构造与继承语法，但其构造器在�
 
 **代码 / 场景：**
 
-typeof 输出 function，但 User() 直接调用会抛 TypeError；只有 new User() 才进行构造。这个对比说明 typeof 的粗粒度分类不会表达类的调用限制。
+**示例场景：** typeof 输出 function，但 User() 直接调用会抛 TypeError；只有 new User() 才进行构造。这个对比说明 typeof 的粗粒度分类不会表达类的调用限制。
 
 ~~~js
+// 示例重点：typeof 输出 function，但 User() 直接调用会抛 TypeError；只有 new User() 才进行构造。这个…
 class User {}
 console.log(typeof User)       // 'function'
 console.log(new User() instanceof User) // true
@@ -4848,6 +5187,10 @@ try {
   console.log(error.name)      // TypeError
 }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“执行 `class User {}; typeof User` 会得到什么”：这个对比说明 typeof 的粗粒度分类不会表达类的调用限制。
 
 **递进追问：**
 
@@ -4891,9 +5234,10 @@ try {
 
 **代码 / 场景：**
 
-两个实例都没有自己的 greet 属性，方法来自 User.prototype，而且引用相同；Object.keys(instance) 也不会列出原型方法。
+**示例场景：** 两个实例都没有自己的 greet 属性，方法来自 User.prototype，而且引用相同；Object.keys(instance) 也不会列出原型方法。
 
 ~~~js
+// 示例重点：两个实例都没有自己的 greet 属性，方法来自 User.prototype，而且引用相同；Object.keys(instance…
 class User {
   greet() { return 'hello ' + this.name }
   constructor(name) { this.name = name }
@@ -4904,6 +5248,10 @@ console.log(a.greet === b.greet) // true
 console.log(a.hasOwnProperty('greet')) // false
 console.log(User.prototype.greet.call(a)) // hello A
 ~~~
+
+**对照结果：**
+
+用这个结果回答“class 中定义的普通实例方法通常存放在哪里”：示例场景： 两个实例都没有自己的 greet 属性，方法来自 User.prototype，而且引用相同；Object.keys instance 也不会列出原型方法。
 
 **递进追问：**
 
@@ -4948,9 +5296,10 @@ extends 创建的派生类需要先执行父类构造逻辑，super() 返回后�
 
 **代码 / 场景：**
 
-Good 在 super(name) 后才能设置 role，最终得到完整实例；Bad 在 super 前访问 this 会抛 ReferenceError。super 还把父类参数和 new.target 语义传入构造链。
+**示例场景：** Good 在 super(name) 后才能设置 role，最终得到完整实例；Bad 在 super 前访问 this 会抛 ReferenceError。super 还把父类参数和 new.target 语义传入构造链。
 
 ~~~js
+// 示例重点：Good 在 super(name) 后才能设置 role，最终得到完整实例；Bad 在 super 前访问 this 会抛 Refe…
 class Person {
   constructor(name) { this.name = name }
 }
@@ -4962,6 +5311,10 @@ class Admin extends Person {
 }
 console.log(new Admin('Linda')) // Admin { name: 'Linda', role: 'admin' }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“派生类 constructor 中访问 this 前必须做什么”：super 还把父类参数和 new.target 语义传入构造链。
 
 **递进追问：**
 
@@ -5006,9 +5359,10 @@ console.log(new Admin('Linda')) // Admin { name: 'Linda', role: 'admin' }
 
 **代码 / 场景：**
 
-调用 steps() 时没有输出 start；第一次 next 才执行到 yield 1，第二次 next 取得 yield 2，第三次结束并返回 3。for...of 不会包含最终 return 值。
+**示例场景：** 调用 steps() 时没有输出 start；第一次 next 才执行到 yield 1，第二次 next 取得 yield 2，第三次结束并返回 3。for...of 不会包含最终 return 值。
 
 ~~~js
+// 示例重点：调用 steps() 时没有输出 start；第一次 next 才执行到 yield 1，第二次 next 取得 yield 2，第三…
 function* steps() {
   console.log('start')
   yield 1
@@ -5020,6 +5374,10 @@ console.log(iterator.next()) // 先输出 start，再得到 { value: 1, done: fa
 console.log(iterator.next()) // { value: 2, done: false }
 console.log(iterator.next()) // { value: 3, done: true }
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Generator 函数调用后返回什么”：for...of 不会包含最终 return 值。
 
 **递进追问：**
 
@@ -5064,9 +5422,10 @@ Symbol.iterator 方法应返回迭代器，for...of 会不断调用 next 读取�
 
 **代码 / 场景：**
 
-range 通过 generator 形式的 Symbol.iterator 依次 yield 2、3、4，所以展开运算得到 [2, 3, 4]；对象不需要 length 或数字属性。
+**示例场景：** range 通过 generator 形式的 Symbol.iterator 依次 yield 2、3、4，所以展开运算得到 [2, 3, 4]；对象不需要 length 或数字属性。
 
 ~~~js
+// 示例重点：range 通过 generator 形式的 Symbol.iterator 依次 yield 2、3、4，所以展开运算得到 [2…
 const range = {
   from: 2,
   to: 4,
@@ -5076,6 +5435,10 @@ const range = {
 }
 console.log([...range]) // [2, 3, 4]
 ~~~
+
+**对照结果：**
+
+用这个结果回答“对象要支持 for...of，通常需要实现什么”：示例场景： range 通过 generator 形式的 Symbol.iterator 依次 yield 2、3、4，所以展开运算得到 2, 3, 4 ；对象不需要 length 或数字属性。
 
 **递进追问：**
 
@@ -5120,9 +5483,10 @@ Map 的键可以是任意 ECMAScript 值，包括字符串、数字、Symbol、�
 
 **代码 / 场景：**
 
-对象键按引用匹配，original 可取到值，而新建的相同字面量取不到；NaN 则按 SameValueZero 可稳定作为键。最终 size 为 2。
+**示例场景：** 对象键按引用匹配，original 可取到值，而新建的相同字面量取不到；NaN 则按 SameValueZero 可稳定作为键。最终 size 为 2。
 
 ~~~js
+// 示例重点：对象键按引用匹配，original 可取到值，而新建的相同字面量取不到；NaN 则按 SameValueZero 可稳定作为键。最终…
 const original = { id: 1 }
 const cache = new Map()
 cache.set(original, 'object value')
@@ -5132,6 +5496,10 @@ console.log(cache.get({ id: 1 }))  // undefined
 console.log(cache.get(NaN))        // not a number
 console.log(cache.size)            // 2
 ~~~
+
+**对照结果：**
+
+用这个结果回答“Map 的键可以是什么类型”：示例场景： 对象键按引用匹配，original 可取到值，而新建的相同字面量取不到；NaN 则按 SameValueZero 可稳定作为键。
 
 **递进追问：**
 
@@ -5177,9 +5545,10 @@ Set 使用 SameValueZero 判断唯一性，两个 NaN 被视为同一个值。
 
 **代码 / 场景：**
 
-两个 NaN 被折叠为一个值，所以 size 是 1；两个独立对象引用不会折叠，加入后集合大小变成 3。展开结果仍保留首次插入顺序。
+**示例场景：** 两个 NaN 被折叠为一个值，所以 size 是 1；两个独立对象引用不会折叠，加入后集合大小变成 3。展开结果仍保留首次插入顺序。
 
 ~~~js
+// 示例重点：两个 NaN 被折叠为一个值，所以 size 是 1；两个独立对象引用不会折叠，加入后集合大小变成 3。展开结果仍保留首次插入顺序。
 const values = new Set([NaN, NaN])
 console.log(values.size) // 1
 values.add({ id: 1 })
@@ -5187,6 +5556,12 @@ values.add({ id: 1 })
 console.log(values.size) // 3
 console.log(values.has(NaN)) // true
 ~~~
+
+- **观察目标：** Set 使用 SameValueZero 判断唯一性，两个 NaN 被视为同一个值。
+
+**对照结果：**
+
+用这个结果回答“new Set([NaN, NaN]).size 是多少”：- 观察目标： Set 使用 SameValueZero 判断唯一性，两个 NaN 被视为同一个值。
 
 **递进追问：**
 
@@ -5230,15 +5605,20 @@ console.log(values.has(NaN)) // true
 
 **代码 / 场景：**
 
-metadata 与 user 建立关联，但不能枚举 WeakMap。当应用丢弃 user 的最后一个强引用后，这条关联可被回收；具体回收时间不可观察也不可作为业务逻辑条件。
+**示例场景：** metadata 与 user 建立关联，但不能枚举 WeakMap。当应用丢弃 user 的最后一个强引用后，这条关联可被回收；具体回收时间不可观察也不可作为业务逻辑条件。
 
 ~~~js
+// 示例重点：metadata 与 user 建立关联，但不能枚举 WeakMap。当应用丢弃 user 的最后一个强引用后，这条关联可被回收；具体…
 const metadata = new WeakMap()
 let user = { id: 1 }
 metadata.set(user, { lastSeen: Date.now() })
 console.log(metadata.get(user).lastSeen > 0) // true
 user = null // 若再无强引用，键及关联数据现在具备被回收资格
 ~~~
+
+**对照结果：**
+
+用这个结果回答“WeakMap 相比 Map 的主要特点是什么”：当应用丢弃 user 的最后一个强引用后，这条关联可被回收；具体回收时间不可观察也不可作为业务逻辑条件。
 
 **递进追问：**
 
@@ -5283,15 +5663,20 @@ user = null // 若再无强引用，键及关联数据现在具备被回收资�
 
 **代码 / 场景：**
 
-前两个读取分别得到 Linda 与 undefined。第三行证明假值 0 不会触发空值短路；只有 null 和 undefined 才会停止属性访问。
+**示例场景：** 前两个读取分别得到 Linda 与 undefined。第三行证明假值 0 不会触发空值短路；只有 null 和 undefined 才会停止属性访问。
 
 ~~~js
+// 示例重点：前两个读取分别得到 Linda 与 undefined。第三行证明假值 0 不会触发空值短路；只有 null 和 undefined…
 const user = { profile: { name: 'Linda', score: 0 } }
 console.log(user?.profile?.name)       // Linda
 console.log(null?.profile?.name)       // undefined
 console.log(user?.profile?.score)      // 0
 console.log(user?.missing?.name ?? 'anonymous') // anonymous
 ~~~
+
+**对照结果：**
+
+用这个结果回答“user?.profile?.name 的作用是什么”：第三行证明假值 0 不会触发空值短路；只有 null 和 undefined 才会停止属性访问。
 
 **递进追问：**
 
@@ -5336,15 +5721,22 @@ console.log(user?.missing?.name ?? 'anonymous') // anonymous
 
 **代码 / 场景：**
 
-端口 0 与空标签都是刻意配置，?? 会保留它们；只有 null 和 undefined 使用默认值。右侧函数仅在确实缺失时才调用。
+**示例场景：** 端口 0 与空标签都是刻意配置，?? 会保留它们；只有 null 和 undefined 使用默认值。右侧函数仅在确实缺失时才调用。
 
 ~~~js
+// 示例重点：端口 0 与空标签都是刻意配置，?? 会保留它们；只有 null 和 undefined 使用默认值。右侧函数仅在确实缺失时才调用。
 console.log(0 ?? 8080)          // 0
 console.log('' ?? 'untitled')   // ''
 console.log(false ?? true)      // false
 console.log(null ?? 'fallback') // fallback
 console.log(undefined ?? 10)    // 10
 ~~~
+
+- **观察目标：** 空值合并不会把 0、false、空字符串误当成缺失值，这与 不同。
+
+**对照结果：**
+
+用这个结果回答“value ?? fallback 在什么情况下使用 fallback”：- 观察目标： 空值合并不会把 0、false、空字符串误当成缺失值，这与 不同。
 
 **递进追问：**
 
@@ -5390,9 +5782,10 @@ finally 中显式 return 会覆盖 try 或 catch 的返回结果，因此实践�
 
 **代码 / 场景：**
 
-调用 answer 输出 2，而不是 1。去掉 finally 中的 return 后才会输出 1；若 finally 抛错，调用方会看到新异常而不是任何返回值。
+**示例场景：** 调用 answer 输出 2，而不是 1。去掉 finally 中的 return 后才会输出 1；若 finally 抛错，调用方会看到新异常而不是任何返回值。
 
 ~~~js
+// 示例重点：调用 answer 输出 2，而不是 1。去掉 finally 中的 return 后才会输出 1；若 finally 抛错，调用方会…
 function answer() {
   try {
     return 1
@@ -5402,6 +5795,10 @@ function answer() {
 }
 console.log(answer()) // 2
 ~~~
+
+**对照结果：**
+
+用这个结果回答“try 中 return 1，finally 中 return 2，最终返回什么”：去掉 finally 中的 return 后才会输出 1；若 finally 抛错，调用方会看到新异常而不是任何返回值。
 
 **递进追问：**
 
@@ -5446,13 +5843,18 @@ console.log(answer()) // 2
 
 **代码 / 场景：**
 
-对象属性 missing 被省略，数组里的 undefined 变成 null，顶层 stringify(undefined) 则直接返回 undefined。输出分别是 {"ok":1}、[1,null,3] 和 undefined。
+**示例场景：** 对象属性 missing 被省略，数组里的 undefined 变成 null，顶层 stringify(undefined) 则直接返回 undefined。输出分别是 {"ok":1}、[1,null,3] 和 undefined。
 
 ~~~js
+// 示例重点：对象属性 missing 被省略，数组里的 undefined 变成 null，顶层 stringify(undefined) 则直接…
 console.log(JSON.stringify({ ok: 1, missing: undefined })) // {"ok":1}
 console.log(JSON.stringify([1, undefined, 3]))             // [1,null,3]
 console.log(JSON.stringify(undefined))                     // undefined
 ~~~
+
+**对照结果：**
+
+用这个结果回答“JSON.stringify 对象属性中的 undefined 通常如何处理”：输出分别是 "ok":1 、 1,null,3 和 undefined。
 
 **递进追问：**
 
@@ -5497,9 +5899,10 @@ structuredClone 比 JSON 序列化支持更多类型和循环引用，但函数�
 
 **代码 / 场景：**
 
-JSON 无法处理这里的循环引用和 Map，而 structuredClone 可以；副本中的 self 指回副本本身，Map 也保持为 Map，修改副本不会改原对象。
+**示例场景：** JSON 无法处理这里的循环引用和 Map，而 structuredClone 可以；副本中的 self 指回副本本身，Map 也保持为 Map，修改副本不会改原对象。
 
 ~~~js
+// 示例重点：JSON 无法处理这里的循环引用和 Map，而 structuredClone 可以；副本中的 self 指回副本本身，Map 也保持…
 const source = { map: new Map([['count', 1]]) }
 source.self = source
 const copy = structuredClone(source)
@@ -5509,6 +5912,10 @@ console.log(copy.map instanceof Map)     // true
 copy.map.set('count', 2)
 console.log(source.map.get('count'))     // 1
 ~~~
+
+**对照结果：**
+
+用这个结果回答“structuredClone 的优势是什么”：示例场景： JSON 无法处理这里的循环引用和 Map，而 structuredClone 可以；副本中的 self 指回副本本身，Map 也保持为 Map，修改副本不会改原对象。
 
 **递进追问：**
 
@@ -5553,14 +5960,19 @@ console.log(source.map.get('count'))     // 1
 
 **代码 / 场景：**
 
-第一种写法会创建真实 img 元素，图片加载失败后 onerror 可执行；第二种只展示字符，不解析标签。实际项目不要运行攻击字符串，而应以单元测试验证净化结果。
+**示例场景：** 第一种写法会创建真实 img 元素，图片加载失败后 onerror 可执行；第二种只展示字符，不解析标签。实际项目不要运行攻击字符串，而应以单元测试验证净化结果。
 
 ~~~js
+// 示例重点：第一种写法会创建真实 img 元素，图片加载失败后 onerror 可执行；第二种只展示字符，不解析标签。实际项目不要运行攻击字符串…
 const untrusted = '<img src=x onerror="alert(document.domain)">'
 // 危险：preview.innerHTML = untrusted
 preview.textContent = untrusted
 // 页面只显示原文字，不创建 img，也不会执行 onerror
 ~~~
+
+**对照结果：**
+
+用这个结果回答“把不可信字符串直接赋给 innerHTML 的主要风险是什么”：实际项目不要运行攻击字符串，而应以单元测试验证净化结果。
 
 **递进追问：**
 
@@ -5605,9 +6017,10 @@ preview.textContent = untrusted
 
 **代码 / 场景：**
 
-三次调用间隔都小于 100 毫秒，每次都会重置计时，最终只在最后一次调用后安静 100 毫秒输出 abc。实现保留最后一组参数。
+**示例场景：** 三次调用间隔都小于 100 毫秒，每次都会重置计时，最终只在最后一次调用后安静 100 毫秒输出 abc。实现保留最后一组参数。
 
 ~~~js
+// 示例重点：三次调用间隔都小于 100 毫秒，每次都会重置计时，最终只在最后一次调用后安静 100 毫秒输出 abc。实现保留最后一组参数。
 function debounce(fn, wait) {
   let timer
   return function (...args) {
@@ -5621,6 +6034,12 @@ search('ab')
 search('abc')
 // 约 100ms 后仅输出 abc
 ~~~
+
+- **观察目标：** 防抖适合搜索输入、窗口调整结束后的处理，重点是把连续触发合并为最后一次。
+
+**对照结果：**
+
+用这个结果回答“防抖 debounce 的典型行为是什么”：- 观察目标： 防抖适合搜索输入、窗口调整结束后的处理，重点是把连续触发合并为最后一次。
 
 **递进追问：**
 
@@ -5664,9 +6083,10 @@ search('abc')
 
 **代码 / 场景：**
 
-这个简单实现采用 leading 节流：第一次立即输出，100 毫秒窗口内的调用被忽略；窗口结束后的下一次调用才能再次执行。生产实现若需最后一次参数，应额外实现 trailing。
+**示例场景：** 这个简单实现采用 leading 节流：第一次立即输出，100 毫秒窗口内的调用被忽略；窗口结束后的下一次调用才能再次执行。生产实现若需最后一次参数，应额外实现 trailing。
 
 ~~~js
+// 示例重点：这个简单实现采用 leading 节流：第一次立即输出，100 毫秒窗口内的调用被忽略；窗口结束后的下一次调用才能再次执行。生产实现若…
 function throttle(fn, wait) {
   let ready = true
   return function (...args) {
@@ -5680,6 +6100,10 @@ const report = throttle((y) => console.log(y), 100)
 report(10) // 立即输出 10
 report(20) // 被本窗口忽略
 ~~~
+
+**对照结果：**
+
+用这个结果回答“节流 throttle 的典型行为是什么”：生产实现若需最后一次参数，应额外实现 trailing。
 
 **递进追问：**
 

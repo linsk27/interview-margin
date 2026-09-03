@@ -33,6 +33,16 @@ function readingDensity(node: React.ReactNode): 'short' | 'regular' | 'long' {
   return 'short'
 }
 
+type TeachingExampleKind = 'scenario' | 'annotation' | 'result'
+
+function teachingExampleKind(node: React.ReactNode): TeachingExampleKind | undefined {
+  const text = textFromNode(node).replace(/\s+/g, ' ').trim()
+  if (/^示例场景\s*[：:]/.test(text)) return 'scenario'
+  if (/^示例注解\s*[：:]/.test(text)) return 'annotation'
+  if (/^对照结果\s*[：:]/.test(text)) return 'result'
+  return undefined
+}
+
 function CodeBlock({ children }: { children: React.ReactNode }) {
   const [copied, setCopied] = useState(false)
   const code = textFromNode(children).replace(/\n$/, '')
@@ -161,11 +171,18 @@ export function QuestionMarkdown({
 }) {
   const components = useMemo<Components>(() => ({
     pre: ({ children: content }) => <CodeBlock>{content}</CodeBlock>,
-    p: ({ children: content }) => (
-      <p className={styles.paragraph} data-reading-density={readingDensity(content)}>
-        {content}
-      </p>
-    ),
+    p: ({ children: content }) => {
+      const exampleKind = teachingExampleKind(content)
+      return (
+        <p
+          className={classNames(styles.paragraph, exampleKind && styles.exampleNote)}
+          data-example-kind={exampleKind}
+          data-reading-density={readingDensity(content)}
+        >
+          {content}
+        </p>
+      )
+    },
     h1: ({ children: content }) => <h1 className={classNames(styles.heading, styles.heading1)}>{content}</h1>,
     h2: ({ children: content }) => <h2 className={classNames(styles.heading, styles.heading2)}>{content}</h2>,
     h3: ({ className, children: content, id }) => {

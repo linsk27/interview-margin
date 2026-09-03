@@ -1,3 +1,5 @@
+import { enhanceJavaBankExamples } from './java-example-enrichment.js'
+
 const COMMUNITY = {
   iflytek: { label: '科大讯飞 Java 后端一面（牛客，2025）', url: 'https://www.nowcoder.com/discuss/747230985057468416', kind: 'community-interview' },
   tencent: { label: '腾讯 Java 后端面经（牛客，2025）', url: 'https://www.nowcoder.com/discuss/744849501931790336', kind: 'community-interview' },
@@ -771,7 +773,7 @@ const springMybatisEngineeringQuestions = [
   }),
 ]
 
-export const javaBackendInterviewBank = {
+export const javaBackendInterviewBank = enhanceJavaBankExamples({
   id: 'java-backend-interviews',
   idPrefix: 'java-backend-v2',
   title: 'Java 后端高频 54 题',
@@ -793,4 +795,4 @@ export const javaBackendInterviewBank = {
     { title: 'HTTP、Linux 与线上排障', questions: operationsQuestions },
     { title: 'Spring 与 MyBatis 工程高频', questions: springMybatisEngineeringQuestions },
   ],
-}
+})

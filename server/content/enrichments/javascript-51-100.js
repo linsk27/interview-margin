@@ -1,4 +1,6 @@
-export default [
+import { strengthenFrontendExamples } from './frontend-example-quality.js'
+
+export default strengthenFrontendExamples([
   {
     number: 51,
     title: 'Array.prototype.map 的返回值是什么？',
@@ -899,4 +901,4 @@ export default [
       { label: 'MDN：requestAnimationFrame()', url: 'https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame' },
     ],
   },
-]
+], { bankId: 'javascript' })

@@ -1,4 +1,6 @@
-export default [
+import { strengthenFrontendExamples } from './frontend-example-quality.js'
+
+export default strengthenFrontendExamples([
   {
     number: 1,
     title: 'Vue 3 为什么使用 Proxy？',
@@ -899,4 +901,4 @@ export default [
       { label: 'Vue Core：Contributing Guide', url: 'https://github.com/vuejs/core/blob/main/.github/contributing.md' },
     ],
   },
-]
+], { bankId: 'vue-core' })

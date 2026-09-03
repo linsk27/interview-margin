@@ -1,4 +1,6 @@
-export default [
+import { strengthenPlatformExamples } from './platform-example-quality.js'
+
+const entries = [
   {
     number: 1,
     title: 'REST 中资源和动作如何建模？',
@@ -990,3 +992,5 @@ export default [
     ],
   },
 ]
+
+export default strengthenPlatformExamples(entries, { bankId: 'backend-fullstack' })
