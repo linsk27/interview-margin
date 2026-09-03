@@ -12,7 +12,11 @@ const scoreDimensionSchema = <
   key: z.literal(key),
   label: z.literal(label),
   level: scoreLevelSchema,
-  levelLabel: z.enum(['未体现', '较弱', '部分命中', '较完整', '表现扎实']),
+  levelLabel: z.enum([
+    '未体现',
+    '较弱', '部分命中', '较完整', '表现扎实',
+    '只提到少量', '方向对，还有缺口', '主线完整', '准确且有边界',
+  ]),
   score: z.number().int().min(0).max(maxScore),
   maxScore: z.literal(maxScore),
 }).strict()
@@ -31,6 +35,10 @@ const scoreResponseSchema = z.object({
   ]),
   strengths: z.array(z.string().min(1).max(120)).max(2),
   gaps: z.array(z.string().min(1).max(160)).max(3),
+  corrections: z.array(z.object({
+    evidence: z.string().min(1).max(120),
+    correction: z.string().min(1).max(180),
+  })).max(2).default([]),
   nextStep: z.string().min(1).max(180),
   criticalIssues: z.array(z.object({
     type: z.enum([

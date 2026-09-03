@@ -71,21 +71,31 @@
 }
 
 .total {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto;
   align-items: baseline;
+  column-gap: var(--space-3xs);
   color: var(--color-accent);
   font-family: var(--font-mono);
   white-space: nowrap;
 }
 
-.total > span,
 .total > small {
   color: var(--color-muted);
   font-size: 0.75rem;
 }
 
+.total > span {
+  grid-column: 1 / -1;
+  color: var(--color-muted);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
 .total strong {
-  margin-inline: var(--space-3xs);
   font-family: var(--font-display);
   font-size: clamp(2rem, 5vw, 3rem);
   line-height: 1;
@@ -264,7 +274,7 @@
 
 .feedback {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: var(--space-xs);
 }
 
@@ -299,6 +309,50 @@
 .hardIssue strong {
   font-family: var(--font-body);
   font-size: max(var(--text-xs), 0.75rem);
+}
+
+.hardIssue q {
+  padding-inline-start: var(--space-xs);
+  border-inline-start: var(--rule-heavy) solid color-mix(in oklch, var(--color-warning, var(--color-accent)) 55%, transparent);
+  color: var(--color-muted);
+}
+
+.corrections {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border: var(--rule-thin) solid color-mix(in oklch, var(--color-warning, var(--color-accent)) 35%, var(--color-rule));
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-warning, var(--color-accent)) 6%, var(--color-paper));
+}
+
+.corrections > strong {
+  color: var(--color-ink);
+  font-size: max(var(--text-xs), 0.75rem);
+}
+
+.corrections p {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.45fr) minmax(0, 1fr);
+  gap: var(--space-sm);
+  margin: 0;
+  font-family: var(--font-reading);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.corrections q {
+  color: var(--color-muted);
+}
+
+.corrections p > span::before {
+  display: block;
+  content: '更准确地说：';
+  margin-block-end: var(--space-3xs);
+  color: var(--color-accent);
+  font-family: var(--font-body);
+  font-size: max(var(--text-xs), 0.72rem);
+  font-weight: 700;
 }
 
 .feedback p {
@@ -387,6 +441,11 @@
 
   .feedback {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .corrections p {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2xs);
   }
 }
 

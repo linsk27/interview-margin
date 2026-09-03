@@ -5,18 +5,19 @@ import { InterviewScorePanel } from './InterviewScorePanel'
 
 const scoreResult = {
   version: 1,
-  score: 65,
-  band: '方向正确但偏浅',
+  score: 74,
+  band: '方向正确，还需补充',
   summary: '主线方向正确，但为什么这样做还没有说明白。',
   dimensions: [
-    { key: 'correctness', label: '技术正确性', level: 'solid', levelLabel: '较完整', score: 23, maxScore: 30 },
-    { key: 'reasoning', label: '原理与因果', level: 'partial', levelLabel: '部分命中', score: 13, maxScore: 25 },
-    { key: 'coverage', label: '关键点覆盖', level: 'solid', levelLabel: '较完整', score: 15, maxScore: 20 },
-    { key: 'application', label: '场景、边界与取舍', level: 'weak', levelLabel: '较弱', score: 4, maxScore: 15 },
-    { key: 'communication', label: '表达与结构', level: 'strong', levelLabel: '表现扎实', score: 10, maxScore: 10 },
+    { key: 'correctness', label: '技术正确性', level: 'solid', levelLabel: '主线完整', score: 26, maxScore: 30 },
+    { key: 'reasoning', label: '原理与因果', level: 'partial', levelLabel: '方向对，还有缺口', score: 16, maxScore: 25 },
+    { key: 'coverage', label: '关键点覆盖', level: 'solid', levelLabel: '主线完整', score: 17, maxScore: 20 },
+    { key: 'application', label: '场景、边界与取舍', level: 'weak', levelLabel: '只提到少量', score: 5, maxScore: 15 },
+    { key: 'communication', label: '表达与结构', level: 'strong', levelLabel: '准确且有边界', score: 10, maxScore: 10 },
   ],
   strengths: ['先给出了核心结论'],
   gaps: ['缺少边界条件'],
+  corrections: [],
   nextStep: '补一句为什么，再举一个适用场景。',
   criticalIssues: [],
   confidence: 'high',
@@ -40,10 +41,12 @@ describe('InterviewScorePanel', () => {
     expect(screen.getByText(/技术正确性 30/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '开始 AI 评分' }))
 
-    expect(await screen.findByText('方向正确但偏浅')).toBeInTheDocument()
-    expect(screen.getByLabelText('约 65 分')).toBeInTheDocument()
+    expect(await screen.findByText('方向正确，还需补充')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: '练习评分 74 分' })).toBeInTheDocument()
     expect(screen.getByText(scoreResult.summary)).toBeInTheDocument()
-    expect(screen.getByText('23 / 30')).toBeInTheDocument()
+    expect(screen.getByText('26 / 30')).toBeInTheDocument()
+    expect(screen.getByText('为什么扣分')).toBeInTheDocument()
+    expect(screen.getByText('缺少边界条件')).toBeInTheDocument()
     expect(screen.getByText('补一句为什么，再举一个适用场景。')).toBeInTheDocument()
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -68,7 +71,7 @@ describe('InterviewScorePanel', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('AI 服务繁忙。')
 
     fireEvent.click(screen.getByRole('button', { name: '重试评分' }))
-    await waitFor(() => expect(screen.getByText('方向正确但偏浅')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('方向正确，还需补充')).toBeInTheDocument())
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -117,7 +120,7 @@ describe('InterviewScorePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '开始 AI 评分' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('AI 评分结果格式异常，请重试。')
-    expect(screen.queryByLabelText('约 65 分')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('练习评分 74 分')).not.toBeInTheDocument()
   })
 
   it('explains when a serious issue caps the total below the dimension sum', async () => {
@@ -140,8 +143,60 @@ describe('InterviewScorePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '开始 AI 评分' }))
 
     expect(await screen.findByText('严重问题已触发总分上限')).toBeInTheDocument()
+    expect(screen.getByText('RAG 是向量数据库')).toBeInTheDocument()
     expect(screen.getByText('RAG 是一套检索增强生成流程，向量数据库只是可选组件。')).toBeInTheDocument()
-    expect(screen.getByLabelText('约 45 分')).toBeInTheDocument()
+    expect(screen.getByLabelText('练习评分 45 分')).toBeInTheDocument()
+  })
+
+  it('shows imprecise wording separately from serious errors', async () => {
+    const resultWithCorrection = {
+      ...scoreResult,
+      corrections: [{
+        evidence: 'SSE 是半双工通信',
+        correction: 'SSE 更准确地说是服务端到客户端的单向 HTTP 事件流。',
+      }],
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(resultWithCorrection), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })))
+    render(<InterviewScorePanel questionId="sse-1" answer="SSE 是半双工通信" />)
+
+    fireEvent.click(screen.getByRole('button', { name: '开始 AI 评分' }))
+
+    expect(await screen.findByRole('region', { name: '表述需修正' })).toBeInTheDocument()
+    expect(screen.getByText('SSE 是半双工通信')).toBeInTheDocument()
+    expect(screen.getByText(/SSE 更准确地说是服务端到客户端/)).toBeInTheDocument()
+    expect(screen.queryByText('严重问题已触发总分上限')).not.toBeInTheDocument()
+  })
+
+  it('keeps rendering version-one responses from an older server without corrections', async () => {
+    const legacyResult = {
+      ...scoreResult,
+      dimensions: scoreResult.dimensions.map((dimension) => ({
+        ...dimension,
+        levelLabel: dimension.level === 'strong'
+          ? '表现扎实'
+          : dimension.level === 'solid'
+            ? '较完整'
+            : dimension.level === 'partial'
+              ? '部分命中'
+              : dimension.level === 'weak'
+                ? '较弱'
+                : '未体现',
+      })),
+    }
+    delete (legacyResult as Partial<typeof scoreResult>).corrections
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(legacyResult), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })))
+    render(<InterviewScorePanel questionId="rag-17" answer="先找证据，再让模型回答。" />)
+
+    fireEvent.click(screen.getByRole('button', { name: '开始 AI 评分' }))
+
+    expect(await screen.findByRole('status', { name: '练习评分 74 分' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '表述需修正' })).not.toBeInTheDocument()
   })
 
   it('aborts an unfinished request when the score panel unmounts', async () => {

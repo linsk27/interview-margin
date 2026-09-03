@@ -20,6 +20,7 @@ export function InterviewScorePanel({ questionId, answer, disabled = false }: In
   const [state, setState] = useState<ScoreState>({ status: 'idle' })
   const abortRef = useRef<AbortController | undefined>(undefined)
   const titleId = useId()
+  const correctionsTitleId = useId()
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
@@ -56,11 +57,11 @@ export function InterviewScorePanel({ questionId, answer, disabled = false }: In
           <h3 id={titleId}>面试官评分</h3>
         </div>
         {state.status === 'success' && (
-          <div className={styles.total} aria-label={`约 ${state.result.score} 分`}>
-            <span>约</span>
+          <output className={styles.total} aria-live="polite" aria-label={`练习评分 ${state.result.score} 分`}>
+            <span>练习评分</span>
             <strong>{state.result.score}</strong>
             <small>/ 100</small>
-          </div>
+          </output>
         )}
       </header>
 
@@ -121,13 +122,32 @@ export function InterviewScorePanel({ questionId, answer, disabled = false }: In
           {state.result.criticalIssues[0] && (
             <p className={styles.hardIssue}>
               <TriangleAlert aria-hidden="true" />
-              <span><strong>严重问题已触发总分上限</strong>{state.result.criticalIssues[0].explanation}</span>
+              <span>
+                <strong>严重问题已触发总分上限</strong>
+                <q>{state.result.criticalIssues[0].evidence}</q>
+                <span>{state.result.criticalIssues[0].explanation}</span>
+              </span>
             </p>
+          )}
+
+          {state.result.corrections.length > 0 && (
+            <section className={styles.corrections} aria-labelledby={correctionsTitleId}>
+              <strong id={correctionsTitleId}>表述需修正</strong>
+              {state.result.corrections.map((item) => (
+                <p key={`${item.evidence}-${item.correction}`}>
+                  <q>{item.evidence}</q>
+                  <span>{item.correction}</span>
+                </p>
+              ))}
+            </section>
           )}
 
           <div className={styles.feedback}>
             {state.result.strengths[0] && (
               <p><Sparkles aria-hidden="true" /><span><strong>做对了</strong>{state.result.strengths[0]}</span></p>
+            )}
+            {state.result.gaps[0] && (
+              <p><TriangleAlert aria-hidden="true" /><span><strong>为什么扣分</strong>{state.result.gaps[0]}</span></p>
             )}
             <p><Target aria-hidden="true" /><span><strong>最先补这一点</strong>{state.result.nextStep}</span></p>
           </div>
