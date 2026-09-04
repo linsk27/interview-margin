@@ -51,20 +51,17 @@ describe('MarketingLanding', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/catalog/index'))).toBe(false)
   })
 
-  it('shows a retry action when both public catalog endpoints fail', async () => {
-    let catalogRequestCount = 0
-    const fetchMock = vi.fn((input: RequestInfo | URL) => {
-      if (String(input) === '/api/visits') return Promise.reject(new Error('offline'))
-      catalogRequestCount += 1
-      if (catalogRequestCount <= 2) return Promise.reject(new Error('offline'))
-      return Promise.resolve(jsonResponse(landingPayload))
-    })
+  it('renders the published landing snapshot before live endpoints finish', () => {
+    const never = new Promise<Response>(() => undefined)
+    const fetchMock = vi.fn(() => never)
     vi.stubGlobal('fetch', fetchMock)
-    render(<MarketingLanding />)
+    render(<MarketingLanding visitRegistration={never.then(() => undefined)} />)
 
-    expect(await screen.findAllByRole('alert')).toHaveLength(2)
-    fireEvent.click(screen.getAllByRole('button', { name: /重新加载/ })[0])
-    expect(await screen.findByRole('link', { name: /Vue2 和 Vue3/ })).toHaveAttribute('href', '/app#q-1')
+    expect(screen.getByText('14 个公开题库 · 762 道题')).toBeTruthy()
+    expect(screen.getByRole('link', { name: /Vue2 和 Vue3/ })).toHaveAttribute('href', '/app#q-1')
+    expect(screen.getByText('300 题 · 5 个题库')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(document.querySelector('.hero-kicker__visit-slot')).toBeTruthy()
   })
 
   it('keeps the public entrance usable when the visit counter is unavailable', async () => {

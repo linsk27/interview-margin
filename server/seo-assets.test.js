@@ -39,4 +39,15 @@ describe('public promotion and search assets', () => {
     expect(image.readUInt32BE(20)).toBe(909)
     expect(image.byteLength).toBeLessThan(5 * 1024 * 1024)
   })
+
+  it('preloads a compact landing font without blocking the first paint', () => {
+    const html = fs.readFileSync(path.join(rootDir, 'index.html'), 'utf8')
+    const css = fs.readFileSync(path.join(rootDir, 'src', 'marketing.css'), 'utf8')
+    const fontPath = path.join(rootDir, 'public', 'fonts', 'zcool-xiaowei-landing.woff2')
+
+    expect(html).toContain('rel="preload" href="/fonts/zcool-xiaowei-landing.woff2"')
+    expect(css).toContain('font-display: optional')
+    expect(fs.existsSync(fontPath)).toBe(true)
+    expect(fs.statSync(fontPath).size).toBeLessThan(120 * 1024)
+  })
 })
