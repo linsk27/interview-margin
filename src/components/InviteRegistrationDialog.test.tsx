@@ -35,15 +35,15 @@ describe('invitation registration dialog', () => {
 
     fireEvent.change(screen.getByLabelText('用户名'), { target: { value: 'new.learner' } })
     fireEvent.change(screen.getByLabelText('显示名称'), { target: { value: '新同学' } })
-    fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'StrongPassword!2026' } })
-    fireEvent.change(screen.getByLabelText('确认密码'), { target: { value: 'StrongPassword!2026' } })
+    fireEvent.change(screen.getByLabelText('密码'), { target: { value: '123456' } })
+    fireEvent.change(screen.getByLabelText('确认密码'), { target: { value: '123456' } })
     fireEvent.click(screen.getByRole('button', { name: '接受邀请并注册' }))
 
     await waitFor(() => expect(onAccepted).toHaveBeenCalledOnce())
     expect(fetchMock.mock.calls[1][0]).toBe('/api/invitations/accept')
     expect(fetchMock.mock.calls[1][0]).not.toContain('top-secret-token')
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
-      token: 'top-secret-token', username: 'new.learner', displayName: '新同学', password: 'StrongPassword!2026',
+      token: 'top-secret-token', username: 'new.learner', displayName: '新同学', password: '123456',
     })
     expect(await screen.findByText('账号创建成功')).toBeTruthy()
   })

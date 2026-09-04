@@ -116,10 +116,10 @@ export function AuthDialog({ open, user, reason = '', onClose, onSessionChanged 
         </form>
       ) : changing ? (
         <form className="auth-dialog__body" onSubmit={submitPassword}>
-          <div className="auth-dialog__intro"><KeyRound aria-hidden="true" /><p><strong>{forceChange ? '首次登录需要修改一次性密码' : '更新账号密码'}</strong><span>新密码至少 12 位，建议混合大小写、数字和符号。</span></p></div>
+          <div className="auth-dialog__intro"><KeyRound aria-hidden="true" /><p><strong>{forceChange ? '首次登录需要修改一次性密码' : '更新账号密码'}</strong><span>新密码至少 6 位。</span></p></div>
           <label>当前密码<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-          <label>新密码<input type="password" autoComplete="new-password" minLength={12} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
-          <label>确认新密码<input type="password" autoComplete="new-password" minLength={12} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
+          <label>新密码<input type="password" autoComplete="new-password" minLength={6} maxLength={256} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
+          <label>确认新密码<input type="password" autoComplete="new-password" minLength={6} maxLength={256} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
           {error && <p className="form-error" role="alert">{error}</p>}
           <div className="form-actions">
             {!forceChange && <button type="button" onClick={() => setChanging(false)}>返回</button>}

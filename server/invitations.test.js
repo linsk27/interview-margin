@@ -24,7 +24,7 @@ async function createInvite(agent, expiresInHours = 72) {
 }
 
 function registration(token, username = 'invited.user') {
-  return { token, username, displayName: 'Invited User', password: 'InvitedPassword!123' }
+  return { token, username, displayName: 'Invited User', password: '123456' }
 }
 
 describe('invitation registration API', () => {
@@ -101,7 +101,7 @@ describe('invitation registration API', () => {
       ...payload, role: 'admin', permissions: ['users.manage'], status: 'active', id: crypto.randomUUID(),
     }).expect(400)
     expect(db.prepare('SELECT used_at FROM invitations WHERE id = ?').get(created.body.invitation.id).used_at).toBeNull()
-    await request(app).post('/api/invitations/accept').send({ ...payload, password: 'too-short' }).expect(400)
+    await request(app).post('/api/invitations/accept').send({ ...payload, password: '12345' }).expect(400)
     await admin.post('/api/auth/logout').expect(200)
 
     const inspected = await request(app).post('/api/invitations/inspect')

@@ -432,7 +432,7 @@ describe('server API', () => {
     expect(privateBank.body.bank.id).toBe('private-bank')
   }, 20_000)
 
-  it('accepts an existing short password and allows upgrading it', async () => {
+  it('accepts a six-character new password and rejects a five-character one', async () => {
     const admin = db.prepare('SELECT id FROM users WHERE username = ?').get('admin')
     db.prepare('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?')
       .run(passwordHash('legacy-test'), admin.id)
@@ -440,7 +440,11 @@ describe('server API', () => {
     const agent = request.agent(app)
     await agent.post('/api/auth/login').send({ username: 'admin', password: 'legacy-test' }).expect(200)
     await agent.post('/api/auth/change-password')
-      .send({ currentPassword: 'legacy-test', newPassword: CHANGED_PASSWORD }).expect(200)
+      .send({ currentPassword: 'legacy-test', newPassword: '12345' }).expect(400)
+    await agent.post('/api/auth/change-password')
+      .send({ currentPassword: 'legacy-test', newPassword: '123456' }).expect(200)
+    await agent.post('/api/auth/logout').expect(200)
+    await agent.post('/api/auth/login').send({ username: 'admin', password: '123456' }).expect(200)
   })
 
   it('isolates user progress and annotations', async () => {

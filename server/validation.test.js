@@ -2,7 +2,9 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { questionCreateSchema, questionPatchSchema, settingsSchema } from './validation.js'
+import {
+  invitationAcceptSchema, passwordSchema, questionCreateSchema, questionPatchSchema, settingsSchema, userCreateSchema,
+} from './validation.js'
 
 const question = {
   sectionTitle: '浏览器',
@@ -47,5 +49,27 @@ describe('reader font theme validation', () => {
   it('accepts supported themes and rejects unknown ones', () => {
     expect(settingsSchema.safeParse({ ...base, fontTheme: 'flowing' }).success).toBe(true)
     expect(settingsSchema.safeParse({ ...base, fontTheme: 'comic-sans' }).success).toBe(false)
+  })
+})
+
+describe('password validation', () => {
+  it('accepts a six-character password in every user-set password flow', () => {
+    expect(passwordSchema.safeParse({ currentPassword: '123123', newPassword: '123456' }).success).toBe(true)
+    expect(userCreateSchema.safeParse({
+      username: 'learner.one', displayName: '学习者一号', role: 'learner', password: '123456',
+    }).success).toBe(true)
+    expect(invitationAcceptSchema.safeParse({
+      token: 'a'.repeat(43), username: 'learner.two', displayName: '学习者二号', password: '123456',
+    }).success).toBe(true)
+  })
+
+  it('rejects passwords shorter than six characters', () => {
+    expect(passwordSchema.safeParse({ currentPassword: '123123', newPassword: '12345' }).success).toBe(false)
+    expect(userCreateSchema.safeParse({
+      username: 'learner.one', displayName: '学习者一号', role: 'learner', password: '12345',
+    }).success).toBe(false)
+    expect(invitationAcceptSchema.safeParse({
+      token: 'a'.repeat(43), username: 'learner.two', displayName: '学习者二号', password: '12345',
+    }).success).toBe(false)
   })
 })

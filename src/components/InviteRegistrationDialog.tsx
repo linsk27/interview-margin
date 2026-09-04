@@ -138,9 +138,9 @@ export function InviteRegistrationDialog({ token, user, onDismiss, onAccepted }:
           <p className="invite-dialog__expiry" id="invite-expiry">有效期至 {new Date(expiresAt).toLocaleString()}</p>
           <label>用户名<input autoFocus autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} minLength={2} maxLength={64} pattern="[A-Za-z0-9._-]+" title="2–64 位，只能使用字母、数字、点、下划线或短横线" required /></label>
           <label>显示名称<input autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={80} required /></label>
-          <label>密码<input type="password" autoComplete="new-password" minLength={12} maxLength={256} value={password} onChange={(event) => setPassword(event.target.value)} aria-describedby="invite-password-help" required /></label>
-          <p className="invite-dialog__help" id="invite-password-help"><KeyRound aria-hidden="true" />至少 12 位，建议混合大小写、数字和符号。</p>
-          <label>确认密码<input type="password" autoComplete="new-password" minLength={12} maxLength={256} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
+          <label>密码<input type="password" autoComplete="new-password" minLength={6} maxLength={256} value={password} onChange={(event) => setPassword(event.target.value)} aria-describedby="invite-password-help" required /></label>
+          <p className="invite-dialog__help" id="invite-password-help"><KeyRound aria-hidden="true" />密码至少 6 位。</p>
+          <label>确认密码<input type="password" autoComplete="new-password" minLength={6} maxLength={256} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="primary-button" type="submit" disabled={busy}>{busy ? '正在创建账号…' : '接受邀请并注册'}</button>
         </form>

@@ -52,14 +52,14 @@ export const loginSchema = z.object({
 
 export const passwordSchema = z.object({
   currentPassword: z.string().min(1).max(256),
-  newPassword: z.string().min(12).max(256),
+  newPassword: z.string().min(6).max(256),
 })
 
 export const userCreateSchema = z.object({
   username: z.string().trim().regex(/^[a-zA-Z0-9._-]{2,64}$/),
   displayName: z.string().trim().min(1).max(80),
   role: roleSchema,
-  password: z.string().min(12).max(256).optional(),
+  password: z.string().min(6).max(256).optional(),
 })
 
 export const userPatchSchema = z.object({
@@ -82,7 +82,7 @@ export const invitationAcceptSchema = z.object({
   token: invitationTokenSchema,
   username: z.string().trim().regex(/^[a-zA-Z0-9._-]{2,64}$/),
   displayName: z.string().trim().min(1).max(80),
-  password: z.string().min(12).max(256),
+  password: z.string().min(6).max(256),
 }).strict()
 
 export const contactRequestCreateSchema = z.object({
