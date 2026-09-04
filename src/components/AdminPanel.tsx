@@ -455,7 +455,7 @@ export function AdminPanel({ user, onExit, onCatalogChanged, initialCatalog = { 
         <footer className="admin-form-card__footer"><p><ShieldCheck aria-hidden="true" />题库默认公开给已登录用户，内容修改会记录版本。</p><div><button type="button" onClick={() => setBankFormOpen(false)}>取消</button><button className="primary-button" type="submit"><Plus aria-hidden="true" />创建题库</button></div></footer>
       </form></div>}
       {importOpen && <div className="admin-overlay" role="presentation"><section className="admin-form-card admin-import" role="dialog" aria-modal="true" aria-labelledby="import-markdown-title"><header className="admin-form-card__header"><div><span>CONTENT IMPORT</span><h2 id="import-markdown-title">导入 Markdown</h2><p>一级标题作为章节，二级标题必须以 Q 编号开头。</p></div><button className="icon-button" type="button" onClick={() => setImportOpen(false)} aria-label="关闭导入"><X aria-hidden="true" /></button></header><div className="admin-form-card__body admin-import__body"><textarea aria-label="Markdown 内容" value={markdown} onChange={(event) => setMarkdown(event.target.value)} placeholder="# 章节名称&#10;&#10;## Q1. 问题标题&#10;&#10;正文内容…" /></div><footer className="admin-form-card__footer"><span>{previewCount === undefined ? '粘贴内容后先执行预览' : `已识别 ${previewCount} 题`}</span><div><button type="button" onClick={previewMarkdown}>预览</button><button className="primary-button" type="button" onClick={importMarkdown} disabled={!previewCount}>确认导入</button></div></footer></section></div>}
-      {temporaryPassword && <div className="admin-overlay" role="presentation"><section className="admin-form-card temporary-password" role="dialog" aria-modal="true" aria-labelledby="temporary-password-title"><header className="admin-form-card__header"><div><span>ONE-TIME CREDENTIAL</span><h2 id="temporary-password-title">一次性密码</h2><p>密码仅显示一次，请通过可信渠道发送给用户。</p></div><button className="icon-button" type="button" onClick={() => setTemporaryPassword('')} aria-label="关闭一次性密码"><X aria-hidden="true" /></button></header><div className="admin-form-card__body"><code>{temporaryPassword}</code></div><footer className="admin-form-card__footer"><span>用户首次登录后必须修改密码。</span><button className="primary-button" type="button" onClick={() => navigator.clipboard.writeText(temporaryPassword)}><Copy aria-hidden="true" />复制密码</button></footer></section></div>}
+      {temporaryPassword && <div className="admin-overlay" role="presentation"><section className="admin-form-card temporary-password" role="dialog" aria-modal="true" aria-labelledby="temporary-password-title"><header className="admin-form-card__header"><div><span>INITIAL CREDENTIAL</span><h2 id="temporary-password-title">初始密码</h2><p>请通过可信渠道发给用户，仅用于首次登录。</p></div><button className="icon-button" type="button" onClick={() => setTemporaryPassword('')} aria-label="关闭初始密码"><X aria-hidden="true" /></button></header><div className="admin-form-card__body"><code>{temporaryPassword}</code></div><footer className="admin-form-card__footer"><span>用户可以修改，首次登录时系统会强制修改。</span><button className="primary-button" type="button" onClick={() => navigator.clipboard.writeText(temporaryPassword)}><Copy aria-hidden="true" />复制密码</button></footer></section></div>}
     </main>
   )
 }
@@ -498,10 +498,66 @@ function ContactRequestManager({ requests, loaded, onReload, onStatusChange, onD
 
 function UserManager({ users, onReload, onTemporaryPassword }: { users: ManagedUser[]; onReload: () => Promise<void>; onTemporaryPassword: (password: string) => void }) {
   const [createOpen, setCreateOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createErrors, setCreateErrors] = useState<{ username?: string; displayName?: string; form?: string }>({})
+
+  const closeCreate = () => {
+    if (creating) return
+    setCreateErrors({})
+    setCreateOpen(false)
+  }
+
+  const clearCreateError = (field: 'username' | 'displayName') => {
+    setCreateErrors((current) => current[field] || current.form
+      ? { ...current, [field]: undefined, form: undefined }
+      : current)
+  }
+
   const create = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); const values = new FormData(event.currentTarget)
-    const result = await api<{ temporaryPassword: string }>('/api/users', { method: 'POST', body: JSON.stringify({ username: values.get('username'), displayName: values.get('displayName'), role: values.get('role') }) })
-    onTemporaryPassword(result.temporaryPassword); event.currentTarget.reset(); setCreateOpen(false); await onReload()
+    event.preventDefault()
+    const form = event.currentTarget
+    const values = new FormData(form)
+    const username = String(values.get('username') ?? '').trim()
+    const displayName = String(values.get('displayName') ?? '').trim()
+    const role = String(values.get('role') ?? 'learner')
+    const errors: typeof createErrors = {}
+
+    if (!username) errors.username = '请填写用户名。'
+    else if (!/^[a-zA-Z0-9._-]{2,64}$/.test(username)) errors.username = '请输入 2–64 位字母、数字、点、下划线或短横线。'
+    if (!displayName) errors.displayName = '请填写显示名称。'
+    else if (displayName.length > 80) errors.displayName = '显示名称不能超过 80 个字符。'
+
+    if (errors.username || errors.displayName) {
+      setCreateErrors(errors)
+      const invalidName = errors.username ? 'username' : 'displayName'
+      const invalidControl = form.elements.namedItem(invalidName)
+      if (invalidControl instanceof HTMLElement) invalidControl.focus()
+      return
+    }
+
+    setCreating(true)
+    setCreateErrors({})
+    try {
+      const result = await api<{ temporaryPassword: string }>('/api/users', {
+        method: 'POST',
+        body: JSON.stringify({ username, displayName, role }),
+      })
+      form.reset()
+      setCreateOpen(false)
+      onTemporaryPassword(result.temporaryPassword)
+      void onReload().catch(() => undefined)
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : '创建账号失败，请稍后重试。'
+      if (reason instanceof ApiError && reason.status === 409) {
+        setCreateErrors({ username: message })
+        const usernameControl = form.elements.namedItem('username')
+        if (usernameControl instanceof HTMLElement) usernameControl.focus()
+      } else {
+        setCreateErrors({ form: message })
+      }
+    } finally {
+      setCreating(false)
+    }
   }
   const patch = async (id: string, data: object) => { await api(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); await onReload() }
   const reset = async (id: string) => { const result = await api<{ temporaryPassword: string }>(`/api/users/${id}/reset-password`, { method: 'POST' }); onTemporaryPassword(result.temporaryPassword) }
@@ -509,27 +565,31 @@ function UserManager({ users, onReload, onTemporaryPassword }: { users: ManagedU
 
   useEffect(() => {
     if (!createOpen) return
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setCreateOpen(false) }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || creating) return
+      setCreateErrors({})
+      setCreateOpen(false)
+    }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [createOpen])
+  }, [createOpen, creating])
 
   return <section className="admin-users" aria-labelledby="user-manager-title">
-    <header className="admin-section-heading"><div><span className="admin-section-heading__icon"><UserPlus aria-hidden="true" /></span><p><small>ACCOUNT DIRECTORY</small><strong id="user-manager-title">账号目录</strong><span>创建、分配角色或停用站内账号。</span></p></div><div className="admin-section-heading__aside"><dl><div><dt>全部</dt><dd>{users.length}</dd></div><div><dt>启用</dt><dd>{activeUsers}</dd></div></dl><button className="primary-button" type="button" onClick={() => setCreateOpen(true)}><Plus aria-hidden="true" />创建账号</button></div></header>
+    <header className="admin-section-heading"><div><span className="admin-section-heading__icon"><UserPlus aria-hidden="true" /></span><p><small>ACCOUNT DIRECTORY</small><strong id="user-manager-title">账号目录</strong><span>创建、分配角色或停用站内账号。</span></p></div><div className="admin-section-heading__aside"><dl><div><dt>全部</dt><dd>{users.length}</dd></div><div><dt>启用</dt><dd>{activeUsers}</dd></div></dl><button className="primary-button" type="button" onClick={() => { setCreateErrors({}); setCreateOpen(true) }}><Plus aria-hidden="true" />创建账号</button></div></header>
     <section className="admin-users__list" aria-label="账号列表"><header><span>账号</span><span>角色</span><span>状态</span><span>操作</span></header>{users.map((item) => <article key={item.id}>
       <div className="admin-user__identity"><span className="admin-user__avatar" aria-hidden="true">{item.displayName.trim().slice(0, 1).toUpperCase()}</span><div><strong>{item.displayName}</strong><small>@{item.username}</small></div></div>
       <select aria-label={`${item.username} 的角色`} value={item.roles[0]} onChange={(event) => patch(item.id, { role: event.target.value })}><option value="learner">学习用户</option><option value="editor">内容编辑</option><option value="admin">管理员</option></select>
       <span className={`user-status is-${item.status}`}>{item.status === 'active' ? '启用' : '停用'}</span>
       <div className="admin-user__actions"><button type="button" onClick={() => reset(item.id)}><RefreshCcw aria-hidden="true" />重置密码</button><button type="button" onClick={() => patch(item.id, { status: item.status === 'active' ? 'disabled' : 'active' })}>{item.status === 'active' ? <Archive aria-hidden="true" /> : <RotateCcw aria-hidden="true" />}{item.status === 'active' ? '停用' : '启用'}</button></div>
     </article>)}</section>
-    {createOpen && <div className="admin-overlay" role="presentation"><form className="admin-form-card admin-user-create-dialog" onSubmit={create} role="dialog" aria-modal="true" aria-labelledby="create-user-title">
-      <header className="admin-form-card__header"><div><span>NEW ACCOUNT</span><h2 id="create-user-title">创建站内账号</h2><p>适合管理员或编辑账号；普通学习用户也可以使用邀请注册。</p></div><button className="icon-button" type="button" onClick={() => setCreateOpen(false)} aria-label="关闭创建账号"><X aria-hidden="true" /></button></header>
+    {createOpen && <div className="admin-overlay" role="presentation"><form className="admin-form-card admin-user-create-dialog" onSubmit={create} noValidate role="dialog" aria-modal="true" aria-labelledby="create-user-title">
+      <header className="admin-form-card__header"><div><span>NEW ACCOUNT</span><h2 id="create-user-title">创建站内账号</h2><p>适合管理员或编辑账号；普通学习用户也可以使用邀请注册。</p></div><button className="icon-button" type="button" onClick={closeCreate} disabled={creating} aria-label="关闭创建账号"><X aria-hidden="true" /></button></header>
       <div className="admin-form-card__body"><div className="admin-form-grid">
-        <label>用户名<small>登录时使用，建议简短且便于识别。</small><input name="username" autoComplete="off" placeholder="例如 linda.chen" autoFocus required /></label>
-        <label>显示名称<small>在账号目录与个人资料中展示。</small><input name="displayName" autoComplete="off" placeholder="例如 Linda" required /></label>
+        <label>用户名<small id="create-user-username-help">2–64 位，可使用字母、数字、点、下划线或短横线。</small><input name="username" autoComplete="off" placeholder="例如 linda.chen" autoFocus required aria-invalid={Boolean(createErrors.username)} aria-describedby={`create-user-username-help${createErrors.username ? ' create-user-username-error' : ''}`} onChange={() => clearCreateError('username')} />{createErrors.username && <span className="admin-field-error" id="create-user-username-error" role="alert">{createErrors.username}</span>}</label>
+        <label>显示名称<small id="create-user-display-name-help">在账号目录与个人资料中展示，最多 80 个字符。</small><input name="displayName" autoComplete="off" placeholder="例如 Linda" required aria-invalid={Boolean(createErrors.displayName)} aria-describedby={`create-user-display-name-help${createErrors.displayName ? ' create-user-display-name-error' : ''}`} onChange={() => clearCreateError('displayName')} />{createErrors.displayName && <span className="admin-field-error" id="create-user-display-name-error" role="alert">{createErrors.displayName}</span>}</label>
         <label className="is-wide">初始角色<small>学习用户只能学习；内容编辑可以维护题库。</small><select name="role" defaultValue="learner"><option value="learner">学习用户</option><option value="editor">内容编辑</option><option value="admin">管理员</option></select></label>
-      </div></div>
-      <footer className="admin-form-card__footer"><span>系统会生成一次性初始密码。</span><div><button type="button" onClick={() => setCreateOpen(false)}>取消</button><button className="primary-button" type="submit"><Plus aria-hidden="true" />创建账号</button></div></footer>
+      </div>{createErrors.form && <p className="form-error admin-user-create-error" role="alert">{createErrors.form}</p>}</div>
+      <footer className="admin-form-card__footer"><span>初始密码为 123123，用户首次登录后必须修改。</span><div><button type="button" onClick={closeCreate} disabled={creating}>取消</button><button className="primary-button" type="submit" disabled={creating}>{creating ? <LoaderCircle className="admin-action-spinner" aria-hidden="true" /> : <Plus aria-hidden="true" />}{creating ? '正在创建…' : '创建账号'}</button></div></footer>
     </form></div>}
   </section>
 }

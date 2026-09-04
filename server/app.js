@@ -34,6 +34,8 @@ import {
   questionCreateSchema, questionPatchSchema, studyStateSchema, userCreateSchema, userPatchSchema,
 } from './validation.js'
 
+const DEFAULT_INITIAL_PASSWORD = '123123'
+
 // A missing username must still pay the same Argon2 verification cost as an existing account.
 const DUMMY_LOGIN_HASH = passwordHash(crypto.randomBytes(32).toString('base64url'))
 
@@ -495,7 +497,7 @@ export function createApp(options = {}) {
       return res.status(409).json({ error: '用户名已存在。' })
     }
     const id = crypto.randomUUID()
-    const password = data.password ?? randomPassword()
+    const password = data.password ?? DEFAULT_INITIAL_PASSWORD
     const now = new Date().toISOString()
     db.transaction(() => {
       db.prepare(`INSERT INTO users(id, username, display_name, password_hash, must_change_password, created_at, updated_at)

@@ -160,3 +160,88 @@ describe('AdminPanel contact request inbox', () => {
     expect(await screen.findByText('处理状态已更新。')).toBeTruthy()
   })
 })
+
+describe('AdminPanel user creation', () => {
+  const managingUser = { ...user, permissions: ['banks.write', 'banks.delete', 'users.manage'] } satisfies SessionUser
+
+  function openUserCreation(fetchMock: ReturnType<typeof vi.fn>) {
+    vi.stubGlobal('fetch', fetchMock)
+    render(<AdminPanel
+      user={managingUser}
+      initialCatalog={{ banks: [archivedBank], sections: [] }}
+      onExit={vi.fn()}
+      onCatalogChanged={vi.fn().mockResolvedValue(undefined)}
+    />)
+    fireEvent.click(screen.getByRole('tab', { name: '账号权限' }))
+    fireEvent.click(screen.getByRole('button', { name: '创建账号' }))
+    return screen.getByRole('dialog', { name: '创建站内账号' })
+  }
+
+  it('closes the form after creation and shows the simple initial password', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/admin/catalog') return Promise.resolve(jsonResponse({ banks: [archivedBank], sections: [] }))
+      if (url === '/api/users' && options?.method === 'POST') {
+        return Promise.resolve(jsonResponse({ temporaryPassword: '123123' }, 201))
+      }
+      if (url === '/api/users') return Promise.resolve(jsonResponse({ users: [] }))
+      if (url === '/api/admin/invitations') return Promise.resolve(jsonResponse({ invitations: [] }))
+      return Promise.reject(new Error(`Unexpected request: ${url}`))
+    })
+    const dialog = openUserCreation(fetchMock)
+
+    fireEvent.change(screen.getByPlaceholderText('例如 linda.chen'), { target: { value: 'linda.chen' } })
+    fireEvent.change(screen.getByPlaceholderText('例如 Linda'), { target: { value: 'Linda' } })
+    fireEvent.submit(dialog)
+
+    expect(await screen.findByRole('heading', { name: '初始密码' })).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: '创建站内账号' })).toBeNull()
+    expect(screen.getByText('123123')).toBeTruthy()
+    const createCall = fetchMock.mock.calls.find(([url, options]) => String(url) === '/api/users' && options?.method === 'POST')
+    expect(JSON.parse(String(createCall?.[1]?.body))).toEqual({ username: 'linda.chen', displayName: 'Linda', role: 'learner' })
+  })
+
+  it('shows field-level validation and does not send invalid data', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, _options?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/admin/catalog') return Promise.resolve(jsonResponse({ banks: [archivedBank], sections: [] }))
+      if (url === '/api/users') return Promise.resolve(jsonResponse({ users: [] }))
+      if (url === '/api/admin/invitations') return Promise.resolve(jsonResponse({ invitations: [] }))
+      return Promise.reject(new Error(`Unexpected request: ${url}`))
+    })
+    const dialog = openUserCreation(fetchMock)
+
+    fireEvent.submit(dialog)
+
+    expect(await screen.findByText('请填写用户名。')).toBeTruthy()
+    expect(screen.getByText('请填写显示名称。')).toBeTruthy()
+    expect(screen.getByPlaceholderText('例如 linda.chen').getAttribute('aria-invalid')).toBe('true')
+
+    fireEvent.change(screen.getByPlaceholderText('例如 linda.chen'), { target: { value: '中文用户名' } })
+    fireEvent.change(screen.getByPlaceholderText('例如 Linda'), { target: { value: '测试用户' } })
+    fireEvent.submit(dialog)
+
+    expect(await screen.findByText('请输入 2–64 位字母、数字、点、下划线或短横线。')).toBeTruthy()
+    expect(fetchMock.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0)
+  })
+
+  it('keeps the form open and points to a duplicate username', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/admin/catalog') return Promise.resolve(jsonResponse({ banks: [archivedBank], sections: [] }))
+      if (url === '/api/users' && options?.method === 'POST') return Promise.resolve(jsonResponse({ error: '用户名已存在。' }, 409))
+      if (url === '/api/users') return Promise.resolve(jsonResponse({ users: [] }))
+      if (url === '/api/admin/invitations') return Promise.resolve(jsonResponse({ invitations: [] }))
+      return Promise.reject(new Error(`Unexpected request: ${url}`))
+    })
+    const dialog = openUserCreation(fetchMock)
+
+    fireEvent.change(screen.getByPlaceholderText('例如 linda.chen'), { target: { value: 'existing.user' } })
+    fireEvent.change(screen.getByPlaceholderText('例如 Linda'), { target: { value: 'Existing User' } })
+    fireEvent.submit(dialog)
+
+    expect(await screen.findByText('用户名已存在。')).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: '创建站内账号' })).toBeTruthy()
+    expect(screen.getByPlaceholderText('例如 linda.chen').getAttribute('aria-invalid')).toBe('true')
+  })
+})

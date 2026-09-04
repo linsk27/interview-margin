@@ -5687,6 +5687,17 @@ body:has(.admin-overlay) {
 .admin-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); }
 .admin-form-grid > label { align-content: start; }
 .admin-form-grid > .is-wide { grid-column: 1 / -1; }
+.admin-panel input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+  outline: var(--rule-thin) solid color-mix(in oklch, var(--color-danger) 18%, transparent);
+}
+.admin-field-error {
+  color: var(--color-danger);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.admin-user-create-error { margin-block-start: var(--space-md); }
 .admin-bank-form textarea { min-height: 6.5rem; resize: vertical; }
 .admin-import { width: min(54rem, 100%); }
 .admin-import__body { display: grid; }

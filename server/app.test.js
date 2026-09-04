@@ -386,6 +386,8 @@ describe('server API', () => {
     const editorResult = await admin.post('/api/users').send({
       username: 'editor.one', displayName: '编辑一号', role: 'editor',
     }).expect(201)
+    expect(learnerResult.body.temporaryPassword).toBe('123123')
+    expect(editorResult.body.temporaryPassword).toBe('123123')
 
     const learner = request.agent(app)
     await loginAndChangePassword(learner, 'learner.one', learnerResult.body.temporaryPassword, 'LearnerPassword!456')
