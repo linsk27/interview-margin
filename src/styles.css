@@ -5440,8 +5440,12 @@ body:has(dialog[open]) .reader {
 
 .admin-panel {
   isolation: isolate;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  height: 100dvh;
   min-width: 0;
-  min-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   background: var(--color-paper-2);
   color: var(--color-ink);
 }
@@ -5777,7 +5781,7 @@ body:has(.admin-overlay) {
 }
 .admin-account-management__inner { display: grid; width: min(82rem, 100%); gap: var(--space-md); margin-inline: auto; }
 .admin-tab-panel { min-height: calc(100dvh - 8.5rem); overflow: auto; }
-.admin-contact-requests { display: grid; align-content: start; gap: var(--space-md); min-height: calc(100dvh - 8.5rem); padding: var(--space-lg); overflow: auto; }
+.admin-contact-requests { display: grid; align-content: start; gap: var(--space-md); min-height: 0; height: 100%; padding: var(--space-lg); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .admin-contact-requests__header { display: flex; width: min(82rem, 100%); margin-inline: auto; align-items: center; justify-content: space-between; gap: var(--space-lg); padding: var(--space-md) var(--space-lg); border: var(--rule-thin) solid var(--color-rule); border-radius: var(--radius-sm); background: var(--color-paper); box-shadow: 0 var(--space-2xs) var(--space-lg) color-mix(in oklch, var(--color-ink) 5%, transparent); }
 .admin-contact-requests__header > div:first-child { display: flex; align-items: center; gap: var(--space-sm); }
 .admin-contact-requests__header p { display: grid; gap: var(--space-3xs); margin: 0; }
@@ -5791,8 +5795,8 @@ body:has(.admin-overlay) {
 .admin-contact-requests__filters button { display: inline-flex; min-height: 2.5rem; flex: 0 0 auto; align-items: center; gap: var(--space-xs); padding-inline: var(--space-sm); border: var(--rule-thin) solid transparent; border-radius: 999px; background: transparent !important; color: var(--color-muted); }
 .admin-contact-requests__filters button span { display: grid; min-width: 1.35rem; height: 1.35rem; place-items: center; border-radius: 50%; background: var(--color-paper-3); font: 0.62rem var(--font-mono); }
 .admin-contact-requests__filters button.is-active { border-color: color-mix(in oklch, var(--color-accent) 32%, var(--color-rule)); background: var(--color-accent-soft) !important; color: var(--color-accent); }
-.admin-contact-requests__list { display: grid; width: min(82rem, 100%); margin-inline: auto; gap: var(--space-sm); }
-.admin-contact-request { display: grid; gap: var(--space-md); padding: var(--space-lg); border: var(--rule-thin) solid var(--color-rule); border-inline-start: var(--rule-heavy) solid var(--color-rule-strong); border-radius: var(--radius-sm); background: var(--color-paper); }
+.admin-contact-requests__list { display: grid; width: min(82rem, 100%); margin-inline: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--space-sm); }
+.admin-contact-request { display: grid; min-width: 0; gap: var(--space-sm); padding: var(--space-md); border: var(--rule-thin) solid var(--color-rule); border-inline-start: var(--rule-heavy) solid var(--color-rule-strong); border-radius: var(--radius-sm); background: var(--color-paper); box-shadow: 0 var(--space-2xs) var(--space-sm) color-mix(in oklch, var(--color-ink) 4%, transparent); }
 .admin-contact-request.is-new { border-inline-start-color: var(--color-accent); }
 .admin-contact-request.is-resolved { opacity: 0.78; }
 .admin-contact-request > header, .admin-contact-request > footer, .admin-contact-request > header > div, .admin-contact-request > footer > div:last-child { display: flex; align-items: center; }
@@ -5801,7 +5805,7 @@ body:has(.admin-overlay) {
 .admin-contact-request > header > div > strong { font-size: var(--text-md); }
 .admin-contact-request > header em { padding: var(--space-3xs) var(--space-xs); border-radius: 999px; background: var(--color-accent); color: var(--color-paper); font: 700 0.58rem var(--font-mono); font-style: normal; }
 .admin-contact-request time { color: var(--color-muted); font: 0.68rem var(--font-mono); }
-.admin-contact-request > p { margin: 0; color: var(--color-neutral); line-height: 1.75; white-space: pre-wrap; }
+.admin-contact-request > p { max-height: 9rem; margin: 0; overflow: auto; color: var(--color-neutral); line-height: 1.7; white-space: pre-wrap; }
 .admin-contact-request__context { display: flex; flex-wrap: wrap; gap: var(--space-xs); color: var(--color-muted) !important; font-size: var(--text-xs); }
 .admin-contact-request__context span { padding: var(--space-3xs) var(--space-xs); border-radius: 999px; background: var(--color-paper-3); }
 .admin-contact-request__note { display: grid; gap: var(--space-3xs); color: var(--color-muted); font-size: var(--text-xs); }
@@ -5950,6 +5954,7 @@ body:has(.admin-overlay) {
 }
 
 @media (max-width: 79rem) {
+  .admin-contact-requests__list { grid-template-columns: minmax(0, 1fr); }
   .admin-content__workspace { grid-template-columns: 18rem minmax(0, 1fr); }
   .admin-editor__fields { padding: var(--space-md); }
   .invitation-manager > header { align-items: flex-start; flex-direction: column; }
@@ -5958,7 +5963,7 @@ body:has(.admin-overlay) {
 }
 
 @media (max-width: 59.99rem) {
-  .admin-panel { min-height: 100dvh; }
+  .admin-panel { display: block; height: auto; min-height: 100dvh; overflow: visible; }
   .admin-content { height: auto; min-height: calc(100dvh - 8rem); grid-template-rows: auto auto auto; overflow: visible; }
   .admin-content__workspace { grid-template-columns: minmax(0, 1fr); overflow: visible; }
   .admin-questions { min-height: 18rem; max-height: 24rem; }
@@ -6030,7 +6035,7 @@ body:has(.admin-overlay) {
   .admin-section-heading dl { display: none; }
   .admin-section-heading__aside { align-self: center; }
   .admin-user__actions { display: grid; grid-template-columns: 1fr 1fr; }
-  .admin-contact-requests { padding: var(--space-sm); }
+  .admin-contact-requests { height: auto; min-height: calc(100dvh - 8rem); padding: var(--space-sm); overflow: visible; }
   .admin-contact-requests__header { align-items: flex-start; flex-direction: column; padding: var(--space-md); }
   .admin-contact-requests__summary { width: 100%; justify-content: space-between; }
   .admin-contact-request { padding: var(--space-md); }
