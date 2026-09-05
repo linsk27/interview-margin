@@ -1377,6 +1377,9 @@ function matchingVisualRule(bankId, title) {
 export function enhanceQuestionClarity(markdown, { title = '', bankId = '' } = {}) {
   const source = String(markdown ?? '')
   const sourceLines = source.replace(/\r\n?/g, '\n').split('\n')
+  // A clarity marker means the question has already been normalised. Keeping
+  // this fast path strict is what makes repeated rendering idempotent; source
+  // snapshots are regenerated when legacy supplements change.
   if (hasMarkerOutsideFence(sourceLines, CLARITY_MARKER)) return source.trim()
 
   let lines = sourceLines
@@ -1467,21 +1470,29 @@ export function enhanceQuestionClarity(markdown, { title = '', bankId = '' } = {
     }
   }
 
-  const supplementMarker = legacySupplement ? `[clarity-supplement-${title.match(/^Q(\d+)/i)?.[1]}]: #` : ''
-  if (legacySupplement && !lines.join('\n').includes(supplementMarker)) {
-    if (legacySupplement.mechanism?.trim()) {
+  const supplementMarker = legacySupplement ? `[clarity-supplement-${title.match(/^Q(\d+(?:\.\d+)?)/i)?.[1]}]: #` : ''
+  const supplementNeedsRepair = legacySupplement && (
+    !lines.join('\n').includes(supplementMarker)
+    || (legacySupplement.mechanism?.trim() && !lines.join('\n').includes(legacySupplement.mechanism.trim()))
+    || (legacySupplement.practice?.trim() && !lines.join('\n').includes(legacySupplement.practice.trim()))
+    || (legacySupplement.followups?.trim() && !lines.join('\n').includes(legacySupplement.followups.trim()))
+  )
+  if (supplementNeedsRepair) {
+    if (legacySupplement.mechanism?.trim() && !lines.join('\n').includes(legacySupplement.mechanism.trim())) {
       const hasMechanism = locateSections(lines).some((item) => item.kind === 'mechanism')
       if (hasMechanism) {
         const section = locateSections(lines).find((item) => item.kind === 'mechanism')
-        lines = [...lines.slice(0, section.end), '', supplementMarker, '', legacySupplement.mechanism, ...lines.slice(section.end)]
+        const marker = lines.join('\n').includes(supplementMarker) ? [] : [supplementMarker, '']
+        lines = [...lines.slice(0, section.end), '', ...marker, legacySupplement.mechanism, ...lines.slice(section.end)]
       } else {
         const anchor = locateSections(lines).some((item) => item.kind === 'glossary') ? 'glossary' : 'answer'
-        lines = insertAfterSection(lines, anchor, ['**原理 / 流程：**', '', supplementMarker, '', legacySupplement.mechanism])
+        const marker = lines.join('\n').includes(supplementMarker) ? [] : [supplementMarker, '']
+        lines = insertAfterSection(lines, anchor, ['**原理 / 流程：**', '', ...marker, legacySupplement.mechanism])
       }
-    } else {
+    } else if (!lines.join('\n').includes(supplementMarker)) {
       lines = insertAfterSection(lines, 'answer', [supplementMarker])
     }
-    if (legacySupplement.practice?.trim()) {
+    if (legacySupplement.practice?.trim() && !lines.join('\n').includes(legacySupplement.practice.trim())) {
       const currentPractice = locateSections(lines).find((item) => item.kind === 'practice')
       if (currentPractice) lines = [...lines.slice(0, currentPractice.end), '', legacySupplement.practice, ...lines.slice(currentPractice.end)]
       else lines = insertAfterSection(lines, 'mechanism', ['**代码 / 场景：**', '', legacySupplement.practice])
@@ -1489,23 +1500,38 @@ export function enhanceQuestionClarity(markdown, { title = '', bankId = '' } = {
     if (legacySupplement.sources?.length) {
       const currentSources = locateSections(lines).find((item) => item.kind === 'sources')
       const rendered = [renderLegacySources(legacySupplement.sources), '', '补充校验日期：2026-08-29']
-      if (currentSources) lines = [...lines.slice(0, currentSources.end), '', ...rendered, ...lines.slice(currentSources.end)]
-      else {
-        const anchor = locateSections(lines).some((item) => item.kind === 'practice')
-          ? 'practice'
-          : locateSections(lines).some((item) => item.kind === 'mechanism') ? 'mechanism' : 'answer'
-        lines = insertAfterSection(lines, anchor, ['**参考来源：**', '', ...rendered])
+      if (!lines.join('\n').includes(rendered.join('\n'))) {
+        if (currentSources) lines = [...lines.slice(0, currentSources.end), '', ...rendered, ...lines.slice(currentSources.end)]
+        else {
+          const anchor = locateSections(lines).some((item) => item.kind === 'practice')
+            ? 'practice'
+            : locateSections(lines).some((item) => item.kind === 'mechanism') ? 'mechanism' : 'answer'
+          lines = insertAfterSection(lines, anchor, ['**参考来源：**', '', ...rendered])
+        }
       }
     }
     if (legacySupplement.pitfalls?.length) {
       const currentPitfalls = locateSections(lines).find((item) => item.kind === 'pitfalls')
       const rendered = legacySupplement.pitfalls.map((item) => `- ${item}`)
-      if (currentPitfalls) lines = [...lines.slice(0, currentPitfalls.end), '', ...rendered, ...lines.slice(currentPitfalls.end)]
+      if (!lines.join('\n').includes(rendered.join('\n'))) {
+        if (currentPitfalls) lines = [...lines.slice(0, currentPitfalls.end), '', ...rendered, ...lines.slice(currentPitfalls.end)]
+        else {
+          const anchor = locateSections(lines).some((item) => item.kind === 'practice')
+            ? 'practice'
+            : locateSections(lines).some((item) => item.kind === 'mechanism') ? 'mechanism' : 'answer'
+          lines = insertAfterSection(lines, anchor, ['**易错点：**', '', ...rendered])
+        }
+      }
+    }
+    if (legacySupplement.followups?.trim() && !lines.join('\n').includes(legacySupplement.followups.trim())) {
+      const currentFollowups = locateSections(lines).find((item) => item.kind === 'followups')
+      const rendered = legacySupplement.followups.split('\n')
+      if (currentFollowups) lines = [...lines.slice(0, currentFollowups.end), '', ...rendered, ...lines.slice(currentFollowups.end)]
       else {
-        const anchor = locateSections(lines).some((item) => item.kind === 'practice')
-          ? 'practice'
-          : locateSections(lines).some((item) => item.kind === 'mechanism') ? 'mechanism' : 'answer'
-        lines = insertAfterSection(lines, anchor, ['**易错点：**', '', ...rendered])
+        const anchor = locateSections(lines).some((item) => item.kind === 'pitfalls')
+          ? 'pitfalls'
+          : locateSections(lines).some((item) => item.kind === 'practice') ? 'practice' : 'mechanism'
+        lines = insertAfterSection(lines, anchor, rendered)
       }
     }
   }

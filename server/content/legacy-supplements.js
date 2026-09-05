@@ -797,7 +797,9 @@ authorize(claims.payload.sub, 'order:read', order.ownerId)
     ],
   }],
   [79, {
-    mechanism: `分层按变化原因和测试边界拆开：route 处理鉴权、入参和 HTTP/SSE；service 编排检索、降级和 Prompt；repository 只负责 SQL/映射；schema 负责迁移与索引。请求沿层向下，结果再向上，避免路由同时写业务和拼 SQL，便于单测和替换。`,
+    mechanism: `分层按变化原因和测试边界拆开：route 处理鉴权、入参和 HTTP/SSE；service 编排检索、降级和 Prompt；repository 只负责 SQL/映射；schema 负责迁移与索引。
+
+请求沿层向下，结果再向上，避免路由同时写业务和拼 SQL，便于单测和替换。`,
     pitfalls: [
       '分层不是机械增加文件；如果 service 只是转发、repository 偷藏业务规则，复杂度只会换位置。',
       '接口响应、鉴权和事务边界仍要统一；拆层不能让每一层各自捕获错误或重复校验，导致行为不一致。',
@@ -820,11 +822,39 @@ authorize(claims.payload.sub, 'order:read', order.ownerId)
   }],
 ])
 
+// A few older records already carry the source marker but still lack a
+// learner-facing follow-up or reproducible scenario. Keep these additions in
+// a small overlay so content fixes remain idempotent and do not duplicate the
+// authored answer.
+const LEGACY_FOLLOWUPS = new Map([
+  [24, '**继续追问：**\n\n1. 你说的并发约束如何用测试证明？\n\n   给出冲突请求、预期状态码和数据库受影响行数。\n\n2. 如果这是方案而不是已上线能力，怎样向面试官说明边界？\n\n   区分已实现、已验证与后续设计，避免把设想说成事实。'],
+  [52, '**继续追问：**\n\n1. 哪些步骤必须支持返回，哪些步骤可以替换当前页面？\n\n   先画状态图，再用页面栈长度和返回路径逐条验证。\n\n2. 冷启动后如何恢复中途表单？\n\n   使用带版本和过期时间的快照，不把业务状态寄托在页面栈。'],
+  [61, '**继续追问：**\n\n1. 设备凭据泄露后怎样缩小影响范围？\n\n   按设备吊销证书并收紧 Broker ACL，不能只修改 payload。\n\n2. QoS 1 重复命令怎样避免重复执行？\n\n   用 commandId 做幂等记录，并在执行前后检查设备状态。'],
+  [71.1, '**继续追问：**\n\n1. 关闭 proxy_buffering 后普通接口是否也要关闭？\n\n   不需要，只对 SSE 路由关闭并保持其他接口的缓存策略。\n\n2. 客户端断开时如何避免上游生成继续计费？\n\n   监听连接关闭，把 AbortSignal 传到上游并释放连接配额。'],
+  [79, '**继续追问：**\n\n1. 哪一层负责事务边界，为什么？\n\n   由 service 编排事务，repository 只执行数据访问，避免路由和 SQL 各自提交。\n\n2. 如果分层后只是文件变多，怎样判断应该合并？\n\n   看是否存在可复用的业务规则和独立测试边界，而不是按目录数量判断。'],
+])
+
+const LEGACY_PRACTICE = new Map([
+  [14, '**示例场景：** 同一篇公开文章分别用 CSR、SSR、SSG 构建：记录 TTFB、LCP 和 hydration 错误，观察 SSR 的 HTML 首屏与 CSR 的脚本启动差异；若数据每次变化，再说明为什么不能直接把页面静态化。'],
+  [47, '**示例场景：** Embedding 服务超时，先把请求标记为可重试并切换关键词检索；记录 provider、耗时和降级次数，恢复后再补齐向量。\n\n```ts\nconst result = await withTimeout(embed(text), 800).catch(() => ({ degraded: true }))\n// degraded 时走 BM25，不把空向量写进正式索引\n```'],
+  [56, '**示例场景：** 用浏览器 Performance、服务端 TTFB 和 hydration 时间拆分 SSR 首屏慢的问题；若 TTFB 正常但 LCP 慢，优先查脚本和图片，而不是盲目关闭 SSR。'],
+  [59, '**示例场景：** 让 100 个并发请求同时让热点 key 失效，观察数据库 QPS、锁等待和 P95；只有单飞重建、随机 TTL 和超时降级都通过，才算证明不会击穿。'],
+  [67, '**示例场景：** 对真实查询执行 `EXPLAIN ANALYZE`，比较联合索引前后的扫描行、回表和排序耗时；再用一条跳过最左列的查询验证索引并未按想象生效。'],
+  [69, '**示例场景：** 从 DNS、TCP、TLS 到反向代理逐层执行 curl 和日志对照；若源站直连成功但域名失败，就检查代理、隧道和防火墙，而不是只重试浏览器。'],
+  [70, '**示例场景：** 发布后连续重启应用并从公网访问，检查 systemd、健康检查、隧道连接和反向代理日志；一次 curl 200 不能证明重启后仍会自动恢复。'],
+  [75, '**示例场景：** 为新 Embedding 建 v2 索引并用固定问题集比较 Recall@K；切换读取指针后故意制造失败，再回滚到 v1，确认旧索引仍可服务。'],
+])
+
 export function legacySupplementFor(title) {
   const match = String(title ?? '').match(/^Q(\d+(?:\.\d+)?)(?=[：:\s])/i)
   if (!match) return undefined
   const number = Number(match[1])
-  return Number.isFinite(number) ? SUPPLEMENTS.get(number) : undefined
+  if (!Number.isFinite(number)) return undefined
+  const base = SUPPLEMENTS.get(number)
+  const followups = LEGACY_FOLLOWUPS.get(number)
+  const practice = LEGACY_PRACTICE.get(number)
+  if (!base && !followups && !practice) return undefined
+  return { ...(base ?? {}), ...(followups ? { followups } : {}), ...(practice ? { practice } : {}) }
 }
 
 export function renderLegacySources(sources) {
