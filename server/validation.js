@@ -90,6 +90,8 @@ export const contactRequestCreateSchema = z.object({
   name: z.string().trim().min(1).max(80),
   contact: z.string().trim().max(160).default(''),
   message: z.string().trim().min(10).max(2_000),
+  questionId: z.string().trim().max(160).optional(),
+  pageContext: z.string().trim().max(160).optional(),
   consent: z.literal(true),
   website: z.string().max(200).default(''),
 }).strict().superRefine((value, context) => {
@@ -103,7 +105,31 @@ export const contactRequestCreateSchema = z.object({
 })
 
 export const contactRequestPatchSchema = z.object({
-  status: z.enum(['new', 'reviewing', 'resolved']),
+  status: z.enum(['new', 'reviewing', 'resolved']).optional(),
+  assignedTo: z.string().trim().max(160).nullable().optional(),
+  adminNote: z.string().max(2_000).nullable().optional(),
+  invitationId: z.string().trim().max(160).nullable().optional(),
+}).strict().refine((value) => Object.keys(value).length > 0, {
+  message: '至少提供一个要更新的字段。',
+})
+
+const interviewAttemptSchema = z.object({
+  clientId: z.string().trim().max(160).optional(),
+  questionId: z.string().trim().min(1).max(160),
+  answer: z.string().trim().min(1).max(6_000),
+  score: z.number().int().min(0).max(100),
+  dimensions: z.array(z.record(z.string(), z.unknown())).max(5).default([]),
+  corrections: z.array(z.record(z.string(), z.unknown())).max(3).default([]),
+  strengths: z.array(z.string().max(300)).max(3).default([]),
+  gaps: z.array(z.string().max(300)).max(3).default([]),
+  nextStep: z.string().max(300).default(''),
+  band: z.string().max(100).default(''),
+  summary: z.string().max(300).default(''),
+  createdAt: z.string().datetime().optional(),
+}).strict()
+
+export const interviewAttemptMergeSchema = z.object({
+  attempts: z.array(interviewAttemptSchema).max(100),
 }).strict()
 
 export const aiScoreRequestSchema = z.object({

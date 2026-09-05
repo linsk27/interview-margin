@@ -29,6 +29,13 @@ interface ManagedContactRequest {
   contact: string
   message: string
   status: 'new' | 'reviewing' | 'resolved'
+  questionId?: string
+  pageContext?: string
+  userId?: string
+  invitationId?: string
+  assignedTo?: string
+  adminNote?: string
+  resolvedAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -155,6 +162,22 @@ export function AdminPanel({ user, onExit, onCatalogChanged, initialCatalog = { 
     })
     setContactRequests((current) => current.map((item) => item.id === id ? result.request : item))
     setFeedback('处理状态已更新。')
+  }
+
+  const updateContactRequest = async (id: string, patch: { assignedTo?: string | null; adminNote?: string | null }) => {
+    const result = await api<{ request: ManagedContactRequest }>(`/api/admin/contact-requests/${id}`, {
+      method: 'PATCH', body: JSON.stringify(patch),
+    })
+    setContactRequests((current) => current.map((item) => item.id === id ? result.request : item))
+    setFeedback('反馈记录已更新。')
+  }
+
+  const generateRequestInvitation = async (item: ManagedContactRequest) => {
+    const result = await api<{ token: string }>(`/api/admin/contact-requests/${item.id}/invitation`, {
+      method: 'POST', body: JSON.stringify({ expiresInHours: 72 }),
+    })
+    setFeedback(`邀请已生成：${result.token}`)
+    await loadContactRequests()
   }
 
   const removeContactRequest = async (item: ManagedContactRequest) => {
@@ -433,7 +456,7 @@ export function AdminPanel({ user, onExit, onCatalogChanged, initialCatalog = { 
       )}
 
       {tab === 'users' && canManageUsers && <div className="admin-account-management" id="admin-panel-users" role="tabpanel" aria-labelledby="admin-tab-users"><div className="admin-account-management__inner"><InvitationManager /><UserManager users={users} onReload={loadUsers} onTemporaryPassword={setTemporaryPassword} /></div></div>}
-      {tab === 'requests' && canManageUsers && <ContactRequestManager requests={contactRequests} loaded={contactRequestsLoaded} onReload={loadContactRequests} onStatusChange={updateContactRequestStatus} onDelete={removeContactRequest} onOpenUsers={() => setTab('users')} />}
+      {tab === 'requests' && canManageUsers && <ContactRequestManager requests={contactRequests} loaded={contactRequestsLoaded} onReload={loadContactRequests} onStatusChange={updateContactRequestStatus} onUpdate={updateContactRequest} onGenerateInvitation={generateRequestInvitation} onDelete={removeContactRequest} onOpenUsers={() => setTab('users')} />}
       {tab === 'backups' && canBackup && <div className="admin-tab-panel" id="admin-panel-backups" role="tabpanel" aria-labelledby="admin-tab-backups"><BackupManager backups={backups} onReload={loadBackups} /></div>}
 
       {bankFormOpen && <div className="admin-overlay" role="presentation"><form className="admin-form-card admin-bank-form" onSubmit={createBank} role="dialog" aria-modal="true" aria-labelledby="create-bank-title">
@@ -460,11 +483,13 @@ export function AdminPanel({ user, onExit, onCatalogChanged, initialCatalog = { 
   )
 }
 
-function ContactRequestManager({ requests, loaded, onReload, onStatusChange, onDelete, onOpenUsers }: {
+function ContactRequestManager({ requests, loaded, onReload, onStatusChange, onUpdate, onGenerateInvitation, onDelete, onOpenUsers }: {
   requests: ManagedContactRequest[]
   loaded: boolean
   onReload: () => Promise<void>
   onStatusChange: (id: string, status: ManagedContactRequest['status']) => Promise<void>
+  onUpdate: (id: string, patch: { assignedTo?: string | null; adminNote?: string | null }) => Promise<void>
+  onGenerateInvitation: (item: ManagedContactRequest) => Promise<void>
   onDelete: (item: ManagedContactRequest) => Promise<void>
   onOpenUsers: () => void
 }) {
@@ -491,7 +516,16 @@ function ContactRequestManager({ requests, loaded, onReload, onStatusChange, onD
         : <div className="admin-contact-requests__list">{visible.map((item) => <article key={item.id} className={`admin-contact-request is-${item.status}`}>
           <header><div><span className={`admin-request-kind is-${item.kind}`}>{item.kind === 'account' ? '账号申请' : '产品反馈'}</span><strong>{item.name}</strong>{item.status === 'new' && <em>NEW</em>}</div><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time></header>
           <p>{item.message}</p>
-          <footer><div>{item.contact ? (item.contact.includes('@') ? <a href={`mailto:${item.contact}`}>{item.contact}</a> : <span>{item.contact}</span>) : <span>未留联系方式</span>}</div><div><select aria-label={`${item.name} 的处理状态`} value={item.status} disabled={pendingId === item.id} onChange={(event) => update(item.id, event.target.value as ManagedContactRequest['status'])}><option value="new">待处理</option><option value="reviewing">处理中</option><option value="resolved">已完成</option></select>{item.kind === 'account' && <button type="button" onClick={onOpenUsers}><UserPlus aria-hidden="true" />账号权限</button>}<button className="is-danger" type="button" onClick={() => onDelete(item)}><Trash2 aria-hidden="true" />删除</button></div></footer>
+          {(item.questionId || item.pageContext || item.invitationId) && <p className="admin-contact-request__context">
+            {item.questionId && <span>题目：{item.questionId}</span>}
+            {item.pageContext && <span>位置：{item.pageContext}</span>}
+            {item.invitationId && <span>已关联邀请</span>}
+          </p>}
+          <label className="admin-contact-request__note">处理备注<textarea defaultValue={item.adminNote ?? ''} placeholder="记录处理结论（可选）" onBlur={(event) => {
+            const value = event.currentTarget.value
+            if (value !== (item.adminNote ?? '')) void onUpdate(item.id, { adminNote: value || null })
+          }} /></label>
+          <footer><div>{item.contact ? (item.contact.includes('@') ? <a href={`mailto:${item.contact}`}>{item.contact}</a> : <span>{item.contact}</span>) : <span>未留联系方式</span>}</div><div><select aria-label={`${item.name} 的处理状态`} value={item.status} disabled={pendingId === item.id} onChange={(event) => update(item.id, event.target.value as ManagedContactRequest['status'])}><option value="new">待处理</option><option value="reviewing">处理中</option><option value="resolved">已完成</option></select>{item.kind === 'account' && <>{!item.invitationId && <button type="button" onClick={() => void onGenerateInvitation(item)}><Send aria-hidden="true" />生成邀请</button>}<button type="button" onClick={onOpenUsers}><UserPlus aria-hidden="true" />账号权限</button></>}<button className="is-danger" type="button" onClick={() => onDelete(item)}><Trash2 aria-hidden="true" />删除</button></div></footer>
         </article>)}</div>}
   </section>
 }

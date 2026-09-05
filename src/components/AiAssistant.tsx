@@ -28,6 +28,65 @@ interface AssistantMessage {
   status?: 'streaming' | 'complete' | 'stopped' | 'interrupted' | 'truncated'
 }
 
+const CHAT_STORAGE_KEY = 'interview-margin:ai-chat:v2'
+const MAX_PERSISTED_MESSAGES = 6
+const MAX_PERSISTED_CHARS = 24_000
+
+interface PersistedChat {
+  messages: AssistantMessage[]
+  draft: string
+}
+
+function chatStorage(): Record<string, PersistedChat> {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CHAT_STORAGE_KEY) ?? '{}')
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, PersistedChat> : {}
+  } catch {
+    return {}
+  }
+}
+
+function loadPersistedChat(questionId: string): PersistedChat {
+  if (typeof window === 'undefined') return { messages: [], draft: '' }
+  const item = chatStorage()[questionId]
+  if (!item || !Array.isArray(item.messages)) return { messages: [], draft: '' }
+  const messages = item.messages
+    .filter((message) => message && (message.role === 'user' || message.role === 'assistant') && typeof message.content === 'string')
+    .slice(-MAX_PERSISTED_MESSAGES)
+    .map((message) => ({
+      id: typeof message.id === 'string' ? message.id : `${message.role}-${Math.random().toString(36).slice(2)}`,
+      role: message.role,
+      content: message.content.slice(0, MAX_PERSISTED_CHARS),
+      status: message.status === 'streaming' ? 'interrupted' : message.status,
+    }))
+  return { messages, draft: typeof item.draft === 'string' ? item.draft.slice(0, 6000) : '' }
+}
+
+function savePersistedChat(questionId: string, value: PersistedChat) {
+  if (typeof window === 'undefined') return
+  try {
+    const all = chatStorage()
+    // Keep unsent text across a reload. Completed conversation is kept in the
+    // mounted reader session (so switching questions is lossless) without
+    // growing a long-lived localStorage transcript.
+    const messages = value.messages.filter((message) => message.status !== 'streaming').slice(-MAX_PERSISTED_MESSAGES)
+    if (!value.draft.trim()) delete all[questionId]
+    else all[questionId] = { messages: [], draft: value.draft.slice(0, 6000) }
+    window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(all))
+  } catch {
+    // A blocked or full storage should never disable the assistant.
+  }
+}
+
+function clearPersistedChat(questionId: string) {
+  if (typeof window === 'undefined') return
+  try {
+    const all = chatStorage()
+    delete all[questionId]
+    window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(all))
+  } catch { /* ignore storage failures */ }
+}
+
 interface ReplyResult {
   content: string
   truncated: boolean
@@ -209,23 +268,52 @@ async function readReply(response: Response, onDelta: (delta: string) => void): 
 
 export function AiAssistant({ question, focusToken, onClose, embedded = false }: AiAssistantProps) {
   const displayQuestionTitle = question.title.replace(/^Q[\d.]+[：:]?\s*/i, '')
-  const [messages, setMessages] = useState<AssistantMessage[]>([])
-  const [draft, setDraft] = useState('')
+  const initialChat = loadPersistedChat(question.id)
+  const [messages, setMessages] = useState<AssistantMessage[]>(initialChat.messages)
+  const [draft, setDraft] = useState(initialChat.draft)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [restored, setRestored] = useState(Boolean(initialChat.messages.length || initialChat.draft))
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | undefined>(undefined)
+  const activeQuestionRef = useRef(question.id)
+  const stateRef = useRef<PersistedChat>(initialChat)
+  const sessionChatsRef = useRef<Record<string, PersistedChat>>({ [question.id]: initialChat })
 
   useEffect(() => {
+    stateRef.current = { messages, draft }
+    sessionChatsRef.current[question.id] = stateRef.current
+    savePersistedChat(question.id, stateRef.current)
+  }, [draft, messages, question.id])
+
+  useEffect(() => {
+    if (activeQuestionRef.current === question.id) return
+    savePersistedChat(activeQuestionRef.current, stateRef.current)
     abortRef.current?.abort()
-    setMessages([])
-    setDraft('')
+    const next = sessionChatsRef.current[question.id] ?? loadPersistedChat(question.id)
+    setMessages(next.messages)
+    setDraft(next.draft)
     setError('')
     setIsLoading(false)
+    setRestored(Boolean(next.messages.length || next.draft))
+    activeQuestionRef.current = question.id
   }, [question.id])
 
-  useEffect(() => () => abortRef.current?.abort(), [])
+  useEffect(() => () => {
+    savePersistedChat(activeQuestionRef.current, stateRef.current)
+    abortRef.current?.abort()
+  }, [])
+
+  useEffect(() => {
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      if (!stateRef.current.draft.trim() && !isLoading) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warnBeforeLeaving)
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
+  }, [isLoading])
 
   useEffect(() => {
     if (!focusToken) return
@@ -322,6 +410,7 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
       )),
       newMessage('user', content, 'complete'),
     ]
+    setRestored(false)
     setDraft('')
     await requestReply(conversation)
   }
@@ -360,6 +449,8 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
     abortRef.current?.abort()
     abortRef.current = undefined
     setMessages([])
+    clearPersistedChat(question.id)
+    setRestored(false)
     setError('')
     setIsLoading(false)
     inputRef.current?.focus()
@@ -424,6 +515,12 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
             </button>
           )}
         </div>
+
+        {restored && (
+          <p className={styles.composerStatus} role="status">
+            <Check aria-hidden="true" />已保留本题上次的提问和未发送内容，切换题目也不会丢失。
+          </p>
+        )}
 
         {!hasConversation && !error && (
           <div className={styles.emptyState}>

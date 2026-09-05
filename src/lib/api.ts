@@ -277,6 +277,37 @@ export async function getCatalogBank(bankId: string): Promise<PublicBankCatalog>
   return catalog
 }
 
+export interface CatalogSearchResult extends PublicCatalogIndexQuestion {
+  bankTitle: string
+  sectionTitle: string
+  matchSnippet?: string
+  snippet?: string
+  rank?: number
+}
+
+export interface CatalogSearchPage {
+  query: string
+  results: CatalogSearchResult[]
+  nextCursor: string | null
+  hasMore: boolean
+  total?: number
+}
+
+export function searchCatalogPage(query: string, options: {
+  track?: string
+  tag?: string
+  difficulty?: string
+  frequency?: string | number
+  limit?: number
+  cursor?: string
+} = {}) {
+  const params = new URLSearchParams({ q: query })
+  for (const [key, value] of Object.entries(options)) {
+    if (value !== undefined && value !== '') params.set(key, String(value))
+  }
+  return api<CatalogSearchPage>(`/api/catalog/search?${params.toString()}`)
+}
+
 function expectedUserHeaders(userId: string): HeadersInit {
   return { 'X-Expected-User-Id': userId }
 }
@@ -305,6 +336,58 @@ export function changePassword(currentPassword: string, newPassword: string) {
   return api<{ ok: true }>('/api/auth/change-password', {
     method: 'POST', body: JSON.stringify({ currentPassword, newPassword }),
   })
+}
+
+export interface InterviewAttemptRecord {
+  id: string
+  clientId?: string
+  questionId: string
+  answer: string
+  score: number
+  dimensions: Array<Record<string, unknown>>
+  corrections: Array<Record<string, unknown>>
+  strengths: string[]
+  gaps: string[]
+  nextStep: string
+  band: string
+  summary: string
+  createdAt: string
+}
+
+export interface LearningInsights {
+  totalAttempts: number
+  averageScore: number | null
+  latestScore: number | null
+  weakestDimensions: Array<{
+    key: string
+    label: string
+    score: number
+    maxScore: number
+    count: number
+    percentage: number
+  }>
+  trend: Array<{ date: string; attempts: number; totalScore: number; averageScore: number }>
+}
+
+export function listInterviewAttempts(questionId?: string, limit = 50) {
+  const query = new URLSearchParams()
+  if (questionId) query.set('questionId', questionId)
+  query.set('limit', String(limit))
+  return api<{ attempts: InterviewAttemptRecord[] }>(`/api/me/interview-attempts?${query.toString()}`)
+}
+
+export function deleteInterviewAttempt(id: string) {
+  return api<{ ok: true }>(`/api/me/interview-attempts/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+export function mergeInterviewAttempts(attempts: Array<Omit<InterviewAttemptRecord, 'id' | 'createdAt'> & { id?: string; createdAt?: string }>) {
+  return api<{ inserted: number; repeated: number; attempts: InterviewAttemptRecord[] }>('/api/me/interview-attempts/merge', {
+    method: 'POST', body: JSON.stringify({ attempts }),
+  })
+}
+
+export function getLearningInsights() {
+  return api<LearningInsights>('/api/me/learning-insights')
 }
 
 export function inspectInvitation(token: string) {

@@ -16,25 +16,54 @@ import {
 import { backupDatabase, listBackups, resolveBackup } from './backup-service.js'
 import { parseQuestionMarkdown, renderBankMarkdown } from './content/markdown.js'
 import { inspectMarkdownDiagrams } from './content/diagram-policy.js'
+import { auditContentQuality, auditQuestionForPublish } from './content/quality-audit.js'
 import {
-  createContactRequest, deleteContactRequest, listContactRequests, updateContactRequest,
+  createContactRequest, deleteContactRequest, linkContactRequestInvitation, listContactRequests,
+  updateContactRequest,
 } from './contact-requests.js'
 import { createDatabase, passwordHash, randomPassword } from './database.js'
+import { reserveAiUsage, settleAiUsage, summarizeAiUsage, quotaErrorResponse } from './ai-usage.js'
+import {
+  createInterviewAttempt, deleteInterviewAttempt, getLearningInsights, listInterviewAttempts,
+  mergeInterviewAttempts,
+} from './interview-attempts.js'
 import {
   acceptInvitation, createInvitation, inspectInvitation, listInvitations, revokeInvitation,
 } from './invitations.js'
 import {
-  audit, createQuestion, getBankCatalog, getStudyState, listCatalog, listCatalogIndex, mergeStudyState,
+  audit, createQuestion, getBankCatalog, getStudyState, listCatalog, listCatalogIndex, mergeStudyState, searchCatalogPage,
   saveStudyState, updateQuestion,
 } from './repository.js'
 import {
   aiScoreRequestSchema, bankCreateSchema, bankPatchSchema, loginSchema, parseBody, passwordSchema,
   contactRequestCreateSchema, contactRequestPatchSchema,
   invitationAcceptSchema, invitationCreateSchema, invitationInspectSchema,
-  questionCreateSchema, questionPatchSchema, studyStateSchema, userCreateSchema, userPatchSchema,
+  interviewAttemptMergeSchema, questionCreateSchema, questionPatchSchema, studyStateSchema,
+  userCreateSchema, userPatchSchema,
 } from './validation.js'
 
 const DEFAULT_INITIAL_PASSWORD = '123123'
+
+function contentQualityGateEnabled(options = {}) {
+  // The publishing contract is on by default in production. Tests and an
+  // explicitly configured `0` retain a compatibility escape hatch while the
+  // editor can still opt in locally with the createApp option.
+  if (options.strictContentQuality === true) return true
+  if (process.env.NODE_ENV === 'test') return false
+  return process.env.CONTENT_QUALITY_STRICT !== '0'
+}
+
+function qualityGateResponse(res, question, options = {}) {
+  const audit = auditQuestionForPublish(question, { strict: true })
+  if (audit.passed) return null
+  return res.status(422).json({
+    error: '题目未通过质量门禁，请补齐因果解释、示例、边界和来源后再发布。',
+    code: 'CONTENT_QUALITY_FAILED',
+    questionId: question.id,
+    score: audit.score,
+    issues: audit.issues,
+  })
+}
 
 // A missing username must still pay the same Argon2 verification cost as an existing account.
 const DUMMY_LOGIN_HASH = passwordHash(crypto.randomBytes(32).toString('base64url'))
@@ -237,7 +266,90 @@ export function createApp(options = {}) {
   const backupDir = options.backupDir ?? path.join(rootDir, 'backups')
   const database = options.database ?? createDatabase({ rootDir, ...options.databaseOptions })
   const { db } = database
+  const strictContentQuality = contentQualityGateEnabled(options)
   const appAiHandler = options.aiChatHandler ?? aiChatHandler
+  const aiUsageEnv = options.aiUsageEnv ?? process.env
+  const estimateInputTokens = (req) => {
+    try {
+      const value = JSON.stringify(req.aiRequest ?? req.body ?? {})
+      return Math.min(100_000, Math.ceil(value.length / 4))
+    } catch { return 0 }
+  }
+  const runAiWithUsage = (operation) => async (req, res) => {
+    const requestId = String(req.get?.('x-request-id') || crypto.randomUUID()).slice(0, 128)
+    res.setHeader('X-Request-Id', requestId)
+    res.setHeader('X-AI-Request-Id', requestId)
+    if (req.method !== 'POST') return appAiHandler(req, res)
+    // Score responses are buffered JSON.  Capture the normalized payload just
+    // before it is sent so history persistence remains atomic with the result
+    // and does not alter the existing response shape.
+    const originalJson = typeof res.json === 'function' ? res.json.bind(res) : undefined
+    if (operation === 'score' && originalJson) {
+      res.json = (payload) => {
+        if (req.user?.id && payload && typeof payload === 'object' && Number.isInteger(payload.score)) {
+          try {
+            const attempt = createInterviewAttempt(db, {
+              userId: req.user.id,
+              questionId: req.validatedBody?.questionId ?? req.aiRequest?.questionId,
+              answer: req.validatedBody?.answer ?? req.aiRequest?.answer,
+              result: payload,
+              clientId: req.get?.('x-interview-client-id'),
+            })
+            if (attempt?.id) res.setHeader('X-Interview-Attempt-Id', attempt.id)
+          } catch (error) {
+            // A history write must never make a valid score disappear.  Keep
+            // the failure in the server log and return the score as usual.
+            console.error('interview attempt persistence failed', error)
+          }
+        }
+        return originalJson(payload)
+      }
+    }
+    try {
+      const estimatedTokens = operation === 'score' ? 512 : 1200
+      const estimatedInputTokens = estimateInputTokens(req)
+      const model = aiUsageEnv.OPENAI_MODEL ?? ''
+      const reservation = reserveAiUsage({
+        db, req, operation, requestId, model, estimatedTokens,
+        estimatedInputTokens,
+        estimatedOutputTokens: estimatedTokens,
+        env: aiUsageEnv,
+      })
+      req.aiUsage = reservation
+      if (operation === 'chat') req.aiOutputTokenLimit = req.user?.id ? 1024 : 768
+      if (reservation.quota) {
+        res.setHeader('X-AI-Quota-Remaining', String(reservation.quota.remaining))
+        res.setHeader('X-AI-Quota-Limit', String(reservation.quota.limit))
+        res.setHeader('X-AI-Quota-Reset', reservation.quota.resetAt)
+      }
+      if (reservation.repeated && reservation.event?.status !== 'reserved') {
+        return res.status(409).json({ error: '该请求已处理。', code: 'AI_REQUEST_REPEATED', requestId })
+      }
+      await appAiHandler(req, res)
+      settleAiUsage({
+        db, requestId,
+        status: res.statusCode === 499 ? 'cancelled' : (res.statusCode >= 400 ? 'failed' : 'completed'),
+        actualTokens: req.aiUsage?.actualTokens,
+        inputTokens: req.aiUsage?.inputTokens,
+        outputTokens: req.aiUsage?.outputTokens,
+        estimatedTokens: req.aiUsage?.estimatedTokens,
+        model: req.aiUsage?.model || model,
+        costSource: req.aiUsage?.usageSource || 'estimate',
+        env: aiUsageEnv,
+        errorCode: res.statusCode >= 400 ? `HTTP_${res.statusCode}` : undefined,
+      })
+    } catch (error) {
+      if (error?.code === 'AI_QUOTA_EXCEEDED' || error?.code === 'AI_GLOBAL_BUDGET_EXCEEDED') {
+        return quotaErrorResponse(res, error, requestId)
+      }
+      settleAiUsage({ db, requestId, status: 'failed', errorCode: error?.code, env: aiUsageEnv })
+      throw error
+    } finally {
+      if (originalJson) res.json = originalJson
+    }
+  }
+  const aiChatWithUsage = runAiWithUsage('chat')
+  const aiScoreWithUsage = runAiWithUsage('score')
   const ensureVisitTotal = db.prepare('INSERT OR IGNORE INTO app_meta(key, value) VALUES(?, ?)')
   const incrementVisitTotal = db.prepare('UPDATE app_meta SET value = CAST(value AS INTEGER) + 1 WHERE key = ?')
   const selectVisitTotal = db.prepare('SELECT CAST(value AS INTEGER) AS total FROM app_meta WHERE key = ?')
@@ -320,11 +432,12 @@ export function createApp(options = {}) {
     const allowed = new Set([
       '/api/auth/session', '/api/auth/change-password', '/api/auth/logout', '/api/health', '/api/catalog',
       '/api/invitations/inspect', '/api/invitations/accept', '/api/contact-requests', '/api/landing', '/api/visits',
-      '/api/ai-chat',
+      '/api/ai-chat', '/api/me/interview-attempts', '/api/me/learning-insights',
     ])
     if (allowed.has(req.path)
       || req.path === '/api/catalog/index'
-      || req.path.startsWith('/api/catalog/banks/')) return next()
+      || req.path.startsWith('/api/catalog/banks/')
+      || req.path.startsWith('/api/me/interview-attempts/')) return next()
     return res.status(428).json({ error: '首次登录必须先修改一次性密码。', code: 'PASSWORD_CHANGE_REQUIRED' })
   })
 
@@ -367,7 +480,14 @@ export function createApp(options = {}) {
     const data = req.validatedBody
     // A hidden honeypot field absorbs simple form bots without confirming detection.
     if (data.website) return res.status(202).json({ ok: true })
-    const created = createContactRequest(db, data)
+    const questionId = data.questionId && currentQuestion(db, data.questionId)?.id
+      ? data.questionId
+      : undefined
+    const created = createContactRequest(db, {
+      ...data,
+      questionId,
+      userId: req.user?.id,
+    })
     return res.status(201).json({ ok: true, ...created })
   })
 
@@ -393,6 +513,22 @@ export function createApp(options = {}) {
       includePrivate: canEdit,
       includePlainText: false,
     }), cacheControl)
+  })
+
+  app.get('/api/catalog/search', (req, res) => {
+    const canEdit = req.user?.permissions.includes('banks.write') ?? false
+    const query = typeof req.query.q === 'string' ? req.query.q : ''
+    if (query.trim().length < 1) return res.json({ query, results: [], nextCursor: null, hasMore: false, total: 0 })
+    const page = searchCatalogPage(db, query, {
+      includePrivate: canEdit,
+      limit: req.query.limit,
+      cursor: req.query.cursor,
+      track: typeof req.query.track === 'string' ? req.query.track : undefined,
+      tag: typeof req.query.tag === 'string' ? req.query.tag : undefined,
+      difficulty: typeof req.query.difficulty === 'string' ? req.query.difficulty : undefined,
+      frequency: typeof req.query.frequency === 'string' ? req.query.frequency : undefined,
+    })
+    return res.json(page)
   })
 
   app.post('/api/invitations/inspect', invitationInspectLimit, parseBody(invitationInspectSchema), (req, res) => {
@@ -474,17 +610,69 @@ export function createApp(options = {}) {
     return res.json({ repeated: false, summary, state })
   })
 
+  // Interview attempts are private learning records.  A guest may score in
+  // memory, but only an authenticated account can write or read server history.
+  app.get('/api/me/interview-attempts', requireUser, (req, res) => {
+    return res.json({ attempts: listInterviewAttempts(db, req.user.id, {
+      questionId: req.query.questionId,
+      limit: req.query.limit,
+    }) })
+  })
+  app.delete('/api/me/interview-attempts/:id', requireUser, (req, res) => {
+    if (!deleteInterviewAttempt(db, req.user.id, req.params.id)) {
+      return res.status(404).json({ error: '练习记录不存在。', code: 'ATTEMPT_NOT_FOUND' })
+    }
+    return res.json({ ok: true })
+  })
+  app.post('/api/me/interview-attempts/merge', requireUser, parseBody(interviewAttemptMergeSchema), (req, res) => {
+    return res.json(mergeInterviewAttempts(db, req.user.id, req.validatedBody.attempts))
+  })
+  app.get('/api/me/learning-insights', requireUser, (req, res) => {
+    return res.json(getLearningInsights(db, req.user.id))
+  })
+
   app.get('/api/users', requirePermission('users.manage'), (_req, res) => res.json({ users: listUsers(db) }))
 
   app.get('/api/admin/contact-requests', requirePermission('users.manage'), (req, res) => {
     const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100))
     return res.json({ requests: listContactRequests(db, limit) })
   })
+  app.get('/api/admin/ai-usage', requirePermission('users.manage'), (req, res) => {
+    return res.json(summarizeAiUsage(db, {
+      day: req.query.day,
+      limit: req.query.limit,
+      operation: req.query.operation,
+      status: req.query.status,
+      subjectType: req.query.subjectType,
+      model: req.query.model,
+    }))
+  })
   app.patch('/api/admin/contact-requests/:id', requirePermission('users.manage'), parseBody(contactRequestPatchSchema), (req, res) => {
-    const item = updateContactRequest(db, req.params.id, req.validatedBody.status)
+    const data = req.validatedBody
+    if (data.assignedTo && !db.prepare('SELECT 1 FROM users WHERE id = ? AND status = \'active\'').get(data.assignedTo)) {
+      return res.status(400).json({ error: '负责人账号不存在或已停用。', code: 'ASSIGNEE_NOT_FOUND' })
+    }
+    const item = updateContactRequest(db, req.params.id, data, req.user.id)
     if (!item) return res.status(404).json({ error: '反馈或申请不存在。' })
-    audit(db, req, 'contact-request.update', 'contact_request', req.params.id, { status: item.status })
+    const auditMetadata = { status: item.status }
+    if (data.assignedTo !== undefined) auditMetadata.assignedTo = item.assignedTo
+    if (data.adminNote !== undefined) auditMetadata.hasAdminNote = Boolean(item.adminNote)
+    if (data.invitationId !== undefined) auditMetadata.invitationId = item.invitationId
+    audit(db, req, 'contact-request.update', 'contact_request', req.params.id, auditMetadata)
     return res.json({ request: item })
+  })
+  app.post('/api/admin/contact-requests/:id/invitation', requirePermission('users.manage'), parseBody(invitationCreateSchema), (req, res) => {
+    const contact = db.prepare('SELECT id, kind, invitation_id FROM contact_requests WHERE id = ?').get(req.params.id)
+    if (!contact) return res.status(404).json({ error: '反馈或申请不存在。' })
+    if (contact.kind !== 'account') return res.status(400).json({ error: '只有账号申请可以生成邀请。', code: 'CONTACT_NOT_ACCOUNT' })
+    if (contact.invitation_id) return res.status(409).json({ error: '该申请已经关联邀请。', code: 'INVITATION_ALREADY_LINKED' })
+    let created
+    db.transaction(() => {
+      created = createInvitation(db, req.user.id, req.validatedBody.expiresInHours)
+      linkContactRequestInvitation(db, contact.id, created.invitation.id, req.user.id)
+      audit(db, req, 'contact-request.invitation-create', 'contact_request', contact.id, { invitationId: created.invitation.id })
+    })()
+    return res.status(201).json(created)
   })
   app.delete('/api/admin/contact-requests/:id', requirePermission('users.manage'), (req, res) => {
     if (!deleteContactRequest(db, req.params.id)) return res.status(404).json({ error: '反馈或申请不存在。' })
@@ -617,12 +805,31 @@ export function createApp(options = {}) {
   })
 
   app.post('/api/banks/:bankId/questions', requirePermission('banks.write'), parseBody(questionCreateSchema), (req, res) => {
+    if (strictContentQuality) {
+      const rejected = qualityGateResponse(res, { ...req.validatedBody, bankId: req.params.bankId })
+      if (rejected) return rejected
+    }
     const id = createQuestion(db, req.params.bankId, req.validatedBody, req.user.id)
     if (!id) return res.status(404).json({ error: '题库不存在或已归档。' })
     audit(db, req, 'question.create', 'question', id, { bankId: req.params.bankId })
     return res.status(201).json({ id })
   })
   app.patch('/api/questions/:id', requirePermission('banks.write'), parseBody(questionPatchSchema), (req, res) => {
+    const currentForQuality = strictContentQuality
+      ? db.prepare(`SELECT q.id, q.bank_id AS bankId, q.title, q.body_md AS body,
+          (SELECT count(*) FROM source_refs s WHERE s.question_id=q.id) AS sourceCount
+          FROM questions q WHERE q.id = ?`).get(req.params.id)
+      : null
+    if (strictContentQuality && currentForQuality) {
+      const merged = {
+        ...currentForQuality,
+        title: req.validatedBody.title ?? currentForQuality.title,
+        body: req.validatedBody.body ?? currentForQuality.body,
+        sourceCount: req.validatedBody.sources ? req.validatedBody.sources.length : currentForQuality.sourceCount,
+      }
+      const rejected = qualityGateResponse(res, merged)
+      if (rejected) return rejected
+    }
     const result = updateQuestion(db, req.params.id, req.validatedBody)
     if (result.status === 'missing') return res.status(404).json({ error: '题目不存在。' })
     if (result.status === 'conflict') return res.status(409).json({ error: '题目已被其他编辑修改。', currentVersion: result.currentVersion })
@@ -672,6 +879,15 @@ export function createApp(options = {}) {
     for (const section of parsed) {
       for (const item of section.questions) {
         const title = item.title.replace(/^Q[\d.]+\s*[：:]?\s*/i, '')
+        if (strictContentQuality) {
+          const rejected = qualityGateResponse(res, {
+            bankId: req.params.bankId,
+            title,
+            body: item.body,
+            sourceCount: 0,
+          })
+          if (rejected) return rejected
+        }
         const id = createQuestion(db, req.params.bankId, {
           sectionTitle: section.title, title, body: item.body, tags: item.tags,
           difficulty: 'intermediate', sources: [],
@@ -737,13 +953,17 @@ export function createApp(options = {}) {
       },
       answer: req.validatedBody.answer,
     }
-    return appAiHandler(req, res)
+    return aiScoreWithUsage(req, res)
+  })
+
+  app.get('/api/admin/content-quality', requirePermission('audit.read'), (_req, res) => {
+    res.json(auditContentQuality(db))
   })
   app.all('/api/ai-score', (_req, res) => {
     res.setHeader('Allow', 'POST')
     return res.status(405).json({ error: 'Method Not Allowed', code: 'METHOD_NOT_ALLOWED', retryable: false })
   })
-  app.all('/api/ai-chat', appAiHandler)
+  app.all('/api/ai-chat', aiChatWithUsage)
 
   if (options.serveStatic !== false) {
     app.use(express.static(distDir, {

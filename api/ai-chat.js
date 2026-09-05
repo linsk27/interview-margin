@@ -1,9 +1,11 @@
 import { createAiChatHandler } from './ai-chat-runtime.js'
 import { z } from 'zod'
 
-const MAX_MESSAGES = 10
+// Keep enough context for a useful follow-up while bounding prompt cost for
+// guests and logged-in users alike.
+const MAX_MESSAGES = 6
 const MAX_MESSAGE_CHARS = 6000
-const MAX_QUESTION_CHARS = 14000
+const MAX_QUESTION_CHARS = 8000
 const SCORE_MAX_REFERENCE_CHARS = 6000
 const SCORE_MAX_ANSWER_CHARS = 4000
 const SCORE_MAX_OUTPUT_TOKENS = 512
@@ -268,4 +270,15 @@ export function createConfiguredAiChatHandler(options = {}) {
   })
 }
 
-export default createConfiguredAiChatHandler()
+const configuredHandler = createConfiguredAiChatHandler()
+
+// Vercel is configured as a rewrite-only edge. If a direct function invocation
+// slips through, fail closed instead of exposing an unmetered provider path.
+export default async function vercelGuardedAiChatHandler(req, res) {
+  if (process.env.VERCEL === '1' && process.env.AI_ALLOW_DIRECT_HANDLER !== '1') {
+    res.statusCode = 404
+    res.setHeader?.('Content-Type', 'application/json; charset=utf-8')
+    return res.end?.(JSON.stringify({ error: 'AI 接口必须通过主服务访问。', code: 'AI_MAIN_API_ONLY' }))
+  }
+  return configuredHandler(req, res)
+}

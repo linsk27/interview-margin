@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react'
 import {
+  type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   useEffect,
@@ -19,6 +20,7 @@ import {
   useState,
 } from 'react'
 import { AiAssistant } from './AiAssistant'
+import { appPath } from '../lib/api'
 import { formatRelativeDate } from '../lib/format'
 import { NOTES_PANEL_RESIZE_STEP } from '../lib/notesPanelSizing'
 import type { Annotation, HighlightColor, InterviewQuestion, QuestionProgress } from '../types'
@@ -129,6 +131,11 @@ export function NotesPanel({
 }: NotesPanelProps) {
   const [draftNote, setDraftNote] = useState('')
   const [draftColor, setDraftColor] = useState<HighlightColor>('yellow')
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackContact, setFeedbackContact] = useState('')
+  const [feedbackState, setFeedbackState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
+  const [feedbackError, setFeedbackError] = useState('')
   const resizeGesture = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null)
 
   useEffect(() => {
@@ -141,6 +148,35 @@ export function NotesPanel({
     if (!composer) return
     onAddAnnotation(composer.quote, draftNote.trim(), draftColor)
     onComposerClose()
+  }
+
+  const submitFeedback = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (feedbackText.trim().length < 10) {
+      setFeedbackState('error')
+      setFeedbackError('请至少写 10 个字，方便定位问题。')
+      return
+    }
+    setFeedbackState('sending')
+    setFeedbackError('')
+    try {
+      const response = await fetch(appPath('/api/contact-requests'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          kind: 'feedback', name: '阅读页访客', contact: feedbackContact.trim(),
+          message: feedbackText.trim(), questionId: question.id,
+          pageContext: `阅读页 · Q${question.number}`, consent: true, website: '',
+        }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : '反馈提交失败，请稍后再试。')
+      setFeedbackState('success')
+    } catch (error) {
+      setFeedbackState('error')
+      setFeedbackError(error instanceof Error ? error.message : '反馈提交失败，请稍后再试。')
+    }
   }
 
   const finishResize = (target: HTMLDivElement, pointerId: number) => {
@@ -320,7 +356,26 @@ export function NotesPanel({
             />
           </label>
           <small>{synced ? '自动同步到你的学习账号' : '访客只读，登录后可保存与跨设备同步'}</small>
+          <button className="notes-panel__feedback-trigger" type="button" onClick={() => { setFeedbackOpen(true); setFeedbackState('idle') }}>
+            <MessageSquareText aria-hidden="true" />反馈本题
+          </button>
         </section>
+
+        {feedbackOpen && (
+          <section className="notes-panel__feedback" role="dialog" aria-label="反馈本题">
+            {feedbackState === 'success' ? (
+              <div className="notes-panel__feedback-success"><Check aria-hidden="true" /><strong>已收到反馈</strong><span>谢谢你帮忙把题目打磨得更好。</span><button type="button" onClick={() => { setFeedbackOpen(false); setFeedbackText('') }}>关闭</button></div>
+            ) : (
+              <form onSubmit={submitFeedback}>
+                <header><strong>反馈本题</strong><button type="button" aria-label="关闭反馈" onClick={() => setFeedbackOpen(false)}><X aria-hidden="true" /></button></header>
+                <label>哪里需要改进？<textarea value={feedbackText} onChange={(event) => setFeedbackText(event.target.value)} placeholder="例如：这道题的示例看不懂，想补一个输入输出。" autoFocus /></label>
+                <label>联系方式（可选）<input value={feedbackContact} onChange={(event) => setFeedbackContact(event.target.value)} placeholder="邮箱或微信" /></label>
+                {feedbackError && <p role="alert">{feedbackError}</p>}
+                <button className="button-strong" type="submit" disabled={feedbackState === 'sending'}>{feedbackState === 'sending' ? '提交中…' : '提交反馈'}</button>
+              </form>
+            )}
+          </section>
+        )}
 
         <section className="review-schedule">
           <div className="notes-panel__section-title">

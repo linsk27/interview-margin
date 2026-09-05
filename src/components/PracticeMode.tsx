@@ -9,6 +9,7 @@ import {
 import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, ReactNode } from 'react'
 import { InterviewScorePanel } from './InterviewScorePanel'
+import { loadPracticeDraft, savePracticeDraft } from '../lib/practiceHistory'
 import styles from './PracticeMode.module.css'
 
 export type PracticeRating = 'again' | 'unsure' | 'mastered'
@@ -81,9 +82,13 @@ export const PRACTICE_REVIEW_OPTIONS: ReadonlyArray<PracticeReviewOption> = [
   },
 ]
 
-type PracticeSessionProps = Omit<PracticePanelProps, 'questionKey'>
+type PracticeSessionProps = Omit<PracticePanelProps, 'questionKey'> & {
+  /** Stable key used to restore a draft without leaking it between questions. */
+  questionKey: string | number
+}
 
 function PracticeSession({
+  questionKey,
   children,
   className,
   heading = '先独立作答',
@@ -116,6 +121,26 @@ function PracticeSession({
   const [revealed, setRevealed] = useState(false)
   const [assessment, setAssessment] = useState<PracticeAssessment | null>(null)
   const [scheduleSaved, setScheduleSaved] = useState<boolean | null>(null)
+
+  // Keep a guest-safe draft per question.  Loading is intentionally best
+  // effort: IndexedDB/localStorage must never delay the standard answer flow.
+  useEffect(() => {
+    let active = true
+    if (defaultAnswer) return () => { active = false }
+    void loadPracticeDraft(String(questionKey)).then((saved) => {
+      if (!active || !saved) return
+      setDraftAnswer((current) => current || saved)
+      onAnswerChange?.(saved)
+    }).catch(() => undefined)
+    return () => { active = false }
+  }, [defaultAnswer, onAnswerChange, questionKey])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void savePracticeDraft(String(questionKey), draftAnswer).catch(() => undefined)
+    }, 220)
+    return () => window.clearTimeout(timer)
+  }, [draftAnswer, questionKey])
 
   const currentStep = !revealed ? 1 : assessment ? 3 : 2
 
@@ -318,7 +343,7 @@ function PracticeSession({
 }
 
 export function PracticePanel({ questionKey, ...props }: PracticePanelProps) {
-  return <PracticeSession key={questionKey} {...props} />
+  return <PracticeSession key={questionKey} questionKey={questionKey} {...props} />
 }
 
 export const PracticeMode = PracticePanel

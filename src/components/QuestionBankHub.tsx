@@ -17,6 +17,19 @@ import type {
   StudyState,
 } from '../types'
 
+const TRACK_LABELS: Record<string, string> = {
+  frontend: '前端开发',
+  java: 'Java 后端',
+  ai: 'AI 应用',
+  project: '项目与面经',
+}
+
+function directionLabel(bank: QuestionBankDefinition) {
+  if (bank.track && TRACK_LABELS[bank.track]) return TRACK_LABELS[bank.track]
+  if (bank.category === '求职专项') return '项目与面经'
+  return bank.category
+}
+
 interface QuestionBankHubProps {
   banks: QuestionBankDefinition[]
   questions: InterviewQuestion[]
@@ -54,13 +67,14 @@ export function QuestionBankHub({
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('全部')
   const now = new Date()
-  const categories = useMemo(() => ['全部', ...new Set(banks.map((bank) => bank.category))], [banks])
+  const categories = useMemo(() => ['全部', ...new Set(banks.map(directionLabel))], [banks])
   const totalReview = questions.filter((question) => isReviewDue(progressFor(state, question.id), now)).length
   const totalStarted = questions.filter((question) => progressFor(state, question.id).status !== 'unread').length
   const needle = query.trim().toLowerCase()
   const visibleBanks = banks.filter((bank) => {
-    const matchesCategory = category === '全部' || bank.category === category
-    const matchesQuery = !needle || `${bank.title} ${bank.shortTitle} ${bank.category} ${bank.description} ${bank.baseTags.join(' ')}`.toLowerCase().includes(needle)
+    const direction = directionLabel(bank)
+    const matchesCategory = category === '全部' || direction === category
+    const matchesQuery = !needle || `${bank.title} ${bank.shortTitle} ${direction} ${bank.category} ${bank.description} ${bank.baseTags.join(' ')}`.toLowerCase().includes(needle)
     return matchesCategory && matchesQuery
   })
 
@@ -118,7 +132,7 @@ export function QuestionBankHub({
             </div>
             <div className="bank-hub__categories" role="group" aria-label="题库分类筛选">
               {categories.map((item) => {
-                const count = item === '全部' ? banks.length : banks.filter((bank) => bank.category === item).length
+                const count = item === '全部' ? banks.length : banks.filter((bank) => directionLabel(bank) === item).length
                 return (
                   <button
                     key={item}
@@ -146,7 +160,7 @@ export function QuestionBankHub({
                   <div className="bank-package__accent" aria-hidden="true" />
                   <div className="bank-package__head">
                     <span className="bank-package__index">{String(index + 1).padStart(2, '0')}</span>
-                    <span className="bank-package__category">{bank.category}</span>
+                    <span className="bank-package__category">{directionLabel(bank)}</span>
                     {isCurrent && <span className="bank-package__current">最近打开</span>}
                   </div>
                   <div className="bank-package__copy">

@@ -18,6 +18,35 @@ function plainText(markdown) {
   return toString(unified().use(remarkParse).parse(markdown)).replace(/\s+/g, ' ').trim()
 }
 
+// Optional metadata columns were introduced in a later migration. Discovery
+// and search also run while an older worker is still serving traffic, so keep
+// column access defensive during rolling upgrades.
+function hasColumn(db, table, column) {
+  try {
+    return db.pragma(`table_info(${table})`).some((item) => item.name === column)
+  } catch {
+    return false
+  }
+}
+
+function hasSearchIndex(db) {
+  try {
+    return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='question_search'").get())
+  } catch {
+    return false
+  }
+}
+
+function syncSearchIndexQuestion(db, questionId) {
+  if (!hasSearchIndex(db)) return
+  const row = db.prepare(`SELECT q.id, q.bank_id, q.title, q.plain_text, q.tags_json
+    FROM questions q JOIN question_banks b ON b.id=q.bank_id
+    WHERE q.id=? AND q.archived_at IS NULL AND b.archived_at IS NULL`).get(questionId)
+  db.prepare('DELETE FROM question_search WHERE question_id=?').run(questionId)
+  if (row) db.prepare('INSERT INTO question_search(question_id,bank_id,title,plain_text,tags) VALUES(?,?,?,?,?)')
+    .run(row.id, row.bank_id, row.title, row.plain_text, row.tags_json)
+}
+
 function bankFromRow(row) {
   return {
     id: row.id,
@@ -25,6 +54,7 @@ function bankFromRow(row) {
     shortTitle: row.short_title,
     kicker: row.kicker,
     category: row.category,
+    track: row.track ?? undefined,
     description: row.description,
     baseTags: parseJson(row.base_tags_json, []),
     tone: row.tone,
@@ -47,6 +77,11 @@ function questionFromRow(row, sources = [], { includePlainText = true } = {}) {
     sectionTitle: row.section_title,
     tags: parseJson(row.tags_json, []),
     difficulty: row.difficulty,
+    track: row.track ?? undefined,
+    frequency: Number.isFinite(Number(row.frequency)) ? Number(row.frequency) : 0,
+    aliases: parseJson(row.aliases_json, []),
+    qualityScore: row.quality_score == null ? undefined : Number(row.quality_score),
+    qualityReviewedAt: row.quality_reviewed_at ?? undefined,
     readMinutes: row.read_minutes,
     order: row.sort_order,
     version: row.version,
@@ -126,6 +161,11 @@ function questionIndexFromRow(row, sources = []) {
     sectionTitle: row.section_title,
     tags: parseJson(row.tags_json, []),
     difficulty: row.difficulty,
+    frequency: Number.isFinite(Number(row.frequency)) ? Number(row.frequency) : 0,
+    aliases: parseJson(row.aliases_json, []),
+    track: row.track ?? undefined,
+    qualityScore: row.quality_score == null ? undefined : Number(row.quality_score),
+    qualityReviewedAt: row.quality_reviewed_at ?? undefined,
     readMinutes: row.read_minutes,
     order: row.sort_order,
     version: row.version,
@@ -154,9 +194,7 @@ export function listCatalogIndex(db, { includeArchived = false, includePrivate =
   `).all(...banks.map((bank) => bank.id))
 
   const questionRows = db.prepare(`
-    SELECT q.id, q.bank_id, q.section_id, q.display_number, q.title, q.tags_json,
-      q.difficulty, q.read_minutes, q.sort_order, q.version, q.provenance,
-      s.title AS section_title
+    SELECT q.*, s.title AS section_title
     FROM questions q
     JOIN sections s ON s.id = q.section_id
     JOIN question_banks b ON b.id = q.bank_id
@@ -217,6 +255,234 @@ export function getBankCatalog(db, bankId, options = {}) {
     bank: catalog.banks[0],
     sections: catalog.sections,
   }
+}
+
+function normalizeSearchValue(value) {
+  return String(value ?? '')
+    .normalize('NFKC')
+    .toLocaleLowerCase('zh-CN')
+    .replace(/[\u0000-\u001f]/g, ' ')
+    .replace(/[“”‘’`~!！@#$%^&*()（）[\]{}<>《》、，。；;：:？?！!「」『』"']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function searchTerms(value) {
+  const normalized = normalizeSearchValue(value)
+  if (!normalized) return []
+  const chunks = normalized.split(/\s+/).filter(Boolean)
+  // Chinese queries are commonly entered without spaces. Keep the complete
+  // phrase for phrase ranking and add meaningful character n-grams so a
+  // query such as “线程池” still works with SQLite's unicode61 tokenizer.
+  if (chunks.length === 1 && /[\u3400-\u9fff]/u.test(chunks[0]) && chunks[0].length > 2) {
+    const grams = []
+    for (let i = 0; i < chunks[0].length - 1; i += 1) grams.push(chunks[0].slice(i, i + 2))
+    return [chunks[0], ...grams]
+  }
+  return chunks
+}
+
+function decodeSearchCursor(cursor) {
+  if (cursor == null || cursor === '') return 0
+  const raw = String(cursor)
+  if (/^\d+$/.test(raw)) return Math.max(0, Number(raw))
+  try {
+    const decoded = Buffer.from(raw, 'base64url').toString('utf8')
+    const parsed = JSON.parse(decoded)
+    return Math.max(0, Number(parsed.offset) || 0)
+  } catch {
+    return 0
+  }
+}
+
+function encodeSearchCursor(offset) {
+  return Buffer.from(JSON.stringify({ offset }), 'utf8').toString('base64url')
+}
+
+function frequencyMatches(value, filter) {
+  if (filter == null || filter === '') return true
+  const numeric = Number(value) || 0
+  const text = String(filter).trim().toLocaleLowerCase('zh-CN')
+  if (!text) return true
+  if (/^\d+$/.test(text)) return numeric >= Number(text)
+  const range = text.match(/^(\d+)\s*[-~]\s*(\d+)$/)
+  if (range) return numeric >= Number(range[1]) && numeric <= Number(range[2])
+  if (['high', '高', '热门', 'hot'].includes(text)) return numeric >= 4
+  if (['medium', '中', '一般'].includes(text)) return numeric >= 2 && numeric < 4
+  if (['low', '低', '冷门'].includes(text)) return numeric < 2
+  return true
+}
+
+function safeJsonArray(value) {
+  const parsed = parseJson(value, [])
+  return Array.isArray(parsed) ? parsed.map((item) => String(item)) : []
+}
+
+function makeMatchSnippet(text, terms, maxLength = 180) {
+  const source = String(text ?? '').replace(/\s+/g, ' ').trim()
+  if (!source) return ''
+  const normalizedSource = normalizeSearchValue(source)
+  const normalizedTerms = terms.map(normalizeSearchValue).filter(Boolean)
+  let hit = -1
+  let hitLength = 0
+  for (const term of normalizedTerms) {
+    const index = normalizedSource.indexOf(term)
+    if (index >= 0 && (hit < 0 || index < hit)) {
+      hit = index
+      hitLength = term.length
+    }
+  }
+  if (hit < 0) return source.slice(0, maxLength)
+  const start = Math.max(0, hit - Math.floor((maxLength - hitLength) / 2))
+  const end = Math.min(source.length, start + maxLength)
+  return `${start > 0 ? '…' : ''}${source.slice(start, end)}${end < source.length ? '…' : ''}`
+}
+
+function scoreSearchRow(row, terms, phrase) {
+  const title = normalizeSearchValue(row.title)
+  const aliases = row.aliases.map(normalizeSearchValue).join(' ')
+  const tags = row.tags.map(normalizeSearchValue).join(' ')
+  const section = normalizeSearchValue(row.sectionTitle)
+  const bank = normalizeSearchValue(row.bankTitle)
+  const body = normalizeSearchValue(row.plainText)
+  const exact = title === phrase
+  let score = exact ? 10000 : 0
+  if (title.startsWith(phrase)) score += 8000
+  else if (title.includes(phrase)) score += 6000
+  if (aliases.includes(phrase)) score += 5000
+  if (tags.includes(phrase)) score += 4500
+  if (section.includes(phrase)) score += 3000
+  if (bank.includes(phrase)) score += 1800
+  if (body.includes(phrase)) score += 800
+  for (const term of terms) {
+    if (title.includes(term)) score += 900
+    else if (aliases.includes(term)) score += 700
+    else if (tags.includes(term)) score += 600
+    else if (section.includes(term)) score += 400
+    else if (body.includes(term)) score += 100
+  }
+  // Frequency is only a tie-breaker; relevance always wins.
+  score += Math.min(500, (Number(row.frequency) || 0) * 25)
+  return score
+}
+
+function searchRows(db, { includePrivate = false } = {}) {
+  const visibility = includePrivate ? '' : "AND b.visibility = 'public'"
+  const questionColumns = new Set(db.pragma('table_info(questions)').map((item) => item.name))
+  const optional = (name, fallback = 'NULL') => questionColumns.has(name) ? `q.${name}` : fallback
+  return db.prepare(`
+    SELECT q.id, q.bank_id AS library, q.display_number AS number, q.title,
+      q.plain_text AS plainText, q.body_md AS body, q.section_id AS sectionId,
+      s.title AS sectionTitle, b.title AS bankTitle, q.tags_json AS tagsJson,
+      q.difficulty, q.read_minutes AS readMinutes, q.sort_order AS sortOrder,
+      ${optional('track', "'project'")} AS track,
+      ${optional('frequency', '0')} AS frequency,
+      ${optional('aliases_json', "'[]'")} AS aliasesJson,
+      ${optional('quality_score', 'NULL')} AS qualityScore,
+      ${optional('quality_reviewed_at', 'NULL')} AS qualityReviewedAt
+    FROM questions q
+    JOIN question_banks b ON b.id = q.bank_id
+    JOIN sections s ON s.id = q.section_id
+    WHERE q.archived_at IS NULL AND b.archived_at IS NULL ${visibility}
+  `).all().map((row) => ({
+    ...row,
+    tags: safeJsonArray(row.tagsJson),
+    aliases: safeJsonArray(row.aliasesJson),
+    plainText: row.plainText || plainText(row.body),
+  }))
+}
+
+function ftsCandidates(db, query) {
+  if (!hasSearchIndex(db) || /[\u3400-\u9fff]/u.test(String(query ?? ''))) return undefined
+  const value = normalizeSearchValue(query)
+  if (!value) return undefined
+  try {
+    const match = value.split(/\s+/).filter(Boolean).map((term) => `"${term.replaceAll('"', '""')}"*`).join(' AND ')
+    const rows = db.prepare('SELECT question_id FROM question_search WHERE question_search MATCH ? LIMIT 5000').all(match)
+    return new Set(rows.map((row) => row.question_id))
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Search all visible banks. SQLite FTS5 is used as a candidate accelerator
+ * when available, while the LIKE/normalised pass below guarantees Chinese
+ * substring and alias matches (unicode61 treats a Han phrase as one token).
+ */
+export function searchCatalogPage(db, query, {
+  includePrivate = false,
+  limit = 30,
+  cursor,
+  track,
+  tag,
+  difficulty,
+  frequency,
+} = {}) {
+  const phrase = normalizeSearchValue(query)
+  if (!phrase) return { query: String(query ?? ''), results: [], nextCursor: null, hasMore: false }
+  const terms = searchTerms(query)
+  const candidates = ftsCandidates(db, query)
+  const rows = searchRows(db, { includePrivate }).filter((row) => !candidates || candidates.size === 0 || candidates.has(row.id))
+  const normalizedTag = normalizeSearchValue(tag)
+  const filtered = rows.filter((row) => {
+    if (track && String(row.track) !== String(track)) return false
+    if (difficulty && String(row.difficulty) !== String(difficulty)) return false
+    if (normalizedTag && !row.tags.some((item) => normalizeSearchValue(item).includes(normalizedTag))) return false
+    if (!frequencyMatches(row.frequency, frequency)) return false
+    const fields = [row.title, ...row.aliases, ...row.tags, row.sectionTitle, row.bankTitle, row.plainText]
+      .map(normalizeSearchValue)
+    // Every explicit whitespace term must be represented somewhere. For
+    // Chinese n-grams this naturally becomes an OR-like phrase fallback.
+    const explicitTerms = normalizeSearchValue(query).split(/\s+/).filter(Boolean)
+    return explicitTerms.every((term) => fields.some((field) => field.includes(term)))
+  }).map((row) => ({
+    ...row,
+    rank: scoreSearchRow(row, terms, phrase),
+  })).sort((left, right) => right.rank - left.rank || left.sortOrder - right.sortOrder || left.id.localeCompare(right.id))
+
+  const offset = decodeSearchCursor(cursor)
+  const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100)
+  const page = filtered.slice(offset, offset + safeLimit)
+  const nextOffset = offset + page.length
+  const nextCursor = nextOffset < filtered.length ? encodeSearchCursor(nextOffset) : null
+  const results = page.map((row) => ({
+    id: row.id,
+    library: row.library,
+    bankTitle: row.bankTitle,
+    number: row.number,
+    title: row.title,
+    plainText: row.plainText,
+    sectionId: row.sectionId,
+    sectionTitle: row.sectionTitle,
+    tags: row.tags,
+    difficulty: row.difficulty,
+    frequency: Number(row.frequency) || 0,
+    track: row.track,
+    aliases: row.aliases,
+    readMinutes: row.readMinutes,
+    qualityScore: row.qualityScore == null ? undefined : Number(row.qualityScore),
+    qualityReviewedAt: row.qualityReviewedAt ?? undefined,
+    rank: row.rank,
+    matchSnippet: makeMatchSnippet(row.plainText, terms),
+    snippet: makeMatchSnippet(row.plainText, terms),
+  }))
+  return { query: String(query ?? ''), results, nextCursor, hasMore: Boolean(nextCursor), total: filtered.length }
+}
+
+/** Backwards-compatible array API used by the current reader client. */
+export function searchCatalog(db, query, options = {}) {
+  const page = searchCatalogPage(db, query, options)
+  const results = page.results
+  // Non-enumerable metadata lets newer callers opt into pagination without
+  // changing the shape expected by existing clients and tests.
+  Object.defineProperties(results, {
+    nextCursor: { value: page.nextCursor, enumerable: false },
+    hasMore: { value: page.hasMore, enumerable: false },
+    total: { value: page.total, enumerable: false },
+    query: { value: page.query, enumerable: false },
+  })
+  return results
 }
 
 export function getStudyState(db, userId) {
@@ -367,6 +633,7 @@ export function createQuestion(db, bankId, data, actorId) {
     `)
     data.sources.forEach((source) => insertSource.run(crypto.randomUUID(), id, source.title, source.url, now))
   })()
+  syncSearchIndexQuestion(db, id)
   return id
 }
 
@@ -404,6 +671,7 @@ export function updateQuestion(db, questionId, data) {
       data.sources.forEach((source) => insert.run(crypto.randomUUID(), questionId, source.title, source.url, now))
     }
   })()
+  syncSearchIndexQuestion(db, questionId)
   return { status: 'ok', version: current.version + 1 }
 }
 

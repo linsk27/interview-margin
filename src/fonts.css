@@ -1,26 +1,34 @@
 /* Optional personality fonts are self-hosted and loaded only when a theme uses them.
  * Keep a single WOFF2 source per face so the build does not ship duplicate WOFF files.
+ * `optional` is intentional: the clean theme must never block first paint, and a
+ * slow personality-font request must not replace an already-readable page.
  */
 @font-face {
   font-family: "ZCOOL KuaiLe";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 400;
   src: url("../node_modules/@fontsource/zcool-kuaile/files/zcool-kuaile-chinese-simplified-400-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "LXGW WenKai";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 500;
-  src: url("../node_modules/@fontsource/lxgw-wenkai/files/lxgw-wenkai-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF;
 }
 
 @font-face {
   font-family: "Zhi Mang Xing";
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   font-weight: 400;
   src: url("../node_modules/@fontsource/zhi-mang-xing/files/zhi-mang-xing-chinese-simplified-400-normal.woff2") format("woff2");
+  unicode-range: U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF;
+}
+
+/* Keep Latin UI labels on the light default face. This avoids pulling a
+ * multi-megabyte CJK personality face for a menu that contains only English
+ * metadata while still allowing the chosen face to render Chinese copy. */
+@font-face {
+  font-family: "LXGW WenKai";
+  font-style: normal;
+  font-display: optional;
+  font-weight: 500;
+  src: url("../node_modules/@fontsource/lxgw-wenkai/files/lxgw-wenkai-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA-02DB, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }

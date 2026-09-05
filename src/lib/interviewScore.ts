@@ -57,6 +57,7 @@ const scoreResponseSchema = z.object({
 })
 
 export type InterviewScoreResult = z.infer<typeof scoreResponseSchema>
+export type InterviewScoreWithAttempt = InterviewScoreResult & { attemptId?: string }
 
 export class InterviewScoreError extends Error {
   code?: string
@@ -74,9 +75,10 @@ interface ScoreAnswerInput {
   questionId: string
   answer: string
   signal?: AbortSignal
+  clientId?: string
 }
 
-export async function scoreInterviewAnswer({ questionId, answer, signal }: ScoreAnswerInput) {
+export async function scoreInterviewAnswer({ questionId, answer, signal, clientId }: ScoreAnswerInput): Promise<InterviewScoreWithAttempt> {
   let response: Response
   try {
     response = await fetch(appPath('/api/ai-score'), {
@@ -84,6 +86,7 @@ export async function scoreInterviewAnswer({ questionId, answer, signal }: Score
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        ...(clientId ? { 'X-Interview-Client-Id': clientId } : {}),
       },
       signal,
       body: JSON.stringify({ questionId, answer }),
@@ -116,5 +119,6 @@ export async function scoreInterviewAnswer({ questionId, answer, signal }: Score
       retryable: true,
     })
   }
-  return parsed.data
+  const attemptId = response.headers.get('x-interview-attempt-id') || undefined
+  return attemptId ? { ...parsed.data, attemptId } : parsed.data
 }

@@ -139,6 +139,8 @@ async function dispatchSseBlock(block, state, onDelta) {
     return true
   }
 
+  if (payload?.usage) state.usage = payload.usage
+
   if (payload?.error) {
     throw new AiError('AI_UPSTREAM_STREAM_ERROR', 'AI 流式响应失败，请重试。', {
       status: 502,
@@ -171,7 +173,7 @@ async function consumeEventStream(response, onDelta) {
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
-  const state = { produced: false, completed: false, truncated: false }
+  const state = { produced: false, completed: false, truncated: false, usage: undefined }
   let buffer = ''
 
   try {
@@ -222,7 +224,7 @@ async function consumeNdjson(response, onDelta) {
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
-  const state = { produced: false, completed: false, truncated: false }
+  const state = { produced: false, completed: false, truncated: false, usage: undefined }
   let buffer = ''
 
   const dispatchLine = async (line) => {
@@ -278,7 +280,7 @@ async function consumeResponse(response, onDelta) {
     })
   }
   const accepted = await onDelta(message)
-  return { produced: true, completed: true, truncated: !accepted }
+  return { produced: true, completed: true, truncated: !accepted, usage: payload?.usage }
 }
 
 async function consumeTarget({ fetchImpl, url, init, clientSignal, deadline, firstTokenTimeoutMs, onDelta }) {
@@ -343,6 +345,9 @@ function sendJson(res, status, payload, retryAfterSeconds) {
   setStatus(res, status)
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
   if (retryAfterSeconds) res.setHeader('Retry-After', String(retryAfterSeconds))
+  // Keep a private reference for the ECS wrapper so a completed score can be
+  // persisted without exposing provider payloads or changing the wire format.
+  if (res.locals && payload && typeof payload === 'object') res.locals.aiPayload = payload
   if (typeof res.json === 'function') return res.json(payload)
   return res.end(JSON.stringify(payload))
 }
@@ -590,7 +595,7 @@ export function createAiChatHandler(options = {}) {
     const configuredMaxOutputTokens = integerSetting(env.AI_MAX_OUTPUT_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, 64, 8192)
     const maxOutputTokens = preparedRequest?.maxOutputTokens
       ? integerSetting(env.AI_SCORE_MAX_OUTPUT_TOKENS, preparedRequest.maxOutputTokens, 512, 2048)
-      : configuredMaxOutputTokens
+      : Math.min(configuredMaxOutputTokens, integerSetting(req.aiOutputTokenLimit, configuredMaxOutputTokens, 64, 8192))
     const configuredMaxOutputChars = integerSetting(env.AI_MAX_OUTPUT_CHARS, configuredMaxOutputTokens * 12, 1024, 120_000)
     const maxOutputChars = preparedRequest?.maxOutputChars
       ? integerSetting(env.AI_SCORE_MAX_OUTPUT_CHARS, preparedRequest.maxOutputChars, 4096, 30_000)
@@ -643,13 +648,29 @@ export function createAiChatHandler(options = {}) {
                   'Content-Type': 'application/json',
                   Accept: 'text/event-stream',
                 },
-                body: JSON.stringify(providerBody),
+                body: JSON.stringify({
+                  ...providerBody,
+                  // OpenAI-compatible providers that support streaming usage
+                  // append it to the final SSE event.  Providers that do not
+                  // understand this field simply ignore it or return an error,
+                  // in which case the normal retry/fallback path applies.
+                  stream_options: { include_usage: true },
+                }),
               },
               clientSignal: clientAbort.signal,
               deadline,
               firstTokenTimeoutMs,
               onDelta: (delta, flowControl) => sink.emit(delta, flowControl),
             })
+            if (req.aiUsage) {
+              const usage = result.usage
+              req.aiUsage.inputTokens = Number(usage?.prompt_tokens) || 0
+              req.aiUsage.outputTokens = Number(usage?.completion_tokens) || 0
+              req.aiUsage.actualTokens = Number(usage?.total_tokens ?? ((usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0))) || 0
+              req.aiUsage.estimatedTokens = req.aiUsage.actualTokens || maxOutputTokens
+              req.aiUsage.usageSource = req.aiUsage.actualTokens ? 'provider' : 'estimate'
+              req.aiUsage.model = model
+            }
             await sink.finish(result.truncated)
             return
           } catch (error) {
@@ -684,6 +705,14 @@ export function createAiChatHandler(options = {}) {
             firstTokenTimeoutMs,
             onDelta: (delta, flowControl) => sink.emit(delta, flowControl),
           })
+          if (req.aiUsage) {
+            const usage = result.usage
+            req.aiUsage.inputTokens = Number(usage?.prompt_tokens) || 0
+            req.aiUsage.outputTokens = Number(usage?.completion_tokens) || 0
+            req.aiUsage.actualTokens = Number(usage?.total_tokens ?? ((usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0))) || 0
+            req.aiUsage.estimatedTokens = req.aiUsage.actualTokens || maxOutputTokens
+            req.aiUsage.usageSource = req.aiUsage.actualTokens ? 'provider' : 'estimate'
+          }
           await sink.finish(result.truncated)
           return
         } catch (error) {

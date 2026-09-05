@@ -1,7 +1,9 @@
 import { BrainCircuit, LoaderCircle, RefreshCcw, Sparkles, Target, TriangleAlert } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 
+import { ApiError, listInterviewAttempts } from '../lib/api'
 import { InterviewScoreError, scoreInterviewAnswer, type InterviewScoreResult } from '../lib/interviewScore'
+import { listLocalInterviewAttempts, saveLocalInterviewAttempt, type LocalInterviewAttempt } from '../lib/practiceHistory'
 import styles from './InterviewScorePanel.module.css'
 
 interface InterviewScorePanelProps {
@@ -19,21 +21,37 @@ type ScoreState =
 export function InterviewScorePanel({ questionId, answer, disabled = false }: InterviewScorePanelProps) {
   const [state, setState] = useState<ScoreState>({ status: 'idle' })
   const abortRef = useRef<AbortController | undefined>(undefined)
+  const makeClientId = () => globalThis.crypto?.randomUUID?.() ?? `attempt-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const clientIdRef = useRef<string>(makeClientId())
   const titleId = useId()
   const correctionsTitleId = useId()
+  const historyTitleId = useId()
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [history, setHistory] = useState<Array<{ id: string; score: number; summary: string; createdAt: string; band?: string }>>([])
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
   const requestScore = async () => {
     if (disabled || abortRef.current) return
+    // A deliberate re-score is a new practice attempt.  Keep the same ID only
+    // for the single in-flight request so server merges remain idempotent.
+    clientIdRef.current = makeClientId()
     const controller = new AbortController()
     abortRef.current = controller
     setState({ status: 'loading' })
 
     try {
-      const result = await scoreInterviewAnswer({ questionId, answer, signal: controller.signal })
+      const result = await scoreInterviewAnswer({ questionId, answer, signal: controller.signal, clientId: clientIdRef.current })
       if (controller.signal.aborted) return
       setState({ status: 'success', result })
+      void saveLocalInterviewAttempt({
+        clientId: clientIdRef.current,
+        questionId,
+        answer,
+        result,
+        createdAt: new Date().toISOString(),
+      }).catch(() => undefined)
     } catch (error) {
       if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return
       setState({
@@ -44,6 +62,47 @@ export function InterviewScorePanel({ questionId, answer, disabled = false }: In
     } finally {
       if (abortRef.current === controller) abortRef.current = undefined
     }
+  }
+
+  const loadHistory = async () => {
+    if (historyLoading) return
+    setHistoryLoading(true)
+    try {
+      const local = await listLocalInterviewAttempts(questionId)
+      const localItems = local.map((item) => ({
+        id: item.clientId,
+        score: item.result.score,
+        summary: item.result.summary,
+        band: item.result.band,
+        createdAt: item.createdAt,
+      }))
+      try {
+        const remote = await listInterviewAttempts(questionId, 20)
+        const remoteItems = remote.attempts.map((item) => ({
+          id: item.id,
+          score: item.score,
+          summary: item.summary,
+          band: item.band,
+          createdAt: item.createdAt,
+        }))
+        const seen = new Set(remoteItems.map((item) => `${item.score}:${item.createdAt}`))
+        setHistory([...remoteItems, ...localItems.filter((item) => !seen.has(`${item.score}:${item.createdAt}`))]
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 20))
+      } catch (error) {
+        if (!(error instanceof ApiError) || (error.status !== 401 && error.status !== 428)) throw error
+        setHistory(localItems)
+      }
+    } catch {
+      setHistory([])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const toggleHistory = () => {
+    const next = !historyOpen
+    setHistoryOpen(next)
+    if (next) void loadHistory()
   }
 
   const isLoading = state.status === 'loading'
@@ -154,11 +213,29 @@ export function InterviewScorePanel({ questionId, answer, disabled = false }: In
 
           <footer className={styles.footer}>
             <span>{state.result.confidence === 'low' ? '回答信息较少，评分把握有限。' : state.result.disclaimer}</span>
-            <button type="button" onClick={() => void requestScore()} disabled={disabled}>
-              <RefreshCcw aria-hidden="true" />
-              重新评分
-            </button>
+            <div className={styles.footerActions}>
+              <button type="button" onClick={toggleHistory} disabled={disabled} aria-expanded={historyOpen} aria-controls={historyTitleId}>
+                <span aria-hidden="true">▤</span>
+                {historyOpen ? '收起历史' : '查看历史'}
+              </button>
+              <button type="button" onClick={() => void requestScore()} disabled={disabled}>
+                <RefreshCcw aria-hidden="true" />
+                重新评分
+              </button>
+            </div>
           </footer>
+          {historyOpen && (
+            <section className={styles.history} id={historyTitleId} aria-label="历史评分">
+              <header><strong>本题评分历史</strong><span>{historyLoading ? '读取中…' : `${history.length} 次`}</span></header>
+              {history.length === 0 && !historyLoading
+                ? <p>还没有其他评分记录；下一次评分会自动保留。</p>
+                : <ol>{history.map((item) => <li key={item.id}>
+                  <strong>{item.score} 分</strong><span>{item.band || '练习评分'}</span>
+                  <small>{new Date(item.createdAt).toLocaleString()}</small>
+                  {item.summary && <p>{item.summary}</p>}
+                </li>)}</ol>}
+            </section>
+          )}
         </div>
       )}
     </section>

@@ -6,6 +6,7 @@ export type ReadingSize = 'compact' | 'comfortable' | 'large'
 export type PageLayout = 'single' | 'spread'
 // Question banks are registered at runtime, so new packs do not require widening a union type.
 export type QuestionLibrary = string
+export type QuestionTrack = 'frontend' | 'java' | 'ai' | 'project'
 
 export interface QuestionBankDefinition {
   id: QuestionLibrary
@@ -13,6 +14,7 @@ export interface QuestionBankDefinition {
   shortTitle: string
   kicker: string
   category: string
+  track?: QuestionTrack
   description: string
   source?: string
   idPrefix?: string
@@ -44,6 +46,12 @@ export interface InterviewQuestion {
   readMinutes: number
   order: number
   difficulty?: 'basic' | 'intermediate' | 'advanced'
+  track?: QuestionTrack
+  /** 1–5 interview-frequency score; zero means not yet calibrated. */
+  frequency?: number
+  aliases?: string[]
+  qualityScore?: number
+  qualityReviewedAt?: string
   version?: number
   provenance?: string
   verifiedAt?: string
