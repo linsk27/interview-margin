@@ -35,6 +35,27 @@ describe('legacy interview bank quality repairs', () => {
     expect(REPAIRED_IDS.every((id) => question(id)?.id === id)).toBe(true)
   })
 
+  it('adds topic-specific pitfalls and authoritative sources to the first twelve questions', () => {
+    // Exercise the markdown/enrichment source of truth without changing the
+    // checked-in precompiled snapshot used by the faster legacy tests.
+    const sourceDb = createDatabase({ filename: ':memory:', bootstrap: false, usePrecompiledSeed: false }).db
+    const sourceQuestion = (id) => sourceDb.prepare(`
+      SELECT id, title, body_md
+      FROM questions
+      WHERE bank_id = 'interview' AND id = ? AND archived_at IS NULL
+    `).get(id)
+    for (let index = 1; index <= 12; index += 1) {
+      const id = `q-${index}`
+      const body = sourceQuestion(id).body_md
+      expect(body, id).toContain('**易错点：**')
+      expect((body.match(/https:\/\//g) ?? []).length, id).toBeGreaterThanOrEqual(2)
+      const sources = sourceDb.prepare('SELECT url FROM source_refs WHERE question_id = ?').all(id)
+      expect(sources.length, id).toBeGreaterThanOrEqual(2)
+      expect(sources.every((source) => source.url.startsWith('https://')), id).toBe(true)
+    }
+    sourceDb.close()
+  })
+
   it('keeps unrelated concepts out of the repaired RBAC, page stack and SSR questions', () => {
     expect(question('q-13').title).toContain('RBAC 如何落到前后端权限校验')
     expect(question('q-13').title).not.toContain('CORS')

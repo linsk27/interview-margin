@@ -13,9 +13,14 @@ const SECTION_PATTERNS = {
   sources: /^(?:#{1,6}\s*)?(?:\*\*)?参考来源(?:[：:])?(?:\*\*)?\s*(.*)$/i,
 }
 
-const TRIGGER_SIGNALS = /因为|由于|当[^。；;\n]{0,36}(?:时|后)|如果|若|一旦|收到|读取|写入|输入|请求|修改|变化|触发|前提|条件/
-const MECHANISM_SIGNALS = /通过|先[^。；;\n]{0,36}(?:再|后)|根据|拦截|记录|查找|比较|队列|索引|解析|转换|调用|执行|建立|过滤|排序|合并|重排|缓存|编码|解码|收集|通知/
-const RESULT_SIGNALS = /因此|所以|从而|导致|结果|最终|避免|得到|返回|更新|失败|成功|不会|才能|保证|说明/
+// The audit is intended to catch answers that only state a result, not to
+// enforce one particular Chinese connective. Technical explanations often
+// express the trigger as a noun phrase ("读取时", "在请求失败后", "对于并发
+// 写入") and the consequence with verbs such as "需要/必须/不能". Keep the
+// signals broad enough to recognise those equivalent, natural formulations.
+const TRIGGER_SIGNALS = /因为|由于|当[^。；;\n]{0,48}(?:时|后|前)|如果|若|一旦|在[^。；;\n]{0,48}(?:时|后|前)|收到|读取|写入|输入|请求|修改|变化|触发|前提|条件|对于|针对|发生|需要|适合|用于|面对|场景|流程|调用|访问/
+const MECHANISM_SIGNALS = /通过|先[^。；;\n]{0,48}(?:再|后)|根据|拦截|记录|查找|比较|队列|索引|解析|转换|调用|执行|建立|过滤|排序|合并|重排|缓存|编码|解码|收集|通知|把[^。；;\n]{0,36}(?:变成|交给|传给|放入)|由[^。；;\n]{0,36}(?:负责|完成|处理)|使用|依靠|沿着|经过|拆成|共同|维护|共享|区分|判断|定位|诊断|限制/
+const RESULT_SIGNALS = /因此|所以|从而|导致|结果|最终|避免|得到|返回|更新|失败|成功|不会|才能|保证|说明|适合|用于|可以|能够|支持|减少|降低|提高|保留|覆盖|需要|必须|不能|不应|否则|依赖|允许|阻止|确保|让|使得|使|会|无法|不再|不到|才会|意味着|影响|暴露|命中|丢失|泄露|释放|占用/
 
 function textOnly(value) {
   return String(value ?? '')
@@ -55,10 +60,12 @@ function extractConclusion(answer) {
 
 function causalChain(value) {
   const text = textOnly(value)
+  const explicitRelation = /(?:因为|由于|如果|若|当|因此|所以|从而|导致|否则|才能|会|无法|不能|避免|使得|意味着|先[^。；;\n]{0,48}(?:再|后)|同一|共同|每次|多个|才)/.test(text)
   return {
     trigger: TRIGGER_SIGNALS.test(text),
     mechanism: MECHANISM_SIGNALS.test(text),
     result: RESULT_SIGNALS.test(text),
+    explicitRelation,
   }
 }
 
@@ -162,8 +169,14 @@ export function auditQuestionForPublish(question = {}, { strict = false } = {}) 
   if (!sections.answer || !/(?:为什么|原理|因为|由于|触发|机制)/.test(rationaleText)) {
     problems.push(makeIssue('MISSING_WHY', '答案没有明确说明为什么'))
   } else {
-    const missing = Object.entries(chain).filter(([, present]) => !present).map(([name]) => name)
-    if (missing.length) problems.push(makeIssue('INCOMPLETE_CAUSAL_CHAIN', `因果链缺少：${missing.join('、')}`, { missing }))
+    const missing = ['trigger', 'mechanism', 'result'].filter((name) => !chain[name])
+    const dimensions = ['trigger', 'mechanism', 'result'].filter((name) => chain[name]).length
+    // Do not reject a valid two-link explanation just because it lacks one
+    // lexical marker. For example, “getter 的 this 变成原对象，依赖就收集不到”
+    // clearly contains mechanism + consequence without saying “当…时”.
+    if (missing.length >= 2 || (!chain.explicitRelation && dimensions < 3)) {
+      problems.push(makeIssue('INCOMPLETE_CAUSAL_CHAIN', `因果链缺少：${missing.join('、')}`, { missing }))
+    }
   }
 
   if (isConclusionOnlyDecisionAnswer(title, sections.answer)) {
@@ -235,6 +248,19 @@ export function auditContentQuality(db) {
   const warnings = issues.filter((item) => item.severity === 'warning')
   const byCode = {}
   for (const item of issues) byCode[item.code] = (byCode[item.code] ?? 0) + 1
+  const blockingByCode = {}
+  for (const item of errors) blockingByCode[item.code] = (blockingByCode[item.code] ?? 0) + 1
+  // These issues can be repaired without inventing knowledge: formatting is
+  // deterministic, while source/why/example/pitfall gaps require an editor
+  // and remain blocking. Exposing this split keeps the admin report honest.
+  const safeAutoFixByCode = {
+    LONG_PARAGRAPH: 'format-only',
+    PARAGRAPH_NEEDS_SPLIT: 'format-only',
+  }
+  const autoFixableByCode = {}
+  for (const item of issues) {
+    if (safeAutoFixByCode[item.code]) autoFixableByCode[item.code] = (autoFixableByCode[item.code] ?? 0) + 1
+  }
   const banks = db.prepare("SELECT count(*) AS n FROM question_banks WHERE archived_at IS NULL").get().n
   return {
     generatedAt: new Date().toISOString(),
@@ -249,6 +275,8 @@ export function auditContentQuality(db) {
     blockingIssueCount: errors.length,
     warningCount: warnings.length,
     byCode,
+    blockingByCode,
+    autoFixableByCode,
     questions: audits.map(({ id, bankId, title, score, passed, metrics, issues: questionIssues }) => ({
       id, bankId, title, score, passed, metrics, issueCount: questionIssues.length,
     })),

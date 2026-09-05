@@ -1469,45 +1469,44 @@ export function enhanceQuestionClarity(markdown, { title = '', bankId = '' } = {
 
   const supplementMarker = legacySupplement ? `[clarity-supplement-${title.match(/^Q(\d+)/i)?.[1]}]: #` : ''
   if (legacySupplement && !lines.join('\n').includes(supplementMarker)) {
-    const hasMechanism = locateSections(lines).some((item) => item.kind === 'mechanism')
-    if (hasMechanism) {
-      const section = locateSections(lines).find((item) => item.kind === 'mechanism')
-      lines = [
-        ...lines.slice(0, section.end),
-        '', supplementMarker, '', legacySupplement.mechanism,
-        ...lines.slice(section.end),
-      ]
+    if (legacySupplement.mechanism?.trim()) {
+      const hasMechanism = locateSections(lines).some((item) => item.kind === 'mechanism')
+      if (hasMechanism) {
+        const section = locateSections(lines).find((item) => item.kind === 'mechanism')
+        lines = [...lines.slice(0, section.end), '', supplementMarker, '', legacySupplement.mechanism, ...lines.slice(section.end)]
+      } else {
+        const anchor = locateSections(lines).some((item) => item.kind === 'glossary') ? 'glossary' : 'answer'
+        lines = insertAfterSection(lines, anchor, ['**原理 / 流程：**', '', supplementMarker, '', legacySupplement.mechanism])
+      }
     } else {
-      const anchor = locateSections(lines).some((item) => item.kind === 'glossary') ? 'glossary' : 'answer'
-      lines = insertAfterSection(lines, anchor, [
-        '**原理 / 流程：**', '', supplementMarker, '', legacySupplement.mechanism,
-      ])
+      lines = insertAfterSection(lines, 'answer', [supplementMarker])
     }
-
-    const currentPractice = locateSections(lines).find((item) => item.kind === 'practice')
-    if (currentPractice) {
-      lines = [
-        ...lines.slice(0, currentPractice.end),
-        '', legacySupplement.practice,
-        ...lines.slice(currentPractice.end),
-      ]
-    } else {
-      lines = insertAfterSection(lines, 'mechanism', [
-        '**代码 / 场景：**', '', legacySupplement.practice,
-      ])
+    if (legacySupplement.practice?.trim()) {
+      const currentPractice = locateSections(lines).find((item) => item.kind === 'practice')
+      if (currentPractice) lines = [...lines.slice(0, currentPractice.end), '', legacySupplement.practice, ...lines.slice(currentPractice.end)]
+      else lines = insertAfterSection(lines, 'mechanism', ['**代码 / 场景：**', '', legacySupplement.practice])
     }
-    const currentSources = locateSections(lines).find((item) => item.kind === 'sources')
-    if (currentSources) {
-      lines = [
-        ...lines.slice(0, currentSources.end),
-        '', renderLegacySources(legacySupplement.sources), '', '补充校验日期：2026-08-29',
-        ...lines.slice(currentSources.end),
-      ]
-    } else {
-      const anchor = locateSections(lines).some((item) => item.kind === 'practice') ? 'practice' : 'mechanism'
-      lines = insertAfterSection(lines, anchor, [
-        '**参考来源：**', '', renderLegacySources(legacySupplement.sources), '', '校验日期：2026-08-29',
-      ])
+    if (legacySupplement.sources?.length) {
+      const currentSources = locateSections(lines).find((item) => item.kind === 'sources')
+      const rendered = [renderLegacySources(legacySupplement.sources), '', '补充校验日期：2026-08-29']
+      if (currentSources) lines = [...lines.slice(0, currentSources.end), '', ...rendered, ...lines.slice(currentSources.end)]
+      else {
+        const anchor = locateSections(lines).some((item) => item.kind === 'practice')
+          ? 'practice'
+          : locateSections(lines).some((item) => item.kind === 'mechanism') ? 'mechanism' : 'answer'
+        lines = insertAfterSection(lines, anchor, ['**参考来源：**', '', ...rendered])
+      }
+    }
+    if (legacySupplement.pitfalls?.length) {
+      const currentPitfalls = locateSections(lines).find((item) => item.kind === 'pitfalls')
+      const rendered = legacySupplement.pitfalls.map((item) => `- ${item}`)
+      if (currentPitfalls) lines = [...lines.slice(0, currentPitfalls.end), '', ...rendered, ...lines.slice(currentPitfalls.end)]
+      else {
+        const anchor = locateSections(lines).some((item) => item.kind === 'practice')
+          ? 'practice'
+          : locateSections(lines).some((item) => item.kind === 'mechanism') ? 'mechanism' : 'answer'
+        lines = insertAfterSection(lines, anchor, ['**易错点：**', '', ...rendered])
+      }
     }
   }
 

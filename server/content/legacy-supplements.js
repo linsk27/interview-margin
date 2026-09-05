@@ -1,4 +1,44 @@
 const SUPPLEMENTS = new Map([
+  [1, {
+    pitfalls: [
+      '不要说成 Vue3 的 Proxy “一定更快”：代理能力更完整，但深层遍历、组件更新范围和数据规模仍决定实际性能。',
+      'Vue2 不是完全不能处理新增属性；可以用 Vue.set 或替换对象，但直接赋值不会被已建立的依赖可靠观察。',
+    ],
+    sources: [
+      ['Vue：响应式原理', 'https://vuejs.org/guide/extras/reactivity-in-depth.html'],
+      ['MDN：Proxy', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy'],
+    ],
+  }],
+  [2, {
+    pitfalls: [
+      'track 只发生在当前 effect 同步读取依赖时；把读取放进异步回调，不能自动得到同样的依赖收集结果。',
+      'trigger 不等于立即同步重绘：Vue 还会经过调度、去重和批处理，不能用“赋值后立刻查 DOM”验证更新是否完成。',
+    ],
+    sources: [
+      ['Vue：Reactivity in Depth', 'https://vuejs.org/guide/extras/reactivity-in-depth.html'],
+      ['Vue：响应式基础', 'https://vuejs.org/guide/essentials/reactivity-fundamentals.html'],
+    ],
+  }],
+  [3, {
+    pitfalls: [
+      'receiver 不是永远等于 target 或 proxy；继承对象访问 getter 时，它可能是实际发起访问的子对象。',
+      '拦截 get 时直接写 target[key] 会让 getter 的 this 指向原对象，可能绕过代理依赖；需要按语义使用 Reflect.get(target, key, receiver)。',
+    ],
+    sources: [
+      ['MDN：handler.get()', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get'],
+      ['MDN：Reflect.get()', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect/get'],
+    ],
+  }],
+  [4, {
+    pitfalls: [
+      'Reflect.get/set 只提供默认内部方法，不会自动替你做权限校验、类型校验或深层响应式；这些仍需在 handler 中明确实现。',
+      'set trap 必须返回布尔成功值，并遵守不可配置/不可写属性等 Proxy 不变量；随意返回 true 可能在严格模式下抛错。',
+    ],
+    sources: [
+      ['MDN：Reflect.get()', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect/get'],
+      ['MDN：Reflect.set()', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect/set'],
+    ],
+  }],
   [5, {
     mechanism: `三者解决的不是同一类问题：
 
@@ -22,6 +62,20 @@ watch(keyword, async (value, _oldValue, onCleanup) => {
       ['Vue：computed()', 'https://vuejs.org/api/reactivity-core.html#computed'],
       ['Vue：watch() 与 watchEffect()', 'https://vuejs.org/api/reactivity-core.html#watch'],
     ],
+    pitfalls: [
+      'computed getter 应保持无副作用；在 getter 里发请求、改状态会让缓存和更新顺序难以推断。',
+      'watchEffect 只会收集同步执行阶段读取的依赖；异步回调第一次 await 之后才读取的数据不会按预期自动追踪。',
+    ],
+  }],
+  [6, {
+    pitfalls: [
+      'deep watch 会递归访问整个对象，字段越多、嵌套越深成本越高；它也不会告诉你业务上是哪条规则触发了联动。',
+      '用字段依赖图替代 deep watch 时，仍要处理循环依赖、异步选项乱序和隐藏字段旧值是否清理，不能只把监听器数量减少。',
+    ],
+    sources: [
+      ['Vue：watch() 深度监听', 'https://vuejs.org/api/reactivity-core.html#watch'],
+      ['Vue：性能最佳实践', 'https://vuejs.org/guide/best-practices/performance.html'],
+    ],
   }],
   [7, {
     mechanism: `Vue 修改响应式状态后不会立刻为每一次赋值都同步重绘 DOM，而是把相关组件更新放进调度队列，同一轮事件循环中的重复更新会被合并。nextTick 返回的 Promise 会在当前这批 DOM 更新提交后解决，因此它表达的是“等 Vue 把已经排队的视图更新做完”，不是固定等待几毫秒，也不是等图片、网络请求或浏览器所有绘制都结束。若只是需要根据状态计算值，应直接使用状态；只有确实要读取更新后的 DOM 尺寸、焦点或滚动位置时才用 nextTick。`,
@@ -38,6 +92,10 @@ listRef.value?.lastElementChild?.scrollIntoView({ block: 'nearest' })
       ['Vue：nextTick()', 'https://vuejs.org/api/general.html#nexttick'],
       ['Vue：响应式更新时机', 'https://vuejs.org/guide/essentials/reactivity-fundamentals.html#dom-update-timing'],
     ],
+    pitfalls: [
+      'nextTick 只等待 Vue 已排队的 DOM 更新，不等待图片加载、网络请求或下一帧动画；这些要使用对应事件或 requestAnimationFrame。',
+      '如果只是计算派生值，不应靠 nextTick 读取 DOM 再回写状态，否则容易形成额外布局和更新循环。',
+    ],
   }],
   [10, {
     mechanism: `Map 通常使用哈希表或等价结构：先把 key 计算成哈希值，再由哈希定位到很小的桶，最后在桶内比较真正的 key。理想分布下桶很短，所以 get/has 的平均复杂度常写作 O(1)；这不代表一步完成，也不代表最坏情况永远是常数。碰撞严重、频繁扩容或恶意输入都可能增加成本。JavaScript 规范只要求 Map 的平均访问时间“次线性”，并没有强制所有引擎必须使用某一种哈希表实现。`,
@@ -45,6 +103,10 @@ listRef.value?.lastElementChild?.scrollIntoView({ block: 'nearest' })
     sources: [
       ['MDN：Map', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map'],
       ['ECMAScript：Map Objects', 'https://tc39.es/ecma262/multipage/keyed-collections.html#sec-map-objects'],
+    ],
+    pitfalls: [
+      'O(1) 是平均访问复杂度，不是最坏情况保证；碰撞、扩容、恶意 key 和哈希实现都会改变实际耗时。',
+      'Map 适合按 key 查找，不等于适合范围查询、按时间排序或持久化；这些需求应评估有序结构或数据库索引。',
     ],
   }],
   [11, {
@@ -66,6 +128,10 @@ const failed = results.flatMap((result, index) =>
       ['MDN：Promise.all()', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all'],
       ['MDN：Promise.allSettled()', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled'],
     ],
+    pitfalls: [
+      'Promise.all reject 不会自动取消其他请求；若任务有副作用，必须传 AbortSignal 或设计补偿，否则“失败”仍可能留下已完成操作。',
+      'allSettled 会等待全部任务结束，不能用它掩盖核心请求失败；应按结果逐项区分核心失败和可降级项。',
+    ],
   }],
   [12, {
     mechanism: `登录成功后，服务端签发一个带签名的 access token，客户端后续请求携带它；服务端固定允许的算法并校验签名、签发方 iss、受众 aud、过期时间 exp 和必要业务声明，再根据当前用户与资源执行授权。JWT 只证明声明未被篡改，payload 对持有者通常可读，不能放密码或隐私。短期 access token 还要配合 refresh token 轮换、撤销记录、设备会话和重放控制；把 token 存在 Cookie 或浏览器存储时分别要评估 CSRF 与 XSS。`,
@@ -82,6 +148,30 @@ authorize(claims.payload.sub, 'order:read', order.ownerId)
     sources: [
       ['RFC 7519：JSON Web Token', 'https://www.rfc-editor.org/rfc/rfc7519'],
       ['OWASP：JWT for Java Cheat Sheet', 'https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html'],
+    ],
+    pitfalls: [
+      'JWT payload 默认只是 Base64URL 编码，不是加密；密码、密钥和隐私字段不能直接放进 payload。',
+      '验签通过不等于有资源权限：仍需校验 issuer、audience、过期时间和当前用户是否能操作目标资源，并防止算法降级。',
+    ],
+  }],
+  [8, {
+    pitfalls: [
+      'Pinia 不强制 mutation 不代表可以绕过业务边界随处改 state；复杂流程仍应在 action/store 方法中集中约束和记录。',
+      'Vuex 迁移到 Pinia 不是改 import 就结束，还要检查 module 命名空间、插件、持久化和 SSR 请求间状态隔离。',
+    ],
+    sources: [
+      ['Pinia：核心概念', 'https://pinia.vuejs.org/core-concepts/'],
+      ['Vuex：开始', 'https://vuex.vuejs.org/guide/'],
+    ],
+  }],
+  [9, {
+    pitfalls: [
+      'TypeScript 只在编译期提供静态检查，不能替代接口运行时校验；服务端 JSON、用户输入和 localStorage 仍需解析验证。',
+      'any 会关闭关键检查，类型断言也不会改变运行时值；应优先使用 unknown、类型守卫和明确的错误分支。',
+    ],
+    sources: [
+      ['TypeScript Handbook：Narrowing', 'https://www.typescriptlang.org/docs/handbook/2/narrowing.html'],
+      ['TypeScript Handbook：The Basics', 'https://www.typescriptlang.org/docs/handbook/2/basic-types.html'],
     ],
   }],
   [14, {
