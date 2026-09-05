@@ -5819,8 +5819,8 @@ body:has(.admin-overlay) {
 .admin-contact-request > footer > div:last-child { flex-wrap: wrap; justify-content: flex-end; gap: var(--space-xs); }
 .admin-contact-request select { min-height: 2.5rem; }
 .admin-contact-request .is-danger { color: var(--color-danger); }
-.admin-contact-requests__empty { display: grid; min-height: 22rem; width: min(82rem, 100%); margin-inline: auto; place-content: center; justify-items: center; gap: var(--space-xs); color: var(--color-muted); text-align: center; }
-.admin-contact-requests__empty > svg { width: 2rem; height: 2rem; color: var(--color-accent); }
+.admin-contact-requests__empty { display: grid; grid-column: 1 / -1; min-height: 14rem; width: min(82rem, 100%); margin-inline: auto; place-content: center; justify-items: center; gap: var(--space-xs); padding: var(--space-xl); border: var(--rule-thin) dashed var(--color-rule-strong); border-radius: var(--radius-sm); background: color-mix(in oklch, var(--color-paper) 72%, var(--color-paper-2)); color: var(--color-muted); text-align: center; }
+.admin-contact-requests__empty > svg { width: 2.25rem; height: 2.25rem; padding: var(--space-xs); border-radius: 50%; background: var(--color-accent-soft); color: var(--color-accent); }
 .admin-contact-requests__empty > strong { color: var(--color-ink); font-size: var(--text-md); }
 .admin-contact-requests__empty > span { font-size: var(--text-xs); }
 .admin-users,
