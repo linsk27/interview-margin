@@ -5795,7 +5795,7 @@ body:has(.admin-overlay) {
 .admin-contact-requests__filters button { display: inline-flex; min-height: 2.5rem; flex: 0 0 auto; align-items: center; gap: var(--space-xs); padding-inline: var(--space-sm); border: var(--rule-thin) solid transparent; border-radius: 999px; background: transparent !important; color: var(--color-muted); }
 .admin-contact-requests__filters button span { display: grid; min-width: 1.35rem; height: 1.35rem; place-items: center; border-radius: 50%; background: var(--color-paper-3); font: 0.62rem var(--font-mono); }
 .admin-contact-requests__filters button.is-active { border-color: color-mix(in oklch, var(--color-accent) 32%, var(--color-rule)); background: var(--color-accent-soft) !important; color: var(--color-accent); }
-.admin-contact-requests__list { display: grid; width: min(82rem, 100%); margin-inline: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--space-sm); }
+.admin-contact-requests__list { display: grid; width: min(82rem, 100%); margin-inline: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: var(--space-sm); }
 .admin-contact-request { display: grid; min-width: 0; gap: var(--space-sm); padding: var(--space-md); border: var(--rule-thin) solid var(--color-rule); border-inline-start: var(--rule-heavy) solid var(--color-rule-strong); border-radius: var(--radius-sm); background: var(--color-paper); box-shadow: 0 var(--space-2xs) var(--space-sm) color-mix(in oklch, var(--color-ink) 4%, transparent); }
 .admin-contact-request.is-new { border-inline-start-color: var(--color-accent); }
 .admin-contact-request.is-resolved { opacity: 0.78; }
@@ -5814,6 +5814,7 @@ body:has(.admin-overlay) {
 .admin-request-kind.is-feedback { background: var(--color-accent-soft); color: var(--color-accent); }
 .admin-request-kind.is-account { background: var(--color-warm-soft); color: color-mix(in oklch, var(--color-warm) 74%, var(--color-ink)); }
 .admin-contact-request > footer { padding-top: var(--space-sm); border-top: var(--rule-thin) solid var(--color-rule); }
+.admin-contact-request > footer { margin-block-start: auto; }
 .admin-contact-request > footer > div:first-child { color: var(--color-muted); font-size: var(--text-xs); overflow-wrap: anywhere; }
 .admin-contact-request > footer > div:last-child { flex-wrap: wrap; justify-content: flex-end; gap: var(--space-xs); }
 .admin-contact-request select { min-height: 2.5rem; }
