@@ -1,5 +1,6 @@
 import {
   ArrowUp,
+  ArrowDown,
   Bot,
   BriefcaseBusiness,
   Check,
@@ -69,7 +70,6 @@ function savePersistedChat(questionId: string, value: PersistedChat) {
     // Keep unsent text across a reload. Completed conversation is kept in the
     // mounted reader session (so switching questions is lossless) without
     // growing a long-lived localStorage transcript.
-    const messages = value.messages.filter((message) => message.status !== 'streaming').slice(-MAX_PERSISTED_MESSAGES)
     if (!value.draft.trim()) delete all[questionId]
     else all[questionId] = { messages: [], draft: value.draft.slice(0, 6000) }
     window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(all))
@@ -268,34 +268,52 @@ async function readReply(response: Response, onDelta: (delta: string) => void): 
 
 export function AiAssistant({ question, focusToken, onClose, embedded = false }: AiAssistantProps) {
   const displayQuestionTitle = question.title.replace(/^Q[\d.]+[：:]?\s*/i, '')
-  const initialChat = loadPersistedChat(question.id)
+  const [initialChat] = useState(() => loadPersistedChat(question.id))
   const [messages, setMessages] = useState<AssistantMessage[]>(initialChat.messages)
   const [draft, setDraft] = useState(initialChat.draft)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [requestStage, setRequestStage] = useState<'connecting' | 'waiting' | 'streaming'>('connecting')
+  const [showLatest, setShowLatest] = useState(false)
   const [restored, setRestored] = useState(Boolean(initialChat.messages.length || initialChat.draft))
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const endRef = useRef<HTMLDivElement>(null)
+  const conversationRef = useRef<HTMLDivElement>(null)
+  const followOutputRef = useRef(true)
   const abortRef = useRef<AbortController | undefined>(undefined)
   const activeQuestionRef = useRef(question.id)
   const stateRef = useRef<PersistedChat>(initialChat)
   const sessionChatsRef = useRef<Record<string, PersistedChat>>({ [question.id]: initialChat })
 
   useEffect(() => {
+    // A question change renders before its state has been restored. Never save
+    // the previous question's draft or transcript under the new question ID.
+    if (activeQuestionRef.current !== question.id) return
     stateRef.current = { messages, draft }
     sessionChatsRef.current[question.id] = stateRef.current
-    savePersistedChat(question.id, stateRef.current)
   }, [draft, messages, question.id])
+
+  useEffect(() => {
+    if (activeQuestionRef.current === question.id) savePersistedChat(question.id, stateRef.current)
+  }, [draft, question.id])
 
   useEffect(() => {
     if (activeQuestionRef.current === question.id) return
     savePersistedChat(activeQuestionRef.current, stateRef.current)
     abortRef.current?.abort()
+    abortRef.current = undefined
+    sessionChatsRef.current[activeQuestionRef.current] = {
+      ...stateRef.current,
+      messages: stateRef.current.messages.map((message) => message.status === 'streaming'
+        ? { ...message, status: 'stopped' } : message),
+    }
     const next = sessionChatsRef.current[question.id] ?? loadPersistedChat(question.id)
+    stateRef.current = next
     setMessages(next.messages)
     setDraft(next.draft)
     setError('')
     setIsLoading(false)
+    followOutputRef.current = true
+    setShowLatest(false)
     setRestored(Boolean(next.messages.length || next.draft))
     activeQuestionRef.current = question.id
   }, [question.id])
@@ -322,7 +340,8 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
   }, [focusToken])
 
   useEffect(() => {
-    endRef.current?.scrollIntoView?.({ block: 'nearest', behavior: isLoading ? 'smooth' : 'auto' })
+    const container = conversationRef.current
+    if (container && followOutputRef.current) container.scrollTop = container.scrollHeight
   }, [isLoading, messages])
 
   useEffect(() => {
@@ -333,7 +352,7 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
   }, [draft])
 
   const requestReply = async (conversation: AssistantMessage[]) => {
-    if (isLoading) return
+    if (abortRef.current) return
 
     const controller = new AbortController()
     const assistantMessage = newMessage('assistant', '', 'streaming')
@@ -341,6 +360,11 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
     setMessages([...conversation, assistantMessage])
     setError('')
     setIsLoading(true)
+    setRequestStage('connecting')
+    followOutputRef.current = true
+    setShowLatest(false)
+    const isCurrentRequest = () => !controller.signal.aborted
+      && abortRef.current === controller && activeQuestionRef.current === question.id
 
     try {
       const response = await fetch(appPath('/api/ai-chat'), {
@@ -361,8 +385,13 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
         }),
       })
 
+      if (!isCurrentRequest()) return
+      setRequestStage('waiting')
+
       let streamedContent = ''
       const reply = await readReply(response, (delta) => {
+        if (!isCurrentRequest()) return
+        setRequestStage('streaming')
         streamedContent += delta
         setMessages((current) => current.map((message) => (
           message.id === assistantMessage.id
@@ -371,6 +400,7 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
         )))
       })
 
+      if (!isCurrentRequest()) return
       if (!reply.content) throw new Error('AI 服务没有返回可显示的文本。')
       setMessages((current) => current.map((message) => (
         message.id === assistantMessage.id
@@ -382,7 +412,7 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
           : message
       )))
     } catch (requestError) {
-      if (controller.signal.aborted || (requestError instanceof DOMException && requestError.name === 'AbortError')) return
+      if (!isCurrentRequest() || (requestError instanceof DOMException && requestError.name === 'AbortError')) return
       const partialContent = requestError instanceof AiStreamError ? requestError.partialContent : ''
       setMessages((current) => partialContent
         ? current.map((message) => message.id === assistantMessage.id
@@ -502,7 +532,13 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
         </header>
       )}
 
-      <div className={styles.conversation} role="log" aria-live="polite" aria-busy={isLoading}>
+      <div className={styles.conversation} ref={conversationRef} role="log" aria-label="本题 AI 对话" aria-live="polite" aria-busy={isLoading}
+        onScroll={(event) => {
+          const container = event.currentTarget
+          const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 48
+          followOutputRef.current = nearBottom
+          setShowLatest(!nearBottom)
+        }}>
         <div className={styles.context} title={displayQuestionTitle}>
           <span className={styles.contextIndex}>Q{question.number}</span>
           <div className={styles.contextCopy}>
@@ -518,7 +554,7 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
 
         {restored && (
           <p className={styles.composerStatus} role="status">
-            <Check aria-hidden="true" />已保留本题上次的提问和未发送内容，切换题目也不会丢失。
+            <Check aria-hidden="true" />{messages.length ? '已恢复本次打开期间的本题对话和草稿。' : '已恢复本题未发送的草稿。'}
           </p>
         )}
 
@@ -565,7 +601,7 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
                         ? <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={['img']}>{message.content}</ReactMarkdown>
                         : message.status === 'stopped'
                           ? <p className={styles.stoppedCopy}>生成已停止，你可以重新生成或换一种问法。</p>
-                          : <div className={styles.thinking} role="status"><LoaderCircle aria-hidden="true" /><span><strong>正在分析题目</strong><small>整理关键概念与回答结构…</small></span></div>
+                          : <div className={styles.thinking}><LoaderCircle aria-hidden="true" /><span><strong>{requestStage === 'connecting' ? '正在连接 AI 服务' : '已连接，等待首段回答'}</strong><small>等待期间可以停止生成。</small></span></div>
                       : <p>{message.content}</p>}
                   </div>
                   {(message.status === 'stopped' || message.status === 'interrupted' || message.status === 'truncated')
@@ -591,8 +627,19 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
           </div>
         )}
 
+      </div>
+
+      <footer className={styles.composerArea}>
+        {showLatest && <button type="button" className={styles.latestButton} onClick={() => {
+          followOutputRef.current = true
+          setShowLatest(false)
+          if (conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight
+        }}><ArrowDown aria-hidden="true" />回到最新回答</button>}
+        {isLoading && <p className={styles.composerStatus} role="status">
+          <LoaderCircle aria-hidden="true" />{requestStage === 'connecting' ? '连接中…' : requestStage === 'waiting' ? '等待首段回答…' : '正在生成回答…'}
+        </p>}
         {error && (
-          <div className={styles.error} role="alert">
+          <div className={styles.error} role="alert" id="ai-request-error">
             <CircleAlert aria-hidden="true" />
             <div>
               <strong>这次没有回答成功</strong>
@@ -605,10 +652,6 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
             )}
           </div>
         )}
-        <div ref={endRef} />
-      </div>
-
-      <footer className={styles.composerArea}>
         {hasStoppedReply && (
           <p className={styles.composerStatus}><Square aria-hidden="true" />上一次回答已停止，可直接调整问题后再次发送。</p>
         )}
@@ -623,6 +666,7 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
           <textarea
             ref={inputRef}
             id="ai-question"
+            aria-describedby={error ? 'ai-request-error' : undefined}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={onKeyDown}

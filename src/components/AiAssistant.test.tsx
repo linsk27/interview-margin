@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AiAssistant } from './AiAssistant'
 import type { InterviewQuestion } from '../types'
 
@@ -17,6 +17,7 @@ const question = {
   order: 1,
 } satisfies InterviewQuestion
 
+beforeEach(() => window.localStorage.clear())
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
@@ -148,6 +149,7 @@ describe('AI learning assistant', () => {
     fireEvent.click(screen.getByRole('button', { name: '发送' }))
 
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('服务繁忙'))
+    expect(screen.getByRole('alert').closest('footer')).toBeTruthy()
     expect(screen.getByText('继续追问')).toBeTruthy()
     expect(screen.getByRole('button', { name: '重试' })).toBeTruthy()
   })
@@ -186,5 +188,60 @@ describe('AI learning assistant', () => {
       { role: 'user', content: '继续解释' },
       { role: 'user', content: '换个角度说明' },
     ])
+  })
+
+  it('restores each question draft without writing it into the next question', () => {
+    const second = { ...question, id: 'q-2', number: '2', title: '另一个问题' }
+    const { rerender } = render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '第一题草稿' } })
+    rerender(<AiAssistant question={second} focusToken={0} />)
+    expect(screen.getByLabelText('向 AI 提问')).toHaveValue('')
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '第二题草稿' } })
+    rerender(<AiAssistant question={question} focusToken={0} />)
+    expect(screen.getByLabelText('向 AI 提问')).toHaveValue('第一题草稿')
+    const saved = JSON.parse(window.localStorage.getItem('interview-margin:ai-chat:v2')!)
+    expect(saved['q-1'].draft).toBe('第一题草稿')
+    expect(saved['q-2'].draft).toBe('第二题草稿')
+  })
+
+  it('ignores an obsolete request and restores its stopped state when returning', async () => {
+    let finish!: (response: Response) => void
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { finish = resolve })))
+    const { rerender } = render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '第一题提问' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+    rerender(<AiAssistant question={{ ...question, id: 'q-2' }} focusToken={0} />)
+    await act(async () => finish(new Response(JSON.stringify({ message: '过期回答' }), { headers: { 'Content-Type': 'application/json' } })))
+    expect(screen.queryByText('第一题提问')).toBeNull()
+    expect(screen.queryByText('过期回答')).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+    rerender(<AiAssistant question={question} focusToken={0} />)
+    expect(screen.getByText('第一题提问')).toBeTruthy()
+    expect(screen.getByText('已停止生成')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '停止生成' })).toBeNull()
+  })
+
+  it('distinguishes connection and generation, and leaves reading position alone while scrolling back', async () => {
+    let connect!: (response: Response) => void
+    let stream!: ReadableStreamDefaultController<Uint8Array>
+    const body = new ReadableStream<Uint8Array>({ start(controller) { stream = controller } })
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { connect = resolve })))
+    render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '分步解释' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+    expect(screen.getByText('连接中…')).toBeTruthy()
+    await act(async () => connect(new Response(body, { headers: { 'Content-Type': 'text/event-stream' } })))
+    expect(screen.getByText('等待首段回答…')).toBeTruthy()
+    const log = screen.getByRole('log')
+    Object.defineProperties(log, { scrollHeight: { value: 1000 }, clientHeight: { value: 300 } })
+    log.scrollTop = 100
+    fireEvent.scroll(log)
+    await act(async () => stream.enqueue(new TextEncoder().encode('data: {"delta":"第一段正文"}\n\n')))
+    expect(screen.getByText('正在生成回答…')).toBeTruthy()
+    expect(log.scrollTop).toBe(100)
+    fireEvent.click(screen.getByRole('button', { name: '回到最新回答' }))
+    expect(log.scrollTop).toBe(1000)
+    await act(async () => stream.close())
+    expect(screen.getByLabelText('回答完成')).toBeTruthy()
   })
 })

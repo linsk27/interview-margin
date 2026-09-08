@@ -300,12 +300,12 @@ export function searchCatalogPage(query: string, options: {
   frequency?: string | number
   limit?: number
   cursor?: string
-} = {}) {
+} = {}, signal?: AbortSignal) {
   const params = new URLSearchParams({ q: query })
   for (const [key, value] of Object.entries(options)) {
     if (value !== undefined && value !== '') params.set(key, String(value))
   }
-  return api<CatalogSearchPage>(`/api/catalog/search?${params.toString()}`)
+  return api<CatalogSearchPage>(`/api/catalog/search?${params.toString()}`, { signal })
 }
 
 function expectedUserHeaders(userId: string): HeadersInit {

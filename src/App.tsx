@@ -1417,7 +1417,7 @@ export default function App() {
         </>
       )}
 
-      {commandOpen && <Suspense fallback={null}><CommandPalette open questions={questions} state={state} onClose={() => setCommandOpen(false)} onSelect={openQuestion} /></Suspense>}
+      {commandOpen && <Suspense fallback={null}><CommandPalette open questions={questions} banks={banks} state={state} onClose={() => setCommandOpen(false)} onSelect={openQuestion} /></Suspense>}
       {dashboardOpen && <Suspense fallback={null}><DashboardDialog
         open={dashboardOpen}
         sections={sections}

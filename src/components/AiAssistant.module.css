@@ -567,9 +567,10 @@
 }
 
 .stoppedState button,
-.error button {
+.error button,
+.latestButton {
   display: inline-flex;
-  min-height: 1.875rem;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: center;
   gap: var(--space-2xs);
@@ -584,7 +585,8 @@
 }
 
 .stoppedState button svg,
-.error button svg {
+.error button svg,
+.latestButton svg {
   width: 0.78rem;
   height: 0.78rem;
 }
@@ -637,6 +639,9 @@
   border-top: var(--rule-thin) solid var(--color-rule);
   background: color-mix(in oklch, var(--color-paper) 94%, var(--color-paper-2));
 }
+
+.composerArea .error { margin: 0 0 var(--space-xs); }
+.latestButton { margin-block-end: var(--space-xs); }
 
 .composerStatus {
   display: flex;
