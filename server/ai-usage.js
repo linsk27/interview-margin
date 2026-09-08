@@ -192,7 +192,7 @@ export function settleAiUsage({
       ? Number(costUsd)
       : estimateAiCost({
         inputTokens: input || Number(event.input_tokens) || 0,
-        outputTokens: output || actual || estimated,
+        outputTokens: output || actual || Number(event.output_tokens) || Math.max(0, estimated - (input || Number(event.input_tokens) || 0)),
         model: model || event.model,
         env,
       })

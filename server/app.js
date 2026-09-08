@@ -322,7 +322,7 @@ export function createApp(options = {}) {
         res.setHeader('X-AI-Quota-Limit', String(reservation.quota.limit))
         res.setHeader('X-AI-Quota-Reset', reservation.quota.resetAt)
       }
-      if (reservation.repeated && reservation.event?.status !== 'reserved') {
+      if (reservation.repeated) {
         return res.status(409).json({ error: '该请求已处理。', code: 'AI_REQUEST_REPEATED', requestId })
       }
       await appAiHandler(req, res)
@@ -515,7 +515,7 @@ export function createApp(options = {}) {
     }), cacheControl)
   })
 
-  app.get('/api/catalog/search', (req, res) => {
+  app.get(['/api/search', '/api/catalog/search'], (req, res) => {
     const canEdit = req.user?.permissions.includes('banks.write') ?? false
     const query = typeof req.query.q === 'string' ? req.query.q : ''
     if (query.trim().length < 1) return res.json({ query, results: [], nextCursor: null, hasMore: false, total: 0 })

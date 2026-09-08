@@ -1,6 +1,8 @@
 # 面试边注：项目架构、部署与开发交接文档
 
-> 更新时间：2026-08-06
+> 最新续接入口：[CURRENT_CONTEXT.md](CURRENT_CONTEXT.md)；验收证据：[ACCEPTANCE_2026-09-09.md](ACCEPTANCE_2026-09-09.md)。
+> 本文详细部署章节包含2026-08-06的个人电脑方案，属于历史记录。**当前生产唯一写节点已迁至阿里云ECS**；服务、数据库路径、测试统计以以上两份最新记录为准，勿重新启用Windows写节点。
+> 历史正文更新时间：2026-08-06
 > 仓库：`https://github.com/linsk27/interview-margin`  
 > 主站（完整动态服务）：`https://interview.linsk27.dpdns.org`
 > 游客备用站（静态题库）：`https://interview-margin.vercel.app`
