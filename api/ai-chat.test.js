@@ -678,6 +678,7 @@ describe('AI chat proxy reliability', () => {
     await handler(request(), res)
 
     expect(res.statusCode).toBe(503)
+    expect(res.getHeader('X-AI-Error-Code')).toBe('AI_FALLBACK_UNAVAILABLE')
     expect(res.jsonBody).toEqual({
       error: 'AI 主服务和后备服务暂时都不可用，请稍后再试。',
       code: 'AI_FALLBACK_UNAVAILABLE',

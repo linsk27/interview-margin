@@ -154,6 +154,24 @@ describe('AI learning assistant', () => {
     expect(screen.getByRole('button', { name: '重试' })).toBeTruthy()
   })
 
+  it('turns structured AI failure codes into actionable reader-facing guidance', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      headers: new Headers({ 'X-AI-Request-Id': 'ai-debug-1' }),
+      json: async () => ({
+        error: 'AI 主服务和后备服务暂时都不可用，请稍后再试。',
+        code: 'AI_FALLBACK_UNAVAILABLE',
+      }),
+    }))
+
+    render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '请继续解释' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('主服务和后备服务都没有返回'))
+    expect(screen.getByRole('alert').textContent).toContain('题目阅读不受影响')
+  })
+
   it('keeps an explicit stopped state when generation is cancelled', async () => {
     const fetchMock = vi.fn()
       .mockImplementationOnce((_url: string, options: RequestInit) => (

@@ -344,6 +344,9 @@ function setStatus(res, status) {
 function sendJson(res, status, payload, retryAfterSeconds) {
   setStatus(res, status)
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
+  if (payload && typeof payload.code === 'string') {
+    res.setHeader('X-AI-Error-Code', payload.code)
+  }
   if (retryAfterSeconds) res.setHeader('Retry-After', String(retryAfterSeconds))
   // Keep a private reference for the ECS wrapper so a completed score can be
   // persisted without exposing provider payloads or changing the wire format.
@@ -736,6 +739,7 @@ export function createAiChatHandler(options = {}) {
         await sink.fail(failure)
         return
       }
+      res.setHeader('X-AI-Error-Code', failure.code)
       const retryAfter = failure.status === 429 || failure.status === 503 ? 2 : undefined
       return sendJson(res, failure.status, {
         error: failure.message,

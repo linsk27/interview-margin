@@ -336,7 +336,9 @@ export function createApp(options = {}) {
         model: req.aiUsage?.model || model,
         costSource: req.aiUsage?.usageSource || 'estimate',
         env: aiUsageEnv,
-        errorCode: res.statusCode >= 400 ? `HTTP_${res.statusCode}` : undefined,
+        errorCode: res.statusCode >= 400
+          ? (res.get?.('X-AI-Error-Code') || `HTTP_${res.statusCode}`)
+          : undefined,
       })
     } catch (error) {
       if (error?.code === 'AI_QUOTA_EXCEEDED' || error?.code === 'AI_GLOBAL_BUDGET_EXCEEDED') {

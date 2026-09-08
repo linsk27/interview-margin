@@ -106,6 +106,38 @@ class AiStreamError extends Error {
   }
 }
 
+class AiRequestError extends Error {
+  code?: string
+  requestId?: string
+
+  constructor(message: string, code?: string, requestId?: string) {
+    super(message)
+    this.name = 'AiRequestError'
+    this.code = code
+    this.requestId = requestId
+  }
+}
+
+function readableAiError(error: unknown) {
+  const code = error instanceof AiRequestError ? error.code : undefined
+  switch (code) {
+    case 'AI_BUSY':
+    case 'AI_RATE_LIMITED':
+      return '当前 AI 请求较多，请稍后再试。题目阅读不受影响。'
+    case 'AI_FALLBACK_UNAVAILABLE':
+      return 'AI 主服务和后备服务都没有返回，请稍后重试。题目阅读不受影响。'
+    case 'AI_UPSTREAM_AUTH':
+    case 'AI_NOT_CONFIGURED':
+      return 'AI 服务配置需要管理员检查，题目阅读仍可正常使用。'
+    case 'AI_UPSTREAM_CONFIGURATION':
+      return 'AI 请求配置暂不兼容，请稍后重试或联系管理员。'
+    case 'AI_TIMEOUT':
+      return 'AI 回复等待超时，请稍后重试。题目阅读不受影响。'
+    default:
+      return error instanceof Error ? error.message : 'AI 服务暂时无法响应，请稍后再试。'
+  }
+}
+
 interface AiAssistantProps {
   question: InterviewQuestion
   focusToken: number
@@ -249,8 +281,12 @@ async function readReply(response: Response, onDelta: (delta: string) => void): 
   const contentType = response.headers?.get?.('content-type') ?? ''
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({})) as { error?: unknown }
-    throw new Error(typeof errorData.error === 'string' ? errorData.error : 'AI 服务暂时无法响应，请稍后再试。')
+    const errorData = await response.json().catch(() => ({})) as { error?: unknown, code?: unknown }
+    throw new AiRequestError(
+      typeof errorData.error === 'string' ? errorData.error : 'AI 服务暂时无法响应，请稍后再试。',
+      typeof errorData.code === 'string' ? errorData.code : undefined,
+      response.headers?.get?.('X-AI-Request-Id') ?? undefined,
+    )
   }
 
   if (contentType.includes('text/event-stream') || contentType.includes('application/x-ndjson')) {
@@ -260,7 +296,11 @@ async function readReply(response: Response, onDelta: (delta: string) => void): 
   const data = await response.json().catch(() => ({})) as { message?: unknown, error?: unknown }
   const reply = typeof data.message === 'string' ? data.message : ''
   if (!reply) {
-    throw new Error(typeof data.error === 'string' ? data.error : 'AI 服务没有返回可显示的文本。')
+    throw new AiRequestError(
+      typeof data.error === 'string' ? data.error : 'AI 服务没有返回可显示的文本。',
+      undefined,
+      response.headers?.get?.('X-AI-Request-Id') ?? undefined,
+    )
   }
   onDelta(reply)
   return { content: reply, truncated: false }
@@ -419,7 +459,7 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
             ? { ...message, content: partialContent, status: 'interrupted' }
             : message)
         : current.filter((message) => message.id !== assistantMessage.id))
-      setError(requestError instanceof Error ? requestError.message : 'AI 服务暂时无法响应，请稍后再试。')
+      setError(readableAiError(requestError))
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = undefined
