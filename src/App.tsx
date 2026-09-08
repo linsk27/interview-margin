@@ -157,6 +157,19 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return Boolean(element?.closest('input, textarea, select, [contenteditable="true"]'))
 }
 
+function WorkspaceLoading({ label }: { label: string }) {
+  return (
+    <main className="load-state load-state--workspace" aria-busy="true" aria-live="polite">
+      <div className="load-state__skeleton" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      <p>{label}</p>
+    </main>
+  )
+}
+
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
 
@@ -1187,7 +1200,7 @@ export default function App() {
 
   if (loadError || activeLoadError) {
     return (
-      <main className="load-state load-state--error">
+      <main className="load-state load-state--error" role="alert" aria-live="assertive">
         <AlertCircle aria-hidden="true" />
         <h1>题库没有载入</h1>
         <p>{loadError || activeLoadError}</p>
@@ -1210,7 +1223,7 @@ export default function App() {
 
   if (workspaceView === 'reader' && (!activeQuestion || !activeProgress || !activeQuestion.body)) {
     return (
-      <main className="load-state" aria-busy="true">
+      <main className="load-state" aria-busy="true" aria-live="polite">
         <span className="load-state__mark"><Highlighter aria-hidden="true" /></span>
         <h1>正在编排题库</h1>
         <p>解析章节、题目与代码示例…</p>
@@ -1255,7 +1268,7 @@ export default function App() {
       />
 
       {workspaceView === 'banks' ? (
-        <Suspense fallback={<main className="load-state" aria-live="polite"><p>正在打开题库中心…</p></main>}>
+        <Suspense fallback={<WorkspaceLoading label="正在打开题库中心…" />}>
           <QuestionBankHub
             banks={banks}
             questions={questions}
@@ -1267,7 +1280,7 @@ export default function App() {
           />
         </Suspense>
       ) : workspaceView === 'admin' && user?.permissions.includes('banks.write') ? (
-        <Suspense fallback={<main className="load-state" aria-live="polite"><p>正在打开管理工作区…</p></main>}>
+        <Suspense fallback={<WorkspaceLoading label="正在打开管理工作区…" />}>
           <AdminPanel
             user={user}
             initialCatalog={{ banks, sections }}
@@ -1301,6 +1314,7 @@ export default function App() {
           <section className="reading-desk" inert={mobileDrawerOpen}>
         <Topbar
           question={activeQuestion}
+          bankTitle={currentBank?.shortTitle || currentBank?.title}
           progress={readerProgress}
           libraryOpen={libraryExpanded}
           notesOpen={notesExpanded && contextMode === 'notes'}

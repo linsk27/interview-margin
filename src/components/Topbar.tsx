@@ -3,6 +3,7 @@ import type { InterviewQuestion, PageLayout, QuestionProgress } from '../types'
 
 interface TopbarProps {
   question: InterviewQuestion
+  bankTitle?: string
   progress: QuestionProgress
   libraryOpen: boolean
   notesOpen: boolean
@@ -25,6 +26,7 @@ interface TopbarProps {
 
 export function Topbar({
   question,
+  bankTitle,
   progress,
   libraryOpen,
   notesOpen,
@@ -60,6 +62,7 @@ export function Topbar({
         </button>
       </div>
       <div className="topbar__crumb">
+        {bankTitle && <span className="topbar__crumb-bank">{bankTitle}</span>}
         <span>{question.sectionTitle.replace(/^Part\s*\d+[：:]?\s*/i, '')}</span>
         <strong>Q{question.number}</strong>
       </div>

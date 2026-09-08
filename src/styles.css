@@ -330,6 +330,20 @@ kbd {
   white-space: nowrap;
 }
 
+.topbar__crumb-bank {
+  max-width: 12rem;
+  color: var(--color-accent) !important;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs) !important;
+  font-weight: 700;
+}
+
+.topbar__crumb-bank::after {
+  content: '/';
+  margin-inline-start: var(--space-sm);
+  color: var(--color-rule-strong);
+}
+
 .topbar__crumb strong {
   flex: 0 0 auto;
   color: var(--color-ink);
@@ -5448,6 +5462,41 @@ body:has(dialog[open]) .reader {
   overflow: hidden;
   background: var(--color-paper-2);
   color: var(--color-ink);
+}
+
+.load-state--workspace {
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.load-state__skeleton {
+  display: grid;
+  width: min(100%, 22rem);
+  gap: var(--space-sm);
+}
+
+.load-state__skeleton span {
+  display: block;
+  height: var(--space-md);
+  border-radius: var(--radius-xs);
+  background: linear-gradient(90deg, var(--color-paper-2), var(--color-raised), var(--color-paper-2));
+  background-size: 200% 100%;
+  animation: loading-skeleton 1.4s var(--ease-in-out) infinite;
+}
+
+.load-state__skeleton span:first-child {
+  width: 42%;
+  height: var(--space-sm);
+}
+
+.load-state__skeleton span:last-child {
+  width: 68%;
+}
+
+@keyframes loading-skeleton {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
 }
 
 .admin-panel__topbar {
