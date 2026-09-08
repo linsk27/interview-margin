@@ -228,9 +228,9 @@ npm run build
 | 需要了解 | 文档 |
 | --- | --- |
 | Linux 正式部署、发布与回滚 | [`ops/linux/README.md`](ops/linux/README.md) |
+| 体验优化与迭代门禁 | [`docs/OPTIMIZATION_PLAN_2026-09-09.md`](docs/OPTIMIZATION_PLAN_2026-09-09.md) |
 | 社区面经来源审计 | [`docs/COMMUNITY_INTERVIEW_SOURCE_AUDIT.md`](docs/COMMUNITY_INTERVIEW_SOURCE_AUDIT.md) |
 | Java 题库全量重建说明 | [`docs/JAVA_INTERVIEW_REBUILD_V2.md`](docs/JAVA_INTERVIEW_REBUILD_V2.md) |
-| 产品与交互设计说明 | [`docs/PRODUCT_UI_REDESIGN_BRIEF.md`](docs/PRODUCT_UI_REDESIGN_BRIEF.md) |
 | 架构图数据与可视化 | [`docs/diagrams/`](docs/diagrams/) |
 
 如果你只是准备面试，从[在线题库](https://interview.linsk27.dpdns.org/app)开始即可；如果你要继续开发，建议依次阅读“开发者速览 → 系统架构 → 代码入口 → 本地启动”。
