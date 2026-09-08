@@ -5,6 +5,7 @@ import {
   BriefcaseBusiness,
   Check,
   CircleAlert,
+  Copy,
   Lightbulb,
   LoaderCircle,
   MessagesSquare,
@@ -32,6 +33,37 @@ interface AssistantMessage {
 const CHAT_STORAGE_KEY = 'interview-margin:ai-chat:v2'
 const MAX_PERSISTED_MESSAGES = 6
 const MAX_PERSISTED_CHARS = 24_000
+
+function plainTextFromMarkdown(source: string) {
+  return source
+    .replace(/```[^\n]*\n?/g, '')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/[*_`~]/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+async function copyText(value: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = value
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  const copied = document.execCommand?.('copy') ?? false
+  textarea.remove()
+  if (!copied) throw new Error('clipboard unavailable')
+}
 
 interface PersistedChat {
   messages: AssistantMessage[]
@@ -315,6 +347,8 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
   const [isLoading, setIsLoading] = useState(false)
   const [requestStage, setRequestStage] = useState<'connecting' | 'waiting' | 'streaming'>('connecting')
   const [showLatest, setShowLatest] = useState(false)
+  const [copiedMessageId, setCopiedMessageId] = useState('')
+  const [copyError, setCopyError] = useState('')
   const [restored, setRestored] = useState(Boolean(initialChat.messages.length || initialChat.draft))
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const conversationRef = useRef<HTMLDivElement>(null)
@@ -323,6 +357,11 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
   const activeQuestionRef = useRef(question.id)
   const stateRef = useRef<PersistedChat>(initialChat)
   const sessionChatsRef = useRef<Record<string, PersistedChat>>({ [question.id]: initialChat })
+  const copyResetRef = useRef<number | undefined>(undefined)
+
+  useEffect(() => () => {
+    if (copyResetRef.current !== undefined) window.clearTimeout(copyResetRef.current)
+  }, [])
 
   useEffect(() => {
     // A question change renders before its state has been restored. Never save
@@ -526,6 +565,18 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
     inputRef.current?.focus()
   }
 
+  const copyAssistantMessage = async (message: AssistantMessage) => {
+    try {
+      await copyText(plainTextFromMarkdown(message.content))
+      setCopiedMessageId(message.id)
+      setCopyError('')
+      if (copyResetRef.current !== undefined) window.clearTimeout(copyResetRef.current)
+      copyResetRef.current = window.setTimeout(() => setCopiedMessageId(''), 2000)
+    } catch {
+      setCopyError('复制失败，请检查浏览器的剪贴板权限。')
+    }
+  }
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     void send()
@@ -644,6 +695,19 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
                           : <div className={styles.thinking}><LoaderCircle aria-hidden="true" /><span><strong>{requestStage === 'connecting' ? '正在连接 AI 服务' : '已连接，等待首段回答'}</strong><small>等待期间可以停止生成。</small></span></div>
                       : <p>{message.content}</p>}
                   </div>
+                  {message.role === 'assistant' && message.content && message.status !== 'streaming' && (
+                    <div className={styles.messageActions}>
+                      <button
+                        type="button"
+                        onClick={() => void copyAssistantMessage(message)}
+                        aria-label={copiedMessageId === message.id ? '已复制回答' : '复制回答'}
+                        title="复制回答"
+                      >
+                        {copiedMessageId === message.id ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                        {copiedMessageId === message.id ? '已复制' : '复制回答'}
+                      </button>
+                    </div>
+                  )}
                   {(message.status === 'stopped' || message.status === 'interrupted' || message.status === 'truncated')
                     && message.role === 'assistant' && (
                     <div className={styles.stoppedState} role="status">
@@ -701,6 +765,7 @@ export function AiAssistant({ question, focusToken, onClose, embedded = false }:
         {hasTruncatedReply && (
           <p className={styles.composerStatus}><CircleAlert aria-hidden="true" />回答达到长度上限，可继续生成剩余内容。</p>
         )}
+        {copyError && <p className={styles.composerStatus} role="status"><CircleAlert aria-hidden="true" />{copyError}</p>}
         <form className={styles.composer} onSubmit={submit}>
           <label className="sr-only" htmlFor="ai-question">向 AI 提问</label>
           <textarea

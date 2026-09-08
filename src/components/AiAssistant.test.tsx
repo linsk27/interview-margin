@@ -62,6 +62,24 @@ describe('AI learning assistant', () => {
     expect(payload.messages).toEqual([{ role: 'user', content: '请用通俗的话解释' }])
   })
 
+  it('copies an assistant answer as readable text and confirms the action', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: '## 结论\n\n**Proxy** 可以拦截操作，[文档](https://example.com)。' }),
+    }))
+
+    render(<AiAssistant question={question} focusToken={0} />)
+    fireEvent.change(screen.getByLabelText('向 AI 提问'), { target: { value: '请总结' } })
+    fireEvent.click(screen.getByRole('button', { name: '发送' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '复制回答' })).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: '复制回答' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '已复制回答' })).toBeTruthy())
+    expect(writeText).toHaveBeenCalledWith('结论\n\nProxy 可以拦截操作，文档。')
+  })
+
   it('does not load images proposed by an AI response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
