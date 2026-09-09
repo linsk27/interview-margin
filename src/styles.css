@@ -214,7 +214,7 @@ kbd {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
-  transition: transform var(--dur-long) var(--ease-out), opacity var(--dur-short) var(--ease-out), visibility 0s linear var(--dur-long);
+  transition: transform var(--dur-short) var(--ease-out), opacity var(--dur-short) var(--ease-out), visibility 0s linear var(--dur-short);
 }
 
 .library {
@@ -4840,11 +4840,15 @@ body:has(dialog[open]) .reader {
     inset-block-start: var(--banner-height);
     inset-block-end: 0;
     inset-inline-start: var(--rail-width);
-    z-index: calc(var(--z-sticky-nav) - 1);
+    z-index: var(--z-drawer);
     width: var(--sidebar-width);
     height: auto;
     border-inline-end-color: var(--color-rule-strong);
     box-shadow: var(--space-md) 0 var(--space-2xl) color-mix(in oklch, var(--color-ink) 16%, transparent);
+  }
+
+  .app-shell.is-library-closed .library {
+    z-index: var(--z-base);
   }
 
   .library__mobile-tool,
