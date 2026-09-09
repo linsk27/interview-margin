@@ -154,6 +154,21 @@ describe('QuestionMarkdown code blocks', () => {
     expect(screen.queryByText('hljs language-jsx')).toBeNull()
     expect(screen.getByRole('button', { name: '复制代码' })).toBeTruthy()
   })
+
+  it('lets readers switch long code between horizontal scrolling and wrapping', () => {
+    const { container } = render(<QuestionMarkdown>{['```js', 'const veryLongName = "保留代码内容并允许窄屏阅读"', '```'].join('\n')}</QuestionMarkdown>)
+
+    const wrapButton = screen.getByRole('button', { name: '开启代码自动换行' })
+    expect(wrapButton).toHaveAttribute('aria-pressed', 'false')
+    expect(container.querySelector('pre')).not.toHaveClass('codePreWrapped')
+
+    fireEvent.click(wrapButton)
+    expect(screen.getByRole('button', { name: '关闭代码自动换行' })).toHaveAttribute('aria-pressed', 'true')
+    expect(container.querySelector('pre')?.className).toContain('codePreWrapped')
+
+    fireEvent.click(screen.getByRole('button', { name: '关闭代码自动换行' }))
+    expect(screen.getByRole('button', { name: '开启代码自动换行' })).toHaveAttribute('aria-pressed', 'false')
+  })
 })
 
 describe('QuestionMarkdown reading rhythm', () => {

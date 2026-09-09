@@ -195,6 +195,12 @@
   background: color-mix(in oklch, var(--color-paper-2) 72%, var(--color-paper));
 }
 
+:global(.markdown-body) .codeActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
 :global(.markdown-body) .codeLanguage {
   color: var(--color-muted);
   font-size: 0.68rem;
@@ -203,21 +209,40 @@
   text-transform: uppercase;
 }
 
+:global(.markdown-body) .wrapButton,
 :global(.markdown-body) .copyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs);
   min-height: 2.15rem;
   border-radius: var(--radius-sm);
   transition: background-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
 }
 
-:global(.markdown-body) .copyButton:hover {
+:global(.markdown-body) .wrapButton:hover,
+:global(.markdown-body) .copyButton:hover,
+:global(.markdown-body) .wrapButton[aria-pressed='true'] {
   background: var(--color-accent-soft);
   color: var(--color-accent);
+}
+
+:global(.markdown-body) .wrapButton svg,
+:global(.markdown-body) .copyButton svg {
+  width: 0.82rem;
+  height: 0.82rem;
 }
 
 :global(.markdown-body) .codePre {
   padding: clamp(1rem, 2.5cqi, 1.35rem);
   font-size: clamp(0.78rem, 1.5cqi, 0.86rem);
   line-height: 1.72;
+}
+
+:global(.markdown-body) .codePreWrapped {
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 :global(.markdown-body) .inlineCode {

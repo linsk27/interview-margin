@@ -1,5 +1,5 @@
 import { Children, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, Highlighter, ImageOff, Link as LinkIcon, Maximize2 } from 'lucide-react'
+import { Check, Copy, Highlighter, ImageOff, Link as LinkIcon, Maximize2, WrapText } from 'lucide-react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
@@ -45,6 +45,7 @@ function teachingExampleKind(node: React.ReactNode): TeachingExampleKind | undef
 
 function CodeBlock({ children }: { children: React.ReactNode }) {
   const [copied, setCopied] = useState(false)
+  const [wrapped, setWrapped] = useState(false)
   const code = textFromNode(children).replace(/\n$/, '')
   const languageElement = Children.toArray(children).find(isValidElement) as React.ReactElement<{ className?: string }> | undefined
   const languageClass = languageElement?.props.className
@@ -62,12 +63,25 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
     <figure className={classNames('code-block', styles.codeBlock)}>
       <figcaption className={styles.codeCaption}>
         <span className={styles.codeLanguage}>{language}</span>
-        <button className={styles.copyButton} type="button" onClick={copy} aria-label="复制代码" title="复制代码">
-          {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-          <span>{copied ? '已复制' : '复制'}</span>
-        </button>
+        <span className={styles.codeActions}>
+          <button
+            className={styles.wrapButton}
+            type="button"
+            aria-pressed={wrapped}
+            aria-label={wrapped ? '关闭代码自动换行' : '开启代码自动换行'}
+            title={wrapped ? '关闭代码自动换行' : '开启代码自动换行'}
+            onClick={() => setWrapped((current) => !current)}
+          >
+            <WrapText aria-hidden="true" />
+            <span>{wrapped ? '取消换行' : '自动换行'}</span>
+          </button>
+          <button className={styles.copyButton} type="button" onClick={copy} aria-label="复制代码" title="复制代码">
+            {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+            <span>{copied ? '已复制' : '复制'}</span>
+          </button>
+        </span>
       </figcaption>
-      <pre className={styles.codePre}>{children}</pre>
+      <pre className={classNames(styles.codePre, wrapped && styles.codePreWrapped)}>{children}</pre>
     </figure>
   )
 }

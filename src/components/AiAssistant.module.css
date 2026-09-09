@@ -629,8 +629,8 @@
 
 .error {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
   gap: var(--space-xs);
   margin-block-start: var(--space-md);
   padding: var(--space-sm);
@@ -665,8 +665,8 @@
 }
 
 .error button {
-  grid-column: 2;
-  justify-self: start;
+  grid-column: auto;
+  justify-self: end;
 }
 
 .composerArea {
@@ -864,6 +864,16 @@
 
   .composerArea {
     padding: var(--space-sm) var(--space-sm) max(var(--space-sm), env(safe-area-inset-bottom));
+  }
+
+  .error {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .error button {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .hint span:last-child {

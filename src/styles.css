@@ -425,6 +425,7 @@ kbd {
   overflow-x: clip;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scroll-padding-block-end: 5rem;
   scrollbar-color: var(--color-rule-strong) var(--color-paper);
   scrollbar-width: thin;
 }
@@ -1781,6 +1782,11 @@ kbd {
   cursor: pointer;
   font-size: var(--text-xs);
   white-space: nowrap;
+  transition: background-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out), transform var(--dur-micro) var(--ease-out);
+}
+
+.status-segment button:active {
+  transform: translateY(1px);
 }
 
 .status-segment button svg {
