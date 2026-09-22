@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import MarketingLanding from './MarketingLanding'
 import { isMarketingEntry } from './lib/entryRoute'
 import { registerVisit } from './lib/visits'
+import './boot.css'
 
 const App = lazy(() => import('./App'))
 const marketingEntry = isMarketingEntry(window.location)
@@ -23,7 +24,7 @@ createRoot(document.getElementById('root')!).render(
   marketingEntry
     ? <MarketingLanding visitRegistration={visitRegistration} />
     : <Suspense fallback={
-      <main className="load-state load-state--boot" aria-busy="true" aria-live="polite">
+      <main className="boot-screen" role="status" aria-busy="true" aria-live="polite">
         <div className="load-state__panel">
           <div className="load-state__brand" aria-hidden="true">
             <span className="load-state__mark">边</span>
@@ -33,17 +34,11 @@ createRoot(document.getElementById('root')!).render(
             </div>
           </div>
           <div className="load-state__copy">
-            <span className="load-state__kicker">YOUR INTERVIEW WORKSPACE</span>
-            <h1>正在准备你的题库工作台</h1>
-            <p>题目、原理和复习进度马上就绪。</p>
+            <h1>正在打开题库</h1>
+            <p>正在载入学习工作台，请稍候。</p>
           </div>
           <div className="load-state__line" aria-hidden="true"><span /></div>
-          <div className="load-state__skeleton" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-          <span className="load-state__hint">首次打开会加载题库目录，之后会更快。</span>
+          <span className="load-state__hint">首次打开可能需要几秒钟</span>
         </div>
       </main>
     }><App /></Suspense>,

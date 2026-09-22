@@ -1,0 +1,17 @@
+/* Eager entry CSS: independent of the lazy App bundle and web fonts. */
+.boot-screen { box-sizing: border-box; display: grid; place-items: center; min-height: 100vh; min-height: 100dvh; padding: 24px; background: #f1f5f9; color: #132332; font: 16px/1.65 system-ui, 'Microsoft YaHei', sans-serif; }
+.boot-screen *, .boot-screen *::before, .boot-screen *::after { box-sizing: border-box; }
+.boot-screen .load-state__panel { width: min(100%, 480px); padding: clamp(24px, 6vw, 44px); background: #fff; border: 1px solid #dde5ec; border-radius: 20px; box-shadow: 0 16px 48px #142e4810; }
+.boot-screen .load-state__brand { display: flex; align-items: center; gap: 12px; }
+.boot-screen .load-state__mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #e6effa; color: #175ca4; font-size: 20px; font-weight: 650; }
+.boot-screen .load-state__brand div { display: grid; }
+.boot-screen .load-state__eyebrow { font-size: 10px; letter-spacing: .12em; color: #607588; }
+.boot-screen .load-state__brand strong { font-size: 16px; }
+.boot-screen .load-state__copy { margin-top: 32px; }
+.boot-screen h1 { margin: 0; font: inherit; font-size: clamp(22px, 5vw, 28px); font-weight: 650; line-height: 1.4; letter-spacing: -.025em; }
+.boot-screen p { margin: 10px 0 0; color: #647587; font-size: 14px; }
+.boot-screen .load-state__line { height: 3px; overflow: hidden; background: #e8eef5; border-radius: 9px; margin-top: 28px; }
+.boot-screen .load-state__line span { display: block; height: 100%; width: 35%; background: #2468ac; border-radius: inherit; animation: boot-travel 1.6s ease-in-out infinite alternate; }
+.boot-screen .load-state__hint { display: block; margin-top: 16px; color: #647587; font-size: 12px; }
+@keyframes boot-travel { from { transform: translateX(-100%); } to { transform: translateX(285%); } }
+@media (prefers-reduced-motion: reduce) { .boot-screen .load-state__line span { animation: none; } }
